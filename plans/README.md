@@ -314,3 +314,43 @@ this is the second instance of the same latent pattern; other count-based assert
 carry the same risk.
 
 Suite: **78 tests, 0 failures** (was 68).
+
+**T1.3 listing edit mode — done (2026-09-02).**
+
+`/account/listings` now has a "Modifier" link that opens the wizard on that listing
+(`/publish?listing={id}`). It was previously withheld on purpose: the wizard could only create, so a
+button that opened a blank wizard would have silently produced a duplicate draft.
+
+**Product rule reversed, at the product owner's explicit direction.** Editing a `PUBLISHED` listing
+now returns it to `PENDING_REVIEW`. The design doc §4 said the opposite — that an edit leaves the
+listing published, with reporting covering the gap — so `docs/colocation-platform-design.md` was
+updated rather than left contradicting the code. The accepted trade-off, stated so it is a decision
+and not a surprise: **an owner correcting a typo takes their own listing out of public search until a
+moderator approves it again**, and every edit adds moderation queue volume. A refinement worth
+considering later is re-reviewing only material changes (price, location, photos, description) and
+letting cosmetic edits through. Only `PUBLISHED` moves — a `DRAFT` stays a draft, because the create
+wizard PATCHes on every step and would otherwise submit listings the owner never published.
+
+**A silent data-corruption trap found and avoided, not fixed after the fact.** The obvious way to
+build this is to load the edit form from `GET /listings/{id}`. That response runs through
+`LocationFuzzer` **even for the owner**, so the form would have PATCHed a fuzzed position straight
+back — moving the listing up to the fuzz radius further from its real location on *every save*,
+cumulatively, with nothing visible until someone tried to find the place. New owner-scoped
+`GET /listings/mine/{id}` returns true coordinates;
+`ListingApiTest.ownerEditReadReturnsTrueCoordinates` asserts the exact contrast between the two
+endpoints so the trap cannot be reintroduced.
+
+Also: the new route was added to the `SecurityConfig` authenticated matchers
+(`/api/v1/listings/mine/**`) in the same change. That is the T0.4 lesson applied rather than
+relearned — any new owner-scoped GET under `/listings/**` is public-by-default until it is listed
+there.
+
+Frontend detail: the wizard branches its final action. A `DRAFT` or `REJECTED` listing still needs an
+explicit `POST /submit`; a live one does not, because the PATCH is itself the submission — calling
+`/submit` on it would be an illegal transition and 409. Edit mode also relabels the header and the
+primary button, and states the going-offline consequence *before* the owner saves rather than after.
+`useSearchParams` required a `Suspense` boundary; `/publish` stays statically rendered.
+
+Suite: **81 tests, 0 failures** (was 78; +3 covering true coordinates, owner scoping plus anonymous
+rejection, and the re-review rule in both directions). Frontend `typecheck` and `build` clean. Not
+verified in a browser.

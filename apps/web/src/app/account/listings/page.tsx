@@ -8,6 +8,7 @@ import {
   Eye,
   MapPin,
   MessageSquareText,
+  Pencil,
   Plus,
   ShieldAlert,
   Trash2,
@@ -355,6 +356,21 @@ export default function MyListingsPage() {
                               <Eye size={14} />
                               Voir
                               <ArrowUpRight size={14} />
+                            </Link>
+
+                            {/*
+                              Edit is offered for every status the owner can
+                              still act on. It was previously withheld entirely,
+                              because the wizard could only create -- a
+                              "Modifier" that opened a blank wizard would have
+                              silently produced a duplicate draft.
+                            */}
+                            <Link
+                              href={`/publish?listing=${listing.id}`}
+                              style={{ ...actionButtonStyle, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                            >
+                              <Pencil size={14} />
+                              Modifier
                             </Link>
 
                             {canSubmit ? (

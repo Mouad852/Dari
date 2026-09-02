@@ -128,6 +128,13 @@ public class ListingController {
     }
 
     /** Returns the owner's latest active draft so the publish wizard can resume it. */
+    /** One owned listing, with true coordinates, for the edit form. */
+    @GetMapping("/mine/{id}")
+    public ListingResponse mineById(@CurrentUser User owner, @PathVariable UUID id) {
+        return ListingResponse.from(listingService.getOwned(owner, id),
+                listingService.amenityCodesFor(id));
+    }
+
     @GetMapping("/draft")
     public ListingResponse draft(@CurrentUser User owner) {
         Listing listing = listingService.getDraft(owner);

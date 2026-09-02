@@ -1,7 +1,8 @@
 'use client';
 
 import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, MapPin, Plus, ShieldCheck, Star, Trash2, UploadCloud } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
 import { apiFetch, ApiError, apiOrigin } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
@@ -45,7 +46,19 @@ const photoActionStyle = (disabled: boolean): React.CSSProperties => ({
   padding: 0,
 });
 
+/**
+ * useSearchParams forces a Suspense boundary in the App Router; without one the
+ * route cannot be statically rendered and the build fails.
+ */
 export default function PublishWizardPage() {
+  return (
+    <Suspense fallback={<main style={{ padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-muted)' }}>Chargement…</main>}>
+      <PublishWizard />
+    </Suspense>
+  );
+}
+
+function PublishWizard() {
   const [stepIndex, setStepIndex] = useState(0);
   // These start empty on purpose. They previously shipped a fully written
   // sample listing ("Chambre lumineuse", 3 200 MAD, a complete description),
@@ -67,6 +80,10 @@ export default function PublishWizardPage() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  // Present when the owner arrived from "Modifier" on /account/listings.
+  const editingId = searchParams.get('listing');
+  const [editingStatus, setEditingStatus] = useState<ListingStatus | null>(null);
   const [photos, setPhotos] = useState<ListingPhoto[]>([]);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -78,8 +95,16 @@ export default function PublishWizardPage() {
       const token = await getIdToken();
       if (!token) return;
       try {
-        const draft = await apiFetch<DraftListing>('/listings/draft', { token });
-        if (!isCurrent || draft.status !== 'DRAFT') return;
+        // Editing a named listing reads the owner-scoped route, never
+        // GET /listings/{id}: that one fuzzes coordinates even for the owner,
+        // so an edit form fed by it would PATCH the fuzzed position back and
+        // drift the listing away from its real location on every save.
+        const draft = editingId
+          ? await apiFetch<DraftListing>(`/listings/mine/${editingId}`, { token })
+          : await apiFetch<DraftListing>('/listings/draft', { token });
+        // Resuming picks up drafts only; an explicit edit opens any status.
+        if (!isCurrent || (!editingId && draft.status !== 'DRAFT')) return;
+        setEditingStatus(draft.status);
         setDraftId(draft.id);
         setTitle(draft.title);
         setCity(draft.city);
@@ -103,7 +128,9 @@ export default function PublishWizardPage() {
           // block resuming the rest of the draft.
         }
       } catch (cause) {
-        if (cause instanceof ApiError && cause.status !== 404 && isCurrent) {
+        // A 404 is normal when simply landing on /publish with no draft yet.
+        // It is not normal when an id was named, so that one surfaces.
+        if (cause instanceof ApiError && isCurrent && (editingId || cause.status !== 404)) {
           setError(cause.message);
         }
       }
@@ -121,7 +148,12 @@ export default function PublishWizardPage() {
     return () => {
       isCurrent = false;
     };
-  }, []);
+  }, [editingId]);
+
+  const isEditing = editingId !== null;
+  // "Live" in the sense that matters here: currently reachable by the public,
+  // so an edit has a visible cost.
+  const wasLive = editingStatus === 'PUBLISHED';
 
   const progress = ((stepIndex + 1) / STEPS.length) * 100;
   const step = STEPS[stepIndex];
@@ -299,7 +331,16 @@ export default function PublishWizardPage() {
       }
 
       const draft = await persistDraft(token);
-      await apiFetch(`/listings/${draft.id}/submit`, { method: 'POST', token });
+
+      // Only a DRAFT or a REJECTED listing can be submitted. Editing a live one
+      // is already a submission: the PATCH above moves PUBLISHED back to
+      // PENDING_REVIEW server-side, so calling /submit here would be an illegal
+      // transition and 409.
+      const needsExplicitSubmit = draft.status === 'DRAFT' || draft.status === 'REJECTED';
+      if (needsExplicitSubmit) {
+        await apiFetch(`/listings/${draft.id}/submit`, { method: 'POST', token });
+      }
+      setEditingStatus(needsExplicitSubmit ? 'PENDING_REVIEW' : draft.status);
       setSaved(true);
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'Publication impossible. Vérifiez vos informations.');
@@ -323,7 +364,9 @@ export default function PublishWizardPage() {
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Publier
             </div>
-            <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Nouvelle annonce</h1>
+            <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>
+              {isEditing ? 'Modifier l’annonce' : 'Nouvelle annonce'}
+            </h1>
           </div>
 
           {/*
@@ -795,6 +838,17 @@ export default function PublishWizardPage() {
 
         {error ? <p role="alert" style={{ margin: 0, color: 'var(--error)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
         {saved ? <p role="status" style={{ margin: 0, color: 'var(--success)', font: 'var(--type-body-sm)' }}>Annonce envoyée pour validation.</p> : null}
+        {/*
+          Stated up front, not discovered after saving: an edit to a live
+          listing takes it out of public search until a moderator approves it
+          again.
+        */}
+        {isEditing && wasLive && !saved ? (
+          <p style={{ margin: 0, color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>
+            Cette annonce est en ligne. Après modification, elle repassera en validation et ne sera
+            pas visible dans les résultats de recherche tant qu’elle n’aura pas été approuvée.
+          </p>
+        ) : null}
         <footer style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
           <button
             type="button"
@@ -846,7 +900,13 @@ export default function PublishWizardPage() {
               boxShadow: 'var(--shadow-brand)',
             }}
           >
-            {submitting ? 'Publication…' : saved ? 'Annonce envoyée' : stepIndex === STEPS.length - 1 ? 'Publier l’annonce' : 'Suivant'}
+            {submitting
+              ? 'Enregistrement…'
+              : saved
+                ? 'Annonce envoyée'
+                : stepIndex === STEPS.length - 1
+                  ? (isEditing ? 'Enregistrer les modifications' : 'Publier l’annonce')
+                  : 'Suivant'}
             {stepIndex === STEPS.length - 1 ? null : <ChevronRight size={16} />}
           </button>
         </footer>

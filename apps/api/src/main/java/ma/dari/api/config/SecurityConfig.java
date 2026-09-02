@@ -70,6 +70,7 @@ public class SecurityConfig {
                         // nothing to catch it.
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/listings/mine",
+                                "/api/v1/listings/mine/**",
                                 "/api/v1/listings/draft",
                                 "/api/v1/listings/*/photos",
                                 "/api/v1/users/me").authenticated()

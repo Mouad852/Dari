@@ -230,7 +230,12 @@ Two independent state dimensions on `listings`:
 - `SUSPENDED → PUBLISHED` — admin reinstates after review.
 - `PUBLISHED → EXPIRED` — automatic, time-based (e.g. no update in 60–90 days), via scheduled job, not a manual action.
 - `EXPIRED → PENDING_REVIEW` — owner renews; re-enters review rather than auto-publishing, consistent with "review anything that goes live."
-- **Editing a `PUBLISHED` listing does not send it back to review** — it stays published. Moderation gaps this could open are mitigated by the reporting system.
+- **Editing a `PUBLISHED` listing sends it back to review** — it becomes `PENDING_REVIEW` and leaves
+  public search until a moderator approves it again. *(Reversed 2026-09-02 by the product owner. The
+  original rule was that an edit left the listing published, with the reporting system covering the
+  gap. The accepted trade-off of the new rule: an owner correcting a typo takes their own listing
+  offline, and every edit adds queue volume. A refinement worth considering later is re-reviewing only
+  material changes — price, location, photos, description — and letting cosmetic edits through.)*
 - `SUSPENDED` listings always require manual admin approval to return to `PUBLISHED` — never auto-restored.
 
 ### `availability_state` (owner-controlled, independent of moderation)
@@ -327,7 +332,7 @@ Conventions: REST, versioned (`/api/v1/...`), Firebase ID token via `Authorizati
 - `GET /listings` — search/browse with filters
 - `POST /listings` — create (starts `DRAFT`)
 - `GET /listings/{id}`
-- `PATCH /listings/{id}` — owner edit (no re-review triggered)
+- `PATCH /listings/{id}` — owner edit (a `PUBLISHED` listing returns to `PENDING_REVIEW`; a `DRAFT` stays a draft)
 - `DELETE /listings/{id}` — soft-delete
 - `POST /listings/{id}/submit` — `DRAFT → PENDING_REVIEW`
 - `POST /listings/{id}/mark-room-found`, `POST /listings/{id}/reopen`

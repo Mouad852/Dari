@@ -79,6 +79,22 @@ public class ListingService {
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Brouillon introuvable"));
     }
 
+    /**
+     * One of the owner's own listings, with **true** coordinates.
+     *
+     * <p>Deliberately not served by {@code GET /listings/{id}}: that path runs
+     * every response through {@link LocationFuzzer}, including for the owner. An
+     * edit form loaded from it would round-trip fuzzed coordinates straight back
+     * through PATCH and walk the listing's real location by up to the fuzz
+     * radius on every single save — silent, cumulative, and invisible until
+     * someone tried to find the place.
+     */
+    @Transactional(readOnly = true)
+    public Listing getOwned(User owner, UUID listingId) {
+        return listings.findByIdAndOwnerIdAndDeletedAtIsNull(listingId, owner.getId())
+                .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
+    }
+
     @Transactional
     public Listing create(User owner, CreateListingRequest request) {
         validateRoommatesCount(request.currentRoommatesCount(), request.maxRoommates());
@@ -113,6 +129,23 @@ public class ListingService {
                 request.maxRoommates() != null ? request.maxRoommates() : listing.getMaxRoommates()
         );
         applyUpdate(request, listing);
+
+        // Editing a live listing returns it to the moderation queue.
+        //
+        // This reverses the original design-doc §4 rule ("editing a PUBLISHED
+        // listing does not send it back to review", mitigated by reporting) at
+        // the product owner's explicit direction. The trade-off it accepts: a
+        // published listing leaves public search the moment its owner touches
+        // it, including for a typo, and only returns once a moderator approves
+        // it again.
+        //
+        // Only PUBLISHED moves. A DRAFT stays a DRAFT -- the create wizard
+        // PATCHes on every step, and sending drafts to review would submit them
+        // before the owner ever pressed publish.
+        if (listing.getStatus() == ListingStatus.PUBLISHED) {
+            listing.setStatus(ListingStatus.PENDING_REVIEW);
+        }
+
         listing = listings.save(listing);
 
         if (request.amenityCodes() != null) {

@@ -965,6 +965,94 @@ class ListingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("the owner edit read returns true coordinates, unlike the fuzzed public detail")
+    void ownerEditReadReturnsTrueCoordinates() throws Exception {
+        String uid = "uid-edit-read-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        User owner = users.saveAndFlush(new User(uid, email, true, "Edit Reader"));
+
+        Listing listing = new Listing(
+                owner, "Studio à modifier", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE);
+        listing.setDescription("Description publiée.");
+        listing = listings.saveAndFlush(listing);
+
+        // The whole reason this endpoint exists: an edit form fed by the public
+        // detail response would PATCH fuzzed coordinates back and move the
+        // listing a little further from reality on every save.
+        given().header("Authorization", "Bearer edit-read-token")
+                .when().get("/listings/mine/{id}", listing.getId())
+                .then().statusCode(200)
+                .body("latitude", equalTo(33.9716f))
+                .body("longitude", equalTo(-6.8498f));
+
+        given().when().get("/listings/{id}", listing.getId())
+                .then().statusCode(200)
+                .body("latitude", org.hamcrest.Matchers.not(equalTo(33.9716f)));
+    }
+
+    @Test
+    @DisplayName("a non-owner cannot read someone else's listing through the edit endpoint")
+    void ownerEditReadIsScopedToTheOwner() throws Exception {
+        String ownerUid = "uid-edit-owner-" + System.nanoTime();
+        User owner = users.saveAndFlush(new User(ownerUid, ownerUid + "@example.ma", true, "Owner"));
+        Listing listing = listings.saveAndFlush(new Listing(
+                owner, "Studio privé", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+
+        String otherUid = "uid-edit-other-" + System.nanoTime();
+        stubToken(otherUid, otherUid + "@example.ma", true);
+        users.saveAndFlush(new User(otherUid, otherUid + "@example.ma", true, "Other"));
+
+        given().header("Authorization", "Bearer other-token")
+                .when().get("/listings/mine/{id}", listing.getId())
+                .then().statusCode(404);
+
+        given().when().get("/listings/mine/{id}", listing.getId())
+                .then().statusCode(401)
+                .header("WWW-Authenticate", "Bearer");
+    }
+
+    @Test
+    @DisplayName("editing a published listing returns it to review; editing a draft does not")
+    void editingPublishedListingReturnsItToReview() throws Exception {
+        String uid = "uid-edit-review-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        User owner = users.saveAndFlush(new User(uid, email, true, "Edit Review"));
+
+        Listing published = new Listing(
+                owner, "Studio publié", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE);
+        published.setDescription("Description initiale.");
+        published = listings.saveAndFlush(published);
+
+        given().header("Authorization", "Bearer edit-review-token")
+                .contentType("application/json")
+                .body("{\"title\":\"Studio publié et corrigé\"}")
+                .when().patch("/listings/{id}", published.getId())
+                .then().statusCode(200)
+                .body("status", equalTo("PENDING_REVIEW"));
+
+        assertThat(listings.findById(published.getId()).orElseThrow().getStatus())
+                .isEqualTo(ListingStatus.PENDING_REVIEW);
+
+        // A draft must not be swept into the queue: the create wizard PATCHes on
+        // every step, so this would submit listings the owner never published.
+        Listing draft = listings.saveAndFlush(new Listing(
+                owner, "Studio brouillon", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2500.00"), ListingStatus.DRAFT, AvailabilityState.AVAILABLE));
+
+        given().header("Authorization", "Bearer edit-review-token")
+                .contentType("application/json")
+                .body("{\"title\":\"Brouillon modifié\"}")
+                .when().patch("/listings/{id}", draft.getId())
+                .then().statusCode(200)
+                .body("status", equalTo("DRAFT"));
+    }
+
+    @Test
     @DisplayName("photo PATCH sort order DTO rejects negative values")
     void photoPatchSortOrderDtoRejectsNegativeValues() {
         assertThat(validator.validate(new UpdateListingPhotoRequest(-1, null)))
