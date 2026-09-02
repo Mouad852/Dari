@@ -246,6 +246,165 @@ class AdminApiTest extends AbstractIntegrationTest {
                 ReportTarget.LISTING, listing.getId(), ReportStatus.PENDING)).isEmpty();
     }
 
+    @Test
+    @DisplayName("SUSPEND on a reported listing takes it down and closes the reports as acted on")
+    void suspendActionOnListing() throws Exception {
+        User owner = users.saveAndFlush(new User(
+                "uid-susp-owner-" + System.nanoTime(), "susp-owner-" + System.nanoTime() + "@example.ma",
+                true, "Owner"));
+        Listing listing = listingFor(owner, ListingStatus.PUBLISHED);
+        User reporter = users.saveAndFlush(new User(
+                "uid-susp-rep-" + System.nanoTime(), "susp-rep-" + System.nanoTime() + "@example.ma",
+                true, "Reporter"));
+        reports.saveAndFlush(Report.create(reporter, new CreateReportRequest(
+                ReportTarget.LISTING, listing.getId(), ReportReason.SUSPECTED_SCAM, "Arnaque")));
+
+        admin("suspend-listing");
+
+        given().header("Authorization", "Bearer admin-token")
+                .contentType("application/json")
+                .body("{\"action\":\"SUSPEND\",\"reason\":\"Contenu frauduleux\"}")
+                .when().post("/admin/reports/{type}/{id}/action", "LISTING", listing.getId())
+                .then().statusCode(200);
+
+        Listing suspended = listings.findById(listing.getId()).orElseThrow();
+        assertThat(suspended.getStatus()).isEqualTo(ListingStatus.SUSPENDED);
+        // A moderator's decision is not the system's: leaving autoFlagged false
+        // stops a later DISMISS from silently republishing it.
+        assertThat(suspended.isAutoFlagged()).isFalse();
+        assertThat(suspended.getPriorStatus()).isEqualTo(ListingStatus.PUBLISHED);
+
+        assertThat(reports.findByTargetTypeAndTargetIdAndStatus(
+                ReportTarget.LISTING, listing.getId(), ReportStatus.PENDING)).isEmpty();
+        assertThat(reports.findByTargetTypeAndTargetIdAndStatus(
+                ReportTarget.LISTING, listing.getId(), ReportStatus.ACTION_TAKEN)).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("a dismissal does not undo a suspension a moderator chose")
+    void dismissDoesNotUndoDeliberateSuspension() throws Exception {
+        User owner = users.saveAndFlush(new User(
+                "uid-nodo-owner-" + System.nanoTime(), "nodo-owner-" + System.nanoTime() + "@example.ma",
+                true, "Owner"));
+        Listing listing = listingFor(owner, ListingStatus.PUBLISHED);
+        User reporter = users.saveAndFlush(new User(
+                "uid-nodo-rep-" + System.nanoTime(), "nodo-rep-" + System.nanoTime() + "@example.ma",
+                true, "Reporter"));
+        reports.saveAndFlush(Report.create(reporter, new CreateReportRequest(
+                ReportTarget.LISTING, listing.getId(), ReportReason.FAKE_LISTING, "Faux")));
+
+        admin("nodo");
+
+        given().header("Authorization", "Bearer admin-token")
+                .contentType("application/json")
+                .body("{\"action\":\"SUSPEND\",\"reason\":\"Retire par la moderation\"}")
+                .when().post("/admin/reports/{type}/{id}/action", "LISTING", listing.getId())
+                .then().statusCode(200);
+
+        User second = users.saveAndFlush(new User(
+                "uid-nodo-rep2-" + System.nanoTime(), "nodo-rep2-" + System.nanoTime() + "@example.ma",
+                true, "Reporter 2"));
+        reports.saveAndFlush(Report.create(second, new CreateReportRequest(
+                ReportTarget.LISTING, listing.getId(), ReportReason.OTHER, "Autre")));
+
+        given().header("Authorization", "Bearer admin-token")
+                .contentType("application/json")
+                .body("{\"action\":\"DISMISS\",\"reason\":\"Infonde\"}")
+                .when().post("/admin/reports/{type}/{id}/action", "LISTING", listing.getId())
+                .then().statusCode(200);
+
+        assertThat(listings.findById(listing.getId()).orElseThrow().getStatus())
+                .isEqualTo(ListingStatus.SUSPENDED);
+    }
+
+    @Test
+    @DisplayName("BAN is refused on a listing target, and WARN reports itself as unbuilt")
+    void banOnListingRefusedAndWarnUnbuilt() throws Exception {
+        User owner = users.saveAndFlush(new User(
+                "uid-warn-owner-" + System.nanoTime(), "warn-owner-" + System.nanoTime() + "@example.ma",
+                true, "Owner"));
+        Listing listing = listingFor(owner, ListingStatus.PUBLISHED);
+
+        admin("warn");
+
+        given().header("Authorization", "Bearer admin-token")
+                .contentType("application/json")
+                .body("{\"action\":\"BAN\",\"reason\":\"x\"}")
+                .when().post("/admin/reports/{type}/{id}/action", "LISTING", listing.getId())
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"));
+
+        // WARN's only effect is notifying the owner, and delivery does not exist
+        // yet. Recording a warning nobody received would be worse than refusing.
+        given().header("Authorization", "Bearer admin-token")
+                .contentType("application/json")
+                .body("{\"action\":\"WARN\",\"reason\":\"x\"}")
+                .when().post("/admin/reports/{type}/{id}/action", "LISTING", listing.getId())
+                .then().statusCode(400)
+                .body("code", equalTo("NOT_IMPLEMENTED"));
+
+        given().header("Authorization", "Bearer admin-token")
+                .contentType("application/json")
+                .body("{\"action\":\"NONSENSE\"}")
+                .when().post("/admin/reports/{type}/{id}/action", "LISTING", listing.getId())
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"));
+    }
+
+    @Test
+    @DisplayName("the queue names its target and carries the reporters' dismissal history")
+    void queueCarriesLabelAndReporterHistory() throws Exception {
+        User owner = users.saveAndFlush(new User(
+                "uid-label-owner-" + System.nanoTime(), "label-owner-" + System.nanoTime() + "@example.ma",
+                true, "Owner"));
+        Listing listing = listingFor(owner, ListingStatus.PUBLISHED);
+        User reporter = users.saveAndFlush(new User(
+                "uid-label-rep-" + System.nanoTime(), "label-rep-" + System.nanoTime() + "@example.ma",
+                true, "Crying Wolf"));
+
+        // One already-dismissed report from this reporter, then a live one.
+        Report earlier = Report.create(reporter, new CreateReportRequest(
+                ReportTarget.LISTING, listing.getId(), ReportReason.OTHER, "Ancien"));
+        earlier.setStatus(ReportStatus.DISMISSED);
+        reports.saveAndFlush(earlier);
+        reports.saveAndFlush(Report.create(reporter, new CreateReportRequest(
+                ReportTarget.LISTING, listing.getId(), ReportReason.FAKE_LISTING, "Nouveau")));
+
+        admin("label");
+
+        var queue = given().header("Authorization", "Bearer admin-token")
+                .when().get("/admin/reports")
+                .then().statusCode(200)
+                .extract().jsonPath().getList("", java.util.Map.class);
+
+        var row = queue.stream()
+                .filter(item -> listing.getId().toString().equals(item.get("targetId")))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("listing missing from the report queue"));
+
+        assertThat(row.get("targetLabel")).isEqualTo(listing.getTitle());
+        assertThat(((Number) row.get("priorDismissedReports")).longValue()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("admin can look up a single user by id")
+    void adminSingleUserLookup() throws Exception {
+        User target = users.saveAndFlush(new User(
+                "uid-lookup-" + System.nanoTime(), "lookup-" + System.nanoTime() + "@example.ma",
+                true, "Looked Up"));
+
+        admin("lookup");
+
+        given().header("Authorization", "Bearer admin-token")
+                .when().get("/admin/users/{id}", target.getId())
+                .then().statusCode(200)
+                .body("displayName", equalTo("Looked Up"));
+
+        given().header("Authorization", "Bearer admin-token")
+                .when().get("/admin/users/{id}", UUID.randomUUID())
+                .then().statusCode(404);
+    }
+
     // --- users ---------------------------------------------------------------
 
     @Test

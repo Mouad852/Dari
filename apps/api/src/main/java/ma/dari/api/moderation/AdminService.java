@@ -98,13 +98,33 @@ public class AdminService {
                         entry.reporterIds.size(),
                         entry.firstReportedAt,
                         entry.reasons.stream().distinct().sorted(Comparator.comparing(Enum::name)).toList(),
-                        isAutoFlagged(entry.targetType, entry.targetId)
+                        isAutoFlagged(entry.targetType, entry.targetId),
+                        entry.reporterIds.isEmpty()
+                                ? 0L
+                                : reports.countByReporterIdInAndStatus(entry.reporterIds, ReportStatus.DISMISSED),
+                        targetLabel(entry.targetType, entry.targetId)
                 ))
                 .sorted(Comparator
                         .comparing((AdminReportQueueItem item) -> !item.autoFlagged())
                         .thenComparing(Comparator.comparingLong(AdminReportQueueItem::reportCount).reversed())
                         .thenComparing(AdminReportQueueItem::firstReportedAt))
                 .toList();
+    }
+
+    /**
+     * Resolved here rather than by the console fetching each row.
+     *
+     * <p>A USER target had no label at all before — there was no single-user
+     * admin read, so the queue showed a truncated UUID and a moderator had to
+     * decide about a person they could not name. Doing it server-side also
+     * avoids one request per row, and works for soft-deleted targets, which a
+     * public read would 404 on.
+     */
+    private String targetLabel(ReportTarget targetType, UUID targetId) {
+        if (targetType == ReportTarget.LISTING) {
+            return listings.findById(targetId).map(Listing::getTitle).orElse(null);
+        }
+        return users.findById(targetId).map(User::getDisplayName).orElse(null);
     }
 
     private boolean isAutoFlagged(ReportTarget targetType, UUID targetId) {
@@ -173,6 +193,74 @@ public class AdminService {
     public void dismissReports(User admin, ReportTarget targetType, UUID targetId, String action, String reason) {
         reportService.dismissPendingReports(admin, targetType, targetId, reason);
         adminActions.save(AdminAction.of(admin, action, targetType, targetId, reason));
+    }
+
+    /**
+     * Resolves a queue item with a real decision.
+     *
+     * <p>{@link ModerationAction#WARN} is deliberately absent: its entire effect
+     * is notifying the owner, and {@code NotificationService} has no
+     * implementation yet (phase 10). Offering it would record that an owner was
+     * warned when nothing reached them — worse than not offering it, because a
+     * moderator would believe the matter was handled.
+     */
+    @Transactional
+    public void actOnReports(User admin, ReportTarget targetType, UUID targetId, ModerationAction action, String reason) {
+        switch (action) {
+            case DISMISS -> {
+                reportService.dismissPendingReports(admin, targetType, targetId, reason);
+                adminActions.save(AdminAction.of(admin, "DISMISS", targetType, targetId, reason));
+            }
+            case SUSPEND -> {
+                if (targetType == ReportTarget.LISTING) {
+                    suspendListing(admin, targetId, reason);
+                } else {
+                    suspendUser(admin, targetId);
+                }
+                reportService.resolvePendingReports(admin, targetType, targetId, ReportStatus.ACTION_TAKEN, reason);
+                adminActions.save(AdminAction.of(admin, "SUSPEND", targetType, targetId, reason));
+            }
+            case BAN -> {
+                if (targetType != ReportTarget.USER) {
+                    throw new ApiException(400, ErrorCode.VALIDATION_FAILED,
+                            "Un bannissement ne s'applique qu'à un utilisateur");
+                }
+                banUser(admin, targetId, reason);
+                reportService.resolvePendingReports(admin, targetType, targetId, ReportStatus.ACTION_TAKEN, reason);
+                adminActions.save(AdminAction.of(admin, "BAN", targetType, targetId, reason));
+            }
+            case WARN -> throw new ApiException(400, ErrorCode.NOT_IMPLEMENTED,
+                    "L'avertissement sera disponible avec les notifications");
+        }
+    }
+
+    /**
+     * A moderator's deliberate suspension, as distinct from the automatic one.
+     *
+     * <p>{@code autoFlagged} stays false: the flag exists so a DISMISS knows
+     * whether it is undoing the system's own decision. Setting it here would let
+     * a later dismissal silently republish a listing a human chose to take down.
+     */
+    @Transactional
+    public void suspendListing(User admin, UUID listingId, String reason) {
+        Listing listing = listings.findById(listingId)
+                .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
+
+        if (listing.getStatus() == ListingStatus.SUSPENDED) {
+            return;
+        }
+        listing.setPriorStatus(listing.getStatus());
+        listing.setStatus(ListingStatus.SUSPENDED);
+        listing.setAutoFlagged(false);
+        listing.setRejectionReason(reason);
+        listings.save(listing);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminUserResponse getUser(UUID userId) {
+        User user = users.findById(userId)
+                .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Utilisateur introuvable"));
+        return AdminUserResponse.from(user, reports.countByTargetTypeAndTargetId(ReportTarget.USER, userId));
     }
 
     @Transactional

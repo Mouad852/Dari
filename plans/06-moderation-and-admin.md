@@ -19,7 +19,7 @@ It is also worth being blunt about what this phase is: on a platform whose core 
 **Auto-flagging**
 - [x] 3 distinct reports on one target inside a rolling 7-day window → `status = SUSPENDED`, high priority in the queue — implemented in `ReportService` and covered by `ReportApiTest`; corrected 2026-09-02
 - [ ] *Distinct* means distinct reporters — write the test that proves one user cannot trip it alone
-- [ ] Record the pre-suspension state, so a dismissal can restore it (see below)
+- [x] Record the pre-suspension state, so a dismissal can restore it — `prior_status` on the listing, set by both the auto-suspend path and a moderator's deliberate SUSPEND. A moderator's suspension leaves `auto_flagged` false, so a later DISMISS restores only what the *system* took down and never republishes what a human removed. `AdminApiTest.dismissDoesNotUndoDeliberateSuspension` pins that.
 - [ ] Test the boundary properly: 3 reports across 8 days must not trigger it
 
 **Admin — this whole section was already built by an earlier session and just never checked off; verified 2026-09-02 by reading `AdminController`/`AdminService` directly, not assumed**
@@ -27,7 +27,7 @@ It is also worth being blunt about what this phase is: on a platform whose core 
 - [x] `POST /admin/listings/{id}/approve` and `/reject` with a rejection reason
 - [x] `GET /admin/reports` — grouped by target, one queue item per target
 - [x] Queue ordering: auto-flagged first, then report count descending, then oldest first
-- [ ] Reporter history (past dismissal rate) shown per queue item — genuinely not built; `AdminReportQueueItem` carries no such field
+- [x] Reporter history shown per queue item (2026-09-02) — `AdminReportQueueItem.priorDismissedReports` counts reports these same reporters have previously had dismissed, so three reports from people who are usually wrong read differently from three from first-time reporters. Shown as a badge on the row.
 - [~] `POST /admin/reports/{targetType}/{targetId}/action` — **only `DISMISS` is implemented.** Any other action value (`warn`/`suspend listing`/`reject listing`/`suspend user`/`ban user` as a *report* action) returns 400 `NOT_IMPLEMENTED`. Suspend/ban user exist as separate direct endpoints (below), reachable from the Users page, not from a report's action menu. There is currently no way to suspend an already-PUBLISHED listing from any admin action at all outside of the 3-report auto-flag.
 - [x] `GET /admin/users` — search by query and status
 - [x] `POST /admin/users/{id}/suspend` and `POST /admin/users/{id}/ban`

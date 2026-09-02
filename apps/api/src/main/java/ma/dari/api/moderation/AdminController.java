@@ -107,15 +107,23 @@ public class AdminController {
                                                            @PathVariable ReportTarget targetType,
                                                            @PathVariable UUID targetId,
                                                            @Valid @RequestBody AdminReportActionRequest request) {
-        String action = request.action().trim().toUpperCase();
-        if (!"DISMISS".equals(action)) {
-            throw new ApiException(400, ErrorCode.NOT_IMPLEMENTED, "Action non prise en charge");
+        ModerationAction action;
+        try {
+            action = ModerationAction.valueOf(request.action().trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Action inconnue");
         }
-        adminService.dismissReports(admin, targetType, targetId, action, request.reason());
+        adminService.actOnReports(admin, targetType, targetId, action, request.reason());
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 
     // --- users ---------------------------------------------------------------
+
+    /** One user, so the report queue can name a USER target instead of showing an id. */
+    @GetMapping("/users/{id}")
+    public AdminUserResponse user(@PathVariable UUID id) {
+        return adminService.getUser(id);
+    }
 
     @GetMapping("/users")
     public List<AdminUserResponse> users(@RequestParam(required = false) String query,

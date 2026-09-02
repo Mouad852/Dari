@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Check, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Ban, Check, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -8,42 +8,27 @@ import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { relativeTime } from '@/lib/format';
 import { REPORT_REASON_LABELS, REPORT_TARGET_LABELS } from '@/lib/labels';
-import type { AdminReportQueueItem, PublicListing } from '@/types/api';
 
-/** Best-effort only: the listing may 404 (soft-deleted) — the row still works without a title. */
-function useListingTitles(items: AdminReportQueueItem[] | null, token: string | null) {
-  const [titles, setTitles] = useState<Record<string, string>>({});
+const ACTION_REASON_PROMPT: Record<'DISMISS' | 'SUSPEND' | 'BAN', string> = {
+  DISMISS: 'Raison du classement sans suite (facultatif) :',
+  SUSPEND: 'Raison de la suspension (facultatif) :',
+  BAN: 'Raison du bannissement (facultatif) :',
+};
 
-  useEffect(() => {
-    if (!items || !token) return;
-    let isCurrent = true;
-
-    const listingIds = items.filter((item) => item.targetType === 'LISTING').map((item) => item.targetId);
-    void Promise.all(
-      listingIds.map(async (id) => {
-        try {
-          const listing = await apiFetch<PublicListing>(`/listings/${encodeURIComponent(id)}`, { token });
-          return [id, listing.title] as const;
-        } catch {
-          return null;
-        }
-      }),
-    ).then((results) => {
-      if (!isCurrent) return;
-      const resolved: Record<string, string> = {};
-      for (const entry of results) {
-        if (entry) resolved[entry[0]] = entry[1];
-      }
-      setTitles(resolved);
-    });
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [items, token]);
-
-  return titles;
-}
+const queueActionStyle = (pending: boolean): React.CSSProperties => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '0.4rem',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-pill)',
+  background: 'var(--surface-card)',
+  color: 'var(--text-primary)',
+  padding: '0.6rem 0.9rem',
+  font: 'var(--type-body-sm)',
+  cursor: pending ? 'default' : 'pointer',
+  opacity: pending ? 0.6 : 1,
+});
+import type { AdminReportQueueItem } from '@/types/api';
 
 export default function AdminReportsPage() {
   const [queue, setQueue] = useState<AdminReportQueueItem[] | null>(null);
@@ -73,12 +58,22 @@ export default function AdminReportsPage() {
     };
   }, []);
 
-  const listingTitles = useListingTitles(queue, token);
 
-  const handleDismiss = (item: AdminReportQueueItem) => {
+  const handleAction = (item: AdminReportQueueItem, action: 'DISMISS' | 'SUSPEND' | 'BAN') => {
     const key = `${item.targetType}:${item.targetId}`;
     if (pendingKey || !token) return;
-    const reason = window.prompt('Raison du classement sans suite (facultatif) :') ?? undefined;
+
+    // Suspend and ban change someone's account or take a listing down, so they
+    // ask twice. Dismiss is reversible in effect -- the reports simply close.
+    if (action !== 'DISMISS') {
+      const target = item.targetLabel ?? `#${item.targetId.slice(0, 8)}`;
+      const question = action === 'BAN'
+        ? `Bannir définitivement ${target} ? Ses annonces seront retirées et son adresse ne pourra plus se réinscrire.`
+        : `Suspendre ${target} ?`;
+      if (!window.confirm(question)) return;
+    }
+
+    const reason = window.prompt(ACTION_REASON_PROMPT[action]) ?? undefined;
 
     setPendingKey(key);
     setError(null);
@@ -87,11 +82,11 @@ export default function AdminReportsPage() {
         await apiFetch(`/admin/reports/${item.targetType}/${encodeURIComponent(item.targetId)}/action`, {
           method: 'POST',
           token,
-          body: { action: 'DISMISS', reason },
+          body: { action, reason },
         });
         setQueue((prev) => (prev ?? []).filter((row) => `${row.targetType}:${row.targetId}` !== key));
       } catch (cause) {
-        setError(cause instanceof ApiError ? cause.message : 'Impossible de classer ce signalement.');
+        setError(cause instanceof ApiError ? cause.message : 'Action impossible sur ce signalement.');
       } finally {
         setPendingKey(null);
       }
@@ -160,7 +155,7 @@ export default function AdminReportsPage() {
             {queue.map((item) => {
               const key = `${item.targetType}:${item.targetId}`;
               const isPending = pendingKey === key;
-              const title = item.targetType === 'LISTING' ? listingTitles[item.targetId] : undefined;
+              const title = item.targetLabel;
 
               return (
                 <article
@@ -211,6 +206,19 @@ export default function AdminReportsPage() {
                       <span style={{ borderRadius: 'var(--radius-pill)', background: 'var(--sable-50)', color: 'var(--text-muted)', padding: '0.35rem 0.6rem', font: 'var(--type-label)' }}>
                         {item.reportCount} signalement{item.reportCount > 1 ? 's' : ''} · {item.reporterCount} personne{item.reporterCount > 1 ? 's' : ''}
                       </span>
+                      {/*
+                        Context for weighing the item: reports from people whose
+                        past reports were all dismissed read differently from the
+                        same count from first-time reporters.
+                      */}
+                      {item.priorDismissedReports > 0 ? (
+                        <span
+                          title="Signalements précédemment classés sans suite, de ces mêmes personnes"
+                          style={{ borderRadius: 'var(--radius-pill)', background: 'var(--sable-50)', color: 'var(--text-muted)', padding: '0.35rem 0.6rem', font: 'var(--type-label)' }}
+                        >
+                          {item.priorDismissedReports} déjà classé{item.priorDismissedReports > 1 ? 's' : ''} sans suite
+                        </span>
+                      ) : null}
                     </div>
                   </div>
 
@@ -237,26 +245,40 @@ export default function AdminReportsPage() {
                       Premier signalement {relativeTime(new Date(item.firstReportedAt))}
                     </span>
 
-                    <button
-                      type="button"
-                      disabled={isPending}
-                      onClick={() => handleDismiss(item)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        border: '1px solid var(--border-default)',
-                        borderRadius: 'var(--radius-pill)',
-                        background: 'var(--surface-card)',
-                        color: 'var(--text-primary)',
-                        padding: '0.6rem 0.9rem',
-                        font: 'var(--type-body-sm)',
-                        cursor: isPending ? 'default' : 'pointer',
-                      }}
-                    >
-                      <Check size={14} />
-                      Classer sans suite
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => handleAction(item, 'DISMISS')}
+                        style={queueActionStyle(isPending)}
+                      >
+                        <Check size={14} />
+                        Classer sans suite
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => handleAction(item, 'SUSPEND')}
+                        style={{ ...queueActionStyle(isPending), color: 'var(--error)', borderColor: 'var(--error-light)' }}
+                      >
+                        <AlertTriangle size={14} />
+                        {item.targetType === 'LISTING' ? 'Suspendre l’annonce' : 'Suspendre le compte'}
+                      </button>
+
+                      {/* Banning is an account action; there is no such thing as banning a listing. */}
+                      {item.targetType === 'USER' ? (
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => handleAction(item, 'BAN')}
+                          style={{ ...queueActionStyle(isPending), color: 'var(--error)', borderColor: 'var(--error-light)' }}
+                        >
+                          <Ban size={14} />
+                          Bannir
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 </article>
               );

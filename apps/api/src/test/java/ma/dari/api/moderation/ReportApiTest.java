@@ -249,12 +249,18 @@ class ReportApiTest extends AbstractIntegrationTest {
                 "Scam risk"
         )));
 
-        var queue = adminService.pendingReportQueue();
-        assertThat(queue).hasSize(1);
-        assertThat(queue.getFirst().targetType()).isEqualTo(ReportTarget.LISTING);
-        assertThat(queue.getFirst().targetId()).isEqualTo(listing.getId());
-        assertThat(queue.getFirst().reportCount()).isEqualTo(2L);
-        assertThat(queue.getFirst().reporterCount()).isEqualTo(2L);
+        // Finds this listing's row rather than assuming the queue holds only it.
+        // The Testcontainers database is shared suite-wide, so any other class
+        // that leaves a pending report -- AdminApiTest does -- would otherwise
+        // break this by existing. Third occurrence of this pattern in the suite.
+        UUID listingId = listing.getId();
+        var row = adminService.pendingReportQueue().stream()
+                .filter(item -> item.targetType() == ReportTarget.LISTING && item.targetId().equals(listingId))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("listing missing from the pending report queue"));
+
+        assertThat(row.reportCount()).isEqualTo(2L);
+        assertThat(row.reporterCount()).isEqualTo(2L);
     }
 
     @Test

@@ -181,6 +181,10 @@ export interface AdminReportQueueItem {
   firstReportedAt: string;
   reasons: ReportReason[];
   autoFlagged: boolean;
+  /** Reports these same reporters have had dismissed before. Context, not a verdict. */
+  priorDismissedReports: number;
+  /** Listing title or user display name, resolved server-side. Null if the target is gone. */
+  targetLabel: string | null;
 }
 
 export interface AdminUser {

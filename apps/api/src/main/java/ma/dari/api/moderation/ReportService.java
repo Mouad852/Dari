@@ -63,11 +63,34 @@ public class ReportService {
 
     @Transactional
     public void dismissPendingReports(User admin, ReportTarget targetType, UUID targetId, String reason) {
+        resolvePendingReports(admin, targetType, targetId, ReportStatus.DISMISSED, reason);
+    }
+
+    /**
+     * Closes every pending report against one target with the given outcome.
+     *
+     * <p>The resolved status is not cosmetic. {@code DISMISSED} says the reports
+     * were unfounded and is the only outcome that restores an auto-suspended
+     * target; {@code ACTION_TAKEN} says the moderator acted on them. Collapsing
+     * the two would make the queue's own history useless for judging whether
+     * the auto-suspend threshold is calibrated.
+     */
+    @Transactional
+    public void resolvePendingReports(User admin,
+                                      ReportTarget targetType,
+                                      UUID targetId,
+                                      ReportStatus outcome,
+                                      String reason) {
         for (Report report : reports.findByTargetTypeAndTargetIdAndStatus(targetType, targetId, ReportStatus.PENDING)) {
-            report.setStatus(ReportStatus.DISMISSED);
+            report.setStatus(outcome);
             report.setReviewedBy(admin);
             report.setReviewedAt(Instant.now());
             reports.save(report);
+        }
+
+        // Restoring is only ever correct when the reports were found unfounded.
+        if (outcome != ReportStatus.DISMISSED) {
+            return;
         }
 
         if (targetType == ReportTarget.LISTING) {

@@ -354,3 +354,45 @@ primary button, and states the going-offline consequence *before* the owner save
 Suite: **81 tests, 0 failures** (was 78; +3 covering true coordinates, owner scoping plus anonymous
 rejection, and the re-review rule in both directions). Frontend `typecheck` and `build` clean. Not
 verified in a browser.
+
+**T1.4 remaining moderation actions — done (2026-09-02).**
+
+A moderator could only dismiss. Warn, suspend and reject-as-a-report-action all returned 400
+`NOT_IMPLEMENTED`, which mattered more once T1.1 made the queue reachable by real users.
+
+- `POST /admin/reports/{type}/{id}/action` now parses a real `ModerationAction` and dispatches:
+  **DISMISS** (unchanged), **SUSPEND** (a listing comes down, or an account is suspended), **BAN**
+  (accounts only — refused with a 400 on a listing target, because banning a listing is not a thing).
+  An unknown action is a 400 rather than a 500.
+- Reports are now closed with the *right* outcome. `ReportStatus.ACTION_TAKEN` and `REVIEWED` existed
+  in the enum but were never written — everything resolved as `DISMISSED`. Collapsing "unfounded"
+  into "acted on" would make the queue's own history useless for judging whether the three-reporter
+  auto-suspend threshold is calibrated, which is the one number this system most needs to tune.
+- **A moderator's suspension leaves `auto_flagged` false.** That flag exists so a DISMISS knows
+  whether it is undoing the *system's* decision; setting it on a human decision would let a later
+  dismissal silently republish a listing a moderator deliberately took down.
+  `AdminApiTest.dismissDoesNotUndoDeliberateSuspension` pins this.
+- `AdminReportQueueItem` gained `targetLabel` and `priorDismissedReports`. The label closes the
+  "queue cannot name a USER target" gap — resolved server-side, which also removes an N+1 fetch the
+  console was doing per listing row, and works for soft-deleted targets that a public read would 404
+  on. `GET /admin/users/{id}` was added too, for anywhere a single lookup is genuinely needed.
+- Console: real Suspendre / Bannir buttons alongside Classer sans suite, both behind a confirm since
+  they change an account or take content down; the reporter-history badge; and the per-row title
+  fetch deleted in favour of the server label.
+
+**WARN is deliberately still refused, and this is a judgement worth recording.** Its entire effect is
+notifying the owner, and `NotificationService` has no implementation (phase 10 / T4.2). Offering it
+would write an audit row saying an owner was warned when nothing reached them — a moderator would
+believe the matter was handled. That is the same fabrication class this project has been removing all
+session, so the action returns `NOT_IMPLEMENTED` with a message naming what it waits on. It becomes a
+one-line change once T4.2 lands.
+
+**Third occurrence of the shared-container isolation pattern.**
+`ReportApiTest.adminReportsAreGroupedByTarget` asserted the pending queue held exactly one item and
+broke as soon as `AdminApiTest` left a pending report. Fixed the same way as the previous two. This is
+no longer an incident, it is a trend: count-based assertions against a suite-wide database keep
+failing whenever a new test class is added, which taxes every future change. Worth a dedicated
+isolation pass.
+
+Suite: **86 tests, 0 failures** (was 81; +5). Frontend `typecheck` and `build` clean. Not verified in
+a browser.
