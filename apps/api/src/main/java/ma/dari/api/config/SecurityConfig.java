@@ -1,6 +1,8 @@
 package ma.dari.api.config;
 
 import ma.dari.api.common.auth.FirebaseAuthFilter;
+import ma.dari.api.common.auth.RestAccessDeniedHandler;
+import ma.dari.api.common.auth.RestAuthenticationEntryPoint;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,9 +32,15 @@ import java.util.List;
 public class SecurityConfig {
 
     private final FirebaseAuthFilter firebaseAuthFilter;
+    private final RestAuthenticationEntryPoint authenticationEntryPoint;
+    private final RestAccessDeniedHandler accessDeniedHandler;
 
-    public SecurityConfig(FirebaseAuthFilter firebaseAuthFilter) {
+    public SecurityConfig(FirebaseAuthFilter firebaseAuthFilter,
+                          RestAuthenticationEntryPoint authenticationEntryPoint,
+                          RestAccessDeniedHandler accessDeniedHandler) {
         this.firebaseAuthFilter = firebaseAuthFilter;
+        this.authenticationEntryPoint = authenticationEntryPoint;
+        this.accessDeniedHandler = accessDeniedHandler;
     }
 
     @Bean
@@ -40,9 +48,31 @@ public class SecurityConfig {
         return http
                 .csrf(csrf -> csrf.disable())          // no cookies, no CSRF surface
                 .cors(Customizer.withDefaults())
+                // Chain-level rejections must carry the same envelope as every
+                // other error. The defaults are a bodyless 403 for both cases.
+                .exceptionHandling(handling -> handling
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+
+                        // Owner-scoped reads that live UNDER the public prefixes
+                        // below. Matchers are evaluated in order, so these must
+                        // come first: the wildcard permitAll that follows would
+                        // otherwise swallow them and leave routes returning one
+                        // owner's own drafts defended by a single layer — the
+                        // @CurrentUser resolver — instead of the two this project
+                        // requires everywhere else. Nothing leaked while that was
+                        // true, because the resolver does throw, but a future GET
+                        // added under /listings/** that reads a path variable
+                        // rather than the current user would have been public with
+                        // nothing to catch it.
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/listings/mine",
+                                "/api/v1/listings/draft",
+                                "/api/v1/listings/*/photos",
+                                "/api/v1/users/me").authenticated()
 
                         // Public read surface: search and listing detail must be
                         // crawlable and usable before signup. Everything these

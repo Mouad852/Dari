@@ -195,3 +195,39 @@ browser-only interaction.
 `/listings/mine` and `/listings/draft` it is matched by the public rule and defended by only one
 layer instead of the project's stated two. Not exploitable — the argument resolver throws its own
 401 — but T0.4 is specifically this fix.
+
+**T0.4 security matcher precedence — done (2026-09-02).**
+
+`SecurityConfig` permitted `GET /api/v1/listings/**` and `GET /api/v1/users/*` wholesale. Matchers
+are evaluated in order, so those wildcards swallowed every owner-scoped GET living underneath them:
+`/listings/mine`, `/listings/draft`, the `/listings/{id}/photos` route added in T0.2, and
+`/users/me`. Each was defended by a single layer — the `@CurrentUser` argument resolver — while this
+project's stated invariant is that role checks are doubled, a URL matcher *and* a controller check.
+
+Nothing leaked: the resolver does throw 401. The real exposure was prospective. Any future GET added
+under `/listings/**` that reads a path variable instead of the current user would have been fully
+public with nothing left to catch it, and the matcher layer that was supposed to be the backstop was
+silently inert on exactly the routes that needed it.
+
+- Explicit `.authenticated()` matchers now precede the public block, listing the four owner-scoped
+  GET routes.
+- Added `RestAuthenticationEntryPoint` (401 + the French envelope + `WWW-Authenticate: Bearer`) and
+  `RestAccessDeniedHandler` (403 + envelope). This was **required**, not incidental: with no entry
+  point configured, Spring's default for a chain-level rejection is a *bodyless 403*, so moving these
+  routes behind the chain would have silently changed their contract from `401 UNAUTHENTICATED` to an
+  unparseable 403. The access-denied handler fixes the same missing-body problem for a non-admin
+  hitting `/api/v1/admin/**`, which previously returned a 403 the web client could only render as a
+  generic failure.
+
+**On the tests, because this is worth recording:** the first version asserted status 401 and
+`code: UNAUTHENTICATED`, and it **passed with the fix reverted** — confirmed by actually removing the
+matcher block and re-running, not assumed. Both layers produce a byte-identical body, so the
+assertion proved nothing about which one fired. The fix was to have the entry point send
+`WWW-Authenticate: Bearer`, which RFC 7235 requires on a 401 anyway and which the resolver path does
+not set. Re-ran the ablation: the tests now fail with the matcher block removed, and pass with it.
+A test that cannot fail is worse than no test, because it reads like coverage.
+
+Suite: **67 tests, 0 failures** (was 64; +3 — owner-scoped routes reject anonymous callers, the
+public read surface stays anonymous, and public profile reads stay anonymous). The
+"public surface stays anonymous" test guards the regression that would have mattered more than the
+bug: breaking crawlability of search and listing detail.

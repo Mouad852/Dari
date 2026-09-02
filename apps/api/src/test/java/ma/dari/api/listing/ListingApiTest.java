@@ -18,6 +18,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
+import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -921,6 +922,46 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .then().statusCode(400)
                 .body("code", equalTo("VALIDATION_FAILED"))
                 .body("message", equalTo("La photo doit faire moins de 5 Mo"));
+    }
+
+    @Test
+    @DisplayName("owner-scoped listing reads are gated by the security chain, not only by @CurrentUser")
+    void ownerScopedListingReadsRejectAnonymousCallers() {
+        // These sit under the public GET /api/v1/listings/** rule. Before the
+        // matcher order was fixed they were reachable by the chain and stopped
+        // only by the argument resolver, so the project's "role checks are
+        // doubled" invariant held on paper but not on these routes.
+        // The WWW-Authenticate header is the discriminator: only the chain's
+        // entry point sets it. CurrentUserArgumentResolver returns a 401 with an
+        // identical body, so asserting the status and code alone would pass with
+        // the matcher fix reverted -- verified by doing exactly that.
+        for (String path : new String[] {"/listings/mine", "/listings/draft"}) {
+            given().when().get(path)
+                    .then().statusCode(401)
+                    .header("WWW-Authenticate", "Bearer")
+                    .body("code", equalTo("UNAUTHENTICATED"));
+        }
+
+        given().when().get("/listings/{id}/photos", UUID.randomUUID())
+                .then().statusCode(401)
+                .header("WWW-Authenticate", "Bearer")
+                .body("code", equalTo("UNAUTHENTICATED"));
+    }
+
+    @Test
+    @DisplayName("the public read surface stays anonymous after the matcher reorder")
+    void publicListingReadsRemainAnonymous() {
+        // The regression that would matter more than the bug being fixed: search
+        // and listing detail must stay crawlable without a token.
+        given().when().get("/listings").then().statusCode(200);
+        given().when().get("/listings/map").then().statusCode(200);
+        given().when().get("/listings/featured").then().statusCode(200);
+        given().when().get("/amenities").then().statusCode(200);
+        given().when().get("/cities").then().statusCode(200);
+
+        // A detail read for an unknown id is a 404 from the service, not a 401
+        // from the chain -- which is what proves it was let through.
+        given().when().get("/listings/{id}", UUID.randomUUID()).then().statusCode(404);
     }
 
     @Test

@@ -160,8 +160,23 @@ class UserApiTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("no Authorization header -> 401, not 500")
+    @DisplayName("no Authorization header -> 401 with the error envelope, not 500")
     void unauthenticated() {
-        given().when().get("/users/me").then().statusCode(401);
+        // This passed before the matcher reorder too, but via the @CurrentUser
+        // resolver: GET /api/v1/users/* permitted every single-segment path,
+        // /users/me included. It is now refused by the security chain, and the
+        // body assertion is what proves the envelope survived the move -- the
+        // Spring default for a chain rejection is a bodyless 403.
+        given().when().get("/users/me")
+                .then().statusCode(401)
+                .header("WWW-Authenticate", "Bearer")
+                .body("code", equalTo("UNAUTHENTICATED"));
+    }
+
+    @Test
+    @DisplayName("public profile reads stay anonymous")
+    void publicProfileRemainsAnonymous() {
+        given().when().get("/users/{id}", java.util.UUID.randomUUID())
+                .then().statusCode(404);
     }
 }
