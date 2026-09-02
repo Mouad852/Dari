@@ -276,3 +276,41 @@ work that does not exist.
 Suite: **68 tests, 0 failures** (was 67; +1 for self-reports). Frontend `typecheck` and `build`
 clean. Not verified in a real browser — no automation connected, and filing a report needs a genuine
 Firebase token.
+
+**T1.2 admin and moderation HTTP test coverage — done (2026-09-02).**
+
+A correction to how this gap was described earlier: admin was not *untested*. `ReportApiTest` covers
+user search, report-queue grouping and the ban cascade — but it calls `AdminService` **directly**.
+The layer that was genuinely unexercised is HTTP: the `hasRole('ADMIN')` URL matcher in
+`SecurityConfig` and the `@PreAuthorize` on `AdminController`, the two halves of the doubled role
+check guarding every destructive action in the product. A service-level test cannot fail when either
+is removed.
+
+New `AdminApiTest`, 10 cases over the real HTTP surface: anonymous rejection on every admin route
+including a destructive one, a non-admin refused with the error envelope, a non-admin failing to
+approve a listing *and the listing not moving*, approve/reject with audit-log assertions, illegal
+transition on a non-pending listing, the DISMISS-only report-action limitation, ban cascading to
+listings, suspend plus a 404 for a missing user, and the dashboard shape.
+
+**Ablation, since T0.4 taught me not to trust a green test:** removing both role checks fails the
+suite (a non-admin approves a listing, 200 instead of 403), so the tests are load-bearing.
+
+**That ablation then found a real latent bug.** Testing each layer *alone* showed the doubling was
+not real: with the URL matcher removed, `@PreAuthorize` denied the request correctly but returned
+**500**, not 403. The `AccessDeniedException` is thrown inside the handler invocation, so it fell
+through `GlobalExceptionHandler`'s catch-all instead of reaching `RestAccessDeniedHandler`, which
+only sees chain-level denials. Access was never granted, so nothing was exposed — but the second
+layer, the one that exists precisely for when the first is missing or a new admin route lands
+outside `/api/v1/admin/**`, would have reported a genuine authorization event as a server fault.
+Fixed with an explicit `AccessDeniedException` handler; re-ran the ablation and the second layer now
+answers 403 on its own. **The "role checks are doubled" invariant is now true rather than nominal.**
+
+**Test-isolation collision surfaced and fixed:** `ReportApiTest.adminUserSearchWorks` asserted
+exactly one SUSPENDED user existed. `AdminApiTest` suspends and bans users, and the Testcontainers
+database is shared across the suite, so the new class broke it by existing. Rewritten to assert that
+*this* user's row is present and correct rather than that it is the only one — the same fix already
+applied to `ListingApiTest.publicSearchReturnsPublishedListings` earlier in the project. Worth noting
+this is the second instance of the same latent pattern; other count-based assertions in the suite
+carry the same risk.
+
+Suite: **78 tests, 0 failures** (was 68).

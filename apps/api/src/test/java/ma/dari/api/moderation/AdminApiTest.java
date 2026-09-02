@@ -1,0 +1,308 @@
+package ma.dari.api.moderation;
+
+import com.google.firebase.auth.FirebaseToken;
+import ma.dari.api.listing.AvailabilityState;
+import ma.dari.api.listing.Listing;
+import ma.dari.api.listing.ListingRepository;
+import ma.dari.api.listing.ListingStatus;
+import ma.dari.api.support.AbstractIntegrationTest;
+import ma.dari.api.user.User;
+import ma.dari.api.user.UserRepository;
+import ma.dari.api.user.UserRole;
+import ma.dari.api.user.UserStatus;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+
+/**
+ * The admin console over HTTP.
+ *
+ * <p>{@link ReportApiTest} already covers parts of the moderation domain, but it
+ * calls {@link AdminService} directly. That leaves the layer this class exists
+ * for completely unexercised: the {@code hasRole('ADMIN')} URL matcher in
+ * {@code SecurityConfig} and the {@code @PreAuthorize} on
+ * {@link AdminController}, which are the two halves of the doubled role check
+ * protecting every destructive action in the product. A service-level test
+ * cannot fail when either is removed.
+ */
+class AdminApiTest extends AbstractIntegrationTest {
+
+    @Autowired
+    UserRepository users;
+
+    @Autowired
+    ListingRepository listings;
+
+    @Autowired
+    ReportRepository reports;
+
+    @Autowired
+    AdminActionRepository adminActions;
+
+    private void stubToken(String uid, String email) throws Exception {
+        FirebaseToken token = Mockito.mock(FirebaseToken.class);
+        Mockito.when(token.getUid()).thenReturn(uid);
+        Mockito.when(token.getEmail()).thenReturn(email);
+        Mockito.when(token.isEmailVerified()).thenReturn(true);
+        Mockito.when(firebaseAuth.verifyIdToken(Mockito.anyString())).thenReturn(token);
+    }
+
+    private User admin(String suffix) throws Exception {
+        String uid = "uid-admin-" + suffix + "-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email);
+        User admin = new User(uid, email, true, "Admin " + suffix);
+        admin.setRole(UserRole.ADMIN);
+        return users.saveAndFlush(admin);
+    }
+
+    private User regular(String suffix) throws Exception {
+        String uid = "uid-plain-" + suffix + "-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email);
+        return users.saveAndFlush(new User(uid, email, true, "Plain " + suffix));
+    }
+
+    private Listing listingFor(User owner, ListingStatus status) {
+        return listings.saveAndFlush(new Listing(
+                owner,
+                "Studio modération " + System.nanoTime(),
+                "Rabat",
+                "Agdal",
+                33.9716,
+                -6.8498,
+                new BigDecimal("2500.00"),
+                status,
+                AvailabilityState.AVAILABLE));
+    }
+
+    // --- role gating ---------------------------------------------------------
+
+    @Test
+    @DisplayName("anonymous callers are refused by the security chain on every admin route")
+    void anonymousCallersAreRefused() {
+        given().when().get("/admin/dashboard")
+                .then().statusCode(401)
+                .header("WWW-Authenticate", "Bearer")
+                .body("code", equalTo("UNAUTHENTICATED"));
+
+        given().when().get("/admin/reports").then().statusCode(401);
+        given().when().get("/admin/users").then().statusCode(401);
+
+        // A destructive route, because that is the one where a gap would matter.
+        given().contentType("application/json").body("{\"reason\":\"spam\"}")
+                .when().post("/admin/users/{id}/ban", UUID.randomUUID())
+                .then().statusCode(401);
+    }
+
+    @Test
+    @DisplayName("an authenticated non-admin is refused with the error envelope, not an empty 403")
+    void nonAdminIsForbidden() throws Exception {
+        regular("forbidden");
+
+        given().header("Authorization", "Bearer plain-token")
+                .when().get("/admin/dashboard")
+                .then().statusCode(403)
+                .body("code", equalTo("FORBIDDEN"));
+
+        given().header("Authorization", "Bearer plain-token")
+                .when().get("/admin/users")
+                .then().statusCode(403);
+
+        given().header("Authorization", "Bearer plain-token")
+                .when().post("/admin/users/{id}/suspend", UUID.randomUUID())
+                .then().statusCode(403);
+    }
+
+    @Test
+    @DisplayName("a non-admin cannot approve a listing even when it is queued for review")
+    void nonAdminCannotApprove() throws Exception {
+        User owner = users.saveAndFlush(new User(
+                "uid-owner-approve-" + System.nanoTime(), "owner-approve@example.ma", true, "Owner"));
+        Listing pending = listingFor(owner, ListingStatus.PENDING_REVIEW);
+
+        regular("approver");
+
+        given().header("Authorization", "Bearer plain-token")
+                .when().post("/admin/listings/{id}/approve", pending.getId())
+                .then().statusCode(403);
+
+        // The decisive assertion: refused, and the listing did not move.
+        assertThat(listings.findById(pending.getId()).orElseThrow().getStatus())
+                .isEqualTo(ListingStatus.PENDING_REVIEW);
+    }
+
+    // --- listing review ------------------------------------------------------
+
+    @Test
+    @DisplayName("admin approves a pending listing and the decision is written to the audit log")
+    void adminApprovesListing() throws Exception {
+        User owner = users.saveAndFlush(new User(
+                "uid-owner-ok-" + System.nanoTime(), "owner-ok@example.ma", true, "Owner"));
+        Listing pending = listingFor(owner, ListingStatus.PENDING_REVIEW);
+
+        User admin = admin("approve");
+        long auditBefore = adminActions.count();
+
+        given().header("Authorization", "Bearer admin-token")
+                .when().post("/admin/listings/{id}/approve", pending.getId())
+                .then().statusCode(200)
+                .body("status", equalTo("PUBLISHED"));
+
+        Listing approved = listings.findById(pending.getId()).orElseThrow();
+        assertThat(approved.getStatus()).isEqualTo(ListingStatus.PUBLISHED);
+        assertThat(approved.getRejectionReason()).isNull();
+
+        assertThat(adminActions.count()).isEqualTo(auditBefore + 1);
+        assertThat(adminActions.findAll().stream()
+                .anyMatch(a -> a.getTargetId().equals(pending.getId())
+                        && "APPROVE_LISTING".equals(a.getAction())
+                        && a.getAdmin().getId().equals(admin.getId())))
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("admin rejects a pending listing with a reason the owner can act on")
+    void adminRejectsListingWithReason() throws Exception {
+        User owner = users.saveAndFlush(new User(
+                "uid-owner-rej-" + System.nanoTime(), "owner-rej@example.ma", true, "Owner"));
+        Listing pending = listingFor(owner, ListingStatus.PENDING_REVIEW);
+
+        admin("reject");
+
+        given().header("Authorization", "Bearer admin-token")
+                .contentType("application/json")
+                .body("{\"reason\":\"Les photos ne correspondent pas au logement\"}")
+                .when().post("/admin/listings/{id}/reject", pending.getId())
+                .then().statusCode(200)
+                .body("status", equalTo("REJECTED"));
+
+        Listing rejected = listings.findById(pending.getId()).orElseThrow();
+        assertThat(rejected.getStatus()).isEqualTo(ListingStatus.REJECTED);
+        // The owner has to be able to fix what was wrong; a rejection with no
+        // reason is why the REJECTED -> PENDING_REVIEW loop would stall.
+        assertThat(rejected.getRejectionReason()).isEqualTo("Les photos ne correspondent pas au logement");
+    }
+
+    @Test
+    @DisplayName("approving a listing that is not pending review is an illegal transition")
+    void approvingNonPendingListingIsRejected() throws Exception {
+        User owner = users.saveAndFlush(new User(
+                "uid-owner-draft-" + System.nanoTime(), "owner-draft@example.ma", true, "Owner"));
+        Listing draft = listingFor(owner, ListingStatus.DRAFT);
+
+        admin("illegal");
+
+        given().header("Authorization", "Bearer admin-token")
+                .when().post("/admin/listings/{id}/approve", draft.getId())
+                .then().statusCode(409)
+                .body("code", equalTo("ILLEGAL_TRANSITION"));
+
+        assertThat(listings.findById(draft.getId()).orElseThrow().getStatus())
+                .isEqualTo(ListingStatus.DRAFT);
+    }
+
+    // --- reports -------------------------------------------------------------
+
+    @Test
+    @DisplayName("only DISMISS is accepted as a report action; the rest report themselves as unbuilt")
+    void unsupportedReportActionsAreRejected() throws Exception {
+        User owner = users.saveAndFlush(new User(
+                "uid-owner-act-" + System.nanoTime(), "owner-act@example.ma", true, "Owner"));
+        Listing listing = listingFor(owner, ListingStatus.PUBLISHED);
+        User reporter = users.saveAndFlush(new User(
+                "uid-reporter-act-" + System.nanoTime(), "reporter-act@example.ma", true, "Reporter"));
+        reports.saveAndFlush(Report.create(reporter, new CreateReportRequest(
+                ReportTarget.LISTING, listing.getId(), ReportReason.FAKE_LISTING, "Douteux")));
+
+        admin("action");
+
+        // Locks the documented limitation in place: warn / suspend-listing /
+        // reject-as-report-action are not implemented, and the API says so
+        // rather than silently doing nothing.
+        given().header("Authorization", "Bearer admin-token")
+                .contentType("application/json")
+                .body("{\"action\":\"WARN\",\"reason\":\"test\"}")
+                .when().post("/admin/reports/{type}/{id}/action", "LISTING", listing.getId())
+                .then().statusCode(400)
+                .body("code", equalTo("NOT_IMPLEMENTED"));
+
+        given().header("Authorization", "Bearer admin-token")
+                .contentType("application/json")
+                .body("{\"action\":\"DISMISS\",\"reason\":\"Signalement infondé\"}")
+                .when().post("/admin/reports/{type}/{id}/action", "LISTING", listing.getId())
+                .then().statusCode(200)
+                .body("status", equalTo("ok"));
+
+        assertThat(reports.findByTargetTypeAndTargetIdAndStatus(
+                ReportTarget.LISTING, listing.getId(), ReportStatus.PENDING)).isEmpty();
+    }
+
+    // --- users ---------------------------------------------------------------
+
+    @Test
+    @DisplayName("admin ban over HTTP cascades to listings and blocks re-registration")
+    void adminBanCascades() throws Exception {
+        User target = users.saveAndFlush(new User(
+                "uid-ban-target-" + System.nanoTime(), "ban-target-" + System.nanoTime() + "@example.ma",
+                true, "Ban Target"));
+        Listing owned = listingFor(target, ListingStatus.PUBLISHED);
+
+        admin("ban");
+
+        given().header("Authorization", "Bearer admin-token")
+                .contentType("application/json")
+                .body("{\"reason\":\"Conduite frauduleuse\"}")
+                .when().post("/admin/users/{id}/ban", target.getId())
+                .then().statusCode(200)
+                .body("status", equalTo("ok"));
+
+        assertThat(users.findById(target.getId()).orElseThrow().getStatus()).isEqualTo(UserStatus.BANNED);
+        // A banned owner's listings must not stay in public search.
+        assertThat(listings.findById(owned.getId()).orElseThrow().getStatus())
+                .isNotEqualTo(ListingStatus.PUBLISHED);
+    }
+
+    @Test
+    @DisplayName("admin suspend is reversible and recorded, and a missing user is a 404")
+    void adminSuspendAndMissingUser() throws Exception {
+        User target = users.saveAndFlush(new User(
+                "uid-susp-target-" + System.nanoTime(), "susp-target-" + System.nanoTime() + "@example.ma",
+                true, "Suspend Target"));
+
+        admin("suspend");
+
+        given().header("Authorization", "Bearer admin-token")
+                .when().post("/admin/users/{id}/suspend", target.getId())
+                .then().statusCode(200);
+
+        assertThat(users.findById(target.getId()).orElseThrow().getStatus()).isEqualTo(UserStatus.SUSPENDED);
+
+        given().header("Authorization", "Bearer admin-token")
+                .when().post("/admin/users/{id}/suspend", UUID.randomUUID())
+                .then().statusCode(404)
+                .body("code", equalTo("NOT_FOUND"));
+    }
+
+    // --- dashboard -----------------------------------------------------------
+
+    @Test
+    @DisplayName("dashboard returns the two counts the console renders")
+    void dashboardReturnsCounts() throws Exception {
+        admin("dashboard");
+
+        given().header("Authorization", "Bearer admin-token")
+                .when().get("/admin/dashboard")
+                .then().statusCode(200)
+                .body("pendingReviews", org.hamcrest.Matchers.notNullValue())
+                .body("pendingReports", org.hamcrest.Matchers.notNullValue());
+    }
+}

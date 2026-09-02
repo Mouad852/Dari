@@ -16,6 +16,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -198,15 +199,21 @@ class ReportApiTest extends AbstractIntegrationTest {
                 "Suspicious account"
         )));
 
+        // Asserts this user's row is correct, not that it is the only one. The
+        // Testcontainers database is shared across the whole suite (see
+        // ARCHITECTURE.md §7), so any other class that suspends a user -- as
+        // AdminApiTest now does -- would otherwise break this by existing.
+        UUID suspendedId = suspendedUser.getId();
         var byStatus = adminService.searchUsers(null, UserStatus.SUSPENDED);
-        assertThat(byStatus).hasSize(1);
-        assertThat(byStatus.getFirst().id()).isEqualTo(suspendedUser.getId());
-        assertThat(byStatus.getFirst().status()).isEqualTo(UserStatus.SUSPENDED);
-        assertThat(byStatus.getFirst().reportCount()).isEqualTo(1L);
+        assertThat(byStatus).allMatch(row -> row.status() == UserStatus.SUSPENDED);
+        var suspendedRow = byStatus.stream()
+                .filter(row -> row.id().equals(suspendedId))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("suspended user missing from the status filter"));
+        assertThat(suspendedRow.reportCount()).isEqualTo(1L);
 
         var byQuery = adminService.searchUsers("salma", null);
-        assertThat(byQuery).hasSize(1);
-        assertThat(byQuery.getFirst().displayName()).isEqualTo("Salma Active");
+        assertThat(byQuery).extracting(row -> row.displayName()).contains("Salma Active");
 
         assertThat(users.findById(activeUser.getId())).isPresent();
     }

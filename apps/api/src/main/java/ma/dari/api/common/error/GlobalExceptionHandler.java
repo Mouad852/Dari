@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -85,6 +86,27 @@ public class GlobalExceptionHandler {
     ResponseEntity<ErrorResponse> handleUploadTooLarge(MaxUploadSizeExceededException e) {
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.of(ErrorCode.VALIDATION_FAILED, "La photo doit faire moins de 5 Mo"));
+    }
+
+    /**
+     * A role check that fired inside the controller rather than in the filter
+     * chain — {@code @PreAuthorize} on {@code AdminController}, in practice.
+     *
+     * <p>This exists because the two halves of the doubled role check did not
+     * report the same way. The URL matcher in {@code SecurityConfig} is handled
+     * by {@code RestAccessDeniedHandler} and returns 403; {@code @PreAuthorize}
+     * throws inside the handler invocation, so without this it fell through to
+     * the catch-all below and returned a 500. Access was still refused either
+     * way, but a genuine authorization event was being reported as a server
+     * fault — which is both the wrong contract for the client and the kind of
+     * thing that gets investigated as an outage instead of read as a denial.
+     *
+     * <p>Verified by removing the URL matcher and confirming the second layer
+     * now answers 403 on its own.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException e) {
+        return ResponseEntity.status(403).body(ErrorResponse.of(ErrorCode.FORBIDDEN, "Accès refusé"));
     }
 
     /**
