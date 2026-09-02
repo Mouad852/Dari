@@ -81,6 +81,42 @@ class ReportApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("a reporter cannot report their own listing or their own profile")
+    void selfReportsAreRejected() throws Exception {
+        String uid = "uid-self-report-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email);
+        User self = users.saveAndFlush(new User(uid, email, true, "Self Reporter"));
+
+        Listing own = listings.saveAndFlush(new Listing(
+                self,
+                "Studio à moi",
+                "Rabat",
+                "Agdal",
+                33.9716,
+                -6.8498,
+                new BigDecimal("2500.00"),
+                ListingStatus.PUBLISHED,
+                AvailabilityState.AVAILABLE
+        ));
+
+        given().header("Authorization", "Bearer self-token")
+                .contentType("application/json")
+                .body("{\"targetType\":\"LISTING\",\"targetId\":\"" + own.getId() + "\",\"reason\":\"FAKE_LISTING\"}")
+                .when().post("/reports")
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"))
+                .body("message", equalTo("Vous ne pouvez pas signaler votre propre contenu"));
+
+        given().header("Authorization", "Bearer self-token")
+                .contentType("application/json")
+                .body("{\"targetType\":\"USER\",\"targetId\":\"" + self.getId() + "\",\"reason\":\"OTHER\",\"details\":\"test\"}")
+                .when().post("/reports")
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"));
+    }
+
+    @Test
     @DisplayName("reporter sees only their own report history")
     void reporterCanListTheirOwnReports() throws Exception {
         User reporter = users.save(new User("uid-reporter-history", "reporter-history@example.ma", true, "Reporter History"));

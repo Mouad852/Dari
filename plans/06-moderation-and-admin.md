@@ -11,13 +11,13 @@ It is also worth being blunt about what this phase is: on a platform whose core 
 ## Tasks
 
 **Reporting**
-- [ ] `reports` migration, with the full §3 reason enum and status enum
-- [ ] `POST /reports`; `GET /reports/me` returning status only, never the outcome
-- [ ] Enforce one pending report per reporter per target
-- [ ] Report flow UI on listings and profiles — reason picker, details field for `OTHER`, generic acknowledgment. **No mockup exists.**
+- [x] `reports` migration, with the full §3 reason enum and status enum (`V9__reports.sql`) — was built long before this box was ticked; corrected 2026-09-02
+- [x] `POST /reports`; `GET /reports/me` returning status only, never the outcome — built, and now reachable from the product (see the report UI below). `POST /reports` also rejects self-reports (400): reporting your own listing or profile is never a real report, and the auto-suspend threshold counts *distinct* reporters so it could only ever be queue noise
+- [x] Enforce one pending report per reporter per target — 409 `ALREADY_REPORTED`, covered by `ReportApiTest`
+- [x] Report flow UI on listings and profiles (2026-09-02) — `src/components/ReportDialog.tsx`: reason picker from the existing `REPORT_REASON_LABELS`, details field required only for `OTHER` (capped at the DTO's 2000 chars), generic acknowledgment that states no outcome. Entry points on `/listings/[id]` and `/profile/[id]`. No mockup existed, so it follows the app's established form and card token usage rather than inventing a new visual language.
 
 **Auto-flagging**
-- [ ] 3 distinct reports on one target inside a rolling 7-day window → `status = SUSPENDED`, high priority in the queue
+- [x] 3 distinct reports on one target inside a rolling 7-day window → `status = SUSPENDED`, high priority in the queue — implemented in `ReportService` and covered by `ReportApiTest`; corrected 2026-09-02
 - [ ] *Distinct* means distinct reporters — write the test that proves one user cannot trip it alone
 - [ ] Record the pre-suspension state, so a dismissal can restore it (see below)
 - [ ] Test the boundary properly: 3 reports across 8 days must not trigger it

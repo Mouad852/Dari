@@ -32,6 +32,7 @@ public class ReportService {
     @Transactional
     public Report create(User reporter, CreateReportRequest request) {
         validateTargetExists(request.targetType(), request.targetId());
+        rejectSelfReport(reporter, request.targetType(), request.targetId());
 
         if (reports.existsByReporterIdAndTargetTypeAndTargetIdAndStatus(
                 reporter.getId(), request.targetType(), request.targetId(), ReportStatus.PENDING)) {
@@ -78,6 +79,28 @@ public class ReportService {
                 listing.setAutoFlagged(false);
                 listings.save(listing);
             }
+        }
+    }
+
+    /**
+     * Reporting yourself is never a real report.
+     *
+     * <p>Enforced here rather than by hiding the button, because the reporter's
+     * identity comes from the token and the UI cannot be the thing that decides
+     * it. It also keeps the moderation queue free of rows no moderator can act
+     * on: the auto-suspend threshold counts *distinct* reporters, so a
+     * self-report could never trip it either — it would only ever be noise.
+     */
+    private void rejectSelfReport(User reporter, ReportTarget targetType, UUID targetId) {
+        boolean ownContent = targetType == ReportTarget.USER
+                ? targetId.equals(reporter.getId())
+                : listings.findById(targetId)
+                        .map(listing -> listing.getOwner().getId().equals(reporter.getId()))
+                        .orElse(false);
+
+        if (ownContent) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED,
+                    "Vous ne pouvez pas signaler votre propre contenu");
         }
     }
 

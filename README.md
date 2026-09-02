@@ -60,6 +60,7 @@ The important remaining work is still phase-oriented and should be driven from t
 - account deletion (`DELETE /users/me`) and avatar upload (`POST /users/me/avatar`) are still phase-09 backend stubs
 - messaging has no unread badges or read receipts, and sending isn't optimistic — the core flow works, these are the remaining gaps
 - listing edit has no separate dashboard UI path — the publish wizard resumes and edits active drafts; owners can submit/pause/reopen/delete from `/account/listings`
+- users can file reports: a reason picker dialog on `/listings/[id]` and `/profile/[id]` posts to the already-built `POST /reports`, with a generic acknowledgment that reveals no moderation outcome. Until this landed the moderation queue had no way to be populated by real users. Self-reports are rejected server-side
 - the admin report queue can't resolve a `USER` target's name (no single-user lookup endpoint exists) and only supports dismissing a report, not warning/suspending/rejecting from the queue itself
 - the listing detail page (`/listings/[id]`) now uses a dedicated rich public DTO for the real description, listing attributes, charge inclusions, availability, amenities, and stored photos; fabricated roommates, rules, owner ratings, verification badges, and photo counters were removed. House rules remain intentionally absent until their real read contract is exposed
 - `POST /listings/{id}/submit` requires a non-blank description and at least one active photo before moving a `DRAFT` or `REJECTED` listing to `PENDING_REVIEW`

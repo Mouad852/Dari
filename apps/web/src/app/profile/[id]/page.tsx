@@ -5,6 +5,7 @@ import { apiFetch, ApiError } from '@/lib/api';
 import { VERIFICATION_LABELS } from '@/lib/labels';
 import type { PublicProfile } from '@/types/api';
 
+import { ReportDialog } from '@/components/ReportDialog';
 import { ContactButton } from './ContactButton';
 
 export default async function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
@@ -115,6 +116,15 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         </section>
 
         <ContactButton userId={profile.id} />
+
+        {/*
+          A second client island on an otherwise server-rendered page, same
+          pattern as ContactButton: the page stays crawlable and only the
+          interactive parts ship JavaScript.
+        */}
+        <div style={{ justifySelf: 'start' }}>
+          <ReportDialog targetType="USER" targetId={profile.id} label="Signaler ce profil" />
+        </div>
       </div>
     </main>
   );

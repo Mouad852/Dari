@@ -231,3 +231,48 @@ Suite: **67 tests, 0 failures** (was 64; +3 — owner-scoped routes reject anony
 public read surface stays anonymous, and public profile reads stay anonymous). The
 "public surface stays anonymous" test guards the regression that would have mattered more than the
 bug: breaking crawlability of search and listing detail.
+
+## Track 1 — close the product loop
+
+**T1.1 report flow UI — done (2026-09-02).**
+
+The moderation queue could only ever be empty in production. `POST /reports`, `GET /reports/me` and
+the auto-suspension rule (three *distinct* reporters in a rolling seven days) have existed since
+phase 06 and are covered by tests, but no surface in the product could reach them — there was no
+"Signaler" affordance anywhere in the web app.
+
+- New `src/components/ReportDialog.tsx`, the app's first modal. Reason picker built from the existing
+  `REPORT_REASON_LABELS`, a details field required only for `OTHER` (the one reason where the note
+  carries the whole report) and capped at the DTO's own 2000 characters, and a **generic
+  acknowledgment**: design doc §6 is explicit that a reporter learns their report was received and
+  nothing else. Confirming an outcome would turn the queue into an oracle for whether a rival's
+  listing had been touched.
+- Entry points on `/listings/[id]` (LISTING) and `/profile/[id]` (USER). On the profile — a Server
+  Component — it goes in as a second client island beside `ContactButton`, so the page stays
+  crawlable and only the interactive part ships JavaScript.
+- Accessibility, since this is the first dialog and it sets the pattern: `role="dialog"`,
+  `aria-modal`, `aria-labelledby`, focus moved in on open and **returned to the trigger on close**,
+  Escape to dismiss, backdrop click to dismiss, and body scroll locked while open.
+- Reporting is placed below the primary action rather than beside it. It is a rare, deliberate act
+  and should not compete with "Contacter".
+
+**Backend gap found and closed in the same pass:** nothing stopped a user reporting their own listing
+or their own profile. `ReportService` now rejects it with a 400. Done server-side rather than by
+hiding the button, because the reporter's identity comes from the token and the UI cannot be what
+decides it — and the rows were unactionable anyway, since a self-report can never trip a threshold
+that counts distinct reporters.
+
+**Two invented design tokens caught before commit:** the first draft used `--shadow-raised` and
+`--radius-input`, neither of which exists. Grepped every token against `design-system/tokens/`
+instead of assuming, and corrected them to `--shadow-sheet` and `--radius-md` (the latter is what
+every other form control in the app already uses). An invented custom property fails silently — it
+renders as no shadow and square corners, with nothing in the console.
+
+**Plan-doc corrections:** `plans/06-moderation-and-admin.md` listed the reports migration,
+`POST /reports`, the one-pending-report rule, and the 3-reporter auto-suspension as unchecked. All
+four were built and tested well before this session. Ticked with a note, rather than left implying
+work that does not exist.
+
+Suite: **68 tests, 0 failures** (was 67; +1 for self-reports). Frontend `typecheck` and `build`
+clean. Not verified in a real browser — no automation connected, and filing a report needs a genuine
+Firebase token.

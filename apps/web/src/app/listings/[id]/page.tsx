@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
 import { apiFetch, ApiError, apiOrigin } from '@/lib/api';
+import { ReportDialog } from '@/components/ReportDialog';
 import { getIdToken } from '@/lib/firebase';
 import { AMENITY_LABELS, PROPERTY_TYPE_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
 import type { PublicListingDetail } from '@/types/api';
@@ -194,6 +195,14 @@ export default function ListingDetailPage() {
         <button type="button" onClick={() => void contactOwner()} disabled={contacting} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '0.85rem 1.2rem', border: 0, borderRadius: 'var(--radius-md)', background: 'var(--brand)', color: '#fff', font: 'var(--type-label)', cursor: 'pointer' }}>
           <MessageCircle size={17} /> {contacting ? 'Ouverture…' : 'Contacter'}
         </button>
+
+        {/*
+          Sits after the primary action, not beside it: reporting is a rare,
+          deliberate act and should not compete with contacting the owner.
+        */}
+        <div style={{ paddingTop: 'var(--space-2)' }}>
+          <ReportDialog targetType="LISTING" targetId={listing.id} label="Signaler cette annonce" />
+        </div>
       </div>
     </main>
   );
