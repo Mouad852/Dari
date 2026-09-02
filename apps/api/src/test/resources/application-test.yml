@@ -1,0 +1,18 @@
+# Testcontainers supplies the datasource; nothing is hardcoded here on purpose.
+# The container image is postgis/postgis, not postgres — phase 02's generated
+# column and GiST index must be exercised by the same engine production runs.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+dari:
+  web-origins: http://localhost:3000
+  firebase:
+    credentials-path: unused-in-tests   # FirebaseConfig is excluded from this profile
+
+logging:
+  level:
+    ma.dari.api: DEBUG

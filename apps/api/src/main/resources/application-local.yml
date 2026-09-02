@@ -1,0 +1,13 @@
+# Activated with SPRING_PROFILES_ACTIVE=local. Developer conveniences only —
+# nothing here may change behavior that a test would otherwise catch.
+logging:
+  level:
+    ma.dari.api: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE   # shows bound parameters; noisy, useful
+
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true

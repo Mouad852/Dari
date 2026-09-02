@@ -1,0 +1,45 @@
+:root{
+  /* ── Base ramps ───────────────────────────────── */
+  /* Terracotta / clay — the brand accent */
+  --clay-50:#FDF1EC;--clay-100:#F8DFD4;--clay-200:#F0C2AE;--clay-300:#E39F82;--clay-400:#D27C58;
+  --clay-500:#C05F3C;--clay-600:#A94E2E;--clay-700:#8B3E24;--clay-800:#6B301C;--clay-900:#4A2214;
+  /* Sand / ochre — warm secondary, used for highlights + illustration fills */
+  --sand-50:#FDF6EA;--sand-100:#F9E9CC;--sand-200:#F2D49F;--sand-300:#E8B96B;--sand-400:#DDA046;
+  --sand-500:#C9862C;--sand-600:#A66C21;--sand-700:#7F521A;
+  /* Warm neutrals — cream through charcoal, never pure white or pure black */
+  --sable-0:#FFFFFF;--sable-25:#FDFBF8;--sable-50:#FBF7F2;--sable-100:#F5EFE7;--sable-200:#E9E1D6;
+  --sable-300:#D8CDBF;--sable-400:#B4A798;--sable-500:#8C8075;--sable-600:#6E635C;
+  --sable-700:#4C443F;--sable-800:#332D29;--sable-900:#241F1C;
+  /* Atlas green — success + verified */
+  --atlas-50:#EAF3EF;--atlas-100:#CBE3D8;--atlas-300:#6FAE97;--atlas-500:#35786A;--atlas-700:#245349;
+  /* Saffron — warning */
+  --saffron-50:#FEF5E0;--saffron-100:#FBE6B4;--saffron-500:#C98A16;--saffron-700:#8F6108;
+  /* Rose clay — danger */
+  --rose-50:#FCEDEA;--rose-100:#F7D5CE;--rose-500:#B33A2B;--rose-700:#87291D;
+  /* Majorelle — informational only, never a primary action */
+  --majorelle-50:#EDF0FA;--majorelle-500:#3F5AA6;--majorelle-700:#2C3F78;
+
+  /* ── Semantic aliases ─────────────────────────── */
+  --brand:var(--clay-500);--brand-hover:var(--clay-600);--brand-press:var(--clay-700);
+  --brand-subtle:var(--clay-50);--brand-subtle-hover:var(--clay-100);--brand-border:var(--clay-200);
+  --brand-secondary:var(--sand-400);--brand-secondary-subtle:var(--sand-50);
+
+  --bg-page:var(--sable-50);--bg-page-alt:var(--sable-100);--bg-inset:var(--sable-100);
+  --surface-card:var(--sable-0);--surface-raised:var(--sable-0);--surface-sunken:var(--sable-25);
+  --surface-inverse:var(--sable-900);--surface-scrim:rgba(36,31,28,.56);
+  --surface-glass:rgba(255,255,255,.72);
+
+  --text-heading:var(--sable-900);--text-body:var(--sable-800);--text-muted:var(--sable-600);
+  --text-subtle:var(--sable-500);--text-on-brand:#FFFFFF;--text-on-inverse:var(--sable-50);
+  --text-link:var(--clay-600);--text-link-hover:var(--clay-700);--text-price:var(--sable-900);
+
+  --border-hairline:var(--sable-200);--border-default:var(--sable-300);--border-strong:var(--sable-400);
+  --border-focus:var(--clay-400);
+
+  --success:var(--atlas-500);--success-subtle:var(--atlas-50);--success-border:var(--atlas-100);
+  --warning:var(--saffron-500);--warning-subtle:var(--saffron-50);--warning-border:var(--saffron-100);
+  --danger:var(--rose-500);--danger-subtle:var(--rose-50);--danger-border:var(--rose-100);
+  --info:var(--majorelle-500);--info-subtle:var(--majorelle-50);
+
+  --focus-ring:0 0 0 3px rgba(192,95,60,.28);
+}

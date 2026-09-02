@@ -1,0 +1,11 @@
+:root{
+  /* 4px-derived, with a 6px half-step for tight chip/badge padding */
+  --space-0:0px;--space-1:4px;--space-2:6px;--space-3:8px;--space-4:12px;--space-5:16px;
+  --space-6:20px;--space-7:24px;--space-8:32px;--space-9:40px;--space-10:56px;--space-11:72px;--space-12:96px;
+
+  --gutter-mobile:20px;--gutter-tablet:32px;--gutter-desktop:48px;
+  --container-max:1200px;--container-prose:660px;
+  --card-pad:16px;--card-pad-lg:20px;--section-gap-mobile:32px;--section-gap-desktop:72px;
+  --control-h-sm:36px;--control-h-md:44px;--control-h-lg:52px;--tap-min:44px;
+  --nav-h-mobile:56px;--tabbar-h:64px;--nav-h-desktop:72px;
+}

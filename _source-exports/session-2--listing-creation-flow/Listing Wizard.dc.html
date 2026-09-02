@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/dari-design-system-d1bbe248-6e28-449d-abf2-26316666b957/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/dari-design-system-d1bbe248-6e28-449d-abf2-26316666b957/tokens/colors.css">
+<link rel="stylesheet" href="_ds/dari-design-system-d1bbe248-6e28-449d-abf2-26316666b957/tokens/typography.css">
+<link rel="stylesheet" href="_ds/dari-design-system-d1bbe248-6e28-449d-abf2-26316666b957/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/dari-design-system-d1bbe248-6e28-449d-abf2-26316666b957/tokens/radius.css">
+<link rel="stylesheet" href="_ds/dari-design-system-d1bbe248-6e28-449d-abf2-26316666b957/tokens/elevation.css">
+<link rel="stylesheet" href="_ds/dari-design-system-d1bbe248-6e28-449d-abf2-26316666b957/tokens/motion.css">
+<link rel="stylesheet" href="_ds/dari-design-system-d1bbe248-6e28-449d-abf2-26316666b957/tokens/base.css">
+<link rel="stylesheet" href="_ds/dari-design-system-d1bbe248-6e28-449d-abf2-26316666b957/styles.css">
+<script src="_ds/dari-design-system-d1bbe248-6e28-449d-abf2-26316666b957/_ds_bundle.js"></script>
+<style>
+  body { background: var(--sable-100); margin: 0; }
+  a { color: var(--text-link); }
+  a:hover { color: var(--text-link-hover); }
+  ::-webkit-scrollbar { height: 6px; width: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--sable-300); border-radius: 999px; }
+</style>
+</helmet>
+
+<div style="min-height:100%;background:var(--sable-100);padding:{{ rootPad }};display:flex;flex-direction:column;align-items:center;gap:16px;font-family:var(--font-ui)">
+
+  <sc-if value="{{ showChrome }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center">
+      <span style="font:var(--type-eyebrow);letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--text-subtle)">Largeur d'aperçu</span>
+      <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Tabs" variant="segmented" tabs="{{ modeTabs }}" value="{{ mode }}" on-change="{{ setMode }}" hint-size="220px,44px"></x-import>
+    </div>
+  </sc-if>
+
+  <div style="width:100%;max-width:{{ frameMax }};height:{{ frameH }};padding:{{ framePad }};background:{{ frameBg }};border-radius:{{ frameRadius }};box-shadow:var(--shadow-lg)">
+   <div style="display:flex;flex-direction:column;height:100%;background:var(--bg-page);border:1px solid var(--border-hairline);border-radius:{{ screenRadius }};overflow:hidden">
+
+    <sc-if value="{{ isNarrow }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;justify-content:space-between;height:36px;padding:0 24px;background:var(--bg-page);color:var(--text-heading);font:var(--weight-semibold) 13px/1 var(--font-ui)">
+        <span>9:41</span>
+        <span style="display:flex;align-items:center;gap:6px;color:var(--text-heading)">
+          <span style="font:var(--weight-semibold) 11px/1 var(--font-ui)">5G</span>
+          <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="wifi" size="15" hint-size="15px,15px"></x-import>
+        </span>
+      </div>
+    </sc-if>
+
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex:0 0 56px;height:56px;padding:0 20px;background:var(--surface-glass);backdrop-filter:var(--blur-glass);border-bottom:1px solid var(--border-hairline)">
+      <span style="display:flex;align-items:center;gap:10px">
+        <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="chevron-left" size="20" hint-size="20px,20px"></x-import>
+        <span style="font:var(--weight-bold) 17px/1 var(--font-display);letter-spacing:-.02em;color:var(--text-heading)">dari</span>
+      </span>
+      <sc-if value="{{ isWide }}" hint-placeholder-val="{{ true }}">
+        <span style="font:var(--type-label);color:var(--text-muted);white-space:nowrap">Publier une annonce</span>
+      </sc-if>
+      <span style="font:var(--type-caption);color:var(--text-subtle);white-space:nowrap">Brouillon enregistré</span>
+    </header>
+
+    <div style="flex:0 0 3px;height:3px;background:var(--sable-200)">
+      <div style="height:3px;background:var(--brand);border-radius:999px;transition:width 320ms var(--ease-standard);width:{{ progressPct }}"></div>
+    </div>
+
+    <div style="flex:1;min-height:0;overflow-y:auto">
+    <div style="display:flex;align-items:flex-start;gap:32px;padding:20px;max-width:1200px;margin:0 auto">
+
+      <sc-if value="{{ isWide }}" hint-placeholder-val="{{ true }}">
+        <aside style="flex:0 0 288px;width:288px;position:sticky;top:20px;background:var(--surface-card);border:1px solid var(--border-hairline);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);padding:12px">
+          <p style="margin:6px 10px 10px;font:var(--type-eyebrow);letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--text-subtle)">Votre annonce</p>
+          <sc-for list="{{ steps }}" as="s" hint-placeholder-count="8">
+            <button onClick="{{ s.go }}" style="position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:9px 10px;border:none;background:transparent;border-radius:var(--radius-control);cursor:pointer;text-align:left;min-height:44px">
+              <sc-if value="{{ s.current }}" hint-placeholder-val="{{ false }}">
+                <span style="position:absolute;inset:0;background:var(--brand-subtle);border-radius:var(--radius-control)"></span>
+              </sc-if>
+              <span style="position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 28px;width:28px;height:28px;border-radius:999px;background:var(--sable-100);color:var(--text-muted);font:var(--weight-semibold) 13px/1 var(--font-ui)">
+                {{ s.num }}
+                <sc-if value="{{ s.done }}" hint-placeholder-val="{{ false }}">
+                  <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:999px;background:var(--atlas-500);color:#fff">
+                    <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="check" size="15" hint-size="15px,15px"></x-import>
+                  </span>
+                </sc-if>
+                <sc-if value="{{ s.current }}" hint-placeholder-val="{{ false }}">
+                  <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:999px;background:var(--brand);color:#fff;font:var(--weight-semibold) 13px/1 var(--font-ui)">{{ s.num }}</span>
+                </sc-if>
+              </span>
+              <span style="position:relative;display:block;flex:1;min-width:0">
+                <span style="display:block;font:var(--type-label);color:var(--text-heading)">{{ s.label }}</span>
+                <span style="display:block;font:var(--type-caption);color:var(--text-muted)">{{ s.hint }}</span>
+              </span>
+            </button>
+          </sc-for>
+        </aside>
+      </sc-if>
+
+      <main style="flex:1;min-width:0;display:flex;flex-direction:column;gap:16px">
+
+        <div>
+          <p style="margin:0 0 4px;font:var(--type-eyebrow);letter-spacing:var(--ls-caps);text-transform:uppercase;color:var(--brand)">{{ stepEyebrow }}</p>
+          <h1 style="margin:0;font:var(--type-h1);letter-spacing:var(--ls-heading);color:var(--text-heading);text-wrap:pretty">{{ stepTitle }}</h1>
+          <p style="margin:6px 0 0;font:var(--type-body);color:var(--text-muted);max-width:660px;text-wrap:pretty">{{ stepLede }}</p>
+        </div>
+
+        <!-- ÉTAPE 1 -->
+        <sc-if value="{{ is1 }}" hint-placeholder-val="{{ false }}">
+          <section style="display:flex;flex-direction:column;gap:20px;background:var(--surface-card);border:1px solid var(--border-hairline);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);padding:20px;max-width:660px">
+            <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Input" label="Titre de l'annonce" placeholder="Chambre lumineuse en colocation, Agdal" value="{{ title }}" on-change="{{ setTitle }}" helper="7 mots maximum. Décrivez la chambre, pas l'immeuble." hint-size="100%,90px"></x-import>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+              <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Select" label="Ville" options="{{ cityOpts }}" value="{{ city }}" on-change="{{ setCity }}" placeholder="Choisir une ville" hint-size="100%,72px"></x-import>
+              <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Select" label="Quartier" options="{{ hoodOpts }}" value="{{ hood }}" on-change="{{ setHood }}" placeholder="{{ hoodPlaceholder }}" disabled="{{ hoodDisabled }}" helper="{{ hoodHelper }}" hint-size="100%,72px"></x-import>
+            </div>
+            <div>
+              <p style="margin:0 0 8px;font:var(--type-label);color:var(--text-heading)">Type de logement</p>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+                <sc-for list="{{ ptypes }}" as="p" hint-placeholder-count="3">
+                  <button onClick="{{ p.pick }}" style="position:relative;display:flex;align-items:center;gap:10px;min-height:56px;padding:0 16px;border:1px solid var(--border-hairline);background:var(--surface-card);border-radius:var(--radius-control);box-shadow:var(--shadow-xs);cursor:pointer;text-align:left">
+                    <sc-if value="{{ p.on }}" hint-placeholder-val="{{ false }}">
+                      <span style="position:absolute;inset:0;border:2px solid var(--brand);background:var(--brand-subtle);border-radius:var(--radius-control)"></span>
+                    </sc-if>
+                    <span style="position:relative;display:flex;align-items:center;color:var(--brand)">
+                      <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="{{ p.icon }}" size="20" hint-size="20px,20px"></x-import>
+                    </span>
+                    <span style="position:relative;font:var(--type-label);color:var(--text-heading)">{{ p.label }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </section>
+        </sc-if>
+
+        <!-- ÉTAPE 2 -->
+        <sc-if value="{{ is2 }}" hint-placeholder-val="{{ false }}">
+          <section style="display:flex;flex-direction:column;gap:16px;background:var(--surface-card);border:1px solid var(--border-hairline);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);padding:20px;max-width:660px">
+            <div onPointerMove="{{ onMapMove }}" onPointerUp="{{ onMapUp }}" onPointerLeave="{{ onMapUp }}" onClick="{{ onMapClick }}" ref="{{ mapRef }}" style="position:relative;height:320px;border-radius:var(--radius-image);overflow:hidden;background:var(--sable-100);border:1px solid var(--border-hairline);touch-action:none;cursor:crosshair">
+              <span style="position:absolute;left:-10%;top:22%;width:120%;height:14px;background:var(--sable-0);transform:rotate(-3deg)"></span>
+              <span style="position:absolute;left:-10%;top:58%;width:120%;height:20px;background:var(--sable-0);transform:rotate(2deg)"></span>
+              <span style="position:absolute;left:-10%;top:84%;width:120%;height:10px;background:var(--sable-0)"></span>
+              <span style="position:absolute;left:26%;top:-10%;width:12px;height:120%;background:var(--sable-0);transform:rotate(4deg)"></span>
+              <span style="position:absolute;left:64%;top:-10%;width:16px;height:120%;background:var(--sable-0)"></span>
+              <span style="position:absolute;left:6%;top:30%;width:16%;height:22%;background:var(--sable-200);border-radius:4px"></span>
+              <span style="position:absolute;left:34%;top:66%;width:22%;height:14%;background:var(--sable-200);border-radius:4px"></span>
+              <span style="position:absolute;left:72%;top:34%;width:20%;height:18%;background:var(--atlas-100);border-radius:8px"></span>
+              <span style="position:absolute;left:74%;top:56%;font:var(--type-caption);color:var(--atlas-700)">Jardin d'essais</span>
+              <span style="position:absolute;width:210px;height:210px;border-radius:999px;background:rgba(192,95,60,.13);border:1px dashed var(--clay-300);transform:translate(-50%,-50%);pointer-events:none;left:{{ pinX }};top:{{ pinY }}"></span>
+              <span onPointerDown="{{ onPinDown }}" style="position:absolute;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:999px;background:var(--brand);color:#fff;box-shadow:var(--shadow-brand);transform:translate(-50%,-100%);cursor:grab;left:{{ pinX }};top:{{ pinY }}">
+                <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="map-pin" size="22" hint-size="22px,22px"></x-import>
+              </span>
+              <span style="position:absolute;left:12px;bottom:12px;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:var(--surface-glass);backdrop-filter:var(--blur-glass);font:var(--type-caption);color:var(--text-heading)">Glissez le repère sur l'immeuble</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:12px;padding:16px;background:var(--brand-subtle);border:1px solid var(--brand-border);border-radius:var(--radius-card-inner)">
+              <span style="display:flex;color:var(--clay-700);padding-top:2px">
+                <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="shield-check" size="20" hint-size="20px,20px"></x-import>
+              </span>
+              <span style="font:var(--type-body-sm);color:var(--clay-700);text-wrap:pretty">Sur l'annonce, Dari affiche seulement ce cercle d'environ 300 m — jamais l'adresse. Elle reste privée jusqu'à ce que vous l'envoyiez vous-même dans la conversation.</span>
+            </div>
+            <p style="margin:0;font:var(--type-caption);color:var(--text-muted)">Repère placé dans {{ placeLabel }}. Aucune coordonnée à saisir.</p>
+          </section>
+        </sc-if>
+
+        <!-- ÉTAPE 3 -->
+        <sc-if value="{{ is3 }}" hint-placeholder-val="{{ false }}">
+          <section style="display:flex;flex-direction:column;gap:12px;max-width:900px">
+
+            <sc-if value="{{ isNarrow }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ rooms }}" as="r" hint-placeholder-count="3">
+                  <article style="background:var(--surface-card);border:1px solid var(--border-hairline);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);overflow:hidden">
+                    <button onClick="{{ r.toggleExpand }}" style="position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:10px 14px;border:none;background:transparent;cursor:pointer;text-align:left">
+                      <span style="display:flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;border-radius:999px;background:var(--bg-inset);color:var(--clay-600)">
+                        <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="{{ r.icon }}" size="18" hint-size="18px,18px"></x-import>
+                      </span>
+                      <span style="flex:1;min-width:0">
+                        <span style="display:block;font:var(--type-label);color:var(--text-heading);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.label }}</span>
+                        <span style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                          <sc-if value="{{ r.offered }}" hint-placeholder-val="{{ false }}">
+                            <span style="display:inline-flex;padding:2px 8px;border-radius:999px;background:var(--brand-subtle);border:1px solid var(--brand-border);color:var(--clay-700);font:var(--weight-semibold) 11px/1.3 var(--font-ui)">Proposée</span>
+                          </sc-if>
+                          <sc-if value="{{ r.shared }}" hint-placeholder-val="{{ false }}">
+                            <span style="display:inline-flex;padding:2px 8px;border-radius:999px;background:var(--sable-100);border:1px solid var(--border-hairline);color:var(--text-muted);font:var(--weight-semibold) 11px/1.3 var(--font-ui)">Partagée</span>
+                          </sc-if>
+                        </span>
+                      </span>
+                      <span style="display:flex;flex:0 0 auto;color:var(--text-muted)">
+                        <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="{{ r.chevron }}" size="18" hint-size="18px,18px"></x-import>
+                      </span>
+                    </button>
+                    <sc-if value="{{ r.expanded }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:14px;padding:14px;border-top:1px solid var(--border-hairline)">
+                        <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Select" label="Type de pièce" options="{{ roomTypeOpts }}" value="{{ r.type }}" on-change="{{ r.setType }}" hint-size="100%,72px"></x-import>
+                        <button onClick="{{ r.setOffered }}" style="position:relative;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border:1px solid var(--border-hairline);background:var(--surface-card);border-radius:var(--radius-control);cursor:pointer;text-align:left">
+                          <sc-if value="{{ r.offered }}" hint-placeholder-val="{{ false }}">
+                            <span style="position:absolute;inset:0;background:var(--brand-subtle);border:1px solid var(--brand-border);border-radius:var(--radius-control)"></span>
+                          </sc-if>
+                          <span style="position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 20px;width:20px;height:20px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card)">
+                            <sc-if value="{{ r.offered }}" hint-placeholder-val="{{ false }}">
+                              <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:999px;background:var(--brand);color:#fff">
+                                <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="check" size="13" hint-size="13px,13px"></x-import>
+                              </span>
+                            </sc-if>
+                          </span>
+                          <span style="position:relative;font:var(--type-label);color:var(--text-heading)">C'est la pièce proposée</span>
+                        </button>
+                        <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Switch" label="Espace partagé" description="{{ r.sharedHint }}" checked="{{ r.shared }}" on-change="{{ r.toggleShared }}" hint-size="100%,52px"></x-import>
+                        <button onClick="{{ r.remove }}" style="display:inline-flex;align-items:center;gap:6px;align-self:flex-start;height:36px;padding:0 14px;border:1px solid var(--border-hairline);background:var(--surface-card);border-radius:999px;color:var(--danger);font:var(--weight-semibold) 13px/1 var(--font-ui);white-space:nowrap;cursor:pointer">
+                          <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="x" size="15" hint-size="15px,15px"></x-import>
+                          Retirer la pièce
+                        </button>
+                      </div>
+                    </sc-if>
+                  </article>
+                </sc-for>
+                <div style="display:flex;flex-direction:column;gap:10px;background:var(--surface-sunken);border:1px dashed var(--border-default);border-radius:var(--radius-card);padding:14px">
+                  <p style="margin:0;font:var(--type-label);color:var(--text-heading)">Ajouter une pièce</p>
+                  <div style="display:flex;flex-wrap:wrap;gap:8px">
+                    <sc-for list="{{ addOpts }}" as="a" hint-placeholder-count="6">
+                      <button onClick="{{ a.add }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border:1px solid var(--border-hairline);background:var(--surface-card);border-radius:999px;cursor:pointer;font:var(--weight-semibold) 13px/1 var(--font-ui);color:var(--text-body);box-shadow:var(--shadow-xs)">
+                        <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="{{ a.icon }}" size="15" hint-size="15px,15px"></x-import>
+                        {{ a.label }}
+                      </button>
+                    </sc-for>
+                  </div>
+                  <p style="margin:0;font:var(--type-caption);color:var(--text-muted);text-wrap:pretty">Un salon peut être la pièce proposée : choisissez-le puis marquez-le comme non partagé.</p>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isWide }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
+              <sc-for list="{{ rooms }}" as="r" hint-placeholder-count="3">
+                <article style="position:relative;display:flex;flex-direction:column;gap:14px;background:var(--surface-card);border:1px solid var(--border-hairline);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);padding:16px">
+                  <sc-if value="{{ r.offered }}" hint-placeholder-val="{{ false }}">
+                    <span style="position:absolute;inset:0;border:2px solid var(--brand);border-radius:var(--radius-card);pointer-events:none"></span>
+                  </sc-if>
+                  <header style="display:flex;align-items:center;gap:10px">
+                    <span style="display:flex;align-items:center;justify-content:center;flex:0 0 40px;width:40px;height:40px;border-radius:999px;background:var(--bg-inset);color:var(--clay-600)">
+                      <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="{{ r.icon }}" size="20" hint-size="20px,20px"></x-import>
+                    </span>
+                    <span style="flex:1;min-width:0">
+                      <span style="display:block;font:var(--type-h3);color:var(--text-heading);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.label }}</span>
+                      <span style="display:block;font:var(--type-caption);color:var(--text-muted)">{{ r.sub }}</span>
+                    </span>
+                    <button onClick="{{ r.remove }}" aria-label="Supprimer la pièce" style="display:flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;border-radius:999px;border:1px solid var(--border-hairline);background:var(--surface-card);color:var(--text-muted);cursor:pointer">
+                      <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="x" size="16" hint-size="16px,16px"></x-import>
+                    </button>
+                  </header>
+                  <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Select" label="Type de pièce" options="{{ roomTypeOpts }}" value="{{ r.type }}" on-change="{{ r.setType }}" hint-size="100%,72px"></x-import>
+                  <button onClick="{{ r.setOffered }}" style="position:relative;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border:1px solid var(--border-hairline);background:var(--surface-card);border-radius:var(--radius-control);cursor:pointer;text-align:left">
+                    <sc-if value="{{ r.offered }}" hint-placeholder-val="{{ false }}">
+                      <span style="position:absolute;inset:0;background:var(--brand-subtle);border:1px solid var(--brand-border);border-radius:var(--radius-control)"></span>
+                    </sc-if>
+                    <span style="position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 20px;width:20px;height:20px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card)">
+                      <sc-if value="{{ r.offered }}" hint-placeholder-val="{{ false }}">
+                        <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:999px;background:var(--brand);color:#fff">
+                          <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="check" size="13" hint-size="13px,13px"></x-import>
+                        </span>
+                      </sc-if>
+                    </span>
+                    <span style="position:relative;font:var(--type-label);color:var(--text-heading)">C'est la pièce proposée</span>
+                  </button>
+                  <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Switch" label="Espace partagé" description="{{ r.sharedHint }}" checked="{{ r.shared }}" on-change="{{ r.toggleShared }}" hint-size="100%,52px"></x-import>
+                </article>
+              </sc-for>
+
+              <div style="display:flex;flex-direction:column;gap:10px;justify-content:center;background:var(--surface-sunken);border:1px dashed var(--border-default);border-radius:var(--radius-card);padding:16px;min-height:180px">
+                <p style="margin:0;font:var(--type-label);color:var(--text-heading)">Ajouter une pièce</p>
+                <div style="display:flex;flex-wrap:wrap;gap:8px">
+                  <sc-for list="{{ addOpts }}" as="a" hint-placeholder-count="6">
+                    <button onClick="{{ a.add }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border:1px solid var(--border-hairline);background:var(--surface-card);border-radius:999px;cursor:pointer;font:var(--weight-semibold) 13px/1 var(--font-ui);color:var(--text-body);box-shadow:var(--shadow-xs)">
+                      <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="{{ a.icon }}" size="15" hint-size="15px,15px"></x-import>
+                      {{ a.label }}
+                    </button>
+                  </sc-for>
+                </div>
+                <p style="margin:0;font:var(--type-caption);color:var(--text-muted);text-wrap:pretty">Un salon peut être la pièce proposée : choisissez-le puis marquez-le comme non partagé.</p>
+              </div>
+            </div>
+            </sc-if>
+            <p style="margin:0;font:var(--type-caption);color:var(--text-muted)">{{ roomSummary }}</p>
+          </section>
+        </sc-if>
+
+        <!-- ÉTAPE 4 -->
+        <sc-if value="{{ is4 }}" hint-placeholder-val="{{ false }}">
+          <section style="display:flex;flex-direction:column;gap:20px;background:var(--surface-card);border:1px solid var(--border-hairline);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);padding:20px;max-width:660px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+              <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Input" label="Loyer mensuel" value="{{ rent }}" on-change="{{ setRent }}" suffix="MAD/mois" hint-size="100%,72px"></x-import>
+              <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Input" label="Caution" value="{{ deposit }}" on-change="{{ setDeposit }}" suffix="MAD" helper="Souvent deux mois de loyer" hint-size="100%,90px"></x-import>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:14px;padding-top:4px;border-top:1px solid var(--border-hairline)">
+              <p style="margin:4px 0 0;font:var(--type-label);color:var(--text-heading)">Charges, une par une</p>
+              <sc-for list="{{ charges }}" as="c" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+                  <span style="display:flex;align-items:center;gap:10px;color:var(--text-heading)">
+                    <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="{{ c.icon }}" size="20" hint-size="20px,20px"></x-import>
+                    <span style="font:var(--type-body);color:var(--text-heading)">{{ c.label }}</span>
+                  </span>
+                  <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Tabs" variant="segmented" tabs="{{ chargeTabs }}" value="{{ c.value }}" on-change="{{ c.set }}" hint-size="280px,44px"></x-import>
+                </div>
+              </sc-for>
+              <p style="margin:0;font:var(--type-caption);color:var(--text-muted)">« Sans objet » convient quand le service n'existe pas dans le logement.</p>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:var(--bg-inset);border-radius:var(--radius-card-inner)">
+              <span style="font:var(--type-body-sm);color:var(--text-muted)">Affiché sur l'annonce</span>
+              <span style="font:var(--type-price);color:var(--text-price)">{{ priceLine }}</span>
+            </div>
+          </section>
+        </sc-if>
+
+        <!-- ÉTAPE 5 -->
+        <sc-if value="{{ is5 }}" hint-placeholder-val="{{ false }}">
+          <section style="display:flex;flex-direction:column;gap:12px;max-width:900px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">
+              <sc-for list="{{ amenities }}" as="a" hint-placeholder-count="10">
+                <button onClick="{{ a.toggle }}" style="position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-height:96px;padding:14px;border:1px solid var(--border-hairline);background:var(--surface-card);border-radius:var(--radius-card-inner);box-shadow:var(--shadow-xs);cursor:pointer;text-align:left">
+                  <sc-if value="{{ a.on }}" hint-placeholder-val="{{ false }}">
+                    <span style="position:absolute;inset:0;background:var(--brand-subtle);border:2px solid var(--brand);border-radius:var(--radius-card-inner)"></span>
+                  </sc-if>
+                  <span style="position:relative;display:flex;color:var(--clay-600)">
+                    <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="{{ a.icon }}" size="22" hint-size="22px,22px"></x-import>
+                  </span>
+                  <span style="position:relative;font:var(--type-label);color:var(--text-heading);text-wrap:pretty">{{ a.label }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <p style="margin:0;font:var(--type-caption);color:var(--text-muted)">{{ amenityCount }}</p>
+          </section>
+        </sc-if>
+
+        <!-- ÉTAPE 6 -->
+        <sc-if value="{{ is6 }}" hint-placeholder-val="{{ false }}">
+          <section style="display:flex;flex-direction:column;gap:18px;background:var(--surface-card);border:1px solid var(--border-hairline);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);padding:20px;max-width:660px">
+            <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Switch" label="Fumeur accepté" description="À l'intérieur du logement" checked="{{ smoking }}" on-change="{{ toggleSmoking }}" hint-size="100%,52px"></x-import>
+            <span style="height:1px;background:var(--border-hairline)"></span>
+            <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Switch" label="Animaux acceptés" description="Chats et petits chiens" checked="{{ pets }}" on-change="{{ togglePets }}" hint-size="100%,52px"></x-import>
+            <span style="height:1px;background:var(--border-hairline)"></span>
+            <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Switch" label="Invités autorisés" description="Une nuit occasionnelle, prévenue à l'avance" checked="{{ guests }}" on-change="{{ toggleGuests }}" hint-size="100%,52px"></x-import>
+            <span style="height:1px;background:var(--border-hairline)"></span>
+            <div>
+              <p style="margin:0 0 8px;font:var(--type-label);color:var(--text-heading)">Heures calmes</p>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+                <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Select" options="{{ hourOpts }}" value="{{ quietFrom }}" on-change="{{ setQuietFrom }}" label="De" hint-size="100%,72px"></x-import>
+                <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Select" options="{{ hourOpts }}" value="{{ quietTo }}" on-change="{{ setQuietTo }}" label="À" hint-size="100%,72px"></x-import>
+              </div>
+            </div>
+            <div>
+              <p style="margin:0 0 8px;font:var(--type-label);color:var(--text-heading)">Autres règles</p>
+              <textarea value="{{ otherRules }}" onChange="{{ setOtherRules }}" placeholder="Ménage des parties communes à tour de rôle, une semaine chacun." style="width:100%;min-height:96px;padding:12px 14px;border:1px solid var(--border-hairline);border-radius:var(--radius-control);background:var(--surface-card);box-shadow:var(--shadow-xs);font:var(--type-body);color:var(--text-heading);resize:vertical;outline:none"></textarea>
+              <p style="margin:6px 0 0;font:var(--type-caption);color:var(--text-muted)">Facultatif. Une règle par phrase.</p>
+            </div>
+          </section>
+        </sc-if>
+
+        <!-- ÉTAPE 7 -->
+        <sc-if value="{{ is7 }}" hint-placeholder-val="{{ false }}">
+          <section style="display:flex;flex-direction:column;gap:12px;max-width:900px">
+
+            <sc-if value="{{ isNarrow }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <sc-if value="{{ hasPhotos }}" hint-placeholder-val="{{ true }}">
+                  <div style="position:relative;display:flex;flex-direction:column;justify-content:flex-end;aspect-ratio:4/3;border-radius:var(--radius-image);background:var(--sable-200);overflow:hidden">
+                    <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:var(--type-eyebrow);letter-spacing:var(--ls-caps);color:var(--sable-500)">PHOTO</span>
+                    <span style="position:absolute;left:12px;top:12px;display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;background:var(--sable-900);color:var(--sable-50);font:var(--weight-semibold) 11px/1.3 var(--font-ui)">Couverture</span>
+                    <button onClick="{{ removeCover }}" aria-label="Retirer la photo" style="position:absolute;right:12px;top:12px;display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;border:1px solid rgba(255,255,255,.6);background:var(--surface-glass);backdrop-filter:var(--blur-glass);color:var(--sable-900);cursor:pointer">
+                      <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="x" size="16" hint-size="16px,16px"></x-import>
+                    </button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ noPhotos }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ addPhoto }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;aspect-ratio:4/3;border:1px dashed var(--border-default);border-radius:var(--radius-image);background:var(--surface-sunken);color:var(--clay-600);cursor:pointer">
+                    <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="sparkles" size="24" hint-size="24px,24px"></x-import>
+                    <span style="font:var(--type-label);color:var(--text-heading)">Ajouter une première photo</span>
+                  </button>
+                </sc-if>
+                <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">
+                  <sc-for list="{{ photos }}" as="p" hint-placeholder-count="3">
+                    <button onClick="{{ p.makeCover }}" draggable="true" onDragStart="{{ p.onDragStart }}" onDragOver="{{ p.onDragOver }}" onDrop="{{ p.onDrop }}" onDragEnd="{{ p.onDragEnd }}" style="position:relative;flex:0 0 72px;width:72px;height:72px;border:none;padding:0;border-radius:var(--radius-card-inner);background:var(--sable-200);overflow:hidden;cursor:pointer">
+                      <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:var(--weight-semibold) 11px/1 var(--font-ui);letter-spacing:var(--ls-caps);color:var(--sable-500)">{{ p.pos }}</span>
+                      <sc-if value="{{ p.isCover }}" hint-placeholder-val="{{ false }}">
+                        <span style="position:absolute;inset:0;border:2px solid var(--brand);border-radius:var(--radius-card-inner)"></span>
+                      </sc-if>
+                      <span style="position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;padding:4px">
+                        <span onClick="{{ p.moveLeft }}" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:999px;background:var(--surface-glass);backdrop-filter:var(--blur-glass);color:var(--sable-900)">
+                          <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="chevron-left" size="14" hint-size="14px,14px"></x-import>
+                        </span>
+                        <span onClick="{{ p.moveRight }}" style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:999px;background:var(--surface-glass);backdrop-filter:var(--blur-glass);color:var(--sable-900)">
+                          <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="chevron-right" size="14" hint-size="14px,14px"></x-import>
+                        </span>
+                      </span>
+                    </button>
+                  </sc-for>
+                  <button onClick="{{ addPhoto }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:0 0 72px;width:72px;height:72px;border:1px dashed var(--border-default);border-radius:var(--radius-card-inner);background:var(--surface-sunken);color:var(--clay-600);cursor:pointer">
+                    <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="sparkles" size="18" hint-size="18px,18px"></x-import>
+                    <span style="font:var(--weight-semibold) 11px/1.2 var(--font-ui);color:var(--text-heading)">Ajouter</span>
+                  </button>
+                </div>
+                <p style="margin:0;font:var(--type-caption);color:var(--text-muted);text-wrap:pretty">Touchez une vignette pour la mettre en couverture ; les flèches changent l'ordre.</p>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isWide }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">
+              <sc-for list="{{ photos }}" as="p" hint-placeholder-count="4">
+                <figure draggable="true" onDragStart="{{ p.onDragStart }}" onDragOver="{{ p.onDragOver }}" onDrop="{{ p.onDrop }}" onDragEnd="{{ p.onDragEnd }}" style="position:relative;display:flex;flex-direction:column;justify-content:flex-end;margin:0;aspect-ratio:4/3;border-radius:var(--radius-image);background:var(--sable-200);overflow:hidden;cursor:grab">
+                  <sc-if value="{{ p.isOver }}" hint-placeholder-val="{{ false }}">
+                    <span style="position:absolute;inset:0;border:2px dashed var(--brand);border-radius:var(--radius-image);background:rgba(192,95,60,.10);z-index:3"></span>
+                  </sc-if>
+                  <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:var(--type-eyebrow);letter-spacing:var(--ls-caps);color:var(--sable-500)">PHOTO</span>
+                  <span style="position:absolute;left:8px;top:8px;z-index:2">
+                    <sc-if value="{{ p.isCover }}" hint-placeholder-val="{{ false }}">
+                      <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:var(--sable-900);color:var(--sable-50);font:var(--weight-semibold) 11px/1.3 var(--font-ui)">Couverture</span>
+                    </sc-if>
+                  </span>
+                  <button onClick="{{ p.remove }}" aria-label="Retirer la photo" style="position:absolute;right:8px;top:8px;z-index:2;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:999px;border:1px solid rgba(255,255,255,.6);background:var(--surface-glass);backdrop-filter:var(--blur-glass);color:var(--sable-900);cursor:pointer">
+                    <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="x" size="15" hint-size="15px,15px"></x-import>
+                  </button>
+                  <figcaption style="position:relative;z-index:2;display:flex;align-items:center;gap:6px;padding:8px;background:linear-gradient(to top,rgba(36,31,28,.62) 0%,rgba(36,31,28,.18) 60%,rgba(36,31,28,0) 100%)">
+                    <button onClick="{{ p.moveLeft }}" aria-label="Déplacer avant" style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;flex:0 0 30px;border-radius:999px;border:none;background:var(--surface-glass);backdrop-filter:var(--blur-glass);color:var(--sable-900);cursor:pointer">
+                      <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="chevron-left" size="15" hint-size="15px,15px"></x-import>
+                    </button>
+                    <button onClick="{{ p.moveRight }}" aria-label="Déplacer après" style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;flex:0 0 30px;border-radius:999px;border:none;background:var(--surface-glass);backdrop-filter:var(--blur-glass);color:var(--sable-900);cursor:pointer">
+                      <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="chevron-right" size="15" hint-size="15px,15px"></x-import>
+                    </button>
+                    <button onClick="{{ p.makeCover }}" style="flex:1;min-width:0;height:30px;padding:0 10px;border-radius:999px;border:none;background:var(--surface-glass);backdrop-filter:var(--blur-glass);color:var(--sable-900);font:var(--weight-semibold) 11px/1 var(--font-ui);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.coverLabel }}</button>
+                  </figcaption>
+                </figure>
+              </sc-for>
+              <button onClick="{{ addPhoto }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;aspect-ratio:4/3;border:1px dashed var(--border-default);border-radius:var(--radius-image);background:var(--surface-sunken);color:var(--clay-600);cursor:pointer">
+                <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="sparkles" size="22" hint-size="22px,22px"></x-import>
+                <span style="font:var(--type-label);color:var(--text-heading)">Ajouter des photos</span>
+                <span style="font:var(--type-caption);color:var(--text-muted)">JPG ou PNG</span>
+              </button>
+            </div>
+            </sc-if>
+            <p style="margin:0;font:var(--type-caption);color:var(--text-muted);text-wrap:pretty">{{ photoHelp }}</p>
+          </section>
+        </sc-if>
+
+        <!-- ÉTAPE 8 -->
+        <sc-if value="{{ is8 }}" hint-placeholder-val="{{ false }}">
+          <section style="display:flex;flex-direction:column;gap:16px;max-width:760px">
+            <sc-if value="{{ submitted }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:10px;background:var(--success-subtle);border:1px solid var(--success-border);border-radius:var(--radius-card);padding:20px">
+                <span style="display:flex;align-items:center;gap:10px;color:var(--atlas-700)">
+                  <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="check" size="20" hint-size="20px,20px"></x-import>
+                  <span style="font:var(--type-h3);color:var(--atlas-700)">Annonce envoyée en vérification</span>
+                </span>
+                <span style="font:var(--type-body-sm);color:var(--atlas-700)">Référence <span style="font-family:var(--font-mono);font-size:13px">DARI-RB-4821</span>. Vous recevrez un message dès qu'elle est en ligne, en général sous 24 heures.</span>
+              </div>
+            </sc-if>
+            <div style="background:var(--surface-card);border:1px solid var(--border-hairline);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);overflow:hidden">
+              <sc-for list="{{ summary }}" as="s" hint-placeholder-count="7">
+                <div style="display:flex;align-items:flex-start;gap:16px;padding:14px 20px;border-bottom:1px solid var(--border-hairline)">
+                  <span style="flex:0 0 132px;font:var(--type-label);color:var(--text-muted)">{{ s.label }}</span>
+                  <span style="flex:1;min-width:0;font:var(--type-body);color:var(--text-heading);text-wrap:pretty">{{ s.value }}</span>
+                  <button onClick="{{ s.go }}" style="flex:0 0 auto;border:none;background:transparent;color:var(--text-link);font:var(--type-label);cursor:pointer;padding:0">Modifier</button>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:12px;padding:16px;background:var(--bg-inset);border-radius:var(--radius-card-inner)">
+              <span style="display:flex;color:var(--text-muted);padding-top:2px">
+                <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Icon" name="shield-check" size="20" hint-size="20px,20px"></x-import>
+              </span>
+              <span style="font:var(--type-body-sm);color:var(--text-body);text-wrap:pretty">Chaque annonce passe en vérification avant d'être visible. Une personne de l'équipe relit le texte et les photos, puis l'annonce est publiée ou vous recevez une demande de correction.</span>
+            </div>
+          </section>
+        </sc-if>
+
+        <sc-if value="{{ isWide }}" hint-placeholder-val="{{ true }}">
+          <nav style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:8px;margin-top:4px;border-top:1px solid var(--border-hairline)">
+            <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Button" variant="ghost" icon-left="chevron-left" on-click="{{ back }}" disabled="{{ atFirst }}" hint-size="110px,44px">Retour</x-import>
+            <span style="display:flex;align-items:center;gap:12px">
+              <span style="font:var(--type-caption);color:var(--text-subtle)">{{ navHint }}</span>
+              <sc-if value="{{ is8 }}" hint-placeholder-val="{{ false }}">
+                <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Button" on-click="{{ submit }}" disabled="{{ submitted }}" hint-size="200px,44px">Publier une annonce</x-import>
+              </sc-if>
+              <sc-if value="{{ notLast }}" hint-placeholder-val="{{ true }}">
+                <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Button" icon-right="chevron-right" on-click="{{ next }}" disabled="{{ nextBlocked }}" hint-size="140px,44px">Continuer</x-import>
+              </sc-if>
+            </span>
+          </nav>
+        </sc-if>
+
+      </main>
+    </div>
+    </div>
+
+    <sc-if value="{{ isNarrow }}" hint-placeholder-val="{{ false }}">
+      <nav style="display:flex;align-items:center;gap:10px;flex:0 0 auto;padding:12px 20px 20px;background:var(--surface-glass);backdrop-filter:var(--blur-glass);border-top:1px solid var(--border-hairline)">
+        <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Button" variant="secondary" icon-left="chevron-left" on-click="{{ back }}" disabled="{{ atFirst }}" hint-size="110px,44px">Retour</x-import>
+        <sc-if value="{{ is8 }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1 1 0;min-width:0">
+            <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Button" full-width="{{ true }}" on-click="{{ submit }}" disabled="{{ submitted }}" hint-size="100%,44px">Publier une annonce</x-import>
+          </div>
+        </sc-if>
+        <sc-if value="{{ notLast }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1 1 0;min-width:0">
+            <x-import component-from-global-scope="DariDesignSystem_d1bbe2.Button" full-width="{{ true }}" icon-right="chevron-right" on-click="{{ next }}" disabled="{{ nextBlocked }}" hint-size="100%,44px">Continuer</x-import>
+          </div>
+        </sc-if>
+      </nav>
+    </sc-if>
+
+   </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;initialStep&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1,&quot;min&quot;:1,&quot;max&quot;:8,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Aperçu&quot;},&quot;frameWidth&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;375&quot;,&quot;1440&quot;],&quot;default&quot;:&quot;1440&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Aperçu&quot;},&quot;hideChrome&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Aperçu&quot;}}">
+const HOODS = {
+  Rabat: ['Agdal', 'Hassan', 'Hay Riad', 'Océan', 'Souissi'],
+  Casablanca: ['Maârif', 'Gauthier', 'Ain Diab', 'Bourgogne', 'Sidi Belyout'],
+  Marrakech: ['Guéliz', 'Hivernage', 'Médina', 'Semlalia'],
+  Tanger: ['Malabata', 'Marshan', 'Iberia', 'Centre-ville']
+};
+const ROOM_TYPES = [
+  { value: 'chambre', label: 'Chambre', icon: 'bed-double' },
+  { value: 'salon', label: 'Salon', icon: 'users-round' },
+  { value: 'cuisine', label: 'Cuisine', icon: 'utensils' },
+  { value: 'sdb', label: 'Salle de bain', icon: 'washing-machine' },
+  { value: 'terrasse', label: 'Terrasse', icon: 'sun' },
+  { value: 'rangement', label: 'Rangement', icon: 'key-round' }
+];
+const AMENITIES = [
+  { id: 'wifi', label: 'Wifi fibre', icon: 'wifi' },
+  { id: 'lave', label: 'Lave-linge', icon: 'washing-machine' },
+  { id: 'parking', label: 'Parking', icon: 'car' },
+  { id: 'cuisine', label: 'Cuisine équipée', icon: 'utensils' },
+  { id: 'meuble', label: 'Chambre meublée', icon: 'bed-double' },
+  { id: 'terrasse', label: 'Terrasse', icon: 'sun' },
+  { id: 'menage', label: 'Ménage inclus', icon: 'sparkles' },
+  { id: 'entree', label: 'Entrée indépendante', icon: 'key-round' },
+  { id: 'gardien', label: 'Gardien', icon: 'shield-check' },
+  { id: 'bureau', label: 'Coin bureau', icon: 'calendar' }
+];
+const STEPS = [
+  { label: 'Informations', hint: 'Titre, ville, type', title: 'Décrivez le logement', lede: "Le titre est la première chose que voient les colocataires. Restez court et concret." },
+  { label: 'Localisation', hint: 'Repère sur la carte', title: 'Placez le logement sur la carte', lede: "Faites glisser le repère jusqu'à l'immeuble. Vous n'avez pas d'adresse à saisir." },
+  { label: 'Pièces', hint: 'Chambres et communs', title: 'Détaillez les pièces', lede: "Ajoutez chaque pièce du logement, indiquez celle qui est proposée et ce qui est partagé." },
+  { label: 'Prix', hint: 'Loyer et charges', title: 'Fixez le loyer et les charges', lede: "Chaque charge est déclarée séparément : les colocataires savent exactement ce qu'ils paient." },
+  { label: 'Équipements', hint: 'Ce qui est disponible', title: 'Sélectionnez les équipements', lede: "Ne cochez que ce qui est réellement disponible au quotidien." },
+  { label: 'Règles', hint: 'Vie commune', title: 'Précisez les règles de la maison', lede: "Des règles claires évitent les malentendus après l'emménagement." },
+  { label: 'Photos', hint: 'Au moins une', title: 'Ajoutez des photos', lede: "Une photo minimum. Glissez les vignettes pour changer l'ordre ; la première est la couverture." },
+  { label: 'Vérification', hint: 'Relire et publier', title: 'Relisez avant publication', lede: "Vérifiez chaque section. Vous pourrez modifier l'annonce après sa mise en ligne." }
+];
+const HOURS = ['20:00', '21:00', '22:00', '23:00', '00:00', '06:00', '07:00', '08:00', '09:00'];
+const num = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u2009');
+
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    let id = 0;
+    this.state = {
+      step: Math.min(8, Math.max(1, Number(this.props.initialStep) || 1)),
+      mode: String(this.props.frameWidth || '1440') === '375' ? '375' : '1440',
+      title: 'Chambre lumineuse en colocation, Agdal',
+      city: 'Rabat', hood: 'Agdal', ptype: 'appartement',
+      pin: { x: 48, y: 46 }, dragging: false,
+      rooms: [
+        { id: ++id, type: 'chambre', shared: false, offered: true },
+        { id: ++id, type: 'salon', shared: true, offered: false },
+        { id: ++id, type: 'cuisine', shared: true, offered: false }
+      ],
+      nextRoomId: 10,
+      rent: '3200', deposit: '6400',
+      charges: { wifi: 'inclus', elec: 'non', eau: 'inclus' },
+      amenities: ['wifi', 'lave', 'cuisine', 'meuble'],
+      smoking: false, pets: true, guests: true,
+      quietFrom: '22:00', quietTo: '07:00', otherRules: '',
+      expandedRoom: 1,
+      photos: [{ id: 1 }, { id: 2 }, { id: 3 }],
+      nextPhotoId: 4, coverId: 1, dragIdx: null, overIdx: null,
+      submitted: false
+    };
+    this.mapEl = null;
+  }
+
+  set(k, v) { this.setState({ [k]: v }); }
+  go(n) { this.setState({ step: n }); }
+
+  roomLabel(r, i, all) {
+    const t = ROOM_TYPES.find(x => x.value === r.type) || ROOM_TYPES[0];
+    if (r.type !== 'chambre') return t.label;
+    const idx = all.filter(x => x.type === 'chambre').indexOf(r) + 1;
+    return 'Chambre ' + idx;
+  }
+
+  movePhoto(from, to) {
+    const ps = this.state.photos.slice();
+    if (to < 0 || to >= ps.length) return;
+    ps.splice(to, 0, ps.splice(from, 1)[0]);
+    this.setState({ photos: ps });
+  }
+
+  updatePin(e) {
+    if (!this.mapEl) return;
+    const r = this.mapEl.getBoundingClientRect();
+    const x = Math.min(94, Math.max(6, ((e.clientX - r.left) / r.width) * 100));
+    const y = Math.min(94, Math.max(10, ((e.clientY - r.top) / r.height) * 100));
+    this.setState({ pin: { x, y } });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const meta = STEPS[s.step - 1];
+    const isWide = s.mode === '1440';
+    const chargeTabs = [{ value: 'inclus', label: 'Comprise' }, { value: 'non', label: 'Non comprise' }, { value: 'na', label: 'Sans objet' }];
+    const chargeWord = { inclus: 'comprise', non: 'non comprise', na: 'sans objet' };
+
+    const rooms = s.rooms.map((r, i) => {
+      const t = ROOM_TYPES.find(x => x.value === r.type) || ROOM_TYPES[0];
+      return {
+        ...r, icon: t.icon,
+        label: this.roomLabel(r, i, s.rooms),
+        sub: r.offered ? 'Proposée en colocation' : r.shared ? 'Espace commun' : 'Privé',
+        sharedHint: r.shared ? 'Utilisé par tous les colocataires' : 'Réservé à une personne',
+        expanded: s.expandedRoom === r.id,
+        chevron: s.expandedRoom === r.id ? 'chevron-down' : 'chevron-right',
+        toggleExpand: () => this.set('expandedRoom', s.expandedRoom === r.id ? null : r.id),
+        setType: e => { const rs = s.rooms.slice(); rs[i] = { ...rs[i], type: e.target.value }; this.setState({ rooms: rs }); },
+        setOffered: () => this.setState({ rooms: s.rooms.map((x, j) => ({ ...x, offered: j === i })) }),
+        toggleShared: () => { const rs = s.rooms.slice(); rs[i] = { ...rs[i], shared: !rs[i].shared }; this.setState({ rooms: rs }); },
+        remove: () => this.setState({ rooms: s.rooms.filter((_, j) => j !== i) })
+      };
+    });
+
+    const photos = s.photos.map((p, i) => ({
+      ...p,
+      pos: String(i + 1),
+      isCover: p.id === s.coverId,
+      isOver: s.overIdx === i && s.dragIdx !== null && s.dragIdx !== i,
+      coverLabel: p.id === s.coverId ? 'Photo de couverture' : 'Définir en couverture',
+      makeCover: () => this.setState({ coverId: p.id }),
+      remove: () => this.setState({ photos: s.photos.filter((_, j) => j !== i) }),
+      moveLeft: () => this.movePhoto(i, i - 1),
+      moveRight: () => this.movePhoto(i, i + 1),
+      onDragStart: () => this.setState({ dragIdx: i }),
+      onDragOver: e => { e.preventDefault(); if (s.overIdx !== i) this.setState({ overIdx: i }); },
+      onDrop: e => { e.preventDefault(); if (s.dragIdx !== null) this.movePhoto(s.dragIdx, i); this.setState({ dragIdx: null, overIdx: null }); },
+      onDragEnd: () => this.setState({ dragIdx: null, overIdx: null })
+    }));
+
+    const offered = s.rooms.find(r => r.offered);
+    const offeredLabel = offered ? this.roomLabel(offered, s.rooms.indexOf(offered), s.rooms) : 'aucune pièce';
+    const sharedCount = s.rooms.filter(r => r.shared).length;
+    const amenLabels = AMENITIES.filter(a => s.amenities.includes(a.id)).map(a => a.label);
+    const chargeLine = ['wifi', 'elec', 'eau'].map((k, i) => ['Wifi', 'Électricité', 'Eau'][i] + ' ' + chargeWord[s.charges[k]]).join(' · ');
+    const rulesLine = [s.smoking ? 'fumeur accepté' : 'non-fumeur', s.pets ? 'animaux acceptés' : 'pas d\u2019animaux', s.guests ? 'invités autorisés' : 'pas d\u2019invités', 'calme ' + s.quietFrom + '–' + s.quietTo].join(' · ');
+
+    const summary = [
+      { label: 'Titre', value: s.title || 'À compléter', step: 1 },
+      { label: 'Logement', value: (s.ptype.charAt(0).toUpperCase() + s.ptype.slice(1)) + ' · ' + (s.hood || '—') + ', ' + (s.city || '—'), step: 1 },
+      { label: 'Localisation', value: 'Repère placé, cercle de 300 m affiché publiquement', step: 2 },
+      { label: 'Pièces', value: s.rooms.length + ' pièces · ' + offeredLabel + ' proposée · ' + sharedCount + ' partagées', step: 3 },
+      { label: 'Prix', value: num(s.rent) + ' MAD/mois · caution ' + num(s.deposit) + ' MAD · ' + chargeLine, step: 4 },
+      { label: 'Équipements', value: amenLabels.length ? amenLabels.join(', ') : 'Aucun sélectionné', step: 5 },
+      { label: 'Règles', value: (s.otherRules ? s.otherRules + ' · ' : '') + rulesLine, step: 6 },
+      { label: 'Photos', value: s.photos.length + (s.photos.length > 1 ? ' photos' : ' photo'), step: 7 }
+    ].map(x => ({ ...x, go: () => this.go(x.step) }));
+
+    const nextBlocked = s.step === 7 && s.photos.length === 0;
+
+    return {
+      showChrome: !this.props.hideChrome,
+      mode: s.mode, setMode: v => this.set('mode', v),
+      modeTabs: [{ value: '375', label: '375 px' }, { value: '1440', label: '1440 px' }],
+      frameMax: isWide ? '1440px' : '399px',
+      rootPad: this.props.hideChrome ? '0px' : '20px 0 40px',
+      frameH: isWide ? 'auto' : '812px',
+      framePad: isWide ? '0px' : '12px',
+      frameBg: isWide ? 'var(--bg-page)' : 'var(--sable-900)',
+      frameRadius: isWide ? 'var(--radius-xl)' : '46px',
+      screenRadius: isWide ? 'var(--radius-xl)' : '34px',
+      growStyle: { flex: '1 1 0', minWidth: 0 },
+      isWide, isNarrow: !isWide,
+      progressPct: (s.step / 8) * 100 + '%',
+      stepNum: s.step, stepTitle: meta.title, stepLede: meta.lede,
+      stepEyebrow: isWide ? 'Étape ' + s.step + ' sur 8' : 'Étape ' + s.step + ' sur 8 · ' + meta.label,
+      steps: STEPS.map((st, i) => ({
+        num: i + 1, label: st.label, hint: st.hint,
+        current: s.step === i + 1, done: s.step > i + 1,
+        go: () => this.go(i + 1)
+      })),
+      is1: s.step === 1, is2: s.step === 2, is3: s.step === 3, is4: s.step === 4,
+      is5: s.step === 5, is6: s.step === 6, is7: s.step === 7, is8: s.step === 8,
+
+      title: s.title, setTitle: e => this.set('title', e.target.value),
+      cityOpts: Object.keys(HOODS), city: s.city,
+      setCity: e => this.setState({ city: e.target.value, hood: '' }),
+      hoodOpts: HOODS[s.city] || [], hood: s.hood,
+      setHood: e => this.set('hood', e.target.value),
+      hoodDisabled: !s.city,
+      hoodPlaceholder: s.city ? 'Choisir un quartier' : 'Choisissez d\u2019abord une ville',
+      hoodHelper: s.city ? 'Quartiers de ' + s.city : 'Dépend de la ville',
+      ptypes: [
+        { value: 'appartement', label: 'Appartement', icon: 'bed-double' },
+        { value: 'maison', label: 'Maison', icon: 'key-round' },
+        { value: 'studio', label: 'Studio', icon: 'users-round' }
+      ].map(p => ({ ...p, on: s.ptype === p.value, pick: () => this.set('ptype', p.value) })),
+
+      mapRef: el => { this.mapEl = el; },
+      pinX: s.pin.x + '%', pinY: s.pin.y + '%',
+      onPinDown: e => { e.stopPropagation(); this.set('dragging', true); },
+      onMapMove: e => { if (s.dragging) this.updatePin(e); },
+      onMapUp: () => { if (s.dragging) this.set('dragging', false); },
+      onMapClick: e => this.updatePin(e),
+      placeLabel: (s.hood ? s.hood + ', ' : '') + (s.city || 'votre ville'),
+
+      rooms, roomTypeOpts: ROOM_TYPES.map(t => ({ value: t.value, label: t.label })),
+      addOpts: ROOM_TYPES.map(t => ({
+        label: t.label, icon: t.icon,
+        add: () => this.setState({ rooms: s.rooms.concat([{ id: s.nextRoomId, type: t.value, shared: t.value !== 'chambre', offered: false }]), nextRoomId: s.nextRoomId + 1 })
+      })),
+      roomSummary: s.rooms.length + ' pièces déclarées · ' + offeredLabel + ' proposée · ' + sharedCount + ' partagées',
+
+      rent: s.rent, setRent: e => this.set('rent', e.target.value.replace(/\D/g, '')),
+      deposit: s.deposit, setDeposit: e => this.set('deposit', e.target.value.replace(/\D/g, '')),
+      chargeTabs,
+      charges: [
+        { key: 'wifi', label: 'Wifi', icon: 'wifi' },
+        { key: 'elec', label: 'Électricité', icon: 'sun' },
+        { key: 'eau', label: 'Eau', icon: 'washing-machine' }
+      ].map(c => ({ ...c, value: s.charges[c.key], set: v => this.setState({ charges: { ...s.charges, [c.key]: v } }) })),
+      priceLine: num(s.rent) + ' MAD/mois',
+
+      amenities: AMENITIES.map(a => ({
+        ...a, on: s.amenities.includes(a.id),
+        toggle: () => this.set('amenities', s.amenities.includes(a.id) ? s.amenities.filter(x => x !== a.id) : s.amenities.concat([a.id]))
+      })),
+      amenityCount: s.amenities.length + ' équipements sélectionnés',
+
+      smoking: s.smoking, toggleSmoking: () => this.set('smoking', !s.smoking),
+      pets: s.pets, togglePets: () => this.set('pets', !s.pets),
+      guests: s.guests, toggleGuests: () => this.set('guests', !s.guests),
+      hourOpts: HOURS, quietFrom: s.quietFrom, quietTo: s.quietTo,
+      setQuietFrom: e => this.set('quietFrom', e.target.value),
+      setQuietTo: e => this.set('quietTo', e.target.value),
+      otherRules: s.otherRules, setOtherRules: e => this.set('otherRules', e.target.value),
+
+      photos,
+      hasPhotos: s.photos.length > 0, noPhotos: s.photos.length === 0,
+      removeCover: () => this.setState({ photos: s.photos.filter(p => p.id !== s.coverId), coverId: (s.photos.filter(p => p.id !== s.coverId)[0] || {}).id }),
+      addPhoto: () => this.setState({ photos: s.photos.concat([{ id: s.nextPhotoId }]), nextPhotoId: s.nextPhotoId + 1, coverId: s.photos.length ? s.coverId : s.nextPhotoId }),
+      photoHelp: s.photos.length === 0
+        ? 'Ajoutez au moins une photo pour continuer.'
+        : s.photos.length + ' photos · glissez pour réordonner, ou utilisez les flèches sur mobile.',
+
+      summary, submitted: s.submitted,
+      submit: () => this.setState({ submitted: true }),
+      back: () => this.go(Math.max(1, s.step - 1)),
+      next: () => { if (!nextBlocked) this.go(Math.min(8, s.step + 1)); },
+      atFirst: s.step === 1, notLast: s.step < 8, nextBlocked,
+      navHint: s.step === 8 ? 'Dernière étape' : nextBlocked ? 'Une photo minimum' : 'Étape ' + s.step + ' / 8'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

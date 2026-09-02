@@ -1,0 +1,51 @@
+/*
+ * App-level overrides. Everything in styles/tokens/ is a byte-identical copy of
+ * design-system/tokens/, so upstream changes stay a straight copy and merge
+ * conflicts do not need adjudicating. Any deviation belongs here instead.
+ */
+
+@import url('./design-system.css');
+@import 'leaflet/dist/leaflet.css';
+
+:root {
+  /*
+   * Point the family tokens at the self-hosted faces from next/font. The
+   * design system's fonts.css pulls Google Fonts over the network on every
+   * page, which costs a third-party round trip on the first paint and leaks
+   * a request to Google from every visitor. Same faces, same fallbacks.
+   */
+  --font-display: var(--font-ui-loaded), 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-ui: var(--font-ui-loaded), 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: var(--font-mono-loaded), 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+/* The quality floor from the design system, applied globally rather than
+   remembered per component. */
+
+*:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html {
+  /* Wide content scrolls inside its own container; the page body never does. */
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--bg-page);
+  color: var(--text-primary, var(--sable-900));
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}

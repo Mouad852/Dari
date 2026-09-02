@@ -1,0 +1,44 @@
+# --- secrets -----------------------------------------------------------------
+# Firebase service-account keys. Never commit these; purging a leaked key from
+# git history is miserable. See infra/firebase/README.md.
+#
+# The name-based patterns cover what the Firebase console hands out, but they are
+# not the guarantee -- the real key on disk is named service-account.json, which
+# the original *serviceAccount*.json pattern did not match at all. The directory
+# rule below is the backstop: anything landing in infra/firebase is treated as a
+# key until explicitly allowed back in.
+*serviceAccount*.json
+service-account*.json
+firebase-admin*.json
+infra/firebase/*
+!infra/firebase/README.md
+.env
+.env.local
+.env.*.local
+!.env.example
+!apps/web/.env.local.example
+
+# --- java / maven ------------------------------------------------------------
+target/
+# The wrapper is committed on purpose: it pins the Maven version for everyone.
+!.mvn/wrapper/maven-wrapper.properties
+*.class
+*.log
+
+# --- node / next -------------------------------------------------------------
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# --- editors / os ------------------------------------------------------------
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# --- local data --------------------------------------------------------------
+pgdata/
+uploads/

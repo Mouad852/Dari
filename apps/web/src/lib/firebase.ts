@@ -1,0 +1,44 @@
+'use client';
+
+/**
+ * Firebase Authentication, client-side only.
+ *
+ * Signup and login happen here, against Firebase, and never against the Dari
+ * API — which has no such endpoints and should not grow any. The API's entire
+ * involvement is verifying the ID token this module produces.
+ */
+
+import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, signOut as firebaseSignOut, type Auth } from 'firebase/auth';
+
+const config = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+};
+
+let authInstance: Auth | undefined;
+
+export function getFirebaseAuth(): Auth {
+  if (!authInstance) {
+    const app: FirebaseApp = getApps().length ? getApps()[0]! : initializeApp(config);
+    authInstance = getAuth(app);
+  }
+  return authInstance;
+}
+
+/**
+ * Always ask the SDK for the token rather than caching one.
+ *
+ * Firebase ID tokens expire after an hour and the SDK refreshes them
+ * transparently. A token stashed in module state or localStorage goes stale and
+ * produces intermittent 401s that are miserable to reproduce.
+ */
+export async function getIdToken(): Promise<string | null> {
+  const user = getFirebaseAuth().currentUser;
+  return user ? user.getIdToken() : null;
+}
+
+export function signOut(): Promise<void> {
+  return firebaseSignOut(getFirebaseAuth());
+}

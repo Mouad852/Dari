@@ -1,0 +1,15 @@
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg-page);color:var(--text-body);font:var(--type-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,h3,h4{margin:0;color:var(--text-heading);letter-spacing:var(--ls-heading);text-wrap:pretty}
+p{margin:0;text-wrap:pretty}
+a{color:var(--text-link);text-decoration:none;font-weight:var(--weight-semibold);transition:color var(--dur-fast) var(--ease-standard)}
+a:hover{color:var(--text-link-hover);text-decoration:underline;text-underline-offset:2px}
+button{font-family:inherit}
+::selection{background:var(--clay-100);color:var(--sable-900)}
+:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+@keyframes dari-spin{to{transform:rotate(360deg)}}
+@keyframes dari-pop-in{from{opacity:0;transform:translateY(4px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes dari-sheet-in{from{transform:translateY(100%)}to{transform:none}}
+@keyframes dari-toast-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes dari-fade-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}

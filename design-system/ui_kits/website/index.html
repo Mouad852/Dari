@@ -1,0 +1,37 @@
+<!-- @dsCard group="Website" viewport="1280x760" name="dari.ma — homepage" subtitle="Marketing site: hero + search, featured rooms, how it works, cities, results page" -->
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Dari — colocation au Maroc</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+</head><body>
+<div id="root"></div>
+<script type="text/babel" src="SiteChrome.jsx"></script>
+<script type="text/babel" src="HomePage.jsx"></script>
+<script type="text/babel" src="SearchResultsPage.jsx"></script>
+<script type="text/babel">
+const { Dialog, Button, Input, Toast } = window.DariDesignSystem_d1bbe2||{};
+function Site(){
+  const [page,setPage]=React.useState('home');
+  const [contact,setContact]=React.useState(false);
+  const [toast,setToast]=React.useState(null);
+  return <div>
+    <SiteHeader onSearch={()=>setPage('results')}/>
+    {page==='home'
+      ? <HomePage onSearch={()=>setPage('results')} onOpenListing={()=>setContact(true)}/>
+      : <SearchResultsPage onBack={()=>setPage('home')} onOpenListing={()=>setContact(true)}/>}
+    <SiteFooter/>
+    <Dialog open={contact} title="Contacter Nadia" onClose={()=>setContact(false)}
+      footer={<><Button variant="secondary" onClick={()=>setContact(false)}>Annuler</Button>
+        <Button onClick={()=>{setContact(false);setToast('Message envoyé à Nadia');setTimeout(()=>setToast(null),2600)}}>Envoyer</Button></>}>
+      <div style={{display:'grid',gap:'var(--space-4)'}}>
+        <p>Chambre lumineuse — Agdal, Rabat · 3 200 MAD/mois</p>
+        <Input label="Votre message" placeholder="Bonjour, la chambre est-elle disponible en septembre ?"/>
+      </div>
+    </Dialog>
+    {toast&&<div style={{position:'fixed',left:0,right:0,bottom:24,display:'flex',justifyContent:'center',zIndex:60}}><Toast tone="success">{toast}</Toast></div>}
+  </div>;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Site/>);
+</script></body></html>

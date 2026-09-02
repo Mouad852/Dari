@@ -1,0 +1,18 @@
+# Normalise line endings. Developed on Windows, built in Linux containers; a
+# CRLF mvnw or shell script fails in the container with an unhelpful error.
+* text=auto eol=lf
+
+*.bat  text eol=crlf
+*.ps1  text eol=crlf
+
+mvnw        text eol=lf
+*.sh        text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.jar binary
+*.woff binary
+*.woff2 binary

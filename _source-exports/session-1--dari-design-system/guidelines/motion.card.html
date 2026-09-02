@@ -1,0 +1,18 @@
+<!-- @dsCard group="Brand" viewport="700x160" name="Motion" subtitle="140/220/320ms, ease-standard; press = scale .975" -->
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;padding:20px;background:var(--bg-page);font:var(--type-body);color:var(--text-body)}
+.sw{display:flex;gap:10px;flex-wrap:wrap}.sw div{flex:1;min-width:70px}
+.chip{height:56px;border-radius:var(--radius-sm);box-shadow:var(--inset-hairline)}
+.lbl{margin-top:6px;font:var(--type-caption);color:var(--text-heading)}
+.hex{font:var(--weight-regular) var(--text-micro)/1.3 var(--font-mono);color:var(--text-muted)}</style></head>
+<body><div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+<div style="flex:1;min-width:260px;display:grid;gap:8px">
+<div class="hex">--dur-fast 140ms — survols, couleurs</div>
+<div class="hex">--dur-med 220ms — cartes, apparitions, toasts</div>
+<div class="hex">--dur-slow 320ms — transitions d'écran</div>
+<div class="hex">--dur-sheet 420ms — feuille inférieure (ease-out)</div></div>
+<div style="flex:0 0 260px;display:grid;gap:10px">
+<div style="height:28px;border-radius:var(--radius-pill);background:var(--bg-inset);position:relative;overflow:hidden">
+<div style="position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;background:var(--brand);animation:dari-slide 2.2s var(--ease-standard) infinite alternate"></div></div>
+<div class="hex">ease-standard cubic-bezier(.2,.6,.24,1) — aucun rebond, aucun ressort.</div></div></div>
+<style>@keyframes dari-slide{to{left:calc(100% - 24px)}}</style></body></html>

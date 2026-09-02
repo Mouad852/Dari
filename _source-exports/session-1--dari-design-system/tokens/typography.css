@@ -1,0 +1,33 @@
+:root{
+  --font-display:"Plus Jakarta Sans","Plus Jakarta Sans Fallback",system-ui,sans-serif;
+  --font-ui:"Plus Jakarta Sans","Plus Jakarta Sans Fallback",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+
+  --weight-regular:400;--weight-medium:500;--weight-semibold:600;--weight-bold:700;--weight-extra:800;
+
+  /* Mobile-first type scale (px values are literal — do not snap) */
+  --text-display-lg:40px;--text-display:32px;--text-h1:28px;--text-h2:22px;--text-h3:18px;
+  --text-body-lg:17px;--text-body-md:15px;--text-body-sm:13px;--text-caption:12px;--text-micro:11px;
+
+  --lh-tight:1.12; /* @kind other */
+  --lh-heading:1.24; /* @kind other */
+  --lh-snug:1.4; /* @kind other */
+  --lh-body:1.55; /* @kind other */
+  --lh-loose:1.7; /* @kind other */
+  --ls-display:-.02em; /* @kind other */
+  --ls-heading:-.01em; /* @kind other */
+  --ls-body:0em; /* @kind other */
+  --ls-caps:.08em; /* @kind other */
+
+  /* Composite roles */
+  --type-display:var(--weight-extra) var(--text-display)/var(--lh-tight) var(--font-display);
+  --type-h1:var(--weight-bold) var(--text-h1)/var(--lh-heading) var(--font-display);
+  --type-h2:var(--weight-bold) var(--text-h2)/var(--lh-heading) var(--font-display);
+  --type-h3:var(--weight-semibold) var(--text-h3)/var(--lh-snug) var(--font-ui);
+  --type-body:var(--weight-regular) var(--text-body-md)/var(--lh-body) var(--font-ui);
+  --type-body-lg:var(--weight-regular) var(--text-body-lg)/var(--lh-body) var(--font-ui);
+  --type-label:var(--weight-semibold) var(--text-body-sm)/var(--lh-snug) var(--font-ui);
+  --type-caption:var(--weight-medium) var(--text-caption)/var(--lh-snug) var(--font-ui);
+  --type-price:var(--weight-bold) var(--text-h3)/var(--lh-snug) var(--font-ui);
+  --type-eyebrow:var(--weight-semibold) var(--text-micro)/1.2 var(--font-ui);
+}

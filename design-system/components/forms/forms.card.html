@@ -1,0 +1,26 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Forms" subtitle="Input, Select, Checkbox, Radio, Switch" -->
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css"><style>body{margin:0;background:var(--bg-page);font:var(--type-body);color:var(--text-body)}</style><script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script></head>
+<body><div id="root"></div>
+<script type="text/babel">
+const {Input,Select,Checkbox,Radio,Switch}=window.DariDesignSystem_d1bbe2;
+function Demo(){const [v,setV]=React.useState('3 500');const [c,setC]=React.useState(true);const [s,setS]=React.useState(true);const [r,setR]=React.useState('coloc');
+return <div style={{padding:20,display:'grid',gridTemplateColumns:'1fr 1fr',gap:'18px 24px'}}>
+  <Input label="Budget mensuel" iconLeft="wallet" suffix="MAD" value={v} onChange={e=>setV(e.target.value)} helper="Charges comprises"/>
+  <Select label="Ville" options={['Rabat','Casablanca','Marrakech','Tanger']} value="Rabat" onChange={()=>{}}/>
+  <Input label="Email" value="salma@" error="Email incomplet"/>
+  <Input label="Quartier" placeholder="Agdal, Hassan…" iconLeft="map-pin" disabled/>
+  <div style={{display:'grid',gap:6}}>
+    <Checkbox label="Charges incluses" description="Eau, électricité, internet" checked={c} onChange={()=>setC(!c)}/>
+    <Checkbox label="Meublé"/>
+  </div>
+  <div style={{display:'grid',gap:6}}>
+    <Radio name="t" label="Chambre en colocation" checked={r==='coloc'} onChange={()=>setR('coloc')}/>
+    <Radio name="t" label="Logement entier" checked={r==='entier'} onChange={()=>setR('entier')}/>
+  </div>
+  <Switch label="Alertes nouvelles annonces" description="Une notification par jour max." checked={s} onChange={()=>setS(!s)} style={{gridColumn:'1 / -1'}}/>
+</div>;}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script></body></html>

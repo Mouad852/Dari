@@ -1,0 +1,18 @@
+<!-- @dsCard group="Spacing" viewport="700x170" name="Layout in use" subtitle="20px mobile gutter, 16px card padding, 12px stack gap" -->
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;padding:20px;background:var(--bg-page);font:var(--type-body);color:var(--text-body)}
+.sw{display:flex;gap:10px;flex-wrap:wrap}.sw div{flex:1;min-width:70px}
+.chip{height:56px;border-radius:var(--radius-sm);box-shadow:var(--inset-hairline)}
+.lbl{margin-top:6px;font:var(--type-caption);color:var(--text-heading)}
+.hex{font:var(--weight-regular) var(--text-micro)/1.3 var(--font-mono);color:var(--text-muted)}</style></head>
+<body><div style="display:flex;gap:16px">
+<div style="flex:0 0 240px;background:var(--bg-page-alt);border-radius:var(--radius-lg);padding:0 var(--gutter-mobile);position:relative">
+<div style="position:absolute;top:6px;left:var(--gutter-mobile);font:var(--type-micro,11px);color:var(--text-subtle)" class="hex">gutter-mobile 20px</div>
+<div style="margin-top:26px;display:grid;gap:12px">
+<div style="background:var(--surface-card);border:1px solid var(--border-hairline);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);padding:var(--card-pad);font:var(--type-caption);color:var(--text-muted)">card-pad 16px</div>
+<div style="background:var(--surface-card);border:1px solid var(--border-hairline);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);padding:var(--card-pad);font:var(--type-caption);color:var(--text-muted)">stack gap 12px</div></div></div>
+<div style="flex:1;display:grid;gap:8px;align-content:start">
+<div class="hex">--container-max 1200 · --container-prose 660</div>
+<div class="hex">--section-gap-mobile 32 · --section-gap-desktop 72</div>
+<div class="hex">--control-h-md 44 = --tap-min 44</div>
+<div class="hex">--tabbar-h 64 · --nav-h-mobile 56 · --nav-h-desktop 72</div></div></div></body></html>

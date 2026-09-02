@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: dari-api
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/dari}
+    username: ${POSTGRES_USER:dari}
+    password: ${POSTGRES_PASSWORD:dari_local}
+    hikari:
+      maximum-pool-size: 10
+      pool-name: dari-pool
+
+  jpa:
+    open-in-view: false           # a lazy load inside a view render is a bug, not a convenience
+    hibernate:
+      ddl-auto: validate          # Flyway owns the schema. This must never become "update".
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # Migrations stay backward-compatible for one release so a rollback does not
+    # strand the schema: expand, backfill, switch reads, contract later.
+
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: ${API_PORT:8080}
+  error:
+    include-stacktrace: never     # errors leave through the envelope or not at all
+  compression:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
+
+dari:
+  web-origins: ${DARI_WEB_ORIGIN:http://localhost:3000}
+  upload-dir: ${DARI_UPLOAD_DIR:./uploads}
+  firebase:
+    credentials-path: ${FIREBASE_CREDENTIALS_PATH:./infra/firebase/service-account.json}
+
+  # Location privacy. Read by the fuzzer in phase 02; centralized here so the
+  # value is auditable rather than buried as a literal in a service.
+  location:
+    fuzz-radius-metres: 200
+
+  # Listing expiry (phase 10). Sixty days keeps the marketplace credible;
+  # stale listings are the exact failure Dari exists to replace.
+  listing:
+    expiry-days: 60
+    expiry-warning-days: 53
+
+logging:
+  level:
+    ma.dari.api: INFO
+    org.hibernate.SQL: WARN
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%X{correlationId}] %logger{36} - %msg%n"
