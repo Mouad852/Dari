@@ -852,6 +852,78 @@ class ListingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("owner reads their listing photos back in display order")
+    void ownerCanReadListingPhotos() throws Exception {
+        String uid = "uid-photo-read-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        users.save(new User(uid, email, true, "Photo Reader"));
+
+        String listingId = given().header("Authorization", "Bearer fake-token")
+                .contentType("application/json")
+                .body("{\"title\":\"Studio lecture\",\"city\":\"Rabat\",\"neighborhood\":\"Agdal\",\"latitude\":33.9716,\"longitude\":-6.8498,\"priceRent\":2500.00}")
+                .when().post("/listings")
+                .then().statusCode(201)
+                .extract().path("id");
+
+        // A draft has no public detail response to read photos out of, which is
+        // the whole reason this endpoint exists.
+        given().header("Authorization", "Bearer fake-token")
+                .when().get("/listings/{id}/photos", listingId)
+                .then().statusCode(200)
+                .body("size()", equalTo(0));
+
+        given().header("Authorization", "Bearer fake-token")
+                .multiPart("file", "first.jpg", generateJpeg(320, 240), "image/jpeg")
+                .when().post("/listings/{id}/photos", listingId)
+                .then().statusCode(201);
+
+        given().header("Authorization", "Bearer fake-token")
+                .multiPart("file", "second.jpg", generateJpeg(320, 240), "image/jpeg")
+                .when().post("/listings/{id}/photos", listingId)
+                .then().statusCode(201);
+
+        given().header("Authorization", "Bearer fake-token")
+                .when().get("/listings/{id}/photos", listingId)
+                .then().statusCode(200)
+                .body("size()", equalTo(2))
+                .body("[0].sortOrder", equalTo(0))
+                .body("[0].isCover", equalTo(true))
+                .body("[1].sortOrder", equalTo(1))
+                .body("[1].isCover", equalTo(false))
+                .body("[0].url", org.hamcrest.Matchers.startsWith("/uploads/listings/" + listingId));
+    }
+
+    @Test
+    @DisplayName("an oversized upload returns the French envelope, not a bare 500")
+    void oversizedPhotoUploadIsValidationError() throws Exception {
+        String uid = "uid-photo-big-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        users.save(new User(uid, email, true, "Photo Big"));
+
+        String listingId = given().header("Authorization", "Bearer fake-token")
+                .contentType("application/json")
+                .body("{\"title\":\"Studio lourd\",\"city\":\"Rabat\",\"neighborhood\":\"Agdal\",\"latitude\":33.9716,\"longitude\":-6.8498,\"priceRent\":2500.00}")
+                .when().post("/listings")
+                .then().statusCode(201)
+                .extract().path("id");
+
+        // Past spring.servlet.multipart.max-file-size, so the container rejects
+        // this before any controller runs. The content is deliberately not a real
+        // JPEG: the point is that the size guard fires first, and that the owner
+        // still gets the documented message instead of INTERNAL_ERROR.
+        byte[] tooBig = new byte[7 * 1024 * 1024];
+
+        given().header("Authorization", "Bearer fake-token")
+                .multiPart("file", "huge.jpg", tooBig, "image/jpeg")
+                .when().post("/listings/{id}/photos", listingId)
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"))
+                .body("message", equalTo("La photo doit faire moins de 5 Mo"));
+    }
+
+    @Test
     @DisplayName("photo PATCH sort order DTO rejects negative values")
     void photoPatchSortOrderDtoRejectsNegativeValues() {
         assertThat(validator.validate(new UpdateListingPhotoRequest(-1, null)))

@@ -108,16 +108,24 @@ export interface PublicListingDetail extends PublicListing {
   availableFrom: string | null;
   minStayMonths: number | null;
   amenityCodes: string[];
-  photos: Array<{
-    id: string;
-    url: string;
-    mimeType: string;
-    width: number;
-    height: number;
-    sortOrder: number;
-    isCover: boolean;
-    createdAt: string;
-  }>;
+  photos: ListingPhoto[];
+}
+
+/**
+ * A stored listing photo. Mirrors ListingPhotoResponse on the server.
+ *
+ * `url` is root-relative (/uploads/...) and served by the API, not the web app —
+ * prefix it with `apiOrigin` from lib/api before putting it in a src.
+ */
+export interface ListingPhoto {
+  id: string;
+  url: string;
+  mimeType: string;
+  width: number;
+  height: number;
+  sortOrder: number;
+  isCover: boolean;
+  createdAt: string;
 }
 
 /** Fuzzed map pin response returned by /listings/map. */

@@ -29,6 +29,18 @@ spring:
   jackson:
     default-property-inclusion: non_null
 
+  servlet:
+    multipart:
+      # Deliberately ABOVE LocalImageStore's own 5 MB rule, not equal to it.
+      # Spring's defaults are 1 MB per file and 10 MB per request, which silently
+      # contradicted that rule: any ordinary phone photo was rejected by the
+      # container before the domain check could run, and the failure surfaced as
+      # a bare 500 rather than the French envelope. Leaving headroom here keeps
+      # "La photo doit faire moins de 5 Mo" the message a user actually sees;
+      # this limit is only the outer backstop for absurd payloads.
+      max-file-size: 6MB
+      max-request-size: 8MB
+
 server:
   port: ${API_PORT:8080}
   error:

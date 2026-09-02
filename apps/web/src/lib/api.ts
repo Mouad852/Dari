@@ -37,22 +37,42 @@ export class ApiError extends Error {
 }
 
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
+  /**
+   * Serialized as JSON, unless it is a FormData — see apiFetch. FormData is how
+   * photo uploads reach POST /listings/{id}/photos.
+   */
   body?: unknown;
   /** Bearer token. Omitted on public reads so responses stay cacheable. */
   token?: string;
 }
 
+/**
+ * Origin serving the API's static files.
+ *
+ * Photo URLs come back from the API as root-relative paths (/uploads/...), and
+ * the API is on a different origin than the web app, so a bare src would resolve
+ * against the Next server and 404. Derived from the same env var as BASE_URL so
+ * the two can never point at different backends.
+ */
+export const apiOrigin = BASE_URL.replace(/\/api\/v1\/?$/, '');
+
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, token, headers, ...rest } = options;
+
+  // A FormData body must be handed to fetch untouched and WITHOUT a Content-Type
+  // header: the browser has to set it itself so it can include the multipart
+  // boundary. Setting it here, or stringifying the body, breaks the upload in a
+  // way the server reports only as a generic parse failure.
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 
   const response = await fetch(`${BASE_URL}${path}`, {
     ...rest,
     headers: {
-      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...(body !== undefined && !isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body),
   });
 
   if (response.status === 204) return undefined as T;

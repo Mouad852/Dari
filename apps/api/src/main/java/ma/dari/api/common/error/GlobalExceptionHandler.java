@@ -12,6 +12,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -68,6 +69,22 @@ public class GlobalExceptionHandler {
         fields.put(e.getName(), "Valeur invalide");
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse(ErrorCode.VALIDATION_FAILED.name(), "Données invalides", fields));
+    }
+
+    /**
+     * An upload rejected by the servlet container before it ever reached a
+     * controller.
+     *
+     * <p>Without this the request falls through to the catch-all below and the
+     * owner gets an opaque 500 for the entirely ordinary act of picking a large
+     * photo. The message deliberately matches {@code LocalImageStore}'s own size
+     * check, because from the owner's side it is the same problem — only the
+     * layer that caught it differs.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ErrorResponse> handleUploadTooLarge(MaxUploadSizeExceededException e) {
+        return ResponseEntity.badRequest()
+                .body(ErrorResponse.of(ErrorCode.VALIDATION_FAILED, "La photo doit faire moins de 5 Mo"));
     }
 
     /**

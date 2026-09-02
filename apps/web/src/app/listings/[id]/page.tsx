@@ -4,13 +4,10 @@ import { ArrowLeft, Heart, MapPin, MessageCircle, Share2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
-import { apiFetch, ApiError } from '@/lib/api';
+import { apiFetch, ApiError, apiOrigin } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { AMENITY_LABELS, PROPERTY_TYPE_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
 import type { PublicListingDetail } from '@/types/api';
-
-const apiOrigin = (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api/v1')
-  .replace(/\/api\/v1\/?$/, '');
 
 function chargeLabel(value: PublicListingDetail['wifiIncluded']): string {
   if (value === 'INCLUDED') return 'Compris';

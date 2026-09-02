@@ -187,6 +187,14 @@ public class ListingController {
 
     // --- photos (phase 05) ---------------------------------------------------
 
+    /** Owner-scoped read, in display order. Public callers get photos embedded in GET /listings/{id}. */
+    @GetMapping("/{id}/photos")
+    public java.util.List<ListingPhotoResponse> photos(@CurrentUser User owner, @PathVariable UUID id) {
+        return listingService.listPhotos(owner, id).stream()
+                .map(ListingPhotoResponse::from)
+                .toList();
+    }
+
     /** Uploads are re-encoded, which strips EXIF. A listing photo carries GPS. */
     @PostMapping("/{id}/photos")
     public ResponseEntity<ListingPhotoResponse> addPhoto(@CurrentUser User owner,

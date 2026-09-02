@@ -157,6 +157,22 @@ public class ListingService {
         listings.save(listing);
     }
 
+    /**
+     * The owner's own view of a listing's photos, in display order.
+     *
+     * <p>Separate from the public detail response on purpose: the wizard needs to
+     * render what has already been uploaded to a DRAFT, and a draft is by
+     * definition not publicly visible, so there was previously no way to read
+     * photos back at all — only POST, PATCH and DELETE existed.
+     */
+    @Transactional(readOnly = true)
+    public List<ListingPhoto> listPhotos(User owner, UUID listingId) {
+        listings.findByIdAndOwnerIdAndDeletedAtIsNull(listingId, owner.getId())
+                .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
+
+        return listingPhotos.findByListingIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAsc(listingId);
+    }
+
     @Transactional
     public ListingPhoto addPhoto(User owner, UUID listingId, MultipartFile file) {
         Listing listing = listings.findByIdAndOwnerIdAndDeletedAtIsNull(listingId, owner.getId())

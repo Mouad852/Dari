@@ -127,3 +127,71 @@ material is not in this repo or in any session transcript, so its status cannot 
 
 Next in the plan: **T0.2 photo upload end to end** — the product blocker. `submit` requires at least
 one active photo and the frontend has no upload at all, so no listing can currently be published.
+
+**T0.2 photo upload end to end + T0.3 wizard fabrications — done (2026-09-02).**
+
+Folded T0.3 into this step because both live in `apps/web/src/app/publish/page.tsx` and doing them
+separately would have meant rewriting the same file twice.
+
+The blocker: `ListingSearchService.submit` requires at least one active photo, and there was **no
+file input anywhere in the web app** — the wizard's "Sélectionner des fichiers" button had no
+`onClick` at all. Every owner who completed the wizard hit `400 "Au moins une photo est requise"`,
+so no listing could ever be published through the product.
+
+Backend:
+
+- `application.yml` now sets `spring.servlet.multipart.max-file-size: 6MB` / `max-request-size: 8MB`.
+  Spring's defaults are **1 MB per file and 10 MB per request**, which silently contradicted
+  `LocalImageStore`'s own 5 MB rule: an ordinary phone photo was rejected by the container before the
+  domain check ran. The limit is set deliberately *above* 5 MB, not equal to it, so
+  `LocalImageStore`'s specific message stays the one an owner sees and the container guard is only an
+  outer backstop.
+- `GlobalExceptionHandler` gained a `MaxUploadSizeExceededException` handler. Without it that
+  rejection fell through to the catch-all and surfaced as a bare `500 INTERNAL_ERROR` for the
+  entirely ordinary act of picking a large photo; it now returns the French `VALIDATION_FAILED`
+  envelope with the same message as the domain check.
+- New `GET /api/v1/listings/{id}/photos` (owner-scoped, display order) plus
+  `ListingService#listPhotos`. Only `POST`/`PATCH`/`DELETE` existed, so nothing could read photos
+  back for a DRAFT — and a draft has no public detail response to read them out of.
+
+Frontend:
+
+- `lib/api.ts`: `apiFetch` now passes a `FormData` body through untouched and omits `Content-Type`
+  so the browser can set the multipart boundary. One branch in the existing client rather than a
+  second upload client.
+- `apiOrigin` promoted from a local constant in `listings/[id]/page.tsx` into `lib/api.ts`, and the
+  inline `photos` shape in `PublicListingDetail` extracted into a shared `ListingPhoto` type. Both
+  were about to be duplicated a third time.
+- The Photos step is real: multi-file input, thumbnail grid served from `apiOrigin`, cover badge and
+  cover selection, delete, and reorder. Uploads run sequentially, not in parallel, so `sort_order`
+  and the first-photo-is-cover rule stay deterministic. A resumed draft now loads its existing
+  photos.
+- **Reordering is move buttons, not drag-and-drop.** Disclosed rather than quietly counted as done:
+  hand-rolled drag works with neither a keyboard nor touch, and the ordering outcome is the same.
+
+T0.3 in the same pass:
+
+- The wizard initialised its state with a **complete pre-written listing** — title "Chambre
+  lumineuse", rent "3 200", and a full French description. An owner who clicked through without
+  editing published someone else's words as their own. Those defaults are now empty; `city` and the
+  two type selects keep a default only because they are closed selects that must hold a valid value.
+- The header badge was fixed text making the same claim about draft safety before anything had been
+  sent as after. It now reads "Brouillon enregistré" / "Brouillon non enregistré" off real
+  `draftId` state.
+
+Verified: backend suite **64 tests, 0 failures** (was 62; +2 covering the new read endpoint and an
+oversized upload returning the French envelope rather than a 500). Frontend `npm run typecheck` and
+`npm run build` clean. `npm run lint` is not a usable gate in this repo — no ESLint config exists and
+`next lint` drops into an interactive setup prompt.
+
+**Not verified: the browser click-through.** No browser automation is connected in this session, and
+a real upload needs a genuine Firebase ID token that cannot be fabricated outside the test harness.
+The upload path is proven at the API level by `ListingApiTest`, not through the actual file picker.
+This is the step where that gap matters most so far — it is the first one whose whole point is a
+browser-only interaction.
+
+**Known gap this step widens, closed next by T0.4:** `GET /listings/{id}/photos` is owner-scoped via
+`@CurrentUser`, but `SecurityConfig` permits `GET /api/v1/listings/**` wholesale, so like
+`/listings/mine` and `/listings/draft` it is matched by the public rule and defended by only one
+layer instead of the project's stated two. Not exploitable — the argument resolver throws its own
+401 — but T0.4 is specifically this fix.

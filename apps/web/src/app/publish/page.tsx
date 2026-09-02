@@ -1,12 +1,12 @@
 'use client';
 
-import { Check, ChevronLeft, ChevronRight, MapPin, Plus, ShieldCheck, UploadCloud } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, MapPin, Plus, ShieldCheck, Star, Trash2, UploadCloud } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { apiFetch, ApiError } from '@/lib/api';
+import { apiFetch, ApiError, apiOrigin } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { AMENITY_LABELS, PROPERTY_TYPE_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
-import type { ListingStatus, PropertyType, RoomType } from '@/types/api';
+import type { ListingPhoto, ListingStatus, PropertyType, RoomType } from '@/types/api';
 
 const STEPS = [
   'Annonce',
@@ -30,13 +30,33 @@ type DraftListing = {
   status: ListingStatus;
 };
 
+const photoActionStyle = (disabled: boolean): React.CSSProperties => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 30,
+  height: 30,
+  border: '1px solid var(--border-hairline)',
+  borderRadius: 'var(--radius-pill)',
+  background: 'var(--surface-card)',
+  color: 'var(--text-muted)',
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  opacity: disabled ? 0.45 : 1,
+  padding: 0,
+});
+
 export default function PublishWizardPage() {
   const [stepIndex, setStepIndex] = useState(0);
+  // These start empty on purpose. They previously shipped a fully written
+  // sample listing ("Chambre lumineuse", 3 200 MAD, a complete description),
+  // so an owner who clicked through without editing published someone else's
+  // words as their own. City and property/room type keep a default only
+  // because they are closed selects that must hold a valid value.
   const [city, setCity] = useState('Rabat');
-  const [district, setDistrict] = useState('Agdal');
-  const [title, setTitle] = useState('Chambre lumineuse');
-  const [monthlyRent, setMonthlyRent] = useState('3 200');
-  const [description, setDescription] = useState('Chambre calme, bien éclairée, proche des transports et du centre-ville.');
+  const [district, setDistrict] = useState('');
+  const [title, setTitle] = useState('');
+  const [monthlyRent, setMonthlyRent] = useState('');
+  const [description, setDescription] = useState('');
   const [amenityOptions, setAmenityOptions] = useState<string[]>([]);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [propertyType, setPropertyType] = useState<PropertyType>('STUDIO');
@@ -47,6 +67,10 @@ export default function PublishWizardPage() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<ListingPhoto[]>([]);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let isCurrent = true;
@@ -67,6 +91,17 @@ export default function PublishWizardPage() {
         setPropertyType(draft.propertyType ?? 'STUDIO');
         setRoomType(draft.roomType ?? 'PRIVATE');
         setSelectedAmenities(draft.amenityCodes);
+
+        // A resumed draft may already have photos. Nothing could read them back
+        // before GET /listings/{id}/photos existed, so the step always looked
+        // empty even when the server held images.
+        try {
+          const existing = await apiFetch<ListingPhoto[]>(`/listings/${draft.id}/photos`, { token });
+          if (isCurrent) setPhotos(existing);
+        } catch {
+          // Photos are additive to the step; failing to list them should not
+          // block resuming the rest of the draft.
+        }
       } catch (cause) {
         if (cause instanceof ApiError && cause.status !== 404 && isCurrent) {
           setError(cause.message);
@@ -126,6 +161,115 @@ export default function PublishWizardPage() {
     return draft;
   };
 
+  /**
+   * Photos attach to a listing row, so one has to exist before the first upload.
+   * Reaching this step normally creates the draft already (each Next persists),
+   * but a direct landing or an earlier failure can leave draftId null.
+   */
+  const ensureDraft = async (token: string): Promise<string> => {
+    if (draftId) return draftId;
+    const draft = await persistDraft(token);
+    return draft.id;
+  };
+
+  const refreshPhotos = useCallback(async (token: string, listingId: string) => {
+    const current = await apiFetch<ListingPhoto[]>(`/listings/${listingId}/photos`, { token });
+    setPhotos(current);
+  }, []);
+
+  const uploadFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const token = await getIdToken();
+      if (!token) {
+        setPhotoError('Connectez-vous pour ajouter des photos.');
+        return;
+      }
+      const listingId = await ensureDraft(token);
+
+      // Uploaded one at a time, not in parallel: the endpoint takes a single
+      // file, and sequential upload keeps sortOrder and the first-photo-is-cover
+      // rule deterministic instead of dependent on which response lands first.
+      for (const file of Array.from(files)) {
+        const form = new FormData();
+        form.append('file', file);
+        await apiFetch<ListingPhoto>(`/listings/${listingId}/photos`, {
+          method: 'POST',
+          token,
+          body: form,
+        });
+      }
+      await refreshPhotos(token, listingId);
+    } catch (cause) {
+      setPhotoError(cause instanceof ApiError ? cause.message : 'Envoi de la photo impossible.');
+    } finally {
+      setPhotoBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removePhoto = async (photoId: string) => {
+    if (!draftId) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const token = await getIdToken();
+      if (!token) return;
+      await apiFetch(`/listings/${draftId}/photos/${photoId}`, { method: 'DELETE', token });
+      await refreshPhotos(token, draftId);
+    } catch (cause) {
+      setPhotoError(cause instanceof ApiError ? cause.message : 'Suppression impossible.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const makeCover = async (photoId: string) => {
+    if (!draftId) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const token = await getIdToken();
+      if (!token) return;
+      await apiFetch(`/listings/${draftId}/photos/${photoId}?isCover=true`, { method: 'PATCH', token });
+      await refreshPhotos(token, draftId);
+    } catch (cause) {
+      setPhotoError(cause instanceof ApiError ? cause.message : 'Impossible de définir la couverture.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  /**
+   * Swaps a photo with its neighbour by writing both sort orders.
+   *
+   * Buttons rather than drag-and-drop: reordering has to work with a keyboard
+   * and on touch, and hand-rolled drag gives neither. The ordering result is
+   * identical either way.
+   */
+  const movePhoto = async (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (!draftId || target < 0 || target >= photos.length) return;
+    const a = photos[index];
+    const b = photos[target];
+    if (!a || !b) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const token = await getIdToken();
+      if (!token) return;
+      await apiFetch(`/listings/${draftId}/photos/${a.id}?sortOrder=${b.sortOrder}`, { method: 'PATCH', token });
+      await apiFetch(`/listings/${draftId}/photos/${b.id}?sortOrder=${a.sortOrder}`, { method: 'PATCH', token });
+      await refreshPhotos(token, draftId);
+    } catch (cause) {
+      setPhotoError(cause instanceof ApiError ? cause.message : 'Réorganisation impossible.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
   const saveAndContinue = async () => {
     setSubmitting(true);
     setError(null);
@@ -182,6 +326,11 @@ export default function PublishWizardPage() {
             <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Nouvelle annonce</h1>
           </div>
 
+          {/*
+            Reflects whether a draft row actually exists on the server. This was
+            previously fixed text, so it made the same claim about draft safety
+            before anything had been sent as it did afterwards.
+          */}
           <span
             style={{
               display: 'inline-flex',
@@ -189,13 +338,13 @@ export default function PublishWizardPage() {
               justifyContent: 'center',
               minHeight: 32,
               borderRadius: 'var(--radius-pill)',
-              background: 'var(--brand-subtle)',
-              color: 'var(--brand)',
+              background: draftId ? 'var(--brand-subtle)' : 'var(--sable-100)',
+              color: draftId ? 'var(--brand)' : 'var(--text-muted)',
               padding: '0.45rem 0.8rem',
               font: 'var(--weight-medium) var(--type-label) var(--font-ui)',
             }}
           >
-            Enregistrement à la publication
+            {draftId ? 'Brouillon enregistré' : 'Brouillon non enregistré'}
           </span>
         </header>
 
@@ -456,11 +605,23 @@ export default function PublishWizardPage() {
                 <div>
                   <div style={{ font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Ajouter des photos</div>
                   <div style={{ marginTop: 6, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
-                    La première photo devient la couverture. Formats JPG ou PNG, sans métadonnées GPS.
+                    La première photo devient la couverture. Formats JPG, PNG ou WebP, 5 Mo maximum.
+                    Les métadonnées GPS sont retirées à l’enregistrement.
                   </div>
                 </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  onChange={(event) => void uploadFiles(event.target.files)}
+                  style={{ display: 'none' }}
+                />
                 <button
                   type="button"
+                  disabled={photoBusy}
+                  onClick={() => fileInputRef.current?.click()}
                   style={{
                     border: 'none',
                     background: 'var(--brand)',
@@ -468,13 +629,121 @@ export default function PublishWizardPage() {
                     borderRadius: 'var(--radius-pill)',
                     padding: '0.9rem 1.2rem',
                     font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
-                    cursor: 'pointer',
+                    cursor: photoBusy ? 'wait' : 'pointer',
+                    opacity: photoBusy ? 0.7 : 1,
                     boxShadow: 'var(--shadow-brand)',
                   }}
                 >
-                  Sélectionner des fichiers
+                  {photoBusy ? 'Envoi en cours…' : 'Sélectionner des fichiers'}
                 </button>
               </div>
+
+              {photoError && (
+                <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>
+                  {photoError}
+                </p>
+              )}
+
+              {photos.length === 0 ? (
+                <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
+                  Au moins une photo est requise pour publier votre annonce.
+                </p>
+              ) : (
+                <ul
+                  style={{
+                    listStyle: 'none',
+                    margin: 0,
+                    padding: 0,
+                    display: 'grid',
+                    gap: 'var(--space-3)',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                  }}
+                >
+                  {photos.map((photo, index) => (
+                    <li
+                      key={photo.id}
+                      style={{
+                        border: '1px solid var(--border-hairline)',
+                        borderRadius: 'var(--radius-card)',
+                        overflow: 'hidden',
+                        background: 'var(--surface-card)',
+                      }}
+                    >
+                      <div style={{ position: 'relative', aspectRatio: '4 / 3', background: 'var(--sable-200)' }}>
+                        <img
+                          src={`${apiOrigin}${photo.url}`}
+                          alt={`Photo ${index + 1} de l’annonce`}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                        {photo.isCover && (
+                          <span
+                            style={{
+                              position: 'absolute',
+                              top: 8,
+                              left: 8,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              borderRadius: 'var(--radius-pill)',
+                              background: 'var(--brand)',
+                              color: '#fff',
+                              padding: '0.25rem 0.6rem',
+                              font: 'var(--weight-medium) var(--type-label) var(--font-ui)',
+                            }}
+                          >
+                            <Star size={12} fill="currentColor" /> Couverture
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, padding: '0.5rem' }}>
+                        <div style={{ display: 'flex', gap: 2 }}>
+                          <button
+                            type="button"
+                            aria-label="Déplacer la photo vers la gauche"
+                            disabled={photoBusy || index === 0}
+                            onClick={() => void movePhoto(index, -1)}
+                            style={photoActionStyle(photoBusy || index === 0)}
+                          >
+                            <ArrowLeft size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Déplacer la photo vers la droite"
+                            disabled={photoBusy || index === photos.length - 1}
+                            onClick={() => void movePhoto(index, 1)}
+                            style={photoActionStyle(photoBusy || index === photos.length - 1)}
+                          >
+                            <ArrowRight size={15} />
+                          </button>
+                        </div>
+                        <div style={{ display: 'flex', gap: 2 }}>
+                          {!photo.isCover && (
+                            <button
+                              type="button"
+                              aria-label="Définir comme photo de couverture"
+                              disabled={photoBusy}
+                              onClick={() => void makeCover(photo.id)}
+                              style={photoActionStyle(photoBusy)}
+                            >
+                              <Star size={15} />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            aria-label="Supprimer la photo"
+                            disabled={photoBusy}
+                            onClick={() => void removePhoto(photo.id)}
+                            style={{ ...photoActionStyle(photoBusy), color: 'var(--danger)' }}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 

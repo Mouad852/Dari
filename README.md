@@ -63,13 +63,15 @@ The important remaining work is still phase-oriented and should be driven from t
 - the admin report queue can't resolve a `USER` target's name (no single-user lookup endpoint exists) and only supports dismissing a report, not warning/suspending/rejecting from the queue itself
 - the listing detail page (`/listings/[id]`) now uses a dedicated rich public DTO for the real description, listing attributes, charge inclusions, availability, amenities, and stored photos; fabricated roommates, rules, owner ratings, verification badges, and photo counters were removed. House rules remain intentionally absent until their real read contract is exposed
 - `POST /listings/{id}/submit` requires a non-blank description and at least one active photo before moving a `DRAFT` or `REJECTED` listing to `PENDING_REVIEW`
+- the publish wizard uploads real photos: multi-file select, cover selection, delete, and reorder (move buttons rather than drag-and-drop, so reordering works with a keyboard and on touch), backed by `POST/PATCH/DELETE /listings/{id}/photos` and a new owner-scoped `GET /listings/{id}/photos`. Until this landed the Photos step was a button with no handler, so no listing could satisfy the submit precondition and publishing was impossible end to end
+- multipart limits are configured (6 MB per file) above `LocalImageStore`'s own 5 MB rule; Spring's 1 MB default previously rejected any ordinary phone photo as a bare 500 rather than the French error envelope
 - Listing create and patch validate availability fields: minimum stay is 1–36 months and availability cannot be in the past
 - Listing create and patch validate that current roommates do not exceed the maximum, including when a partial patch is merged with existing values
 - Listing create and patch validate roommate count bounds: current count 0–20 and maximum 1–20
 - Listing create and patch validate bedroom and bathroom count bounds: 0–20 each
 - Listing create and patch validate rent and deposit precision: up to 8 integer digits and 2 decimal places, matching `NUMERIC(10,2)`
 - Listing submission requires property and room types while preserving their nullable draft fields
-- the publish wizard has 4 condensed steps, not the 8-step prototype it's meant to match; it persists/resumes server-side drafts through `/listings/draft` and `/listings/{id}`, but has no map picker (raw lat/long inputs), per-room list (`listing_rooms` is untouched), house-rules step, or neighborhood membership validation
+- the publish wizard has 4 condensed steps, not the 8-step prototype it's meant to match; it persists/resumes server-side drafts through `/listings/draft` and `/listings/{id}` and now uploads real photos, but has no map picker (raw lat/long inputs), per-room list (`listing_rooms` is untouched), house-rules step, or neighborhood membership validation
 
 ## Repository layout
 
