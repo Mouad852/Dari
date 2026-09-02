@@ -82,6 +82,15 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
             return;
         }
 
+        // A deleted account stops working immediately, not whenever its token
+        // happens to expire. Deleting the Firebase identity does not invalidate
+        // already-issued ID tokens, so without this check someone could keep
+        // using the app for up to an hour after asking to be removed.
+        if (user.isPresent() && user.get().getDeletedAt() != null) {
+            writeError(response, 401, ErrorCode.UNAUTHENTICATED, "Ce compte a été supprimé");
+            return;
+        }
+
         var principal = new AuthenticatedUser(
                 token.getUid(), token.getEmail(), token.isEmailVerified(), user.orElse(null));
 

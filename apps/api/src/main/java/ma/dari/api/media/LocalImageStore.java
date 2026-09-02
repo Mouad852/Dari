@@ -35,7 +35,7 @@ public class LocalImageStore implements ImageStore {
     }
 
     @Override
-    public StoredImage store(UUID listingId, MultipartFile file) {
+    public StoredImage store(String folder, UUID ownerId, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Une photo est requise");
         }
@@ -60,7 +60,7 @@ public class LocalImageStore implements ImageStore {
             }
 
             String storedMimeType = "image/jpeg";
-            String storageKey = "listings/" + listingId + "/" + UUID.randomUUID() + ".jpg";
+            String storageKey = folder + "/" + ownerId + "/" + UUID.randomUUID() + ".jpg";
             Path target = uploadRoot.resolve(storageKey).normalize();
             Path parent = target.getParent();
             if (parent != null) {

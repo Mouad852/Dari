@@ -396,3 +396,50 @@ isolation pass.
 
 Suite: **86 tests, 0 failures** (was 81; +5). Frontend `typecheck` and `build` clean. Not verified in
 a browser.
+
+**T1.5 account stubs (avatar upload, account deletion) — done (2026-09-02).**
+
+Both were `NotImplementedYetException`. `plans/09` warned that deletion "is not specified anywhere in
+the design doc" and said not to let it be decided by whatever the delete button happens to do — but
+the policy *was* written down, on `UserController#deleteMe`'s own javadoc, with a rationale. Read it
+and implemented it rather than re-deciding: Firebase identity removed, row and listings
+soft-deleted, messages retained, because a conversation is two people's data and one party cannot
+unilaterally erase the other's history. Second time this session that checking what was already
+written avoided inventing an answer.
+
+- **Avatar upload** reuses the listing photo pipeline. `ImageStore.store` now takes a folder
+  (`listings` / `avatars`) instead of hard-coding the listing prefix — one parameter rather than two
+  near-identical methods, because the re-encode *is* the point: a selfie taken at home carries the
+  same GPS problem a listing photo does, and a separate avatar path would have drifted from it.
+  Replacing an avatar deletes the previous file best-effort; a cleanup failure does not fail the
+  upload.
+- **Account deletion** soft-deletes the row and every listing, then removes the Firebase identity
+  **last and inside the transaction**. Ordering matters: a failure rolls the soft-delete back and the
+  person can retry, whereas deleting the identity first would leave a live Dari row nobody can
+  authenticate against — locked out, still listed, unable to retry.
+
+**Two real gaps found while implementing, neither in the stated policy:**
+
+1. **Deleting an account permanently burned the email address.** V2's unique index on `lower(email)`
+   covered every row including soft-deleted ones, so someone could delete their account, sign up
+   again with a fresh Firebase identity, and then fail `POST /users` on a constraint violation they
+   could do nothing about. `V14__soft_deleted_users_release_email.sql` scopes the index to live rows.
+   Banned identities are unaffected — they are blocked earlier by their own table, which keeps its own
+   copy of the address precisely so it survives this.
+2. **A deleted account kept working until its token expired.** Deleting a Firebase identity does not
+   invalidate already-issued ID tokens, so without a check someone could keep using the app for up to
+   an hour after asking to be removed. `FirebaseAuthFilter` now refuses a soft-deleted row directly,
+   right where the banned-account check already lives.
+
+Frontend: both live on `/account/profile`, deliberately **not** on `/account/security` — that page is
+still entirely fabricated content, and wiring a real destructive action into it would lend the mock
+credibility it has not earned. Deletion sits in a separated danger zone outside the form, behind a
+confirm *and* a typed SUPPRIMER, since it is irreversible and cascades.
+
+**Still open, and it is a GDPR question rather than a functional one:** a soft-deleted row keeps the
+person's email, display name and bio. Defensible as an audit trail, indefensible as erasure —
+recorded in `plans/09` for a deliberate answer before launch rather than settled quietly here.
+
+Suite: **89 tests, 0 failures** (was 86; +3 — avatar upload and its rejection of a non-image, the
+deletion cascade including Firebase identity removal and immediate token refusal, and re-registration
+with a deleted email). Frontend `typecheck` and `build` clean. Not verified in a browser.

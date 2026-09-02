@@ -212,7 +212,7 @@ public class ListingService {
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
 
         List<ListingPhoto> existingPhotos = listingPhotos.findByListingIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAsc(listingId);
-        ImageStore.StoredImage storedImage = imageStore.store(listingId, file);
+        ImageStore.StoredImage storedImage = imageStore.store(ImageStore.LISTINGS, listingId, file);
         int nextSortOrder = existingPhotos.isEmpty() ? 0 : existingPhotos.get(existingPhotos.size() - 1).getSortOrder() + 1;
         boolean isCover = existingPhotos.stream().noneMatch(ListingPhoto::isCover);
 

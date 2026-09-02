@@ -40,7 +40,7 @@ Everything else in this phase — the profile-completion prompt (deliberately le
 - [~] Profile screen, from `ui_kits/mobile_app/ProfileScreen.jsx` — the real fields are wired (see status note); not ported from the mockup, and no "settings switches" exist since no such settings (notifications toggles, visibility toggle) exist on the backend
 - [x] Public profile view as seen by another user — `/profile/[id]`, real data, real "Contacter" action
 - [ ] Profile-completion prompt in the feed, per the mockup — not built; needs the "what counts as complete" decision this file's own risk section calls out below
-- [~] Account settings: edit profile and sign out are done (`/account/profile`, and `/account`'s sign-out button now calls Firebase `signOut()` and redirects home); account deletion is not — `DELETE /users/me` is still a phase-09 backend stub, so there's nothing to wire yet
+- [x] Account settings: edit profile, sign out, avatar upload and account deletion are all done (2026-09-02). `POST /users/me/avatar` reuses the listing photo pipeline, so the re-encode that strips EXIF applies to profile photos too. `DELETE /users/me` follows the policy recorded on `UserController#deleteMe`'s javadoc rather than in the design doc: Firebase identity removed, row and listings soft-deleted, messages retained.
 
 ## Depends on
 
@@ -59,7 +59,14 @@ Everything else in this phase — the profile-completion prompt (deliberately le
 
 ## Risks and open decisions
 
-- **Account deletion is not specified anywhere in the design doc.** It interacts with soft-delete, with the audit trail, and with GDPR-style expectations, and it needs an answer before launch: does deleting an account remove the Firebase identity, soft-delete the internal row, orphan the listings, or all three? Do not let this be decided by whatever the delete button happens to do.
+- **Account deletion is now specified and built (2026-09-02).** The policy was not in the design doc, but it
+  *was* written on `UserController#deleteMe`'s javadoc with a rationale, so it was implemented rather than
+  re-decided: Firebase identity deleted, user row and listings soft-deleted, messages retained because a
+  conversation is two people's data and one party cannot unilaterally erase the other's history.
+  **Still open, and a GDPR question rather than a functional one:** a soft-deleted row keeps the person's
+  email, display name and bio. Defensible as an audit trail, indefensible as erasure, depending on which
+  obligation applies. Worth a deliberate answer before launch — scrubbing the PII fields while keeping the
+  row is the likely shape.
 - **"Verification tier" appears in §2 but is never defined** in the data model — `users` has `email_verified` and `phone_verified` booleans and nothing else. If the profile is meant to display a tier, that tier needs defining.
 - **Phone verification is a fast-follow**, so the profile design should have room for a badge that does not exist yet.
 - **The profile-completion prompt implies a completeness rule** nobody has written down. Decide what "complete" means before building the prompt that nags about it.

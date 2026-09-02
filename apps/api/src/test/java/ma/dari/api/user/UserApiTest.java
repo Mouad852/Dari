@@ -1,11 +1,23 @@
 package ma.dari.api.user;
 
 import com.google.firebase.auth.FirebaseToken;
+import ma.dari.api.listing.AvailabilityState;
+import ma.dari.api.listing.Listing;
+import ma.dari.api.listing.ListingRepository;
+import ma.dari.api.listing.ListingStatus;
+import ma.dari.api.media.ImageStore;
 import ma.dari.api.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,6 +28,9 @@ class UserApiTest extends AbstractIntegrationTest {
 
     @Autowired
     UserRepository users;
+
+    @Autowired
+    ListingRepository listings;
 
     private void stubToken(String uid, String email, boolean emailVerified) throws Exception {
         FirebaseToken token = Mockito.mock(FirebaseToken.class);
@@ -178,5 +193,103 @@ class UserApiTest extends AbstractIntegrationTest {
     void publicProfileRemainsAnonymous() {
         given().when().get("/users/{id}", java.util.UUID.randomUUID())
                 .then().statusCode(404);
+    }
+
+    @Test
+    @DisplayName("avatar upload stores the image and points the profile at it")
+    void avatarUploadWorks() throws Exception {
+        String uid = "uid-avatar-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        users.saveAndFlush(new User(uid, email, true, "Avatar Owner"));
+
+        String url = given().header("Authorization", "Bearer avatar-token")
+                .multiPart("file", "me.jpg", generateJpeg(320, 240), "image/jpeg")
+                .when().post("/users/me/avatar")
+                .then().statusCode(200)
+                .extract().path("avatarUrl");
+
+        assertThat(url).startsWith("/uploads/" + ImageStore.AVATARS + "/");
+
+        // Same pipeline as listing photos, so the same validation applies: a
+        // profile photo carries GPS just as readily as a listing photo does.
+        given().header("Authorization", "Bearer avatar-token")
+                .multiPart("file", "notes.txt", "not an image".getBytes(), "text/plain")
+                .when().post("/users/me/avatar")
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"));
+    }
+
+    @Test
+    @DisplayName("account deletion soft-deletes the row and the listings, and drops the Firebase identity")
+    void accountDeletionCascades() throws Exception {
+        String uid = "uid-delete-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        User user = users.saveAndFlush(new User(uid, email, true, "To Delete"));
+
+        Listing owned = listings.saveAndFlush(new Listing(
+                user, "Studio à supprimer", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+
+        given().header("Authorization", "Bearer delete-token")
+                .when().delete("/users/me")
+                .then().statusCode(204);
+
+        assertThat(users.findById(user.getId()).orElseThrow().getDeletedAt()).isNotNull();
+        assertThat(listings.findById(owned.getId()).orElseThrow().getDeletedAt()).isNotNull();
+        Mockito.verify(firebaseAuth).deleteUser(uid);
+
+        // Deleting the Firebase identity does not invalidate an already-issued
+        // ID token, so the filter has to refuse the deleted row directly.
+        given().header("Authorization", "Bearer delete-token")
+                .when().get("/users/me")
+                .then().statusCode(401);
+    }
+
+    @Test
+    @DisplayName("a deleted account's email can be used to register again")
+    void deletedEmailCanRegisterAgain() throws Exception {
+        String email = "reuse-" + System.nanoTime() + "@example.ma";
+        String firstUid = "uid-reuse-first-" + System.nanoTime();
+        stubToken(firstUid, email, true);
+        users.saveAndFlush(new User(firstUid, email, true, "First Life"));
+
+        given().header("Authorization", "Bearer reuse-token")
+                .when().delete("/users/me")
+                .then().statusCode(204);
+
+        // Signing up again produces a brand new Firebase uid with the same
+        // address. Before V14 the unique index on lower(email) covered
+        // soft-deleted rows too, so this failed with a constraint violation the
+        // person had no way to resolve -- deleting an account burned the email.
+        String secondUid = "uid-reuse-second-" + System.nanoTime();
+        stubToken(secondUid, email, true);
+
+        given().header("Authorization", "Bearer reuse-token-2")
+                .contentType("application/json")
+                .body("{\"displayName\":\"Second Life\"}")
+                .when().post("/users")
+                .then().statusCode(201)
+                .body("displayName", equalTo("Second Life"));
+    }
+
+    private byte[] generateJpeg(int width, int height) {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            graphics.setColor(Color.WHITE);
+            graphics.fillRect(0, 0, width, height);
+            graphics.setColor(new Color(125, 75, 50));
+            graphics.fillRect(20, 20, width - 40, height - 40);
+        } finally {
+            graphics.dispose();
+        }
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            ImageIO.write(image, "jpg", out);
+            return out.toByteArray();
+        } catch (Exception ex) {
+            throw new IllegalStateException("Could not generate test image", ex);
+        }
     }
 }

@@ -20,7 +20,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -75,8 +78,9 @@ public class UserController {
     /** Reuses the listing photo pipeline, EXIF stripping included — a profile
      *  photo is as likely to have been taken at home as a listing photo. */
     @PostMapping("/me/avatar")
-    public UserResponse uploadAvatar(@CurrentUser User user) {
-        throw new NotImplementedYetException("phase 09");
+    public UserResponse uploadAvatar(@CurrentUser User user,
+                                     @RequestParam("file") MultipartFile file) {
+        return UserResponse.from(userService.uploadAvatar(user, file));
     }
 
     /**
@@ -85,8 +89,9 @@ public class UserController {
      * party cannot unilaterally erase the other's history.
      */
     @DeleteMapping("/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteMe(@CurrentUser User user) {
-        throw new NotImplementedYetException("phase 09");
+        userService.deleteAccount(user);
     }
 
     /** Reserved by §7 for fast-follow phone verification. */

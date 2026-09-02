@@ -57,7 +57,7 @@ The important remaining work is still phase-oriented and should be driven from t
 - Phase 03 frontend validation: public routes, auth screens, account loading, publishing, and live search contracts are wired and production-build validated
 - Phase 07 search filters and map: URL-driven search filters are started; map view, map rendering, and complete filter coverage remain
 - account sub-pages (notifications, payments, security) are still frontend-only mocks with no API calls — notifications and payments have no backend to wire to yet (phase 10); profile is now wired (see above)
-- account deletion (`DELETE /users/me`) and avatar upload (`POST /users/me/avatar`) are still phase-09 backend stubs
+- account deletion and avatar upload are built: `POST /users/me/avatar` reuses the listing photo pipeline (so profile photos are EXIF-stripped too), and `DELETE /users/me` removes the Firebase identity, soft-deletes the row and the person's listings, and retains messages. Both are wired on `/account/profile`
 - messaging has no unread badges or read receipts, and sending isn't optimistic — the core flow works, these are the remaining gaps
 - owners can edit any of their listings: `/account/listings` has a "Modifier" link that opens the wizard on that listing, backed by a new owner-scoped `GET /listings/mine/{id}` which returns **true** coordinates (the public `GET /listings/{id}` fuzzes them even for the owner, so an edit form fed by it would drift the listing's location on every save)
 - **editing a `PUBLISHED` listing returns it to `PENDING_REVIEW`** and removes it from public search until re-approved. This reverses the original design-doc §4 rule, at the product owner's direction; the doc was updated to match
