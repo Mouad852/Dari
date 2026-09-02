@@ -90,3 +90,33 @@ Phase 02 (PostGIS search optimization) is now complete:
 - **Amenities backend write support, built the same day as a follow-on.** Added `Amenity`/`ListingAmenity` entities (the join-row pattern mirrors `Favorite`'s composite key), wired `POST`/`PATCH /listings` to accept and validate `amenityCodes` (full replace on update, 400 on an unknown code), and exposed the set on `ListingResponse`. `GET /amenities` now reads the real `amenities` table instead of a hardcoded duplicate list. The publish wizard fetches real codes and sends them; the fictional French-string amenity list is gone, and its duplicate label map (previously inlined in both `publish/page.tsx` and `listings/page.tsx`) is now one shared `AMENITY_LABELS` in `lib/labels.ts`. New test: `ListingApiTest.amenitiesRoundTripOnCreateAndUpdate`. 45 backend tests, 43 passing (the 2 failures are the pre-existing `ListingSearchOptimizationTest` isolation flakiness, unchanged by this work); frontend `typecheck`/`build` clean. Deliberately not touched: `PublicListingResponse` (the public search/detail DTO) — amenities are round-tripped for the owner/write side only.
 - **New finding while doing that work, not yet fixed**: the listing detail page (`/listings/[id]`) turned out to still be mostly fabricated content, despite an earlier session's summary describing it as "wired" — only the favorite toggle and "Contacter" button actually touch the backend. The description, the amenities row, an entire "Colocataires" tab (two invented people with fake verified badges), an entire "Règles" tab, the owner card (fabricated name and 4.8 rating), the "Annonce vérifiée" and availability-date badges, and the photo counter are all hardcoded placeholder content left over from the original mock. Fixing it properly needs a backend change first — `PublicListingResponse` doesn't even return `description` today, let alone photos/amenities/house rules — so it wasn't folded into this step; see `plans/05-listing-creation.md`'s 2026-09-02 note for the full list and suggested shape of the fix.
 - Everything else in the 2026-08-31 status entry above still holds.
+
+### Track 0 — unblock and secure (2026-09-02)
+
+Working from the completion plan agreed this session (six ordered tracks; Track 0 first because the
+product cannot publish a listing and the Firebase key was unprotected).
+
+**T0.1 secrets and version control — done.**
+
+- **The repo is now under git.** It had never been initialised; weeks of work existed with no history
+  and no rollback. Initial commit `dd69102`, 452 files.
+- **A live Firebase private key was one `git add .` away from being committed.** `.gitignore` carried
+  `*serviceAccount*.json` and `firebase-admin*.json`, and the real key on disk is
+  `infra/firebase/service-account.json` — the hyphenated name matches neither pattern. Worse,
+  `infra/firebase/README.md` instructed exactly that filename in step 2 and then claimed those
+  patterns protected it, so the doc created the hole it warned about. Fixed by ignoring the whole
+  directory (`infra/firebase/*`) with an explicit `!infra/firebase/README.md` exception, so anything
+  landing there is a key until proven otherwise rather than relying on someone guessing a filename.
+  The name-based patterns were kept as a first line and `service-account*.json` added. Both the
+  ignore rules and the README now say the same thing.
+- **`plans/` was in `.gitignore`** and would have been excluded from the first commit — the
+  authoritative status log, untracked. Removed; 25 plan files are in the initial commit.
+- Verified before committing rather than after: `git ls-files` shows no key, no `node_modules`, no
+  `target/`, no `uploads/`, and a grep across every staged file finds no `BEGIN PRIVATE KEY`.
+
+**Still outstanding on T0.1, and it is not something I can do:** the key itself must be rotated in
+the Firebase console. It sat unprotected on disk, so it should be treated as exposed even though it
+never reached git.
+
+Next in the plan: **T0.2 photo upload end to end** — the product blocker. `submit` requires at least
+one active photo and the frontend has no upload at all, so no listing can currently be published.

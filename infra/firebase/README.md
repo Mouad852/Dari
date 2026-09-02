@@ -10,8 +10,16 @@ token. There are deliberately no `/auth/login` or `/auth/signup` endpoints.
 2. Save it as `infra/firebase/service-account.json`.
 3. Set `FIREBASE_CREDENTIALS_PATH` in `.env`.
 
-`.gitignore` already excludes `*serviceAccount*.json` and `firebase-admin*.json`.
-**Do not rename the file into something that slips past those patterns.**
+`.gitignore` ignores this whole directory (`infra/firebase/*`) and allows only
+this README back in. That is deliberate: the previous version of this file told
+you to save the key as `service-account.json` while claiming the
+`*serviceAccount*.json` pattern protected it -- which it does not, because the
+hyphenated name never matched. Any JSON in this folder is now treated as a key
+regardless of what it is called.
+
+**Rotate the key if it has ever been committed, shared, or copied out of this
+folder.** Purging a leaked key from git history is miserable; rotating it in the
+console takes a minute.
 
 ## Web client config
 

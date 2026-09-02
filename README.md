@@ -100,6 +100,10 @@ The important remaining work is still phase-oriented and should be driven from t
 
 Requirements: Docker, JDK 21, Node 20+.
 
+The backend also needs a Firebase service-account key at `infra/firebase/service-account.json`.
+It is not in the repo and never should be — `infra/firebase/*` is gitignored wholesale, with this
+README's sibling as the only exception. See `infra/firebase/README.md` for how to generate one.
+
 ```powershell
 # from repo root
 cp .env.example .env
