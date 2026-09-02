@@ -443,3 +443,47 @@ recorded in `plans/09` for a deliberate answer before launch rather than settled
 Suite: **89 tests, 0 failures** (was 86; +3 — avatar upload and its rejection of a non-image, the
 deletion cascade including Firebase identity removal and immediate token refusal, and re-registration
 with a deleted email). Frontend `typecheck` and `build` clean. Not verified in a browser.
+
+## Track 2 — search, filters, map
+
+**T2.2 sorting made real — done (2026-09-02).**
+
+Audited the search surface before starting, because the phase docs have understated what exists more
+than once. Most of what `plans/07` lists as open is already built: property/room/furnishing
+multi-select, amenity AND-matching, availability dates, and city/neighborhood-versus-radius as
+mutually exclusive modes with a clear 400 all work, and the Leaflet map has been live for a while.
+
+**What was actually broken was the sort.** `ListingSearchService.search` parsed the `sort` parameter
+and then used it only to *validate* radius queries. On every non-radius search — which is the normal
+case — it went to `searchByLocationPaginated`, whose ORDER BY is a hard-coded
+`created_at DESC, id DESC`. The frontend offered four sorts ("Pertinence", "Prix", "Nouveautés",
+"Plus proches") and three of them returned byte-identical recency-ordered results. Choosing "Prix"
+did nothing at all.
+
+- New `searchByLocationSorted` handles `priceasc`, `pricedesc`, `updated` and the recency default,
+  with the keyset predicate varying alongside the ORDER BY. **One query, not four.** The filter block
+  is already repeated across this interface; four more copies would mean a future filter fix has to
+  land in eleven places or silently diverge between "sorted by price" and "sorted by date", which is
+  a difference nobody would think to test for.
+- **The sort now travels in the cursor.** A cursor built for a price ordering is meaningless against
+  a date ordering — resuming one with the other skips or repeats rows with nothing to indicate it.
+  A mismatch now restarts from the first page instead of returning a quietly wrong one, and there is
+  a test for exactly that.
+- Every nullable parameter is explicitly cast, per the "could not determine data type" trap that took
+  this same search down once before.
+- A `closest` sort without a radius is now a 400 rather than being silently downgraded to recency.
+
+**Frontend labels now say what the sorts do.** "Pertinence" promised a relevance ranking that does not
+exist, so the default is named "Plus récentes" until one does. "Prix" was ambiguous about direction
+and is now two options, since the API supports both.
+
+**Deliberately not built: a real "recommended" ranking.** `plans/07` asks for one and the design doc
+§5 says "recency plus basic quality signals", which is not a specification. Inventing a scoring
+formula here would be a product decision made by whoever was writing SQL that afternoon, and a
+keyset-paginated ranking over a computed score is materially harder than the four orderings above.
+Recorded as open rather than approximated.
+
+Suite: **92 tests, 0 failures** (was 89; +3 — price ordering in both directions, cursor/sort mismatch
+handling, and distance-sort-without-radius). The price test discriminates by construction: the rows
+are inserted in an order that matches neither ascending, descending, nor recency, so it could not
+have passed before this change. Frontend `typecheck` and `build` clean. Not verified in a browser.

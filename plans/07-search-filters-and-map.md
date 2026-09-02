@@ -15,14 +15,14 @@ That amenity exception is the single most likely thing in this phase to be imple
 ## Tasks
 
 **Backend**
-- [ ] Property type, room type and furnishing multi-select (OR within category)
-- [ ] Amenities multi-select — **AND**, requiring all selected
-- [ ] Availability date: `available_from <= requested_move_in_date`
+- [x] Property type, room type and furnishing multi-select (OR within category) — already built; corrected 2026-09-02
+- [x] Amenities multi-select — **AND**, requiring all selected, via a GROUP BY HAVING subquery; corrected 2026-09-02
+- [x] Availability date: `available_from <= requested_move_in_date`, and listings with no date are excluded when one is requested; corrected 2026-09-02
 - [ ] Living preferences mapped onto `house_rules` fields
-- [ ] Sorts: recommended (default), price ascending and descending, newest, closest, recently updated
-- [ ] Define "recommended" concretely — §5 says recency plus basic quality signals, which is not yet a specification
-- [ ] City and neighborhood versus radius as **mutually exclusive modes**, rejected clearly if both are sent
-- [ ] Map endpoint returning pins for a city — flat list, **no clustering** (§5)
+- [x] Sorts: price ascending/descending, recency (default) and recently-updated are now real (2026-09-02); closest works in radius mode. **They previously did nothing** — `sort` was parsed and then ignored on every non-radius search, so three of the four options in the UI returned identical recency-ordered results.
+- [ ] Define "recommended" concretely — §5 says recency plus basic quality signals, which is not yet a specification. **Still open on purpose (2026-09-02):** the default sort is honest recency and the UI now labels it "Plus récentes" rather than "Pertinence", instead of implying a ranking that does not exist. Needs a product answer, plus a keyset strategy for ordering by a computed score.
+- [x] City and neighborhood versus radius as **mutually exclusive modes**, rejected with a 400; already built, corrected 2026-09-02. A `closest` sort without a radius is now also refused rather than silently downgraded.
+- [x] Map endpoint returning pins for a city — flat list, no clustering; already built, corrected 2026-09-02
 - [ ] Confirm fuzzed coordinates on the map path; this is where exact coordinates are most likely to leak
 - [ ] Re-run `EXPLAIN ANALYZE` with the full filter set applied; the amenity join is the new risk to the query plan
 - [ ] Index review now that the real filter shape is known
@@ -33,8 +33,8 @@ That amenity exception is the single most likely thing in this phase to be imple
 - [ ] Filter chip row with active-filter counts, and a reset — *Réinitialiser*
 - [ ] Selected chips invert to **charcoal, not terracotta**, so selection never competes with the primary action (a design-system rule that is easy to miss)
 - [ ] Full listing detail page, from `ui_kits/mobile_app/ListingScreen.jsx` — photo header with glass controls, price block, logement / colocataires / règles tabs, sticky contact bar
-- [ ] Map view with Leaflet/MapLibre, pins, and a card on pin select
-- [ ] All filter state in the URL
+- [x] Map view with Leaflet, pins and a popup linking to the listing; already built, corrected 2026-09-02
+- [x] All filter state in the URL; already built, corrected 2026-09-02
 - [ ] Result counts on buttons — *Voir 32 annonces*, per the copy rules
 
 ## Depends on

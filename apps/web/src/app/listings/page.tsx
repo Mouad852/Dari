@@ -11,10 +11,21 @@ import { getIdToken } from '@/lib/firebase';
 import { AMENITY_LABELS } from '@/lib/labels';
 import type { MapPin, PublicListing } from '@/types/api';
 
+/*
+ * Labels say what the sort actually does.
+ *
+ * These previously read "Pertinence", "Prix" and "Nouveautés" while the backend
+ * ignored the sort parameter entirely on non-radius searches — all three
+ * returned the same recency ordering. "Pertinence" in particular promised a
+ * relevance ranking that does not exist; until one does, the default is named
+ * for what it is. "Prix" was ambiguous about direction and is now two options,
+ * since the API supports both.
+ */
 const SORTS = [
-  { value: 'recommended', label: 'Pertinence' },
-  { value: 'priceasc', label: 'Prix' },
-  { value: 'updated', label: 'Nouveautés' },
+  { value: 'recommended', label: 'Plus récentes' },
+  { value: 'priceasc', label: 'Prix croissant' },
+  { value: 'pricedesc', label: 'Prix décroissant' },
+  { value: 'updated', label: 'Récemment mises à jour' },
   { value: 'closest', label: 'Plus proches' },
 ] as const;
 

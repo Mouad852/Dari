@@ -1053,6 +1053,81 @@ class ListingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("price sorts actually order by price, in both directions")
+    void priceSortsOrderByPrice() throws Exception {
+        String uid = "uid-sort-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        User owner = users.saveAndFlush(new User(uid, email, true, "Sort Owner"));
+
+        // A city of its own, so other test classes' listings cannot interleave.
+        String city = "TriVille" + System.nanoTime();
+        for (String price : new String[] {"4000.00", "1000.00", "7000.00"}) {
+            listings.saveAndFlush(new Listing(
+                    owner, "Studio " + price, city, "Centre", 33.9716, -6.8498,
+                    new java.math.BigDecimal(price), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+        }
+
+        var ascending = given().queryParam("city", city).queryParam("sort", "priceasc")
+                .when().get("/listings")
+                .then().statusCode(200)
+                .extract().jsonPath().getList("items.priceRent", Float.class);
+
+        var descending = given().queryParam("city", city).queryParam("sort", "pricedesc")
+                .when().get("/listings")
+                .then().statusCode(200)
+                .extract().jsonPath().getList("items.priceRent", Float.class);
+
+        // Before this, sort was parsed and then ignored on the non-radius path:
+        // every one of these returned the same recency ordering.
+        assertThat(ascending).containsExactly(1000f, 4000f, 7000f);
+        assertThat(descending).containsExactly(7000f, 4000f, 1000f);
+    }
+
+    @Test
+    @DisplayName("a cursor from one sort does not silently corrupt another")
+    void cursorIsScopedToItsSort() throws Exception {
+        String uid = "uid-cursor-sort-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        User owner = users.saveAndFlush(new User(uid, email, true, "Cursor Owner"));
+
+        String city = "CurseurVille" + System.nanoTime();
+        for (int i = 0; i < 25; i++) {
+            listings.saveAndFlush(new Listing(
+                    owner, "Studio " + i, city, "Centre", 33.9716, -6.8498,
+                    new java.math.BigDecimal(1000 + i * 100), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+        }
+
+        String cursor = given().queryParam("city", city).queryParam("sort", "priceasc")
+                .when().get("/listings")
+                .then().statusCode(200)
+                .body("hasMore", equalTo(true))
+                .extract().path("nextCursor");
+
+        // Same cursor, different sort. Resuming it against a date ordering would
+        // skip or repeat rows; the sort travels in the cursor so the mismatch
+        // restarts cleanly instead of returning a quietly wrong page.
+        var restarted = given().queryParam("city", city).queryParam("sort", "pricedesc")
+                .queryParam("cursor", cursor)
+                .when().get("/listings")
+                .then().statusCode(200)
+                .extract().jsonPath().getList("items.priceRent", Float.class);
+
+        assertThat(restarted).isNotEmpty();
+        assertThat(restarted.get(0)).isEqualTo(3400f);
+    }
+
+    @Test
+    @DisplayName("a distance sort without a radius is refused rather than silently ignored")
+    void distanceSortRequiresRadius() {
+        given().queryParam("city", "Rabat").queryParam("sort", "closest")
+                .when().get("/listings")
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"));
+    }
+
+    @Test
     @DisplayName("photo PATCH sort order DTO rejects negative values")
     void photoPatchSortOrderDtoRejectsNegativeValues() {
         assertThat(validator.validate(new UpdateListingPhotoRequest(-1, null)))

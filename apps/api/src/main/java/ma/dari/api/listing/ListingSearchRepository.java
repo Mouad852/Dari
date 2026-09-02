@@ -15,6 +15,85 @@ import java.util.UUID;
  */
 public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
 
+
+    /**
+     * The sorted, keyset-paginated public search for non-radius queries.
+     *
+     * <p>One query rather than a method per sort. The filter block is already
+     * repeated across this interface, and four more copies of it would mean any
+     * future filter fix has to be applied in eleven places or silently diverge
+     * between "sorted by price" and "sorted by date" — a difference nobody would
+     * think to test for.
+     *
+     * <p>Both halves of the sort have to vary together: the ORDER BY, and the
+     * keyset predicate that resumes it. A cursor built for one ordering is
+     * meaningless in another, which is why the caller passes the last row's
+     * price, created_at and updated_at and only the branch matching {@code sort}
+     * reads its own.
+     *
+     * <p>Every nullable parameter is explicitly cast. Postgres cannot infer a
+     * type for a bare NULL parameter and fails the whole statement with
+     * "could not determine data type" — the same trap that took this search down
+     * once already.
+     */
+    @Query(value = """
+            SELECT l.* FROM listings l
+            WHERE l.status = 'PUBLISHED'
+              AND l.availability_state = 'AVAILABLE'
+              AND l.deleted_at IS NULL
+              AND (:city IS NULL OR l.city = :city)
+              AND (:neighborhood IS NULL OR l.neighborhood = :neighborhood)
+              AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
+              AND (:maxPrice IS NULL OR l.price_rent <= :maxPrice)
+              AND (CAST(:propertyTypes AS property_type[]) IS NULL OR l.property_type = ANY(CAST(:propertyTypes AS property_type[])))
+              AND (CAST(:roomTypes AS room_type[]) IS NULL OR l.room_type = ANY(CAST(:roomTypes AS room_type[])))
+              AND (CAST(:furnishings AS room_furnishing[]) IS NULL OR l.room_furnishing = ANY(CAST(:furnishings AS room_furnishing[])))
+              AND (CAST(:availableBy AS date) IS NULL OR l.available_from <= :availableBy)
+              AND (CAST(:amenityCodes AS text[]) IS NULL OR l.id IN (
+                  SELECT la.listing_id FROM listing_amenities la
+                  WHERE la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
+                  GROUP BY la.listing_id
+                  HAVING COUNT(DISTINCT la.amenity_code) = :amenityCount
+              ))
+              AND (
+                  CAST(:lastId AS uuid) IS NULL
+                  OR (CAST(:sort AS text) = 'priceasc'
+                      AND (l.price_rent, l.id) > (CAST(:lastPrice AS numeric), CAST(:lastId AS uuid)))
+                  OR (CAST(:sort AS text) = 'pricedesc'
+                      AND (l.price_rent, l.id) < (CAST(:lastPrice AS numeric), CAST(:lastId AS uuid)))
+                  OR (CAST(:sort AS text) = 'updated'
+                      AND (l.updated_at, l.id) < (CAST(:lastUpdatedAt AS timestamptz), CAST(:lastId AS uuid)))
+                  OR (CAST(:sort AS text) NOT IN ('priceasc', 'pricedesc', 'updated')
+                      AND (l.created_at, l.id) < (CAST(:lastCreatedAt AS timestamptz), CAST(:lastId AS uuid)))
+              )
+            ORDER BY
+              CASE WHEN CAST(:sort AS text) = 'priceasc' THEN l.price_rent END ASC,
+              CASE WHEN CAST(:sort AS text) = 'pricedesc' THEN l.price_rent END DESC,
+              CASE WHEN CAST(:sort AS text) = 'updated' THEN l.updated_at END DESC,
+              CASE WHEN CAST(:sort AS text) NOT IN ('priceasc', 'pricedesc', 'updated') THEN l.created_at END DESC,
+              CASE WHEN CAST(:sort AS text) = 'priceasc' THEN l.id END ASC,
+              l.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Listing> searchByLocationSorted(
+            @Param("city") String city,
+            @Param("neighborhood") String neighborhood,
+            @Param("minPrice") BigDecimal minPrice,
+            @Param("maxPrice") BigDecimal maxPrice,
+            @Param("propertyTypes") String[] propertyTypes,
+            @Param("roomTypes") String[] roomTypes,
+            @Param("furnishings") String[] furnishings,
+            @Param("availableBy") LocalDate availableBy,
+            @Param("amenityCodes") String[] amenityCodes,
+            @Param("amenityCount") int amenityCount,
+            @Param("sort") String sort,
+            @Param("lastPrice") BigDecimal lastPrice,
+            @Param("lastCreatedAt") java.time.OffsetDateTime lastCreatedAt,
+            @Param("lastUpdatedAt") java.time.OffsetDateTime lastUpdatedAt,
+            @Param("lastId") UUID lastId,
+            @Param("limit") int limit
+    );
+
     /**
      * Search by city and neighborhood with cursor pagination, sorted by creation date descending.
      * Includes all enum-based filters (propertyType, roomType, furnishing) and date availability.

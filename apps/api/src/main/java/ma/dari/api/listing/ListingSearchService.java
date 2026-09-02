@@ -141,49 +141,60 @@ public class ListingSearchService {
                 page = page.subList(0, PAGE_SIZE);
             }
         } else {
-            // Location-based search uses created_at-based pagination
+            // Non-radius search. The sort drives both the ordering and the shape
+            // of the keyset cursor, so the two are resolved together.
+            String activeSort = normalizeSort(effectiveSort);
+            if ("closest".equals(activeSort)) {
+                throw new ApiException(400, ErrorCode.VALIDATION_FAILED,
+                        "Le tri par distance nécessite une recherche par rayon");
+            }
+
+            UUID lastId = null;
+            BigDecimal lastPrice = null;
+            OffsetDateTime lastCreatedAt = null;
+            OffsetDateTime lastUpdatedAt = null;
+
             if (cursor != null && !cursor.isBlank()) {
                 ObjectNode payload = Cursor.decode(cursor);
                 String lastIdStr = payload.path("lastId").asText(null);
-                String lastCreatedAtStr = payload.path("lastCreatedAt").asText(null);
-                
-                if (lastIdStr != null && lastCreatedAtStr != null) {
-                    UUID lastId = UUID.fromString(lastIdStr);
-                    OffsetDateTime lastCreatedAt = OffsetDateTime.parse(lastCreatedAtStr);
-
-                    page = search.searchByLocationWithCursor(
-                            city, neighborhood,
-                            minPrice, maxPrice,
-                            normalizedPropertyTypes, normalizedRoomTypes, normalizedFurnishings,
-                            availableFrom, normalizedAmenities, amenityCount,
-                            lastCreatedAt, lastId,
-                            PAGE_SIZE + 1
-                    );
-                } else {
-                    page = search.searchByLocationPaginated(
-                            city, neighborhood,
-                            minPrice, maxPrice,
-                            normalizedPropertyTypes, normalizedRoomTypes, normalizedFurnishings,
-                            availableFrom, normalizedAmenities, amenityCount,
-                            PAGE_SIZE + 1
-                    );
+                if (lastIdStr != null) {
+                    lastId = UUID.fromString(lastIdStr);
+                    // A cursor is only meaningful for the sort that produced it.
+                    // Resuming a price-sorted page with a date cursor would skip
+                    // or repeat rows silently, so the sort travels in the cursor
+                    // and a mismatch restarts from the first page rather than
+                    // returning a quietly wrong one.
+                    String cursorSort = payload.path("sort").asText(null);
+                    if (cursorSort != null && !cursorSort.equals(activeSort)) {
+                        lastId = null;
+                    } else {
+                        String priceStr = payload.path("lastPrice").asText(null);
+                        String createdStr = payload.path("lastCreatedAt").asText(null);
+                        String updatedStr = payload.path("lastUpdatedAt").asText(null);
+                        lastPrice = priceStr == null ? null : new BigDecimal(priceStr);
+                        lastCreatedAt = createdStr == null ? null : OffsetDateTime.parse(createdStr);
+                        lastUpdatedAt = updatedStr == null ? null : OffsetDateTime.parse(updatedStr);
+                    }
                 }
-            } else {
-                page = search.searchByLocationPaginated(
-                        city, neighborhood,
-                        minPrice, maxPrice,
-                        normalizedPropertyTypes, normalizedRoomTypes, normalizedFurnishings,
-                        availableFrom, normalizedAmenities, amenityCount,
-                        PAGE_SIZE + 1
-                );
             }
 
-            // Build next cursor
+            page = search.searchByLocationSorted(
+                    city, neighborhood,
+                    minPrice, maxPrice,
+                    normalizedPropertyTypes, normalizedRoomTypes, normalizedFurnishings,
+                    availableFrom, normalizedAmenities, amenityCount,
+                    activeSort, lastPrice, lastCreatedAt, lastUpdatedAt, lastId,
+                    PAGE_SIZE + 1
+            );
+
             if (page.size() > PAGE_SIZE) {
                 Listing lastListing = page.get(PAGE_SIZE - 1);
                 ObjectNode cursorPayload = JsonNodeFactory.instance.objectNode();
+                cursorPayload.put("sort", activeSort);
                 cursorPayload.put("lastId", lastListing.getId().toString());
+                cursorPayload.put("lastPrice", lastListing.getPriceRent().toPlainString());
                 cursorPayload.put("lastCreatedAt", lastListing.getCreatedAt().toString());
+                cursorPayload.put("lastUpdatedAt", lastListing.getUpdatedAt().toString());
                 nextCursor = Cursor.encode(cursorPayload);
                 page = page.subList(0, PAGE_SIZE);
             }

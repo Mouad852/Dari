@@ -55,7 +55,7 @@ The project has already crossed the foundational backend and product UI mileston
 The important remaining work is still phase-oriented and should be driven from the phase docs:
 
 - Phase 03 frontend validation: public routes, auth screens, account loading, publishing, and live search contracts are wired and production-build validated
-- Phase 07 search filters and map: URL-driven search filters are started; map view, map rendering, and complete filter coverage remain
+- Phase 07 search filters and map: filters, map view and URL state are built. Sorting is now real — price ascending/descending, recency and recently-updated all order correctly with sort-aware keyset cursors; previously `sort` was parsed and discarded on non-radius searches, so three of the four options in the UI returned identical results. A genuine "recommended" ranking is still open, and the default is labelled "Plus récentes" rather than implying one exists
 - account sub-pages (notifications, payments, security) are still frontend-only mocks with no API calls — notifications and payments have no backend to wire to yet (phase 10); profile is now wired (see above)
 - account deletion and avatar upload are built: `POST /users/me/avatar` reuses the listing photo pipeline (so profile photos are EXIF-stripped too), and `DELETE /users/me` removes the Firebase identity, soft-deletes the row and the person's listings, and retains messages. Both are wired on `/account/profile`
 - messaging has no unread badges or read receipts, and sending isn't optimistic — the core flow works, these are the remaining gaps
