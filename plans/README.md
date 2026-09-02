@@ -114,9 +114,16 @@ product cannot publish a listing and the Firebase key was unprotected).
 - Verified before committing rather than after: `git ls-files` shows no key, no `node_modules`, no
   `target/`, no `uploads/`, and a grep across every staged file finds no `BEGIN PRIVATE KEY`.
 
-**Still outstanding on T0.1, and it is not something I can do:** the key itself must be rotated in
-the Firebase console. It sat unprotected on disk, so it should be treated as exposed even though it
-never reached git.
+**Key rotated by the user, verified 2026-09-02.** The replacement service account is structurally
+valid and was proven live by minting an access token against Google's OAuth token endpoint — the
+same exchange the Admin SDK performs internally. New key id `3e1b63c4...`, replacing `75639e2a...`;
+same project and client email. Still ignored by git and untracked.
+
+**One step of the rotation remains, and it is not something I can verify:** generating a new key in
+the Firebase console does **not** revoke the old one. Key `75639e2adb59ede9c2684b224872d58c70dc5e72`
+is presumed still active until explicitly deleted under GCP IAM -> Service Accounts ->
+`firebase-adminsdk-fbsvc@dari-colocation.iam.gserviceaccount.com` -> Keys. The old private key
+material is not in this repo or in any session transcript, so its status cannot be tested from here.
 
 Next in the plan: **T0.2 photo upload end to end** — the product blocker. `submit` requires at least
 one active photo and the frontend has no upload at all, so no listing can currently be published.
