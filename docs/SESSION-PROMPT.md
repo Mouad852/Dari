@@ -68,7 +68,8 @@ visual source of truth and is treated as a vendored dependency — never edit it
 - No login or signup endpoint, ever. Firebase handles identity; the API only
   verifies tokens.
 - Entities are never serialized to clients. Every response is an explicit DTO.
-- Keyset pagination only, never OFFSET. No total counts.
+- Keyset pagination only, never OFFSET. (Total counts are fine as a separate capped query — see
+  `GET /listings/count`; the pagination rule is about OFFSET and stability, not about counting.)
 - Exact coordinates never leave the API except on admin-gated paths.
 - `status` and `availability_state` are independent axes. Never collapse them.
 - Identifiers, URLs, code and schema in English (US spelling). Only what a user

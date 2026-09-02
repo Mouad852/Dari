@@ -208,6 +208,62 @@ public class ListingSearchService {
         return CursorPage.of(items, nextCursor);
     }
 
+    /**
+     * Counts matches for a filter set, up to {@link SearchCountResponse#CAP}.
+     *
+     * <p>Reuses the search queries with a capped limit rather than adding a
+     * dedicated COUNT query. The filter predicate is already repeated across
+     * ListingSearchRepository; a seventh copy would be one more place for a
+     * future filter fix to miss, and the count would then silently disagree with
+     * the results it labels — which is worse than no count at all.
+     *
+     * <p>Belongs to a filter set, not a page: callers fetch it when filters
+     * change, never while paginating.
+     */
+    public SearchCountResponse count(String city,
+                                     String neighborhood,
+                                     String[] propertyType,
+                                     String[] roomType,
+                                     String[] furnishing,
+                                     String[] amenities,
+                                     LocalDate availableFrom,
+                                     Integer priceMin,
+                                     Integer priceMax,
+                                     Double lat,
+                                     Double lng,
+                                     Integer radiusM) {
+        if ((city != null || neighborhood != null) && (lat != null || lng != null || radiusM != null)) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "La ville, le quartier et le rayon ne peuvent pas être combinés");
+        }
+        if (radiusM != null && radiusM > 50_000) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Rayon trop large");
+        }
+
+        String[] normalizedPropertyTypes = normalizeValues(propertyType);
+        String[] normalizedRoomTypes = normalizeValues(roomType);
+        String[] normalizedFurnishings = normalizeValues(furnishing);
+        String[] normalizedAmenities = normalizeValues(amenities);
+        int amenityCount = normalizedAmenities != null ? normalizedAmenities.length : 0;
+        BigDecimal minPrice = priceMin == null ? null : BigDecimal.valueOf(priceMin);
+        BigDecimal maxPrice = priceMax == null ? null : BigDecimal.valueOf(priceMax);
+
+        // One past the cap, so "more than CAP" is distinguishable from "exactly CAP".
+        int probe = SearchCountResponse.CAP + 1;
+
+        List<Listing> rows = (lat != null && lng != null && radiusM != null)
+                ? search.searchByRadiusPaginated(
+                        lat, lng, radiusM, city, neighborhood, minPrice, maxPrice,
+                        normalizedPropertyTypes, normalizedRoomTypes, normalizedFurnishings,
+                        availableFrom, normalizedAmenities, amenityCount, probe)
+                : search.searchByLocationSorted(
+                        city, neighborhood, minPrice, maxPrice,
+                        normalizedPropertyTypes, normalizedRoomTypes, normalizedFurnishings,
+                        availableFrom, normalizedAmenities, amenityCount,
+                        "recommended", null, null, null, null, probe);
+
+        return SearchCountResponse.of(rows.size());
+    }
+
     public java.util.List<MapPinResponse> mapPins(String city,
                                                  String neighborhood,
                                                  String[] propertyType,

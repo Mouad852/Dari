@@ -1128,6 +1128,48 @@ class ListingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("search count is exact below the cap and reports itself capped above it")
+    void searchCountIsCapped() throws Exception {
+        String uid = "uid-count-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        User owner = users.saveAndFlush(new User(uid, email, true, "Count Owner"));
+
+        String smallCity = "PetiteVille" + System.nanoTime();
+        for (int i = 0; i < 3; i++) {
+            listings.saveAndFlush(new Listing(
+                    owner, "Studio " + i, smallCity, "Centre", 33.9716, -6.8498,
+                    new java.math.BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+        }
+
+        given().queryParam("city", smallCity)
+                .when().get("/listings/count")
+                .then().statusCode(200)
+                .body("count", equalTo(3))
+                .body("capped", equalTo(false));
+
+        // Filters compose the same way they do for the results themselves; a
+        // count that disagreed with the list it labels would be worse than none.
+        given().queryParam("city", smallCity).queryParam("priceMin", 9000)
+                .when().get("/listings/count")
+                .then().statusCode(200)
+                .body("count", equalTo(0));
+
+        String bigCity = "GrandeVille" + System.nanoTime();
+        for (int i = 0; i < 205; i++) {
+            listings.saveAndFlush(new Listing(
+                    owner, "Studio " + i, bigCity, "Centre", 33.9716, -6.8498,
+                    new java.math.BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+        }
+
+        given().queryParam("city", bigCity)
+                .when().get("/listings/count")
+                .then().statusCode(200)
+                .body("count", equalTo(200))
+                .body("capped", equalTo(true));
+    }
+
+    @Test
     @DisplayName("photo PATCH sort order DTO rejects negative values")
     void photoPatchSortOrderDtoRejectsNegativeValues() {
         assertThat(validator.validate(new UpdateListingPhotoRequest(-1, null)))

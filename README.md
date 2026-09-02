@@ -49,6 +49,7 @@ The project has already crossed the foundational backend and product UI mileston
 - amenities can now be attached to a listing: `POST/PATCH /api/v1/listings` accept `amenityCodes`, validated against the real `amenities` table and round-tripped through `ListingResponse`; the publish wizard's "Équipements" step now sends real codes instead of a fictional French-string list
 - listing search optimization integration tests isolate only public-searchable rows in the shared PostGIS container, preserving drafts while keeping city/radius assertions deterministic
 - listing search date and amenity filters enforce composed conditions, including excluding undated listings for a requested move-in date and de-duplicating repeated query values
+- search results carry a real count: `GET /listings/count` returns an exact figure below 200 and "plus de 200" above it, fetched once per filter set rather than per page. The heading previously reported the number of rows *loaded*, so 12,500 matching listings in Rabat displayed as "20 annonces"
 - search is index-backed for every sort: `V15` adds a partial `(city, updated_at, id)` index and extends the price index with `id`; recently-updated went from 21.6 ms to 0.38 ms per page against 50k seeded listings. The amenity AND-filter was rewritten from a global `IN (... GROUP BY ... HAVING)` to a correlated count (88 ms to 35.7 ms on the worst realistic query), so it scales with candidates in the city rather than with the whole join table
 
 ### What remains open

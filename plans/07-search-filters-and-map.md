@@ -35,7 +35,7 @@ That amenity exception is the single most likely thing in this phase to be imple
 - [ ] Full listing detail page, from `ui_kits/mobile_app/ListingScreen.jsx` — photo header with glass controls, price block, logement / colocataires / règles tabs, sticky contact bar
 - [x] Map view with Leaflet, pins and a popup linking to the listing; already built, corrected 2026-09-02
 - [x] All filter state in the URL; already built, corrected 2026-09-02
-- [ ] Result counts on buttons — *Voir 32 annonces*, per the copy rules
+- [x] Result counts (2026-09-02) — `GET /listings/count` returns `{count, capped}`, exact below 200 and "plus de 200" above. Capped because a count is more expensive than the page it labels: 85 ms against 35 ms on a filtered search over 50k listings, since a page stops at 21 rows and a count cannot stop at all. Reuses the existing search queries with a capped limit rather than adding a seventh copy of the filter predicate. The heading previously reported the number of rows *loaded*, so 12,500 Rabat listings announced as "20 annonces".
 
 ## Depends on
 

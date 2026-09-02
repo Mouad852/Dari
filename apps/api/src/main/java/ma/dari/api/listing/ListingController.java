@@ -80,6 +80,30 @@ public class ListingController {
                 priceMin, priceMax, lat, lng, radiusM, sort, cursor);
     }
 
+    /**
+     * How many listings the current filters match, capped.
+     *
+     * <p>Separate from the search itself because it belongs to a filter set
+     * rather than a page: the client asks once when filters change, not while
+     * paginating.
+     */
+    @GetMapping("/count")
+    public SearchCountResponse count(@RequestParam(required = false) String city,
+                                     @RequestParam(required = false) String neighborhood,
+                                     @RequestParam(required = false) String[] propertyType,
+                                     @RequestParam(required = false) String[] roomType,
+                                     @RequestParam(required = false) String[] furnishing,
+                                     @RequestParam(required = false) String[] amenities,
+                                     @RequestParam(required = false) LocalDate availableFrom,
+                                     @RequestParam(required = false) Integer priceMin,
+                                     @RequestParam(required = false) Integer priceMax,
+                                     @RequestParam(required = false) Double lat,
+                                     @RequestParam(required = false) Double lng,
+                                     @RequestParam(required = false) Integer radiusM) {
+        return listingSearchService.count(city, neighborhood, propertyType, roomType, furnishing,
+                amenities, availableFrom, priceMin, priceMax, lat, lng, radiusM);
+    }
+
     /** Map pins for a city or radius search. Exact coordinates are never returned. */
     @GetMapping("/map")
     public java.util.List<MapPinResponse> map(@RequestParam(required = false) String city,

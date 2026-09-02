@@ -266,6 +266,7 @@ function SearchResultsPageContent() {
   const [roomType, setRoomType] = useState(searchParams.get('roomType') ?? '');
   const [furnishing, setFurnishing] = useState(searchParams.get('furnishing') ?? '');
   const [amenities, setAmenities] = useState<string[]>(() => searchParams.getAll('amenities'));
+  const [resultCount, setResultCount] = useState<{ count: number; capped: boolean } | null>(null);
   const [amenityOptions, setAmenityOptions] = useState<string[]>([]);
   const [priceMin, setPriceMin] = useState(searchParams.get('priceMin') ?? '');
   const [priceMax, setPriceMax] = useState(searchParams.get('priceMax') ?? '');
@@ -540,6 +541,25 @@ function SearchResultsPageContent() {
 
       appendFilterParams(params);
 
+      // The count belongs to the filter set, not the page, so it is fetched only
+      // on a fresh search and never while paginating. It is also deliberately
+      // not awaited with the results: a slower count must not delay the list.
+      if (!cursor) {
+        const countParams = new URLSearchParams(params);
+        countParams.delete('sort');
+        countParams.delete('view');
+        countParams.delete('cursor');
+        void apiFetch<{ count: number; capped: boolean }>(`/listings/count?${countParams.toString()}`)
+          .then((result) => {
+            if (isCurrent) setResultCount(result);
+          })
+          .catch(() => {
+            // A missing count degrades the heading to a neutral one; it must
+            // never take the results down with it.
+            if (isCurrent) setResultCount(null);
+          });
+      }
+
       try {
         const page = await apiFetch<CursorPage<PublicListing>>(`/listings?${params.toString()}`);
         if (!isCurrent) return;
@@ -620,9 +640,14 @@ function SearchResultsPageContent() {
   }, [city, currentSort, effectiveRadiusM, furnishing, hasRadiusMode, neighborhood, priceMax, priceMin, propertyType, referencePoint.lat, referencePoint.lng, roomType, searchParams, view]);
 
   const resultHeading = useMemo(() => {
-    const count = listings.length;
-    return `${count} annonce${count > 1 ? 's' : ''} à ${city}`;
-  }, [city, listings.length]);
+    // Previously this reported listings.length -- the number of rows *loaded* --
+    // so a search of 12,500 listings in Rabat announced "20 annonces à Rabat"
+    // and grew as you paged. It now reports the real total, capped.
+    if (!resultCount) return `Annonces à ${city}`;
+    if (resultCount.capped) return `Plus de ${resultCount.count} annonces à ${city}`;
+    const n = resultCount.count;
+    return `${n} annonce${n > 1 ? 's' : ''} à ${city}`;
+  }, [city, resultCount]);
 
   const handleLoadMore = () => {
     if (!nextCursor || loadingMore) return;

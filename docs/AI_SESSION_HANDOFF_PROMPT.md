@@ -73,7 +73,10 @@ Non-negotiable rules
   (currently V13 is the latest — the next migration is V14).
 - No login/signup API endpoints — Firebase owns identity, the API only verifies tokens.
 - Entities are never serialized directly to clients; DTOs only.
-- Keyset/cursor pagination only (Cursor/CursorPage classes) — never OFFSET, no total counts.
+- Keyset/cursor pagination only (Cursor/CursorPage classes) — never OFFSET. This earlier read "no total
+  counts", which was an over-broad restatement: the rule in ARCHITECTURE.md is about OFFSET and pagination
+  stability, and a separate capped count query does not touch either. `GET /listings/count` exists and is
+  used by the search heading.
 - Exact coordinates must never leave the API except through vetted admin-gated paths
   (LocationFuzzer fuzzes everything else, deterministically per listing ID).
 - `status` (DRAFT/PENDING_REVIEW/PUBLISHED/REJECTED/SUSPENDED/EXPIRED) and `availabilityState`

@@ -540,3 +540,40 @@ wifi+parking listing matches, a wifi-only listing does not, an undated listing i
 repeated code is de-duplicated. It passes unchanged against the correlated form.
 
 Suite: **92 tests, 0 failures**. No frontend change in this step.
+
+**T2.4 result counts — settled and built (2026-09-02).**
+
+This was flagged as a conflict between `plans/07` asking for "Voir 32 annonces" and a no-total-counts
+rule. **The conflict was not real.** "No total counts" appears only in
+`docs/AI_SESSION_HANDOFF_PROMPT.md` and `docs/SESSION-PROMPT.md` — instructions written for AI
+sessions. The authoritative documents say something narrower: `ARCHITECTURE.md` says the codebase
+"uses keyset pagination and never relies on `OFFSET`", and the design doc gives the reason as
+pagination stability as listings are added and removed. A separate count query affects neither. An
+over-broad restatement in a prompt had hardened into a perceived architectural rule.
+
+**Measured before choosing** (50k seeded listings, 12,500 in Rabat):
+
+| query | time |
+| --- | --- |
+| the page itself, worst case | ~35 ms |
+| exact count, city only | 14.9 ms |
+| exact count, worst case with amenities | 84.9 ms |
+| capped count at 200, worst case | 36.8 ms |
+
+The count costs more than the page it labels, because a page stops at twenty-one rows and a count
+cannot stop at all. Product owner chose the capped option: exact below 200, "plus de 200" above.
+
+- `GET /api/v1/listings/count` returns `{count, capped}`. **No new SQL** — it reuses the existing
+  search queries with `LIMIT CAP + 1`. A seventh copy of the filter predicate would be one more place
+  for a future filter fix to miss, and a count that silently disagreed with the results it labels is
+  worse than no count at all.
+- Fetched once per filter set, never while paginating, and deliberately not awaited alongside the
+  results: a slow count must not delay the list, and a failed one degrades the heading to a neutral
+  "Annonces à Rabat" rather than taking the page down.
+
+**A fabrication fixed along the way.** The results heading read
+`${listings.length} annonce${...} à ${city}` — the number of rows *loaded*, not matched. A search of
+12,500 listings in Rabat announced "20 annonces à Rabat", and the number grew as the user pressed
+"Voir plus". It now reports the real total.
+
+Suite: **93 tests, 0 failures** (was 92). Frontend `typecheck` and `build` clean.
