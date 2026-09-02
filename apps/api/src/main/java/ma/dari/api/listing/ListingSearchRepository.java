@@ -49,12 +49,11 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
               AND (CAST(:roomTypes AS room_type[]) IS NULL OR l.room_type = ANY(CAST(:roomTypes AS room_type[])))
               AND (CAST(:furnishings AS room_furnishing[]) IS NULL OR l.room_furnishing = ANY(CAST(:furnishings AS room_furnishing[])))
               AND (CAST(:availableBy AS date) IS NULL OR l.available_from <= :availableBy)
-              AND (CAST(:amenityCodes AS text[]) IS NULL OR l.id IN (
-                  SELECT la.listing_id FROM listing_amenities la
-                  WHERE la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
-                  GROUP BY la.listing_id
-                  HAVING COUNT(DISTINCT la.amenity_code) = :amenityCount
-              ))
+              AND (CAST(:amenityCodes AS text[]) IS NULL OR (
+                  SELECT COUNT(DISTINCT la.amenity_code) FROM listing_amenities la
+                  WHERE la.listing_id = l.id
+                    AND la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
+              ) = :amenityCount)
               AND (
                   CAST(:lastId AS uuid) IS NULL
                   OR (CAST(:sort AS text) = 'priceasc'
@@ -112,12 +111,11 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
               AND (CAST(:roomTypes AS room_type[]) IS NULL OR l.room_type = ANY(CAST(:roomTypes AS room_type[])))
               AND (CAST(:furnishings AS room_furnishing[]) IS NULL OR l.room_furnishing = ANY(CAST(:furnishings AS room_furnishing[])))
               AND (CAST(:availableBy AS date) IS NULL OR l.available_from <= :availableBy)
-              AND (CAST(:amenityCodes AS text[]) IS NULL OR l.id IN (
-                  SELECT la.listing_id FROM listing_amenities la
-                  WHERE la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
-                  GROUP BY la.listing_id
-                  HAVING COUNT(DISTINCT la.amenity_code) = :amenityCount
-              ))
+              AND (CAST(:amenityCodes AS text[]) IS NULL OR (
+                  SELECT COUNT(DISTINCT la.amenity_code) FROM listing_amenities la
+                  WHERE la.listing_id = l.id
+                    AND la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
+              ) = :amenityCount)
             ORDER BY l.created_at DESC, l.id DESC
             LIMIT :limit
             """, nativeQuery = true)
@@ -153,12 +151,11 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
               AND (CAST(:roomTypes AS room_type[]) IS NULL OR l.room_type = ANY(CAST(:roomTypes AS room_type[])))
               AND (CAST(:furnishings AS room_furnishing[]) IS NULL OR l.room_furnishing = ANY(CAST(:furnishings AS room_furnishing[])))
               AND (CAST(:availableBy AS date) IS NULL OR l.available_from <= :availableBy)
-              AND (CAST(:amenityCodes AS text[]) IS NULL OR l.id IN (
-                  SELECT la.listing_id FROM listing_amenities la
-                  WHERE la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
-                  GROUP BY la.listing_id
-                  HAVING COUNT(DISTINCT la.amenity_code) = :amenityCount
-              ))
+              AND (CAST(:amenityCodes AS text[]) IS NULL OR (
+                  SELECT COUNT(DISTINCT la.amenity_code) FROM listing_amenities la
+                  WHERE la.listing_id = l.id
+                    AND la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
+              ) = :amenityCount)
               AND ST_DWithin(
                   l.location,
                   ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
@@ -206,12 +203,11 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
               AND (CAST(:roomTypes AS room_type[]) IS NULL OR l.room_type = ANY(CAST(:roomTypes AS room_type[])))
               AND (CAST(:furnishings AS room_furnishing[]) IS NULL OR l.room_furnishing = ANY(CAST(:furnishings AS room_furnishing[])))
               AND (CAST(:availableBy AS date) IS NULL OR l.available_from <= :availableBy)
-              AND (CAST(:amenityCodes AS text[]) IS NULL OR l.id IN (
-                  SELECT la.listing_id FROM listing_amenities la
-                  WHERE la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
-                  GROUP BY la.listing_id
-                  HAVING COUNT(DISTINCT la.amenity_code) = :amenityCount
-              ))
+              AND (CAST(:amenityCodes AS text[]) IS NULL OR (
+                  SELECT COUNT(DISTINCT la.amenity_code) FROM listing_amenities la
+                  WHERE la.listing_id = l.id
+                    AND la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
+              ) = :amenityCount)
               AND ST_DWithin(
                   l.location,
                   ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
@@ -274,12 +270,11 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
               AND (CAST(:roomTypes AS room_type[]) IS NULL OR l.room_type = ANY(CAST(:roomTypes AS room_type[])))
               AND (CAST(:furnishings AS room_furnishing[]) IS NULL OR l.room_furnishing = ANY(CAST(:furnishings AS room_furnishing[])))
               AND (CAST(:availableBy AS date) IS NULL OR l.available_from <= :availableBy)
-              AND (CAST(:amenityCodes AS text[]) IS NULL OR l.id IN (
-                  SELECT la.listing_id FROM listing_amenities la
-                  WHERE la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
-                  GROUP BY la.listing_id
-                  HAVING COUNT(DISTINCT la.amenity_code) = :amenityCount
-              ))
+              AND (CAST(:amenityCodes AS text[]) IS NULL OR (
+                  SELECT COUNT(DISTINCT la.amenity_code) FROM listing_amenities la
+                  WHERE la.listing_id = l.id
+                    AND la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
+              ) = :amenityCount)
               AND (
                   l.created_at < :lastCreatedAt
                   OR (l.created_at = :lastCreatedAt AND l.id < :lastId)
@@ -320,12 +315,11 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
               AND (CAST(:roomTypes AS room_type[]) IS NULL OR l.room_type = ANY(CAST(:roomTypes AS room_type[])))
               AND (CAST(:furnishings AS room_furnishing[]) IS NULL OR l.room_furnishing = ANY(CAST(:furnishings AS room_furnishing[])))
               AND (:availableBy IS NULL OR l.available_from IS NULL OR l.available_from <= :availableBy)
-              AND (CAST(:amenityCodes AS text[]) IS NULL OR l.id IN (
-                  SELECT la.listing_id FROM listing_amenities la
-                  WHERE la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
-                  GROUP BY la.listing_id
-                  HAVING COUNT(DISTINCT la.amenity_code) = :amenityCount
-              ))
+              AND (CAST(:amenityCodes AS text[]) IS NULL OR (
+                  SELECT COUNT(DISTINCT la.amenity_code) FROM listing_amenities la
+                  WHERE la.listing_id = l.id
+                    AND la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
+              ) = :amenityCount)
               AND (
                   :radiusM IS NULL OR ST_DWithin(
                       l.location,

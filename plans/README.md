@@ -487,3 +487,56 @@ Suite: **92 tests, 0 failures** (was 89; +3 — price ordering in both direction
 handling, and distance-sort-without-radius). The price test discriminates by construction: the rows
 are inserted in an order that matches neither ascending, descending, nor recency, so it could not
 have passed before this change. Frontend `typecheck` and `build` clean. Not verified in a browser.
+
+**T2.5 EXPLAIN ANALYZE and index review — done (2026-09-02).**
+
+Measured rather than reasoned about: a throwaway PostGIS container, all migrations applied, **50,000
+listings** across the four real cities with varied prices and 200,000 `listing_amenities` rows. The
+project's own dev database turned out to be stuck at V2 and was left untouched.
+
+**First question answered: does the new CASE-based ORDER BY defeat the indexes?** It does not.
+Postgres constant-folds the sort branches, and it keeps doing so under a prepared statement executed
+repeatedly — it prefers a custom plan here precisely because the parameter changes the plan. The
+default sort still runs as a plain index scan (0.24 ms). This was worth checking before anything
+else, since a single-query design that silently forced a full sort would have been worse than the
+four-query duplication it avoided.
+
+**Two index gaps, both created by making the sorts real:**
+
+| query | before | after |
+| --- | --- | --- |
+| recency (default) | 0.48 ms | unchanged, already indexed |
+| price ascending | 0.56 ms, incremental sort on top | 0.36 ms, pure index scan |
+| price, resumed from a keyset cursor | — | 0.36 ms, pure index scan |
+| **recently updated** | **21.6 ms** | **0.38 ms** |
+
+`V15__search_sort_indexes.sql` adds a partial `(city, updated_at DESC, id DESC)` index — recently-updated
+previously had none at all and bitmap-scanned every listing in the city (12,500 rows for Rabat) before
+a top-N heapsort, growing linearly with the city. It also extends the price index to `(city,
+price_rent, id)` so a price page resumes straight off the index in both directions instead of needing
+an incremental sort for the `(price_rent, id)` tiebreaker.
+
+**The real find: the amenity filter, exactly where `plans/07` predicted it.** The worst realistic
+query — city + price range + property type + availability date + two amenities AND-matched + price
+sort — ran at **88 ms**. The `l.id IN (SELECT ... GROUP BY ... HAVING COUNT(*) = n)` form is evaluated
+**globally**: it scanned 40,054 amenity rows across the entire table, sorted 3.2 MB of them and
+aggregated to 6,699 ids, *before* the city filter had any say. It scaled with total amenity rows
+rather than with the city being searched.
+
+Rewritten as a correlated `(SELECT COUNT(DISTINCT ...) WHERE la.listing_id = l.id) = :count`, which
+runs as an index-only scan on the join table's primary key per candidate row: **88 ms → 35.7 ms**,
+and far more importantly it now scales with candidates in the city rather than with the whole table.
+Applied to all six queries carrying the clause, not just the sorted one — leaving some on the old
+form is precisely the divergence this interface's duplication invites.
+
+**Disclosed rather than papered over:** with `enable_bitmapscan = off` the same correlated query runs
+at **8.8 ms**, walking the price index in order and stopping after 21 matches. The planner does not
+choose that on its own because it cannot estimate a correlated subquery's selectivity, so it bitmaps
+8,399 rows instead of streaming 181. Not forced — planner hints are not something to bake into a
+migration — but the ceiling is recorded here so nobody re-derives it.
+
+Semantics verified, not assumed: `availabilityAndAmenityFiltersAreComposed` already asserts that a
+wifi+parking listing matches, a wifi-only listing does not, an undated listing is excluded, and a
+repeated code is de-duplicated. It passes unchanged against the correlated form.
+
+Suite: **92 tests, 0 failures**. No frontend change in this step.

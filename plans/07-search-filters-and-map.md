@@ -24,8 +24,8 @@ That amenity exception is the single most likely thing in this phase to be imple
 - [x] City and neighborhood versus radius as **mutually exclusive modes**, rejected with a 400; already built, corrected 2026-09-02. A `closest` sort without a radius is now also refused rather than silently downgraded.
 - [x] Map endpoint returning pins for a city — flat list, no clustering; already built, corrected 2026-09-02
 - [ ] Confirm fuzzed coordinates on the map path; this is where exact coordinates are most likely to leak
-- [ ] Re-run `EXPLAIN ANALYZE` with the full filter set applied; the amenity join is the new risk to the query plan
-- [ ] Index review now that the real filter shape is known
+- [x] Re-run `EXPLAIN ANALYZE` with the full filter set applied (2026-09-02, 50k seeded listings). The amenity join was indeed the risk: the `IN (... GROUP BY ... HAVING)` form was evaluated globally, scanning 40k amenity rows before the city filter applied — 88 ms for the worst realistic query. Rewritten as a correlated COUNT, 35.7 ms, and now scaling with candidates in the city rather than the whole table.
+- [x] Index review (2026-09-02). `V15__search_sort_indexes.sql`: recently-updated had no index and took 21.6 ms per page (now 0.38 ms); the price index lacked `id`, so the keyset tiebreaker needed an incremental sort (now a pure index scan in both directions). Also verified the CASE-based ORDER BY does not defeat index usage, including under repeated prepared-statement execution.
 
 **Frontend**
 - [ ] Desktop sticky filter rail, from `ui_kits/website/SearchResultsPage.jsx`
