@@ -57,6 +57,16 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
 
+                        // Stored listing photos and avatars, served by
+                        // WebMvcConfig's resource handler. These are <img src>
+                        // targets: a browser sends no Authorization header for
+                        // them, so requiring one means every photo on every
+                        // public listing page fails to load. The files are
+                        // already public content -- they are what search results
+                        // and listing pages exist to show -- and the storage key
+                        // is an unguessable UUID path.
+                        .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+
                         // Owner-scoped reads that live UNDER the public prefixes
                         // below. Matchers are evaluated in order, so these must
                         // come first: the wildcard permitAll that follows would

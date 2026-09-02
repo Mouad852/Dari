@@ -577,3 +577,65 @@ cannot stop at all. Product owner chose the capped option: exact below 200, "plu
 "Voir plus". It now reports the real total.
 
 Suite: **93 tests, 0 failures** (was 92). Frontend `typecheck` and `build` clean.
+
+## Visual QA pass (2026-09-03)
+
+First time the app has actually been run in a browser this session. Every prior step carried a "not
+verified in a browser" caveat; this pass discharges some of them and found one production bug that
+no test could have caught.
+
+**Getting it running was itself informative.** Port 8080 is occupied by an unrelated medical
+microservices stack (`api-gateway`, `patient-service` …) — `README.md` warns about exactly this, and
+the warning is correct: `/actuator/health` there returns a healthy-looking response that is not
+Dari's. Ports 8099 and 8123 then failed with Spring reporting "already in use" when nothing was
+listening at all: they fall inside a Windows/Hyper-V *reserved* port range, so binding is refused
+(WinError 10013) rather than occupied. Settled on 8055. The local dev database was still at V2 and
+Flyway brought it up to V15 on first boot.
+
+### Production bug found: stored photos were unreachable
+
+`WebMvcConfig` serves uploaded media at `/uploads/**`, but `SecurityConfig` only ever permitted
+`/actuator/*` and `/api/v1/**` — so `/uploads/**` fell through to `anyRequest().authenticated()` and
+returned **401 for every image**. A browser does not attach a bearer token to an `<img src>`, so this
+could never have worked for anyone: not the public, not the owner, not an admin. Every listing photo
+on every page would have been a broken image.
+
+Nothing caught this because the entire photo pipeline is tested through the API — upload, reorder,
+cover, delete, list — and never through the URL a browser actually requests. Fixed by permitting
+`GET /uploads/**`, with `ListingApiTest.uploadedMediaIsPubliclyReadable` uploading a photo and then
+fetching its returned URL with no token. Verified against the running server too: `HTTP 200`,
+`image/png`, 2790 bytes, and the image renders on the detail page.
+
+### Confirmed working in a real browser
+
+- The listing detail page renders its photo, real description, real amenity labels, real
+  property/room/furnishing labels, charges, availability and minimum stay.
+- "Signaler cette annonce" (T1.1) is present on the detail page.
+- The heading reads **"7 annonces à Rabat"** — the real total from `GET /listings/count` (T2.4), not
+  the number of loaded rows.
+- Sort options read "Plus récentes / Prix croissant / Prix décroissant / Récemment mises à jour"
+  (T2.2), replacing the labels that promised orderings the API ignored.
+
+### Layout defects found, both feeding T2.3
+
+1. **The desktop filter rail is too narrow for its own contents.** The grid track is exactly `300px`
+   while the panel's content measures `383px`; **25 child elements overflow it**, the worst by 83px.
+   With no overflow handling they spill right and are painted under the results grid, so the
+   "Quartier", type, price and availability inputs, the "Appliquer les filtres" button and the
+   Résultats/Carte toggle are all visually clipped. The page itself does not scroll horizontally at
+   1440px, which is why this reads as clipping rather than overflow.
+2. **The page does scroll horizontally on a narrow viewport** — 114px of overflow at a 500px
+   viewport, against a quality floor that requires no horizontal body scroll down to 360px. Cause is
+   the same hard-coded `300px` filter column, which never collapses: there is no breakpoint at all.
+   The sort-chip row overflows separately, pushing the page rather than scrolling within itself.
+
+### Gap confirmed, not previously written down
+
+**Search result cards cannot show photos.** They render a "PHOTO" placeholder for every listing,
+including the twelve seeded with real, now-serving images, because `PublicListingResponse` — the
+search DTO — carries no photo field at all. Only `PublicListingDetailResponse` does. For a rental
+marketplace a photo-less results feed is a serious product gap, and it needs a backend change
+(a cover-photo URL on the search DTO) before any frontend work can show one.
+
+Suite: **94 tests, 0 failures** (was 93; +1 for public media). The dev database now holds 28 seeded
+listings and 12 photos for local inspection.

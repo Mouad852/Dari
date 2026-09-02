@@ -1170,6 +1170,35 @@ class ListingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("stored photos are readable without a token, because an img tag sends none")
+    void uploadedMediaIsPubliclyReadable() throws Exception {
+        String uid = "uid-media-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        users.saveAndFlush(new User(uid, email, true, "Media Owner"));
+
+        String listingId = given().header("Authorization", "Bearer media-token")
+                .contentType("application/json")
+                .body("{\"title\":\"Studio media\",\"city\":\"Rabat\",\"neighborhood\":\"Agdal\",\"latitude\":33.9716,\"longitude\":-6.8498,\"priceRent\":2500.00}")
+                .when().post("/listings")
+                .then().statusCode(201)
+                .extract().path("id");
+
+        String url = given().header("Authorization", "Bearer media-token")
+                .multiPart("file", "cover.jpg", generateJpeg(320, 240), "image/jpeg")
+                .when().post("/listings/{id}/photos", listingId)
+                .then().statusCode(201)
+                .extract().path("url");
+
+        // The security chain protects /api/v1/**; the resource handler serving
+        // /uploads/** sat behind anyRequest().authenticated(), so every photo on
+        // every public listing page returned 401. Browsers do not attach a
+        // bearer token to an image request, so this could never have worked.
+        given().basePath("").when().get(url)
+                .then().statusCode(200);
+    }
+
+    @Test
     @DisplayName("photo PATCH sort order DTO rejects negative values")
     void photoPatchSortOrderDtoRejectsNegativeValues() {
         assertThat(validator.validate(new UpdateListingPhotoRequest(-1, null)))
