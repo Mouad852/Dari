@@ -1,6 +1,5 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, List, Map as MapIcon, SlidersHorizontal } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -8,7 +7,13 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
+import { Badge } from '@/components/ds/Badge';
+import { Button } from '@/components/ds/Button';
+import { Card } from '@/components/ds/Card';
+import { Input } from '@/components/ds/Input';
 import { ListingCard } from '@/components/ds/ListingCard';
+import { Select } from '@/components/ds/Select';
+import { Tabs } from '@/components/ds/Tabs';
 import { Tag } from '@/components/ds/Tag';
 import { amount, distance } from '@/lib/format';
 import { AMENITY_LABELS } from '@/lib/labels';
@@ -646,23 +651,14 @@ function SearchResultsPageContent() {
     <main style={{ padding: 'var(--space-7) var(--gutter-desktop) var(--space-10)' }}>
       <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', display: 'grid', gap: 'var(--space-6)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-          <button
-            type="button"
-            style={{
-              display: 'inline-flex',
-              gap: '0.5rem',
-              alignItems: 'center',
-              background: 'transparent',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-pill)',
-              color: 'var(--text-heading)',
-              padding: '0.55rem 0.9rem',
-              cursor: 'pointer',
-            }}
-          >
-            <ArrowLeft size={16} />
+          {/*
+            This had no onClick at all: a control that looks like a back button
+            and does nothing. The kit passes an `onBack`; here the label says
+            Accueil, so that is where it goes.
+          */}
+          <Button variant="ghost" size="sm" iconLeft="chevron-left" onClick={() => router.push('/')}>
             Accueil
-          </button>
+          </Button>
           <span style={{ font: 'var(--type-caption)', color: 'var(--text-subtle)' }}>{city} · Colocation</span>
         </div>
 
@@ -679,71 +675,30 @@ function SearchResultsPageContent() {
             contents under the results grid.
           */}
           <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
-                <div style={{ display: 'inline-flex', gap: '0.25rem', background: 'var(--bg-inset)', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-hairline)', padding: '0.2rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => toggleView('results')}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.45rem',
-                      border: 'none',
-                      borderRadius: 'var(--radius-pill)',
-                      background: view === 'results' ? 'var(--sable-900)' : 'transparent',
-                      color: view === 'results' ? '#fff' : 'var(--text-heading)',
-                      padding: '0.45rem 0.7rem',
-                      font: 'var(--type-label)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <List size={14} />
-                    Résultats
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleView('map')}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.45rem',
-                      border: 'none',
-                      borderRadius: 'var(--radius-pill)',
-                      background: view === 'map' ? 'var(--sable-900)' : 'transparent',
-                      color: view === 'map' ? '#fff' : 'var(--text-heading)',
-                      padding: '0.45rem 0.7rem',
-                      font: 'var(--type-label)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <MapIcon size={14} />
-                    Carte
-                  </button>
-                </div>
+                <Tabs
+                  variant="segmented"
+                  label="Présentation des résultats"
+                  value={view}
+                  onChange={(value) => toggleView(value as ViewValue)}
+                  tabs={[
+                    { value: 'results', label: 'Résultats' },
+                    { value: 'map', label: 'Carte' },
+                  ]}
+                />
 
-          <div
-            className="scroll-row"
-            style={{ display: 'inline-flex', flexShrink: 0, maxWidth: '100%', background: 'var(--bg-inset)', borderRadius: 'var(--radius-pill)', padding: '0.25rem', border: '1px solid var(--border-hairline)' }}
-          >
-            {visibleSorts.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setSort(option.value)}
-                style={{
-                  background: currentSort === option.value ? 'var(--sable-900)' : 'transparent',
-                  color: currentSort === option.value ? '#fff' : 'var(--text-heading)',
-                  border: 'none',
-                  borderRadius: 'var(--radius-pill)',
-                  padding: '0.55rem 0.9rem',
-                  font: 'var(--type-body-sm)',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
+          {/*
+            The kit's own control for this row: `Tabs variant="segmented"`. Hand-
+            rolling it cost the keyboard behaviour the tablist role promises --
+            arrow keys now move between sorts, which they never did here.
+          */}
+          <div className="scroll-row" style={{ maxWidth: '100%' }}>
+            <Tabs
+              variant="segmented"
+              label="Trier les annonces"
+              value={currentSort}
+              onChange={(value) => setSort(value as SortValue)}
+              tabs={visibleSorts.map((option) => ({ value: option.value, label: option.label }))}
+            />
           </div>
           </div>
         </div>
@@ -753,45 +708,29 @@ function SearchResultsPageContent() {
           results, and a full filter column ahead of them is the wrong default.
           Hidden above the breakpoint by CSS, so no viewport check is needed here.
         */}
-        <button
-          type="button"
-          className="search-filters-toggle"
+        {/*
+          The class goes on a wrapper, not on the Button. Button sets
+          `display: inline-flex` inline, and an inline declaration beats the
+          class rule that hides this above 900px -- the toggle would have stayed
+          visible on desktop. app.css already carries that warning; this is the
+          third time it has been the answer.
+        */}
+        <div className="search-filters-toggle">
+        <Button
+          variant="secondary"
+          fullWidth
+          iconLeft="sliders-horizontal"
           onClick={() => setFiltersOpen((open) => !open)}
           aria-expanded={filtersOpen}
-          style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            width: '100%',
-            border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-pill)',
-            background: 'var(--surface-card)',
-            color: 'var(--text-heading)',
-            padding: '0.8rem 1rem',
-            font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)',
-            cursor: 'pointer',
-          }}
         >
-          <SlidersHorizontal size={16} />
           {filtersOpen ? 'Masquer les filtres' : 'Filtres'}
           {activeFilterCount > 0 && (
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: 20,
-                height: 20,
-                borderRadius: 'var(--radius-pill)',
-                background: 'var(--sable-900)',
-                color: '#fff',
-                font: 'var(--type-label)',
-              }}
-            >
+            <Badge tone="inverse" size="sm" style={{ marginLeft: 'var(--space-2)' }}>
               {activeFilterCount}
-            </span>
+            </Badge>
           )}
-        </button>
+        </Button>
+        </div>
 
         <div className="search-layout">
           <aside
@@ -799,111 +738,133 @@ function SearchResultsPageContent() {
             data-collapsed={filtersOpen ? 'false' : 'true'}
             style={{ gap: 'var(--space-6)', alignContent: 'start' }}
           >
-            <div
-              style={{
-                ...cardStyle,
-                display: 'grid',
-                gap: 'var(--space-5)',
-                padding: 'var(--card-pad-lg)',
-              }}
+            {/*
+              Rebuilt against `design-system/ui_kits/website/SearchResultsPage.jsx`.
+              Everything here was a raw <input>/<select>/<button> with its border,
+              radius and padding written out by hand -- eleven copies of the same
+              four declarations, none of which had a focus ring, a real label, or
+              the control height the design specifies.
+            */}
+            {/*
+              minmax(0, 1fr) on both grids, not `auto`. An implicit grid track is
+              sized to its content, so the selects and the tag row sized the rail
+              from the inside and spilled it under the results -- the same bug
+              the .search-filters rule in app.css was written to fix, reappearing
+              one level deeper.
+            */}
+            <Card
+              padding="var(--card-pad-lg)"
+              style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-5)' }}
             >
               <h3 style={{ margin: 0, font: 'var(--type-h3)' }}>Filtres</h3>
 
-              <div style={{ display: 'grid', gap: '0.75rem', color: 'var(--text-muted)', font: 'var(--type-body)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRadius('');
-                      setView('results');
-                      updateUrl('results', '');
-                    }}
-                    style={{
-                      background: !hasRadiusMode ? 'var(--sable-900)' : 'transparent',
-                      color: !hasRadiusMode ? '#fff' : 'var(--text-heading)',
-                      borderRadius: 'var(--radius-pill)',
-                      border: '1px solid var(--border-default)',
-                      padding: '0.6rem 0.8rem',
-                      font: 'var(--type-body-sm)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Ville / quartier
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-4)' }}>
+                {/*
+                  City/neighbourhood and radius are mutually exclusive modes, not
+                  two filters -- which is what a segmented control says and what
+                  two independent pill buttons did not.
+                */}
+                <Tabs
+                  variant="segmented"
+                  label="Mode de recherche"
+                  value={hasRadiusMode ? 'radius' : 'place'}
+                  onChange={(value) => {
+                    if (value === 'radius') {
                       const nextRadius = radius || '2500';
                       setRadius(nextRadius);
                       setView('results');
                       updateUrl('results', nextRadius);
-                    }}
-                    style={{
-                      background: hasRadiusMode ? 'var(--sable-900)' : 'transparent',
-                      color: hasRadiusMode ? '#fff' : 'var(--text-heading)',
-                      borderRadius: 'var(--radius-pill)',
-                      border: '1px solid var(--border-default)',
-                      padding: '0.6rem 0.8rem',
-                      font: 'var(--type-body-sm)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Rayon
-                  </button>
-                </div>
+                    } else {
+                      setRadius('');
+                      setView('results');
+                      updateUrl('results', '');
+                    }
+                  }}
+                  tabs={[
+                    { value: 'place', label: 'Ville / quartier' },
+                    { value: 'radius', label: 'Rayon' },
+                  ]}
+                />
 
                 {hasRadiusMode ? (
-                  <div style={{ display: 'grid', gap: '0.5rem' }}>
-                    <label htmlFor="radius" style={{ font: 'var(--type-label)', color: 'var(--text-subtle)' }}>Rayon (mètres)</label>
-                    <input
-                      id="radius"
-                      type="number"
-                      min="250"
-                      max="10000"
-                      step="250"
-                      value={radius}
-                      onChange={(event) => {
-                        const nextRadius = event.target.value;
-                        setRadius(nextRadius);
-                        updateUrl(view, nextRadius);
-                      }}
-                      style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.65rem 0.7rem', font: 'var(--type-body-sm)' }}
-                    />
-                    <small style={{ color: 'var(--text-muted)', font: 'var(--type-label)' }}>Le rayon reste dans l'URL sans exposer les coordonnées exactes.</small>
-                  </div>
+                  <Input
+                    label="Rayon"
+                    type="number"
+                    min={250}
+                    max={10000}
+                    step={250}
+                    suffix="m"
+                    value={radius}
+                    onChange={(event) => {
+                      const nextRadius = event.target.value;
+                      setRadius(nextRadius);
+                      updateUrl(view, nextRadius);
+                    }}
+                    helper="Le rayon reste dans l’URL sans exposer les coordonnées exactes."
+                  />
                 ) : (
                   <>
-                    <input
+                    <Input
+                      label="Quartier"
                       value={neighborhood}
                       onChange={(event) => {
                         const nextValue = event.target.value;
                         setNeighborhood(nextValue);
                         updateUrl(view, radius, { neighborhood: nextValue });
                       }}
-                      placeholder="Quartier"
-                      aria-label="Quartier"
-                      style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.65rem 0.7rem', font: 'var(--type-body-sm)' }}
+                      placeholder="Agdal, Maarif, Gueliz"
                     />
-                    <select value={propertyType} onChange={(event) => { const nextValue = event.target.value; setPropertyType(nextValue); updateUrl(view, radius, { propertyType: nextValue }); }} aria-label="Type de logement" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.65rem 0.7rem', font: 'var(--type-body-sm)' }}>
-                      <option value="">Tous les logements</option>
-                      <option value="APARTMENT">Appartement</option>
-                      <option value="HOUSE">Maison</option>
-                      <option value="STUDIO">Studio</option>
-                    </select>
-                    <select value={roomType} onChange={(event) => { const nextValue = event.target.value; setRoomType(nextValue); updateUrl(view, radius, { roomType: nextValue }); }} aria-label="Type de chambre" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.65rem 0.7rem', font: 'var(--type-body-sm)' }}>
-                      <option value="">Toutes les chambres</option>
-                      <option value="PRIVATE">Privée</option>
-                      <option value="SHARED">Partagée</option>
-                    </select>
-                    <select value={furnishing} onChange={(event) => { const nextValue = event.target.value; setFurnishing(nextValue); updateUrl(view, radius, { furnishing: nextValue }); }} aria-label="Aménagement" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.65rem 0.7rem', font: 'var(--type-body-sm)' }}>
-                      <option value="">Tous les aménagements</option>
-                      <option value="FULLY_FURNISHED">Meublé</option>
-                      <option value="PARTIALLY_FURNISHED">Partiellement meublé</option>
-                      <option value="UNFURNISHED">Non meublé</option>
-                    </select>
-                    <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      <div style={{ font: 'var(--type-label)', color: 'var(--text-subtle)' }}>Équipements</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+
+                    <Select
+                      label="Type de logement"
+                      placeholder="Tous les logements"
+                      value={propertyType}
+                      onChange={(event) => {
+                        const nextValue = event.target.value;
+                        setPropertyType(nextValue);
+                        updateUrl(view, radius, { propertyType: nextValue });
+                      }}
+                      options={[
+                        { value: 'APARTMENT', label: 'Appartement' },
+                        { value: 'HOUSE', label: 'Maison' },
+                        { value: 'STUDIO', label: 'Studio' },
+                      ]}
+                    />
+
+                    <Select
+                      label="Type de chambre"
+                      placeholder="Toutes les chambres"
+                      value={roomType}
+                      onChange={(event) => {
+                        const nextValue = event.target.value;
+                        setRoomType(nextValue);
+                        updateUrl(view, radius, { roomType: nextValue });
+                      }}
+                      options={[
+                        { value: 'PRIVATE', label: 'Privée' },
+                        { value: 'SHARED', label: 'Partagée' },
+                      ]}
+                    />
+
+                    <Select
+                      label="Aménagement"
+                      placeholder="Tous les aménagements"
+                      value={furnishing}
+                      onChange={(event) => {
+                        const nextValue = event.target.value;
+                        setFurnishing(nextValue);
+                        updateUrl(view, radius, { furnishing: nextValue });
+                      }}
+                      options={[
+                        { value: 'FULLY_FURNISHED', label: 'Meublé' },
+                        { value: 'PARTIALLY_FURNISHED', label: 'Partiellement meublé' },
+                        { value: 'UNFURNISHED', label: 'Non meublé' },
+                      ]}
+                    />
+
+                    <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+                      <span style={{ font: 'var(--type-label)', color: 'var(--text-heading)' }}>Équipements</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
                         {/*
                           The design-system Tag. The charcoal-when-selected rule
                           this replaces was re-derived by hand here before the
@@ -919,46 +880,74 @@ function SearchResultsPageContent() {
                           </Tag>
                         ))}
                       </div>
-                      <small style={{ color: 'var(--text-muted)', font: 'var(--type-label)' }}>Sélection multiple : tous les équipements choisis doivent être présents.</small>
+                      <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
+                        Sélection multiple : tous les équipements choisis doivent être présents.
+                      </span>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' }}>
-                      <input type="number" min="0" value={priceMin} onChange={(event) => { const nextValue = event.target.value; setPriceMin(nextValue); updateUrl(view, radius, { priceMin: nextValue }); }} placeholder="Prix min" aria-label="Prix minimum" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.65rem 0.7rem', font: 'var(--type-body-sm)' }} />
-                      <input type="number" min="0" value={priceMax} onChange={(event) => { const nextValue = event.target.value; setPriceMax(nextValue); updateUrl(view, radius, { priceMax: nextValue }); }} placeholder="Prix max" aria-label="Prix maximum" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.65rem 0.7rem', font: 'var(--type-body-sm)' }} />
-                    </div>
-                    <label style={{ display: 'grid', gap: '0.4rem', color: 'var(--text-subtle)', font: 'var(--type-label)' }}>
-                      Disponibilité
-                      <input
-                        type="date"
-                        value={availableFrom}
-                        onChange={(event) => { const nextValue = event.target.value; setAvailableFrom(nextValue); updateUrl(view, radius, { availableFrom: nextValue }); }}
-                        aria-label="Date de disponibilité"
-                        style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.65rem 0.7rem', font: 'var(--type-body-sm)' }}
+
+                    {/* Two columns, as the kit lays out its price pair. minmax(0,…)
+                        because a grid item's default min-width is its content:
+                        the field padding plus the MAD suffix was enough to push
+                        the pair wider than the rail. */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 'var(--space-4)' }}>
+                      <Input
+                        label="Min."
+                        type="number"
+                        min={0}
+                        suffix="MAD"
+                        value={priceMin}
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          setPriceMin(nextValue);
+                          updateUrl(view, radius, { priceMin: nextValue });
+                        }}
+                        placeholder="2 000"
                       />
-                    </label>
+                      <Input
+                        label="Max."
+                        type="number"
+                        min={0}
+                        suffix="MAD"
+                        value={priceMax}
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          setPriceMax(nextValue);
+                          updateUrl(view, radius, { priceMax: nextValue });
+                        }}
+                        placeholder="4 500"
+                      />
+                    </div>
+
+                    <Input
+                      label="Disponibilité"
+                      type="date"
+                      value={availableFrom}
+                      onChange={(event) => {
+                        const nextValue = event.target.value;
+                        setAvailableFrom(nextValue);
+                        updateUrl(view, radius, { availableFrom: nextValue });
+                      }}
+                    />
                   </>
                 )}
 
                 <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
-                  <button type="button" onClick={applyFilters} style={{ border: 0, borderRadius: 'var(--radius-pill)', background: 'var(--brand)', color: '#fff', padding: '0.7rem 1rem', font: 'var(--type-body-sm)', cursor: 'pointer' }}>
+                  <Button fullWidth onClick={applyFilters}>
                     {resultCount
                       ? resultCount.capped
                         ? 'Voir plus de 200 annonces'
                         : `Voir ${resultCount.count} annonce${resultCount.count > 1 ? 's' : ''}`
                       : 'Appliquer les filtres'}
-                  </button>
+                  </Button>
                   {/* Offered only when there is something to undo. */}
                   {activeFilterCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={resetFilters}
-                      style={{ border: 0, background: 'transparent', color: 'var(--text-muted)', padding: '0.4rem', font: 'var(--type-body-sm)', cursor: 'pointer', textDecoration: 'underline' }}
-                    >
+                    <Button variant="ghost" fullWidth onClick={resetFilters}>
                       Réinitialiser
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
-            </div>
+            </Card>
           </aside>
 
           <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
@@ -1000,29 +989,14 @@ function SearchResultsPageContent() {
                   <div style={{ color: 'var(--text-muted)' }}>Chargement des annonces…</div>
                 ) : nextCursor ? (
                   <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 'var(--space-4)' }}>
-                    <button
-                      type="button"
+                    <Button
+                      variant="secondary"
+                      iconRight="arrow-right"
+                      loading={loadingMore}
                       onClick={handleLoadMore}
-                      disabled={loadingMore}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem',
-                        background: 'transparent',
-                        border: '1px solid var(--border-default)',
-                        color: 'var(--text-heading)',
-                        borderRadius: 'var(--radius-pill)',
-                        height: '2.75rem',
-                        padding: '0 1.2rem',
-                        font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
-                        cursor: loadingMore ? 'wait' : 'pointer',
-                        opacity: loadingMore ? 0.7 : 1,
-                      }}
                     >
-                      {loadingMore ? 'Chargement…' : 'Afficher plus d\'annonces'}
-                      <ArrowRight size={16} />
-                    </button>
+                      Afficher plus d’annonces
+                    </Button>
                   </div>
                 ) : null}
               </>

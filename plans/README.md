@@ -1216,11 +1216,51 @@ This is the **web** API key (a public, client-side value), not the service-accou
 was rotated earlier. The favourites card was verified against a temporary harness route instead,
 deleted before the build.
 
+## The search page, rebuilt against the kit (2026-09-03)
+
+`/listings` now uses the design system for everything it draws: `Card` for the rail, `Input` and
+`Select` for its fields, `Tag` for amenities, `Button` for every action, and `Tabs variant="segmented"`
+for all three switches. What it replaced was eleven raw `<input>`/`<select>`/`<button>` elements, each
+carrying its own copy of the same four declarations — border, radius, padding, font — and none of them
+carrying a real `<label>`, a focus ring, or the control height the design specifies. Seven fields now
+have visible labels where they had only `aria-label`.
+
+Three segmented controls, all of which had been hand-rolled: the results/map switch, the sort row, and
+the city-vs-radius mode. That last one is the useful one — city/neighbourhood and radius are mutually
+exclusive *modes*, which is what a segmented control says and what two independent pill buttons did
+not. All three now answer to arrow keys, which none of them did.
+
+### Three defects found by looking at it
+
+- **The "Accueil" button had no `onClick`.** A control that looks like a back button and does nothing.
+- **The filter rail spilled under the results grid again** — the exact bug `app.css` was written to
+  fix, reappearing one level deeper. `.search-filters` constrains the rail's own track, but the `Card`
+  inside it opened a fresh grid whose implicit column is sized to its content, so the selects and the
+  tag row pushed the rail wide from the inside. `minmax(0, 1fr)` on both, and on the price pair, whose
+  grid items were sized by their own padding plus the "MAD" suffix.
+- **The filters toggle would have stayed visible on desktop.** `Button` sets `display: inline-flex`
+  inline, and an inline declaration beats the class rule that hides it above 900px. The class now goes
+  on a wrapper. `app.css` already carried a comment warning about exactly this; it is the third time in
+  this project that inline `display` has been the answer, and the first time the warning was already
+  written down.
+
+Two small component changes fell out: `Button` accepts a `className`, because a stylesheet class is
+the app's only way to express a media query and inline styles cannot; and segmented tabs no longer
+wrap their labels, which overflowed the pill's fixed 36px height — they stay on one line and the row
+scrolls, which is what `.scroll-row` is for.
+
+### Verified at both widths
+
+At **1280px**: rail 360px and sticky, toggle `display: none`, nothing spilling out of the rail, page
+scrollWidth 1265. At **390px**: rail collapsed behind the toggle, every segmented tab a clean 36px on
+one line, scrollWidth exactly 390, and zero contrast failures with the filters open.
+
 ### Next
 
-Rebuild the remaining page structure against `design-system/ui_kits/website/*.jsx` — the search page's
-filter rail and segmented sort are the next pieces — then art-direct beyond the kit.
+Art-direct beyond the kit. The remaining hand-rolled surfaces are `/publish`, the account and admin
+screens, and messages.
 
 Carry forward: `/publish` and `/sign-up` still overflow horizontally at 412px. Twelve `await
 getIdToken()` calls sit outside a try; harmless with a valid config, but they fail as silent hangs
-rather than errors when one is missing.
+rather than errors when one is missing. And `NEXT_PUBLIC_FIREBASE_API_KEY` is still empty locally, so
+no signed-in surface can be exercised in a browser.

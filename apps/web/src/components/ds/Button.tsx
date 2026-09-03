@@ -82,6 +82,12 @@ export interface ButtonProps {
   type?: 'button' | 'submit';
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   style?: CSSProperties;
+  /**
+   * The app's only way to express a media query. Inline styles cannot, so a
+   * control that appears at one breakpoint and not another needs a class the
+   * stylesheet can reach -- the filters disclosure on /listings, for one.
+   */
+  className?: string;
   'aria-label'?: string;
   'aria-pressed'?: boolean;
   'aria-expanded'?: boolean;

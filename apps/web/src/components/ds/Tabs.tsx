@@ -113,6 +113,9 @@ export function Tabs({
                 color: on ? 'var(--text-heading)' : 'var(--text-muted)',
                 font: 'var(--weight-semibold) var(--text-body-sm)/1 var(--font-ui)',
                 cursor: 'pointer',
+                // The pill is a fixed 36px tall, so a label that wraps overflows
+                // it. Labels stay on one line and the row scrolls instead.
+                whiteSpace: 'nowrap',
                 transition: 'var(--transition-control)',
               }}
             >

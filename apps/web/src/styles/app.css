@@ -128,9 +128,13 @@ body {
 
 /* `display` lives here, not in an inline style: an inline declaration wins over
    a class rule, so a `display` set on the element would defeat the media query
-   below and leave the toggle visible on desktop. */
+   below and leave the toggle visible on desktop.
+
+   Which is why this class is on a wrapper rather than on the control itself:
+   the design-system Button sets `display: inline-flex` inline, so the rule below
+   could never have hidden it. A plain div has no inline display to lose. */
 .search-filters-toggle {
-  display: inline-flex;
+  display: block;
 }
 
 @media (min-width: 900px) {
