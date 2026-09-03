@@ -81,3 +81,33 @@ export function relativeTime(date: Date, now: Date = new Date()): string {
 export function listingRef(cityCode: string, sequence: number): string {
   return `DARI-${cityCode.toUpperCase()}-${sequence}`;
 }
+
+/**
+ * "14:32" — wall-clock time, for a message bubble.
+ *
+ * Not relativeTime: inside a thread, "il y a 3 jours" on every bubble tells you
+ * nothing about the order of a conversation you are reading top to bottom. The
+ * day is carried by the separator between groups; the bubble carries the hour.
+ *
+ * Zero-padded by hand rather than through Intl: `fr-MA` resolves to a locale
+ * whose formatting has already surprised this codebase once, in `amount`.
+ */
+export function clockTime(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * Day separator label: "Aujourd'hui", "Hier", "3 septembre", "3 septembre 2025".
+ *
+ * The year appears only when it is not the current one, which is the case a bare
+ * longDate() cannot express — "3 septembre" on a thread from last year reads as
+ * last week.
+ */
+export function dayLabel(date: Date, now: Date = new Date()): string {
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOf(now) - startOf(date)) / 86_400_000);
+  if (days === 0) return "Aujourd'hui";
+  if (days === 1) return 'Hier';
+  const base = longDate(date);
+  return date.getFullYear() === now.getFullYear() ? base : `${base} ${date.getFullYear()}`;
+}

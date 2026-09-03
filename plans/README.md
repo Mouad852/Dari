@@ -1360,23 +1360,80 @@ The search map still renders (20 tiles, 7 pins, no overflow) on the shared `cent
 a build while the dev server is up leaves it serving 404s and `text/plain` for every chunk — the page
 renders as unstyled serif with no JS. Stop the dev server, build, restart.
 
+## Messaging, rebuilt against the kit (2026-09-04)
+
+Both screens — the inbox and the thread — now use `Card`, `Button`, `IconButton` and `Icon`, and two
+new helpers in `lib/format.ts`: `clockTime` for a bubble's hour and `dayLabel` for the separator
+between days, which adds the year only when it is not the current one.
+
+### What was wrong, beyond the styling
+
+- **The inbox claimed a conversation count it did not have.** `"{n} conversations"` counted the rows
+  *loaded*, so it read 20 on an inbox of 300 and ticked upward with every "Voir plus" — the same
+  claim the search page's result count used to make. `CursorPage` carries no total, by design, so
+  the claim goes rather than the pagination.
+- **The avatar tint was keyed to the conversation id**, so the same landlord wore a different colour
+  in every thread — the opposite of what a per-person tint is for. Keyed to `otherUserId` now.
+- **The thread opened at its oldest message.** No scroll-to-bottom anywhere, so a conversation of any
+  length opened on its first line. It lands on the newest message now, and stays there after sending.
+- **"Voir les messages suivants" sat above the list.** The repository orders `sentAt asc` and the
+  cursor asks for rows *after* the last one, so the button loads what comes next — and it was placed
+  above the messages it was going to append underneath. Moved below.
+- **Messages had no timestamps at all.** A thread you cannot date is a thread you cannot read: there
+  was no way to tell whether a reply came back in five minutes or five days.
+- **The listing context card rendered a box with the word "Photo" in it** — the last placeholder in
+  the app, and `PublicListing` has carried `coverPhotoUrl` since the photo work landed.
+- **A suspended or expired listing made the card vanish silently.** The fetch 404s and the `catch` was
+  empty, so two people discussing a listing had no way to know it had come down. There is now an
+  explicit "Annonce indisponible" state — the T5.3 item, done.
+- **Both screens' `getIdToken()` sat outside its try**, so a bad Firebase config produced an unhandled
+  rejection and a page stuck on "Chargement…". Both fixed; the console is now clean where it
+  previously carried one rejection per load.
+
+### Two things found by looking at it
+
+- **The thread ran the full 1280px on desktop.** It is a full-height column with no `--container-max`
+  wrapper, so a bubble was 78% of 1280 and the composer spanned the whole viewport. The bars still
+  span; their contents sit in a 760px reading column.
+- **The bubble timestamp failed AA at 82% opacity.** White on `--brand` is 4.87:1 and 82% of it is
+  3.81 — computed rather than eyeballed. Full opacity; the hierarchy comes from the size.
+
+### Verified
+
+The thread was rendered from fixture data — five messages across three days, both listing-context
+states — because `NEXT_PUBLIC_FIREBASE_API_KEY` is empty locally and nothing behind sign-in can be
+reached. The fixture was removed afterwards and the file greps clean. At 390px and 1280px: zero
+contrast failures, scrollWidth equal to the viewport, and the message list measurably scrolled to the
+bottom on load. Typecheck, `tokens:check` and build all clean.
+
+Still not exercised against the real API: sending, marking read, and paging. Those need a working
+Firebase config.
+
+### Known, not fixed here
+
+`ConversationService.listMessages` returns the **oldest** 20 messages first and pages forward. For a
+thread longer than 20 messages that means the screen opens on the beginning of the conversation and
+the newest messages are several "Voir les messages suivants" away. Scrolling to the bottom of what is
+loaded does not fix that — the fix is a backend one, paging backwards from the most recent, and it
+belongs with the T5 messaging work rather than in a kit rebuild.
+
 ### Next
 
-Art-direct beyond the kit. The remaining hand-rolled surfaces are the account screens, the admin
-screens, and messages.
+Art-direct beyond the kit. The remaining hand-rolled surfaces are the account screens and the admin
+screens.
 
-Carry forward: `/sign-up` still overflows horizontally at 412px. **Twelve** `await getIdToken()`
-calls sit outside a try — counted, not estimated, by a brace-tracking pass over `src`; the publish
-wizard's was the thirteenth and is fixed. They are harmless with a valid config and fail as silent
-hangs rather than errors without one, and the right handling differs per screen, so they are worth a
+Carry forward: `/sign-up` still overflows horizontally at 412px. **Ten** `await getIdToken()` calls
+sit outside a try — counted, not estimated, by a brace-tracking pass over `src`; the publish wizard
+and both messaging screens are done. They are harmless with a valid config and fail as silent hangs
+rather than errors without one, and the right handling differs per screen, so they are worth a
 deliberate sweep rather than a blanket wrap:
 
     account/page.tsx:39            admin/reports/page.tsx:43
     account/listings/page.tsx:49   admin/users/page.tsx:39
     account/profile/page.tsx:33    listings/[id]/ListingGallery.tsx:53
-    admin/layout.tsx:25            messages/page.tsx:37
-    admin/page.tsx:23              messages/[id]/page.tsx:30
-    admin/listings/page.tsx:23     profile/[id]/ContactButton.tsx:16
+    admin/layout.tsx:25            profile/[id]/ContactButton.tsx:16
+    admin/page.tsx:23
+    admin/listings/page.tsx:23
 
 And `NEXT_PUBLIC_FIREBASE_API_KEY` is still empty locally, so no signed-in surface can be exercised
 in a browser.
