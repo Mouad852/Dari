@@ -930,3 +930,60 @@ decision and not an engineering one.
 
 Recorded for a deliberate answer rather than settled quietly. The quality floor this project sets
 asks for AA, and today the design system itself does not meet it.
+
+## Design-system port (2026-09-03)
+
+Stepped back at the user's request to work out why the frontend looks competent rather than good. The
+answer was not tooling.
+
+**The design already exists and the app was not using it.** `design-system/` carries 16 components
+with written specs, 17 guideline cards and three web UI kits. `apps/web/src/components/ds/` was a
+README, and every page hand-rolled raw inline styles. Two concrete costs of that:
+
+- `ReportDialog` was built from scratch. **`Dialog` already exists**, with a `sheet` variant, and its
+  documented example is a filter panel footed by `<Button fullWidth>Voir 32 annonces</Button>` — the
+  exact component and copy independently re-derived two steps later.
+- Listing cards are hand-rolled in four places. **`ListingCard` exists**, with `vertical` and
+  `horizontal` variants and rules on price formatting.
+
+Direction agreed with the user: **port the system faithfully first, then art-direct beyond it**. The
+user is supplying real logo and photography, so no placeholder imagery is being generated.
+
+**The porting rules were already written**, in `src/components/ds/README.md` — port from the `.jsx`
+sources and never the prototype bundle, keep every `var(--token)` exactly as written, take types from
+the `.d.ts` files, and rework `Icon` for SSR. Same lesson as the rest of this session: the answer was
+in the repo.
+
+Ported so far, both verified in a browser:
+
+- **`Icon`** — the v1 source fetched every glyph from unpkg at runtime as a CSS mask: a request per
+  icon, nothing server-rendered, and a hard CDN dependency on exactly the slow connections this
+  product targets. Now bundled from the `lucide-react` dependency the app already carries, keyed by
+  the same slugs so markup copied out of the UI kits works unchanged. An unknown name renders nothing
+  rather than a broken glyph.
+- **`Button`** — faithful port, tokens untouched. First real use is the homepage hero search submit,
+  which previously re-declared the pill radius, terracotta fill, warm shadow and font stack inline and
+  had **no hover, press or disabled state at all**, because those are tedious to hand-roll and so
+  never were. Measured in the browser: 52px `--control-h-lg`, 999px pill, `#C05F3C`, warm
+  brand-tinted shadow rather than neutral grey, semibold, inline SVG icon.
+
+### Two findings that change earlier decisions
+
+1. **The palette is an unconfirmed proposal, not a client brand.** `design-system/readme.md` states
+   the only source was a written brief describing palette *direction*; the exact hex values are listed
+   under "Invented, and awaiting your confirmation — proposals, not recreations." So darkening
+   `--clay-500` to clear WCAG AA is **not** overriding a client's brand colour, which is how it was
+   framed when the contrast failures were found. It is correcting an unconfirmed value that fails the
+   project's own quality floor, and it should be done during the port while there is one place to do it.
+2. **The docs contradict each other about the logo.** `design-system/assets/README.md` says the
+   client's real logo was received in session 2 and lost in an export. `design-system/readme.md` says
+   logo was "none provided" and "No logo exists. The brand is set in plain type wherever a mark would
+   go." Both cannot be true, and it matters because the user has been asked to supply the files.
+
+### Remaining port order
+
+`Card`, `Badge`, `Tag`, `IconButton` → `Input`, `Select`, `Checkbox`, `Radio`, `Switch` → `Tabs`,
+`Dialog`, `Toast`, `Tooltip` → `ListingCard`. Then rebuild pages against the UI kits, then art-direct.
+Note when porting `ListingCard`: its own example includes `rating="4,8"`. The design system's examples
+are not a product spec — that rating is exactly the fabrication removed from the homepage, and the
+port must take the visual language without the invented data.

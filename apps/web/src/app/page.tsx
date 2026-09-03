@@ -13,6 +13,8 @@ import { CITIES as CITY_NAMES, citySlug } from '@/lib/cities';
 import { PROPERTY_TYPE_LABELS } from '@/lib/labels';
 import type { PublicListing } from '@/types/api';
 
+import { Button } from '@/components/ds/Button';
+
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
 export const revalidate = 900;
@@ -169,27 +171,15 @@ function SearchBar() {
         </select>
       </label>
 
-      <button
-        type="submit"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0.5rem',
-          border: 'none',
-          borderRadius: 'var(--radius-pill)',
-          background: 'var(--brand)',
-          color: '#fff',
-          padding: '0.9rem 1.4rem',
-          font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
-          cursor: 'pointer',
-          boxShadow: 'var(--shadow-brand)',
-          flex: '0 0 auto',
-        }}
-      >
-        <Search size={17} />
+      {/*
+        First use of the ported design-system Button. The hand-rolled version
+        this replaces re-declared the pill radius, the terracotta fill, the warm
+        shadow and the font stack inline -- and had no hover, press or disabled
+        state at all, because those are tedious to hand-roll and so never were.
+      */}
+      <Button type="submit" size="lg" iconLeft="search" style={{ flex: '0 0 auto' }}>
         Rechercher
-      </button>
+      </Button>
     </form>
   );
 }
