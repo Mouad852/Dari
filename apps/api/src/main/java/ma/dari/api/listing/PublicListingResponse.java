@@ -14,9 +14,23 @@ public record PublicListingResponse(
         double longitude,
         ListingStatus status,
         AvailabilityState availabilityState,
-        Instant createdAt) {
+        Instant createdAt,
+        /**
+         * Root-relative URL of the cover photo, or null when the listing has
+         * none. Prefix with the API origin before use — these are served by the
+         * API, not the web app.
+         */
+        String coverPhotoUrl) {
 
-    public static PublicListingResponse from(Listing listing, double[] fuzzed) {
+    /**
+     * @param coverPhotoUrl may be null, but pass it deliberately.
+     *
+     * <p>There is no convenience overload that omits it. Search results without
+     * photos were shipped for months precisely because this DTO had no way to
+     * carry one, and an overload defaulting to null would let the next caller
+     * reintroduce that silently rather than having to decide.
+     */
+    public static PublicListingResponse from(Listing listing, double[] fuzzed, String coverPhotoUrl) {
         return new PublicListingResponse(
                 listing.getId(),
                 listing.getTitle(),
@@ -27,6 +41,7 @@ public record PublicListingResponse(
                 fuzzed[1],
                 listing.getStatus(),
                 listing.getAvailabilityState(),
-                listing.getCreatedAt());
+                listing.getCreatedAt(),
+                coverPhotoUrl);
     }
 }

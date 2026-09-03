@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Heart, MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { apiFetch, ApiError, type CursorPage } from '@/lib/api';
+import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { rentPerMonth } from '@/lib/format';
 import { UNAVAILABLE_REASON_LABELS } from '@/lib/labels';
@@ -232,7 +232,16 @@ export default function FavoritesPage() {
                         position: 'relative',
                       }}
                     >
-                      Photo
+                      {listing.coverPhotoUrl ? (
+                        <img
+                          src={`${apiOrigin}${listing.coverPhotoUrl}`}
+                          alt=""
+                          loading="lazy"
+                          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        'Photo'
+                      )}
                       <button
                         type="button"
                         aria-label="Retirer des favoris"

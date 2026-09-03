@@ -200,9 +200,12 @@ public class ListingSearchService {
             }
         }
 
-        // Map listings to responses with fuzzed coordinates
+        // Map listings to responses with fuzzed coordinates and their cover photo
+        java.util.Map<UUID, String> covers = coverUrlsFor(page);
         List<PublicListingResponse> items = page.stream()
-                .map(l -> PublicListingResponse.from(l, LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude())))
+                .map(l -> PublicListingResponse.from(l,
+                        LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude()),
+                        covers.get(l.getId())))
                 .toList();
 
         return CursorPage.of(items, nextCursor);
@@ -264,6 +267,30 @@ public class ListingSearchService {
         return SearchCountResponse.of(rows.size());
     }
 
+    /**
+     * Cover photo URLs for a page of listings, in one query.
+     *
+     * <p>Search returns twenty rows at a time; resolving covers one listing at a
+     * time would be twenty round trips on the busiest endpoint in the product.
+     */
+    private java.util.Map<UUID, String> coverUrlsFor(List<Listing> rows) {
+        if (rows.isEmpty()) {
+            return java.util.Map.of();
+        }
+        List<UUID> ids = rows.stream().map(Listing::getId).toList();
+        java.util.Map<UUID, String> urls = new java.util.HashMap<>();
+        for (ListingPhoto photo : listingPhotos.findByListingIdInAndCoverTrueAndDeletedAtIsNull(ids)) {
+            urls.put(photo.getListing().getId(), ListingPhotoResponse.from(photo).url());
+        }
+        return urls;
+    }
+
+    private String coverUrlFor(UUID listingId) {
+        return listingPhotos.findByListingIdAndCoverTrueAndDeletedAtIsNull(listingId)
+                .map(photo -> ListingPhotoResponse.from(photo).url())
+                .orElse(null);
+    }
+
     public java.util.List<MapPinResponse> mapPins(String city,
                                                  String neighborhood,
                                                  String[] propertyType,
@@ -315,8 +342,11 @@ public class ListingSearchService {
         // Use PostGIS query instead of loading all listings into memory
         List<Listing> featured = search.featuredListings(normalizedLimit);
 
+        java.util.Map<UUID, String> featuredCovers = coverUrlsFor(featured);
         return featured.stream()
-                .map(l -> PublicListingResponse.from(l, LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude())))
+                .map(l -> PublicListingResponse.from(l,
+                        LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude()),
+                        featuredCovers.get(l.getId())))
                 .toList();
     }
 
@@ -329,19 +359,19 @@ public class ListingSearchService {
         }
 
         if (viewer != null && listing.getOwner().getId().equals(viewer.getId())) {
-            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()));
+            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), coverUrlFor(listing.getId()));
         }
 
         // Moderators review PENDING_REVIEW/SUSPENDED listings that belong to
         // someone else; without this, the admin console's own "view listing"
         // link 404s on exactly the listings it exists to review.
         if (viewer != null && viewer.getRole() == UserRole.ADMIN) {
-            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()));
+            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), coverUrlFor(listing.getId()));
         }
 
         if (listing.getStatus() == ListingStatus.PUBLISHED
                 && listing.getAvailabilityState() == AvailabilityState.AVAILABLE) {
-            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()));
+            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), coverUrlFor(listing.getId()));
         }
 
         throw new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable");
@@ -395,8 +425,11 @@ public class ListingSearchService {
         }
 
         listing.setStatus(ListingStatus.PENDING_REVIEW);
+        // A lifecycle confirmation, not a card: the client already has the
+        // listing on screen and re-reading its cover here would be a query for
+        // data nothing renders. Null is the deliberate answer, not an oversight.
         return PublicListingResponse.from(listings.save(listing),
-                LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()));
+                LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), null);
     }
 
     public PublicListingResponse markRoomFound(UUID listingId, User owner) {
@@ -404,7 +437,7 @@ public class ListingSearchService {
         if (listing.getStatus() == ListingStatus.PUBLISHED && listing.getAvailabilityState() == AvailabilityState.AVAILABLE) {
             listing.setAvailabilityState(AvailabilityState.ROOM_FOUND);
             return PublicListingResponse.from(listings.save(listing),
-                    LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()));
+                    LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), null);
         }
         throw illegalTransition("AVAILABLE -> ROOM_FOUND");
     }
@@ -414,7 +447,7 @@ public class ListingSearchService {
         if (listing.getStatus() == ListingStatus.PUBLISHED && listing.getAvailabilityState() == AvailabilityState.ROOM_FOUND) {
             listing.setAvailabilityState(AvailabilityState.AVAILABLE);
             return PublicListingResponse.from(listings.save(listing),
-                    LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()));
+                    LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), null);
         }
         throw illegalTransition("ROOM_FOUND -> AVAILABLE");
     }

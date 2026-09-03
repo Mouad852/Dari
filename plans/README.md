@@ -692,3 +692,34 @@ any test in this repo.
 Frontend `typecheck` and `build` clean. Verified in a real browser at 1440px and at the narrowest
 viewport the tool allows, including the disclosure toggle, chip selection, reset, live count and the
 map view.
+
+**Cover photos on search results — done (2026-09-03).**
+
+Found during the visual pass and not previously written down anywhere: the results feed rendered a
+"PHOTO" placeholder for every listing, including ones with real photos, because
+`PublicListingResponse` — the DTO behind search, favorites and featured — had no photo field at all.
+Only the detail response carried photos. For a rental marketplace that is a serious product gap, and
+it needed a backend change before any frontend work could show an image.
+
+- `PublicListingResponse` gains `coverPhotoUrl`, null when a listing has none.
+- **No convenience overload was left behind.** Removing the two-argument `from(...)` turned this into
+  nine compiler errors instead of nine silent nulls, which is exactly what was wanted: search results
+  shipped without photos for months precisely because nothing forced a decision at each call site.
+  Each one now answers deliberately — list paths resolve a cover, the three lifecycle confirmations
+  pass null with a comment saying why, since the client already has the listing on screen.
+- **Batched, not N+1.** `findByListingIdInAndCoverTrueAndDeletedAtIsNull` resolves a whole page's
+  covers in one query. Search returns twenty rows at a time on the busiest endpoint in the product;
+  per-listing lookups would have been twenty round trips per page.
+- Rendered on the search feed, the favorites list and the city landing cards, lazily loaded, with the
+  placeholder kept for listings that genuinely have no photo rather than substituting a stand-in.
+
+Verified in the browser against the running app: three cards with covers decoded at their real
+800x600, four placeholders remaining for the listings without photos, no page overflow. The API
+response was checked directly too — real URLs for listings with a cover, `null` for one without.
+
+**A local-environment trap worth recording:** running `npm run build` while `npm run dev` was serving
+overwrites `.next/` underneath the dev server, which then fails every request with `MODULE_NOT_FOUND`
+until the directory is cleared and dev restarted. The build output looked clean; the running app was
+broken. Worth not interleaving the two.
+
+Suite: **95 tests, 0 failures** (was 94). Frontend `typecheck` and `build` clean.

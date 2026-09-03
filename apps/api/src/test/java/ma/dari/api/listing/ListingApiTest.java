@@ -1199,6 +1199,44 @@ class ListingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("search results carry the cover photo, and listings without one return null")
+    void searchResultsCarryCoverPhoto() throws Exception {
+        String uid = "uid-cover-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        User owner = users.saveAndFlush(new User(uid, email, true, "Cover Owner"));
+
+        String city = "CouvertureVille" + System.nanoTime();
+        Listing withPhoto = listings.saveAndFlush(new Listing(
+                owner, "Avec photo", city, "Centre", 33.9716, -6.8498,
+                new BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+        Listing withoutPhoto = listings.saveAndFlush(new Listing(
+                owner, "Sans photo", city, "Centre", 33.9716, -6.8498,
+                new BigDecimal("2600.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+
+        listingPhotos.saveAndFlush(new ListingPhoto(withPhoto, "cover-key.jpg", "image/jpeg", 800, 600, 0, true));
+        // A non-cover photo must not be picked up as the card image.
+        listingPhotos.saveAndFlush(new ListingPhoto(withPhoto, "second.jpg", "image/jpeg", 800, 600, 1, false));
+
+        var byTitle = given().queryParam("city", city)
+                .when().get("/listings")
+                .then().statusCode(200)
+                .extract().jsonPath();
+
+        var titles = byTitle.getList("items.title", String.class);
+        var covers = byTitle.getList("items.coverPhotoUrl", String.class);
+        int withIdx = titles.indexOf("Avec photo");
+        int withoutIdx = titles.indexOf("Sans photo");
+
+        assertThat(withIdx).isGreaterThanOrEqualTo(0);
+        assertThat(covers.get(withIdx)).isEqualTo("/uploads/cover-key.jpg");
+        // A missing cover is null rather than a fabricated placeholder path.
+        assertThat(covers.get(withoutIdx)).isNull();
+
+        assertThat(withoutPhoto.getId()).isNotNull();
+    }
+
+    @Test
     @DisplayName("photo PATCH sort order DTO rejects negative values")
     void photoPatchSortOrderDtoRejectsNegativeValues() {
         assertThat(validator.validate(new UpdateListingPhotoRequest(-1, null)))

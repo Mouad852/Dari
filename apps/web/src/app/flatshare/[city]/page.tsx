@@ -4,7 +4,7 @@ import { ArrowRight, MapPin, ShieldCheck } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { apiFetch, ApiError, type CursorPage } from '@/lib/api';
+import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
 import type { PublicListing } from '@/types/api';
 
 const CITY_LABELS: Record<string, string> = {
@@ -178,17 +178,30 @@ export default function CityLandingPage() {
                     background: 'var(--surface-card)',
                     border: '1px solid var(--border-hairline)',
                     borderRadius: 'var(--radius-card)',
-                    padding: 'var(--space-4)',
+                    overflow: 'hidden',
                     color: 'var(--text-primary)',
                     textDecoration: 'none',
+                    display: 'block',
                   }}
                 >
+                  {listing.coverPhotoUrl ? (
+                    <img
+                      src={`${apiOrigin}${listing.coverPhotoUrl}`}
+                      alt=""
+                      loading="lazy"
+                      style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
+                    />
+                  ) : (
+                    <div style={{ height: 160, background: 'var(--sable-200)' }} />
+                  )}
+                  <div style={{ padding: 'var(--space-4)' }}>
                   <div style={{ color: 'var(--text-subtle)', font: 'var(--type-eyebrow)', textTransform: 'uppercase' }}>
                     {listing.neighborhood}
                   </div>
                   <div style={{ marginTop: '0.3rem', font: 'var(--type-h3)' }}>{listing.title}</div>
                   <div style={{ marginTop: 'var(--space-3)', color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>
                     {new Intl.NumberFormat('fr-MA').format(listing.priceRent)} MAD/mois
+                  </div>
                   </div>
                 </a>
               ))}

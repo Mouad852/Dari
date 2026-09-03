@@ -4,6 +4,7 @@ import ma.dari.api.common.error.ApiException;
 import ma.dari.api.common.error.ErrorCode;
 import ma.dari.api.common.pagination.Cursor;
 import ma.dari.api.common.pagination.CursorPage;
+import ma.dari.api.listing.dto.ListingPhotoResponse;
 import ma.dari.api.user.User;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
@@ -21,10 +22,13 @@ public class FavoriteService {
 
     private final FavoriteRepository favorites;
     private final ListingRepository listings;
+    private final ListingPhotoRepository listingPhotos;
 
-    public FavoriteService(FavoriteRepository favorites, ListingRepository listings) {
+    public FavoriteService(FavoriteRepository favorites, ListingRepository listings,
+                           ListingPhotoRepository listingPhotos) {
         this.favorites = favorites;
         this.listings = listings;
+        this.listingPhotos = listingPhotos;
     }
 
     /**
@@ -46,9 +50,19 @@ public class FavoriteService {
 
         boolean hasMore = rows.size() > PAGE_SIZE;
         List<Favorite> pageRows = hasMore ? rows.subList(0, PAGE_SIZE) : rows;
+        // One query for the whole page's covers, not one per favorite.
+        java.util.Map<UUID, String> covers = new java.util.HashMap<>();
+        if (!pageRows.isEmpty()) {
+            List<UUID> listingIds = pageRows.stream().map(f -> f.getListing().getId()).toList();
+            for (ListingPhoto photo : listingPhotos.findByListingIdInAndCoverTrueAndDeletedAtIsNull(listingIds)) {
+                covers.put(photo.getListing().getId(), ListingPhotoResponse.from(photo).url());
+            }
+        }
+
         List<PublicListingResponse> items = pageRows.stream()
                 .map(f -> PublicListingResponse.from(f.getListing(),
-                        LocationFuzzer.fuzz(f.getListing().getId(), f.getListing().getLatitude(), f.getListing().getLongitude())))
+                        LocationFuzzer.fuzz(f.getListing().getId(), f.getListing().getLatitude(), f.getListing().getLongitude()),
+                        covers.get(f.getListing().getId())))
                 .toList();
 
         String nextCursor = null;

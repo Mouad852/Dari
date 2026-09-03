@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 
-import { apiFetch, ApiError, type CursorPage } from '@/lib/api';
+import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { AMENITY_LABELS } from '@/lib/labels';
 import type { MapPin, PublicListing } from '@/types/api';
@@ -138,7 +138,16 @@ function ListingCard({
           textTransform: 'uppercase',
         }}
       >
-        Photo
+        {listing.coverPhotoUrl ? (
+          <img
+            src={`${apiOrigin}${listing.coverPhotoUrl}`}
+            alt=""
+            loading="lazy"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          'Photo'
+        )}
         <button
           type="button"
           aria-label={favorited ? 'Retirer des favoris' : 'Enregistrer'}
