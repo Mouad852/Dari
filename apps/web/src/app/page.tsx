@@ -6,58 +6,61 @@ import {
   Search,
   ShieldCheck,
 } from 'lucide-react';
+import type { Metadata } from 'next';
 
-const CITIES = [
-  ['Rabat', '412 chambres'],
-  ['Casablanca', '938 chambres'],
-  ['Marrakech', '307 chambres'],
-  ['Tanger', '186 chambres'],
-] as const;
+import { apiFetch, apiOrigin } from '@/lib/api';
+import { CITIES as CITY_NAMES, citySlug } from '@/lib/cities';
+import type { PublicListing } from '@/types/api';
 
-const FEATURED = [
-  {
-    id: 1,
-    title: 'Chambre lumineuse',
-    district: 'Agdal',
-    city: 'Rabat',
-    price: '3 200',
-    flatmates: '2 colocataires',
-    rating: '4,8',
-    badge: 'Nouveau',
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+
+export const revalidate = 900;
+
+export const metadata: Metadata = {
+  title: 'Dari — colocation à Rabat, Casablanca, Marrakech et Tanger',
+  description:
+    'Trouvez une chambre ou un studio en colocation au Maroc. Loyers annoncés charges comprises, annonces vérifiées avant publication.',
+  alternates: { canonical: SITE },
+  openGraph: {
+    title: 'Dari — colocation au Maroc',
+    description:
+      'Trouvez une chambre ou un studio en colocation à Rabat, Casablanca, Marrakech et Tanger.',
+    type: 'website',
+    url: SITE,
+    locale: 'fr_MA',
   },
-  {
-    id: 2,
-    title: 'Studio Gauthier',
-    district: 'Gauthier',
-    city: 'Casablanca',
-    price: '5 400',
-    rating: '4,6',
-  },
-  {
-    id: 3,
-    title: 'Chambre en médina',
-    district: 'Médina',
-    city: 'Marrakech',
-    price: '2 400',
-    flatmates: '3 colocataires',
-    rating: '4,9',
-  },
-  {
-    id: 4,
-    title: 'Coliving Malabata',
-    district: 'Malabata',
-    city: 'Tanger',
-    price: '4 100',
-    badge: 'Vérifié',
-    badgeTone: 'success',
-  },
-] as const;
+};
+
+/**
+ * The homepage's numbers, measured rather than written.
+ *
+ * Every figure here used to be a literal: four invented per-city counts ("412
+ * chambres", "938 chambres"), and four entirely fictional featured listings
+ * complete with star ratings, on a product that has no reviews system at all.
+ */
+async function getHomeData() {
+  const [featured, ...counts] = await Promise.all([
+    apiFetch<PublicListing[]>('/listings/featured?limit=4').catch(() => []),
+    ...CITY_NAMES.map((city) =>
+      apiFetch<{ count: number; capped: boolean }>(
+        `/listings/count?city=${encodeURIComponent(city)}`,
+      )
+        .then((result) => ({ city, ...result }))
+        .catch(() => null),
+    ),
+  ]);
+
+  return {
+    featured,
+    cities: counts.filter((entry) => entry !== null),
+  };
+}
 
 const STEPS = [
   ['search', 'Cherchez', 'Filtrez par quartier, budget et style de vie.'],
   ['shield-check', 'Vérifiez', 'Annonces et profils contrôlés avant publication.'],
   ['message-circle', 'Discutez', 'Échangez avec le propriétaire et les colocataires.'],
-  ['key-round', 'Emménagez', 'Bail signé en ligne, caution protégée.'],
+  ['key-round', 'Emménagez', 'Organisez la visite et l’emménagement directement avec le propriétaire.'],
 ] as const;
 
 const cardStyle = {
@@ -181,33 +184,17 @@ function SearchBar() {
   );
 }
 
-function ListingCard({
-  title,
-  district,
-  city,
-  price,
-  flatmates,
-  rating,
-  badge,
-  badgeTone,
-}: {
-  title: string;
-  district: string;
-  city: string;
-  price: string;
-  flatmates?: string;
-  rating?: string;
-  badge?: string;
-  badgeTone?: 'success';
-}) {
+function ListingCard({ listing }: { listing: PublicListing }) {
   return (
-    <article
+    <a
+      href={`/listings/${listing.id}`}
       style={{
         ...cardStyle,
         overflow: 'hidden',
         display: 'grid',
         gridTemplateRows: '170px 1fr',
-        transition: 'transform 200ms ease, box-shadow 200ms ease',
+        color: 'var(--text-primary)',
+        textDecoration: 'none',
       }}
     >
       <div
@@ -223,76 +210,53 @@ function ListingCard({
           textTransform: 'uppercase',
         }}
       >
-        Photo
-        <div
+        {listing.coverPhotoUrl ? (
+          <img
+            src={`${apiOrigin}${listing.coverPhotoUrl}`}
+            alt=""
+            loading="lazy"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          'Photo'
+        )}
+        {/*
+          Price only. This overlay used to carry a star rating too -- "4,8" and
+          the like -- on a product with no reviews system of any kind.
+        */}
+        <span
           style={{
             position: 'absolute',
-            inset: 'auto 12px 12px 12px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '0.5rem',
+            left: 12,
+            bottom: 12,
+            background: 'rgba(36, 31, 28, 0.56)',
+            backdropFilter: 'blur(12px)',
+            color: '#fff',
+            borderRadius: '999px',
+            padding: '0.45rem 0.7rem',
+            font: 'var(--type-label)',
           }}
         >
-          <span
-            style={{
-              background: 'rgba(36, 31, 28, 0.56)',
-              backdropFilter: 'blur(12px)',
-              color: '#fff',
-              borderRadius: '999px',
-              padding: '0.45rem 0.7rem',
-              font: 'var(--type-label)',
-            }}
-          >
-            {price} MAD/mois
-          </span>
-          <span
-            style={{
-              background: 'rgba(255,255,255,0.82)',
-              color: 'var(--text-primary)',
-              borderRadius: '999px',
-              padding: '0.45rem 0.7rem',
-              font: 'var(--type-label)',
-            }}
-          >
-            ★ {rating}
-          </span>
-        </div>
+          {new Intl.NumberFormat('fr-MA').format(listing.priceRent)} MAD/mois
+        </span>
       </div>
 
       <div style={{ display: 'grid', gap: '0.9rem', padding: '1rem 1rem 1.1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem' }}>
-          <div>
-            <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
-              {district}
-            </div>
-            <h3 style={{ margin: '0.15rem 0 0', font: 'var(--type-h3)' }}>{title}</h3>
+        <div>
+          <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
+            {listing.neighborhood}
           </div>
-          {badge ? (
-            <span
-              style={{
-                background: badgeTone === 'success' ? 'var(--atlas-500)' : 'var(--sand-100)',
-                color: badgeTone === 'success' ? '#fff' : 'var(--text-primary)',
-                borderRadius: '999px',
-                padding: '0.35rem 0.65rem',
-                font: 'var(--type-label)',
-              }}
-            >
-              {badge}
-            </span>
-          ) : null}
+          <h3 style={{ margin: '0.15rem 0 0', font: 'var(--type-h3)' }}>{listing.title}</h3>
         </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>
-          <span>{city}</span>
-          <span>{flatmates ?? 'Colocation'}</span>
-        </div>
+        <div style={{ color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>{listing.city}</div>
       </div>
-    </article>
+    </a>
   );
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { featured, cities } = await getHomeData();
+
   return (
     <main>
       <section
@@ -431,8 +395,8 @@ export default function HomePage() {
             </a>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--space-5)' }}>
-            {FEATURED.map((listing) => (
-              <ListingCard key={listing.id} {...listing} />
+            {featured.map((listing) => (
+              <ListingCard key={listing.id} listing={listing} />
             ))}
           </div>
         </div>
@@ -500,16 +464,22 @@ export default function HomePage() {
         <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', display: 'grid', gap: 'var(--space-6)' }}>
           <h2 style={{ margin: 0, font: 'var(--weight-bold) 32px/1.2 var(--font-display)' }}>Explorer par ville</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--space-5)' }}>
-            {CITIES.map(([city, count]) => (
-              <div
+            {/*
+              Real counts, and real links. The tiles carried invented figures
+              ("412 chambres") and a cursor:pointer with nothing behind it.
+            */}
+            {cities.map(({ city, count, capped }) => (
+              <a
                 key={city}
+                href={`/flatshare/${citySlug(city)}`}
                 style={{
                   position: 'relative',
                   height: 200,
                   borderRadius: 'var(--radius-card)',
                   overflow: 'hidden',
                   background: 'var(--sable-200)',
-                  cursor: 'pointer',
+                  display: 'block',
+                  textDecoration: 'none',
                 }}
               >
                 <span
@@ -530,9 +500,11 @@ export default function HomePage() {
                 <span style={{ position: 'absolute', inset: 0, background: 'var(--scrim-image)' }} />
                 <span style={{ position: 'absolute', bottom: 14, left: 16, color: '#fff' }}>
                   <span style={{ display: 'block', font: 'var(--weight-bold) 20px/1.2 var(--font-display)' }}>{city}</span>
-                  <span style={{ display: 'block', font: 'var(--type-caption)', opacity: 0.88 }}>{count}</span>
+                  <span style={{ display: 'block', font: 'var(--type-caption)', opacity: 0.88 }}>
+                    {capped ? `${count}+` : count} annonce{count > 1 ? 's' : ''}
+                  </span>
                 </span>
-              </div>
+              </a>
             ))}
           </div>
         </div>

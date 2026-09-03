@@ -822,3 +822,44 @@ app is formatted. Rounding only here would be an inconsistency; if the range sho
 **Still open in this track:** `/listings` is still client-rendered and has no canonical — filtered
 permutations should point at the city page rather than each become their own indexable URL. The
 homepage remains entirely hardcoded and does not use `GET /listings/featured`.
+
+**T3 homepage — done (2026-09-03).**
+
+The homepage was entirely literals. It is now an async Server Component, prerendered with 15-minute
+revalidation, 143 B of client JavaScript, and every figure on it measured.
+
+What it was publishing, on the page that gets the most traffic:
+
+- **Four invented per-city counts** — "412 chambres", "938 chambres", "307 chambres", "186 chambres".
+- **Four entirely fictional featured listings** — "Studio Gauthier", "Coliving Malabata" and two
+  others, with invented districts, prices, flatmate counts, "Vérifié" badges, and **star ratings**
+  ("★ 4,8", "★ 4,6", "★ 4,9") on a product that has **no reviews system of any kind**. The cards were
+  `<article>` elements with no link, so they looked like listings and led nowhere.
+- **A false product claim.** The "Comment ça marche" section ended with *"Bail signé en ligne, caution
+  protégée"* — lease signed online, deposit protected. Neither exists. Grepped the design doc to be
+  sure: `price_deposit` is a number an owner asks for, and there is no lease flow, no signature, no
+  escrow, nothing. This is the most serious item on the list, because it is not a wrong number but a
+  promise someone could choose Dari on the strength of.
+
+Now:
+
+- Featured listings come from `GET /listings/featured`, with their real cover photos, and each card
+  links to the listing.
+- City tiles carry real counts from `GET /listings/count` and link to the matching city landing page.
+  They previously had `cursor: pointer` and nothing behind it.
+- The star rating and flatmate counts are gone rather than reworded; neither has data behind it.
+- The last step now reads "Organisez la visite et l'emménagement directement avec le propriétaire",
+  which is what actually happens.
+- Homepage metadata added: title, description, canonical, Open Graph.
+
+Verified against the running app: four featured cards with real titles, all linking to
+`/listings/{id}`; four city tiles with real counts linking to `/flatshare/*`; four cover images; and
+the ★ glyph absent from the document entirely. The only `4,8` left in the HTML is a Next dev
+source-map coordinate.
+
+**Left in place:** the "Photo" placeholder on the city tiles. That is the missing brand photography
+recorded in `design-system/assets/README.md`, not a fabrication — there is genuinely no image to show.
+
+**Still open in this track:** `/listings` remains client-rendered with no canonical, so filtered
+permutations can each become their own indexable URL. That is the last structural SEO item; the rest
+of phase 08 is performance and static pages.

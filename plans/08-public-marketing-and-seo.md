@@ -31,9 +31,9 @@ There is no obviously correct answer — it depends on how much you expect organ
 
 **Homepage**, from `ui_kits/website/HomePage.jsx`
 - [ ] Hero with the elevated search bar, wired to the real search endpoint
-- [ ] Featured listings grid — define what "featured" means, since the doc defers monetized featuring to post-MVP. Recency plus photo quality is a reasonable first answer.
-- [ ] Four-step "Comment ça marche"
-- [~] Live per-city listing counts are on the city landing pages (2026-09-03). The homepage city tiles are still hardcoded — the homepage has not been wired at all.
+- [x] Featured listings grid wired to `GET /listings/featured` (2026-09-03), which currently means most-recent published. It previously showed four invented listings with fabricated star ratings on a product with no reviews system. A richer definition of "featured" is still open, and shares the unresolved "recommended" ranking question in phase 07.
+- [x] Four-step "Comment ça marche" (2026-09-03). Its last step claimed "Bail signé en ligne, caution protégée" — online lease signing and deposit protection, neither of which exists anywhere in the product. Rewritten to describe what actually happens.
+- [x] Live per-city listing counts on both the city landing pages and the homepage tiles (2026-09-03), which now link through to the city pages. The tiles previously carried invented counts and a `cursor: pointer` with no link behind it. Scrims are in place; the tile photography is still the missing brand asset.
 - [ ] Terracotta CTA band
 - [ ] The one permitted hero gradient, `--clay-50 → --bg-page`, per the design system
 
