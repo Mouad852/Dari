@@ -1,11 +1,11 @@
-﻿'use client';
-
 import { ArrowRight, MapPin, ShieldCheck } from 'lucide-react';
-import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 
-import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
+import { apiFetch, apiOrigin, type CursorPage } from '@/lib/api';
 import type { PublicListing } from '@/types/api';
+
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
 const CITY_LABELS: Record<string, string> = {
   rabat: 'Rabat',
@@ -14,47 +14,102 @@ const CITY_LABELS: Record<string, string> = {
   tanger: 'Tanger',
 };
 
-const NEIGHBORHOODS = [
-  ['Agdal', 'Chambres à partir de 2 600 MAD'],
-  ['Hassan', 'Studio et chambres meublées'],
-  ['Hay Riad', 'Logements calmes et sécurisés'],
-  ['Médina', 'Colocation dans les quartiers historiques'],
-] as const;
+/** The four cities are the product's scope, so the routes are known ahead of time. */
+export function generateStaticParams() {
+  return Object.keys(CITY_LABELS).map((city) => ({ city }));
+}
 
-const HIGHLIGHTS = [
-  ['420', 'annonces actives'],
-  ['2 600 MAD', 'budget moyen'],
-  ['6 jours', 'temps moyen de réponse'],
-] as const;
+export const revalidate = 900;
 
-export default function CityLandingPage() {
-  const params = useParams<{ city: string }>();
-  const cityName = CITY_LABELS[params.city.toLowerCase()] ?? 'Rabat';
-  const [listings, setListings] = useState<PublicListing[]>([]);
-  const [error, setError] = useState<string | null>(null);
+type CityData = {
+  cityName: string;
+  listings: PublicListing[];
+  count: { count: number; capped: boolean } | null;
+  priceRange: { min: number; max: number } | null;
+  neighborhoods: string[];
+};
 
-  useEffect(() => {
-    let isCurrent = true;
+/**
+ * Everything this page states about a city, read from the API.
+ *
+ * The page previously published invented figures — "420 annonces actives",
+ * "2 600 MAD budget moyen", "6 jours temps moyen de réponse" — and Rabat's
+ * neighbourhoods on all four city pages. On a page whose whole purpose is to be
+ * indexed and read by people deciding where to live, that is the worst possible
+ * place for numbers nobody measured.
+ */
+async function getCityData(slug: string): Promise<CityData | null> {
+  const cityName = CITY_LABELS[slug.toLowerCase()];
+  if (!cityName) return null;
 
-    apiFetch<CursorPage<PublicListing>>(
-      `/listings?city=${encodeURIComponent(cityName)}&sort=updated`,
-    )
-      .then((page) => {
-        if (isCurrent) {
-          setListings(page.items);
-          setError(null);
-        }
-      })
-      .catch((cause: unknown) => {
-        if (isCurrent) {
-          setError(cause instanceof ApiError ? cause.message : 'Une erreur est survenue');
-        }
-      });
+  const city = encodeURIComponent(cityName);
 
-    return () => {
-      isCurrent = false;
-    };
-  }, [cityName]);
+  // Cheapest honest price range: the first row of each price ordering. Two
+  // small requests rather than averaging a page and calling it a market rate.
+  const [listingsPage, count, cheapest, dearest] = await Promise.all([
+    apiFetch<CursorPage<PublicListing>>(`/listings?city=${city}&sort=updated`).catch(() => null),
+    apiFetch<{ count: number; capped: boolean }>(`/listings/count?city=${city}`).catch(() => null),
+    apiFetch<CursorPage<PublicListing>>(`/listings?city=${city}&sort=priceasc`).catch(() => null),
+    apiFetch<CursorPage<PublicListing>>(`/listings?city=${city}&sort=pricedesc`).catch(() => null),
+  ]);
+
+  const listings = listingsPage?.items ?? [];
+  const low = cheapest?.items[0]?.priceRent;
+  const high = dearest?.items[0]?.priceRent;
+
+  // Neighbourhood names come from real listings, ordered by how often they
+  // appear. Names only, no counts: this is one page of results, so a count
+  // would understate a city with more listings than we fetched.
+  const frequency = new Map<string, number>();
+  for (const listing of listings) {
+    frequency.set(listing.neighborhood, (frequency.get(listing.neighborhood) ?? 0) + 1);
+  }
+  const neighborhoods = [...frequency.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([name]) => name);
+
+  return {
+    cityName,
+    listings,
+    count,
+    priceRange: low !== undefined && high !== undefined ? { min: low, max: high } : null,
+    neighborhoods,
+  };
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ city: string }>;
+}): Promise<Metadata> {
+  const { city } = await params;
+  const cityName = CITY_LABELS[city.toLowerCase()];
+  if (!cityName) {
+    return { title: 'Ville introuvable', robots: { index: false, follow: false } };
+  }
+
+  const title = `Colocation à ${cityName} — chambres et studios | Dari`;
+  const description = `Trouvez une chambre ou un studio en colocation à ${cityName}. Loyers annoncés charges comprises, profils vérifiés avant le premier contact.`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `${SITE}/flatshare/${city.toLowerCase()}` },
+    openGraph: { title, description, type: 'website', url: `${SITE}/flatshare/${city.toLowerCase()}`, locale: 'fr_MA' },
+  };
+}
+
+export default async function CityLandingPage({ params }: { params: Promise<{ city: string }> }) {
+  const { city } = await params;
+  const data = await getCityData(city);
+
+  // An unknown slug used to silently render Rabat's content under its URL,
+  // which is a duplicate page for a city that does not exist.
+  if (!data) notFound();
+
+  const { cityName, listings, count, priceRange, neighborhoods } = data;
+  const money = (value: number) => new Intl.NumberFormat('fr-MA').format(value);
 
   return (
     <main style={{ padding: 'var(--space-8) var(--gutter-desktop) var(--space-11)' }}>
@@ -67,110 +122,114 @@ export default function CityLandingPage() {
             border: '1px solid var(--border-hairline)',
           }}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1.15fr .85fr', gap: 'var(--space-8)', alignItems: 'center' }}>
-            <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-              <span style={{ display: 'inline-flex', width: 'fit-content', alignItems: 'center', gap: '0.5rem', color: 'var(--brand)', background: 'var(--brand-subtle)', borderRadius: 'var(--radius-pill)', padding: '0.5rem 0.8rem', font: 'var(--type-label)' }}>
-                <ShieldCheck size={16} />
-                Annonces vérifiées
-              </span>
-              <h1 style={{ margin: 0, font: 'var(--weight-extra) 48px/1.08 var(--font-display)', letterSpacing: 'var(--ls-display)' }}>
-                Colocation à {cityName}
-              </h1>
-              <p style={{ margin: 0, color: 'var(--text-muted)', font: 'var(--type-body-lg)', maxWidth: 600 }}>
-                Trouvez une chambre, un studio ou une colocation à {cityName}, avec des loyers annoncés charges comprises et des profils vérifiés avant le premier contact.
-              </p>
-              <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 700 }}>
+            <span style={{ display: 'inline-flex', width: 'fit-content', alignItems: 'center', gap: '0.5rem', color: 'var(--brand)', background: 'var(--brand-subtle)', borderRadius: 'var(--radius-pill)', padding: '0.5rem 0.8rem', font: 'var(--type-label)' }}>
+              <ShieldCheck size={16} />
+              Annonces vérifiées
+            </span>
+            <h1 style={{ margin: 0, font: 'var(--weight-extra) clamp(32px, 5vw, 48px)/1.08 var(--font-display)', letterSpacing: 'var(--ls-display)' }}>
+              Colocation à {cityName}
+            </h1>
+            <p style={{ margin: 0, color: 'var(--text-muted)', font: 'var(--type-body-lg)', maxWidth: 600 }}>
+              Trouvez une chambre, un studio ou une colocation à {cityName}, avec des loyers annoncés
+              charges comprises et des profils vérifiés avant le premier contact.
+            </p>
+            <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center', flexWrap: 'wrap' }}>
+              <a
+                href={`/listings?city=${encodeURIComponent(cityName)}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  background: 'var(--brand)',
+                  color: '#fff',
+                  borderRadius: 'var(--radius-pill)',
+                  padding: '0.85rem 1.2rem',
+                  textDecoration: 'none',
+                  font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
+                }}
+              >
+                Voir les annonces
+                <ArrowRight size={16} />
+              </a>
+              {/* Stated only when there are real listings to derive it from. */}
+              {priceRange && (
+                <span style={{ color: 'var(--text-muted)', font: 'var(--type-body-md)' }}>
+                  Loyers de {money(priceRange.min)} à {money(priceRange.max)} MAD
+                </span>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/*
+          Two figures, both measured. The page used to carry a third -- an
+          average response time -- which nothing in the product records.
+        */}
+        {(count || priceRange) && (
+          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-5)' }}>
+            {count && (
+              <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-hairline)', borderRadius: 'var(--radius-card)', padding: '1.25rem' }}>
+                <div style={{ font: 'var(--weight-bold) 28px/1.2 var(--font-display)', color: 'var(--text-primary)' }}>
+                  {count.capped ? `${count.count}+` : count.count}
+                </div>
+                <div style={{ color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>
+                  annonce{count.count > 1 ? 's' : ''} active{count.count > 1 ? 's' : ''}
+                </div>
+              </div>
+            )}
+            {priceRange && (
+              <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-hairline)', borderRadius: 'var(--radius-card)', padding: '1.25rem' }}>
+                <div style={{ font: 'var(--weight-bold) 28px/1.2 var(--font-display)', color: 'var(--text-primary)' }}>
+                  {money(priceRange.min)} MAD
+                </div>
+                <div style={{ color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>loyer le plus bas</div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {neighborhoods.length > 0 && (
+          <section style={{ background: 'var(--surface-card)', border: '1px solid var(--border-hairline)', borderRadius: 'var(--radius-card)', padding: 'var(--space-6)' }}>
+            <h2 style={{ margin: '0 0 var(--space-4)', font: 'var(--weight-bold) 30px/1.2 var(--font-display)' }}>
+              Quartiers à {cityName}
+            </h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+              {neighborhoods.map((name) => (
                 <a
-                  href={`/listings?city=${encodeURIComponent(cityName)}`}
+                  key={name}
+                  href={`/listings?city=${encodeURIComponent(cityName)}&neighborhood=${encodeURIComponent(name)}`}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    background: 'var(--brand)',
-                    color: '#fff',
+                    border: '1px solid var(--border-default)',
                     borderRadius: 'var(--radius-pill)',
-                    padding: '0.85rem 1.2rem',
+                    padding: '0.6rem 0.9rem',
+                    color: 'var(--text-primary)',
                     textDecoration: 'none',
-                    font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
+                    font: 'var(--type-body-sm)',
                   }}
                 >
-                  Voir les annonces
-                  <ArrowRight size={16} />
+                  <MapPin size={15} color="var(--brand)" />
+                  {name}
                 </a>
-                <span style={{ color: 'var(--text-muted)', font: 'var(--type-body-md)' }}>Loyers de 2 100 à 5 400 MAD</span>
-              </div>
-            </div>
-
-            <div
-              style={{
-                minHeight: 280,
-                borderRadius: 'var(--radius-2xl)',
-                background: 'var(--sable-200)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--sable-500)',
-                font: 'var(--type-caption)',
-                letterSpacing: 'var(--ls-caps)',
-                textTransform: 'uppercase',
-              }}
-            >
-              Photo {cityName}
-            </div>
-          </div>
-        </section>
-
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-5)' }}>
-          {HIGHLIGHTS.map(([value, label]) => (
-            <div key={label} style={{ background: 'var(--surface-card)', border: '1px solid var(--border-hairline)', borderRadius: 'var(--radius-card)', padding: '1.25rem' }}>
-              <div style={{ font: 'var(--weight-bold) 28px/1.2 var(--font-display)', color: 'var(--text-primary)' }}>{value}</div>
-              <div style={{ color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>{label}</div>
-            </div>
-          ))}
-        </section>
-
-        <section style={{ display: 'grid', gridTemplateColumns: '1.1fr .9fr', gap: 'var(--space-7)' }}>
-          <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-hairline)', borderRadius: 'var(--radius-card)', padding: 'var(--space-6)' }}>
-            <h2 style={{ margin: '0 0 var(--space-4)', font: 'var(--weight-bold) 30px/1.2 var(--font-display)' }}>Quartiers populaires</h2>
-            <div style={{ display: 'grid', gap: '0.9rem' }}>
-              {NEIGHBORHOODS.map(([name, summary]) => (
-                <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-hairline)', paddingBottom: '0.7rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                    <MapPin size={16} color="var(--brand)" />
-                    <span style={{ font: 'var(--type-body-md)', color: 'var(--text-primary)' }}>{name}</span>
-                  </div>
-                  <span style={{ color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>{summary}</span>
-                </div>
               ))}
             </div>
-          </div>
+          </section>
+        )}
 
-          <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-hairline)', borderRadius: 'var(--radius-card)', padding: 'var(--space-6)' }}>
-            <h2 style={{ margin: '0 0 var(--space-4)', font: 'var(--weight-bold) 30px/1.2 var(--font-display)' }}>Le marché local</h2>
-            <p style={{ margin: 0, color: 'var(--text-muted)', font: 'var(--type-body-md)', lineHeight: 1.7 }}>
-              À {cityName}, les chambres restent très demandées autour des quartiers centraux et des campus. Les logements meublés et les studios proches des transports sont les plus prisés, avec un budget typique entre 2 500 et 4 000 MAD.
-            </p>
-          </div>
-        </section>
-
-        <section style={{ display: 'grid', gap: 'var(--space-4)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--space-3)' }}>
-            <h2 style={{ margin: 0, font: 'var(--weight-bold) 30px/1.2 var(--font-display)' }}>
-              Annonces à {cityName}
-            </h2>
-            <a href={`/listings?city=${encodeURIComponent(cityName)}`} style={{ color: 'var(--brand)', font: 'var(--type-body-sm)' }}>
-              Voir tout
-            </a>
-          </div>
-          {error ? (
-            <p style={{ margin: 0, color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>{error}</p>
-          ) : listings.length === 0 ? (
-            <p style={{ margin: 0, color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>
-              Chargement des annonces disponibles…
+        <section>
+          <h2 style={{ margin: '0 0 var(--space-4)', font: 'var(--weight-bold) 30px/1.2 var(--font-display)' }}>
+            Dernières annonces à {cityName}
+          </h2>
+          {listings.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)' }}>
+              Aucune annonce disponible à {cityName} pour le moment.
             </p>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-5)' }}>
-              {listings.slice(0, 3).map((listing) => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 'var(--space-5)' }}>
+              {listings.slice(0, 6).map((listing) => (
                 <a
                   key={listing.id}
                   href={`/listings/${listing.id}`}
@@ -195,13 +254,13 @@ export default function CityLandingPage() {
                     <div style={{ height: 160, background: 'var(--sable-200)' }} />
                   )}
                   <div style={{ padding: 'var(--space-4)' }}>
-                  <div style={{ color: 'var(--text-subtle)', font: 'var(--type-eyebrow)', textTransform: 'uppercase' }}>
-                    {listing.neighborhood}
-                  </div>
-                  <div style={{ marginTop: '0.3rem', font: 'var(--type-h3)' }}>{listing.title}</div>
-                  <div style={{ marginTop: 'var(--space-3)', color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>
-                    {new Intl.NumberFormat('fr-MA').format(listing.priceRent)} MAD/mois
-                  </div>
+                    <div style={{ color: 'var(--text-subtle)', font: 'var(--type-eyebrow)', textTransform: 'uppercase' }}>
+                      {listing.neighborhood}
+                    </div>
+                    <div style={{ marginTop: '0.3rem', font: 'var(--type-h3)' }}>{listing.title}</div>
+                    <div style={{ marginTop: 'var(--space-3)', color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>
+                      {money(listing.priceRent)} MAD/mois
+                    </div>
                   </div>
                 </a>
               ))}

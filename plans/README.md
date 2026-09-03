@@ -774,3 +774,51 @@ pages are the next real SEO win and should follow the same island pattern. `/lis
 filtered search permutations should not be indexed anyway, and it needs a canonical pointing at the
 city page rather than server rendering. The homepage is still entirely hardcoded and does not use
 `GET /listings/featured`.
+
+**T3 city landing pages — done (2026-09-03).**
+
+`/flatshare/[city]` is now a Server Component, prerendered for all four cities with 15-minute
+revalidation. Client JavaScript on the route went from **3.75 kB to 143 B** — a landing page whose job
+is to be read and indexed should ship almost none.
+
+**The bigger finding was what the page was publishing.** These are the pages most likely to rank, and
+they carried invented statistics presented as fact:
+
+- "420 annonces actives", "2 600 MAD budget moyen", "6 jours temps moyen de réponse" — three
+  hardcoded figures, none measured by anything in the product.
+- "Loyers de 2 100 à 5 400 MAD" in the hero — an invented range.
+- A "Quartiers populaires" list of **Rabat** districts (Agdal, Hassan, Hay Riad, Médina) with invented
+  descriptions, rendered identically on the Casablanca, Marrakech and Tanger pages. Three of the four
+  city pages described neighbourhoods in a different city.
+
+Replaced with measured values, or removed where nothing measures them:
+
+- Active listing count from `GET /listings/count`, showing "7 annonces actives" for Rabat — the same
+  figure the search page reports.
+- A real price range from the first row of each price ordering (two small requests), rendering
+  "Loyers de 2 690,94 à 4 946,68 MAD" for Rabat. Cheaper and more honest than averaging one page of
+  results and calling it a market rate.
+- Neighbourhood chips derived from the city's actual listings, ordered by frequency, each linking to a
+  filtered search. **Names only, no counts** — this is one page of results, so a count would understate
+  a city with more listings than were fetched.
+- The average-response-time figure is gone. Nothing in the product records it.
+
+**An unknown city slug now 404s.** `/flatshare/anything` previously fell back to Rabat and rendered
+Rabat's content under that URL — a duplicate page for a city that does not exist, and exactly the kind
+of thing that dilutes the pages meant to rank.
+
+Per-city metadata added: title, description, canonical and Open Graph, all in French.
+
+Verified against the running app: `rabat`, `casablanca`, `tanger` return 200 with distinct titles and
+correct canonicals; an unknown slug returns 404; listing titles, the count block and the neighbourhood
+chips are present in the HTML source; and none of the removed fabrications appear anywhere in it. One
+`500` seen on first request was a Next dev-server compile artifact
+(`Expected clientReferenceManifest to be defined`), 200 on retry and absent from the production build.
+
+**Left as is:** prices render with centimes ("2 690,94") because that is how every other price in the
+app is formatted. Rounding only here would be an inconsistency; if the range should read "2 691 à
+4 947", the formatter should change everywhere at once.
+
+**Still open in this track:** `/listings` is still client-rendered and has no canonical — filtered
+permutations should point at the city page rather than each become their own indexable URL. The
+homepage remains entirely hardcoded and does not use `GET /listings/featured`.

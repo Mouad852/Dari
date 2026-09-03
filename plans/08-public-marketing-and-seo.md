@@ -33,12 +33,12 @@ There is no obviously correct answer — it depends on how much you expect organ
 - [ ] Hero with the elevated search bar, wired to the real search endpoint
 - [ ] Featured listings grid — define what "featured" means, since the doc defers monetized featuring to post-MVP. Recency plus photo quality is a reasonable first answer.
 - [ ] Four-step "Comment ça marche"
-- [ ] City tiles with scrims and live per-city listing counts
+- [~] Live per-city listing counts are on the city landing pages (2026-09-03). The homepage city tiles are still hardcoded — the homepage has not been wired at all.
 - [ ] Terracotta CTA band
 - [ ] The one permitted hero gradient, `--clay-50 → --bg-page`, per the design system
 
 **Public content and SEO**
-- [ ] City landing pages — `/flatshare/rabat`, `/flatshare/casablanca`, and so on. These are the pages most likely to rank.
+- [x] City landing pages (2026-09-03) — prerendered per city with 15-minute revalidation, per-city metadata and canonical, real listing counts, a real price range and neighbourhood chips derived from actual listings. Route client JS went from 3.75 kB to 143 B. They previously published three invented statistics and showed Rabat's neighbourhoods on all four cities.
 - [ ] Neighborhood pages if the rendering strategy makes them cheap
 - [x] Server-rendered listing detail pages with real metadata (2026-09-03). Interactivity moved into two client islands; route client JS dropped from 5.22 kB to 2.09 kB. Verified by reading the served HTML, not by inspecting the code.
 - [~] Title, meta description, canonical and Open Graph tags per page, in French — done for listing detail (2026-09-03); city landing pages and the homepage still have only the root layout's metadata.
