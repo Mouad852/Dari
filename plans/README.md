@@ -1002,6 +1002,42 @@ The filter chips now use the component, verified in the browser as charcoal fill
 new `generateMetadata` functions appended `| Dari` themselves, so the city and search pages rendered
 "… | Dari | Dari". Fixed, and all three titles verified against the served HTML.
 
+### Third batch: forms and Dialog (2026-09-03)
+
+`Input`, `Select` and `Dialog` ported. Nine of fifteen components done.
+
+`Input` and `Select` work controlled **or** uncontrolled. That matters because the homepage hero is a
+plain GET form whose fields the browser reads from their `name` attributes without React ever seeing
+them.
+
+One deviation in `Select`: the source greys the control whenever `value` is falsy, to dim the
+placeholder. An uncontrolled select has no `value`, so that rule would grey a real selection — and
+grey it with `--text-subtle`, one of the tokens already known to fail WCAG AA.
+
+**`Dialog` is where the port paid off most, and where a faithful copy would have been wrong.** The
+visual port is exact — tokens, radii, the sheet grabber, warm shadows, both entry animations. The
+behaviour deliberately is not, because the source has four real defects:
+
+- `position: absolute`, with its own prompt file warning you must "give the parent position:relative
+  (or use at page root)". A modal that depends on where it is mounted will eventually be mounted
+  somewhere it breaks.
+- No Escape handling at all.
+- No focus management, so a keyboard user is dropped at the top of the document on close.
+- No `aria-labelledby`, so a screen reader announces "dialog" rather than what it is for.
+
+The porting rules forbid improving *spacing or colour* while porting, because visual drift is
+invisible until two screens sit side by side. They do not ask a port to carry accessibility bugs
+forward. Each difference is documented in the component.
+
+`ReportDialog` — roughly 200 lines of hand-rolled modal chrome — now sits on it. Verified in the
+browser: overlay `fixed`, 24px `--radius-xl`, `aria-labelledby` resolving to "Signaler ce contenu",
+focus moved inside on open, body scroll locked, Escape closing it, scroll unlocked and focus returned
+to the trigger afterwards.
+
+**Caught before committing:** the rewrite briefly wrapped `getIdToken` in a lazy import and a
+try/catch, which papered over a missing Firebase key in the local dev environment and would have
+silently swallowed real auth failures in production. Reverted to the direct import.
+
 ### Remaining port order
 
 `Card`, `Badge`, `Tag`, `IconButton` → `Input`, `Select`, `Checkbox`, `Radio`, `Switch` → `Tabs`,
