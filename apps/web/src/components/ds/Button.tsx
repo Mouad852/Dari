@@ -135,7 +135,12 @@ export function Button({
         width: fullWidth ? '100%' : 'auto',
         font: `var(--weight-semibold) ${s.fs}/1 var(--font-ui)`,
         letterSpacing: '0em',
-        color: v.fg,
+        // The source keeps the variant's own foreground when disabled, which
+        // for `primary` is #fff on --sable-200: 1.296:1, a label you cannot
+        // read. The disabled background already carries the meaning, so the
+        // label takes the text colour that belongs on it -- 10.47:1 flat, and
+        // 5.02:1 once the 0.75 opacity below blends both against the page.
+        color: off ? 'var(--text-body)' : v.fg,
         background: off ? 'var(--sable-200)' : pressed ? v.press : hovered ? v.hover : v.bg,
         border: `1px solid ${off ? 'transparent' : v.bd}`,
         borderRadius: 'var(--radius-pill)',

@@ -1255,12 +1255,81 @@ At **1280px**: rail 360px and sticky, toggle `display: none`, nothing spilling o
 scrollWidth 1265. At **390px**: rail collapsed behind the toggle, every segmented tab a clean 36px on
 one line, scrollWidth exactly 390, and zero contrast failures with the filters open.
 
+## The publish wizard, rebuilt against the kit (2026-09-03)
+
+`/publish` was the last large hand-rolled form: four steps, eleven raw `<input>`/`<select>`/`<button>`
+elements, and a `photoActionStyle()` helper written to stop the same eight declarations being copied
+a fifth time. It now uses `Input`, `Select`, `Textarea`, `Tag`, `Button`, `IconButton`, `Badge` and
+`Card`, and the 412px horizontal overflow it has carried since phase 07 is gone — the page measures
+exactly the viewport at 390px and at 1280px.
+
+The one new component is **`Textarea`**. The design system has no multi-line field: nothing under
+`components/forms/`, no token, no guideline. Two places need one (this description, and the details
+box on a report), and both were carrying their own copy of `Input`'s border, radius and padding. It
+is `Input`'s specification extended vertically and nothing else, and it is marked as an addition
+rather than a port.
+
+### Four things that were not true
+
+- **"Photos: 1 ajoutée" was fixed text.** An owner who had uploaded nothing, or six, was told the
+  same thing — and it was the one number on the page that decides whether publishing succeeds. The
+  summary now reads real state on every row, and marks the six fields `CreateListingRequest` refuses
+  a listing without separately from the optional ones, so an empty description does not shout as
+  loudly as a missing title.
+- **The Quartier select offered four fixed options for every city.** Agdal, Gauthier, Hassan, Médina
+  — one list from Rabat, one from Casablanca, shown to owners in Marrakech and Tanger. Worse, the
+  state started empty while the closed select displayed "Agdal", so the form showed a neighbourhood
+  it was not going to send. `neighborhood` is `@NotBlank` on the API and free text on the search
+  page, so it is free text here now.
+- **The client-side guard covered three of the six required fields.** Latitude, longitude and rent
+  were checked; title and neighbourhood were left to the server, which means "Quartier requis" was
+  reachable by touching nothing at all. The guard now names whichever field is missing.
+- **Nothing stopped an owner pressing Publier with no photo.** `ListingSearchService.submit`
+  requires one, so the reward for finishing the wizard was a 400. The button is disabled with the
+  reason stated, and the photo-list fetch no longer fails silently — an owner whose photos did not
+  load is told that is why, rather than being shown an empty step.
+
+### Two component fixes that reach the whole app
+
+- **A disabled `Button` was unreadable.** The source keeps the variant's own foreground when
+  disabled, which for `primary` is `#fff` on `--sable-200`: **1.296:1**. The label now takes
+  `--text-body` — 10.47:1 flat, 5.02:1 once the port's 0.75 opacity blends both against the page.
+- **`IconButton` announced every button as a toggle.** `active` defaulted to `false`, so
+  `aria-pressed="false"` went onto the dialog close button and, now, onto four photo controls. It
+  defaults to undefined; only a real toggle emits the attribute.
+
+The step chips are the one place the kit was deliberately not used. `Tag` sets `aria-pressed` from
+`selected`, which is right for a filter chip and wrong for a position in a sequence — the chips are
+written out with `aria-current="step"`, and a completed step is a real button back to itself.
+
+### Verified
+
+At **390px** and **1280px**: page scrollWidth equal to the viewport on both, zero contrast failures
+on every step, field pairs side by side at desktop and stacked on mobile. `npm run typecheck`,
+`npm run tokens:check` (192 tokens) and `npm run build` all clean.
+
+Not verified in a browser: the photo grid with real photos, and every path past the first save.
+`NEXT_PUBLIC_FIREBASE_API_KEY` is empty in `apps/web/.env.local`, so `getAuth()` throws and nothing
+behind sign-in can be exercised. The steps past the first were rendered by temporarily changing the
+wizard's initial step, which is not the same as walking through it.
+
 ### Next
 
-Art-direct beyond the kit. The remaining hand-rolled surfaces are `/publish`, the account and admin
+Art-direct beyond the kit. The remaining hand-rolled surfaces are the account screens, the admin
 screens, and messages.
 
-Carry forward: `/publish` and `/sign-up` still overflow horizontally at 412px. Twelve `await
-getIdToken()` calls sit outside a try; harmless with a valid config, but they fail as silent hangs
-rather than errors when one is missing. And `NEXT_PUBLIC_FIREBASE_API_KEY` is still empty locally, so
-no signed-in surface can be exercised in a browser.
+Carry forward: `/sign-up` still overflows horizontally at 412px. **Twelve** `await getIdToken()`
+calls sit outside a try — counted, not estimated, by a brace-tracking pass over `src`; the publish
+wizard's was the thirteenth and is fixed. They are harmless with a valid config and fail as silent
+hangs rather than errors without one, and the right handling differs per screen, so they are worth a
+deliberate sweep rather than a blanket wrap:
+
+    account/page.tsx:39            admin/reports/page.tsx:43
+    account/listings/page.tsx:49   admin/users/page.tsx:39
+    account/profile/page.tsx:33    listings/[id]/ListingGallery.tsx:53
+    admin/layout.tsx:25            messages/page.tsx:37
+    admin/page.tsx:23              messages/[id]/page.tsx:30
+    admin/listings/page.tsx:23     profile/[id]/ContactButton.tsx:16
+
+And `NEXT_PUBLIC_FIREBASE_API_KEY` is still empty locally, so no signed-in surface can be exercised
+in a browser.

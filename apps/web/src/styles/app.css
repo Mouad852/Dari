@@ -175,3 +175,28 @@ body {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Publish wizard
+
+   Two fields side by side where there is room, stacked where there is not.
+   `auto-fit` rather than a media query: the wizard sits in a 660px prose
+   container that is itself inside a gutter, so the breakpoint that matters is
+   the column's width, not the viewport's -- and the same rule then works
+   unchanged if the wizard is ever placed in a narrower shell.
+
+   The 220px floor is the width at which a label plus a value stops truncating;
+   below it the pair drops to one column instead of squeezing both.
+   --------------------------------------------------------------------------- */
+
+.wizard-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+/* A grid item defaults to min-width:auto, so a long placeholder or a number
+   input's spinner can push its track wider than the track was declared. */
+.wizard-pair > * {
+  min-width: 0;
+}

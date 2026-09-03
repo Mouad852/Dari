@@ -8,9 +8,16 @@ import { Icon } from './Icon';
  * Circular icon-only control — favourites, close, back, share.
  *
  * Ported from `design-system/components/core/IconButton.jsx`, tokens untouched.
- * `label` is required rather than optional: the source falls back to the icon
- * slug for `aria-label`, which would announce "heart" or "share-2" to a screen
- * reader instead of what the control does.
+ * Two accessibility departures from the source:
+ *
+ * - `label` is required rather than optional: the source falls back to the icon
+ *   slug for `aria-label`, which would announce "heart" or "share-2" to a screen
+ *   reader instead of what the control does.
+ * - `active` defaults to undefined, not false, so `aria-pressed` is emitted only
+ *   by controls that are genuinely toggles. With a `false` default, every plain
+ *   action button — close a dialog, delete a photo, reorder one — announced
+ *   itself as an unpressed toggle button, which tells the user to expect a state
+ *   that the control does not have.
  */
 
 const SIZES = { sm: 36, md: 44, lg: 52 } as const;
@@ -36,7 +43,10 @@ export interface IconButtonProps {
   icon?: string;
   size?: keyof typeof SIZES;
   variant?: keyof typeof VARIANTS;
-  /** Renders the glyph in the brand colour and sets aria-pressed. */
+  /**
+   * Toggle state. Renders the glyph in the brand colour and sets `aria-pressed`.
+   * Leave it unset on a control that is not a toggle.
+   */
   active?: boolean;
   /** What the control does, for screen readers. Not the icon name. */
   label: string;
@@ -52,7 +62,7 @@ export function IconButton({
   icon = 'heart',
   size = 'md',
   variant = 'secondary',
-  active = false,
+  active,
   label,
   fill,
   disabled = false,

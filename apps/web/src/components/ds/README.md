@@ -12,6 +12,15 @@ Tabs.tsx    Dialog.tsx      Toast.tsx     Tooltip.tsx
 ListingCard.tsx
 ```
 
+Plus two files that are not ports and say so in their own header comment:
+
+- `Textarea.tsx` — the design system has no multi-line field. Nothing under
+  `components/forms/`, no token, no guideline; the product needs two. Written as
+  `Input`'s specification extended vertically and nothing else.
+- `useFocusRing.ts` — `Checkbox`, `Radio` and `Switch` hide their native input
+  behind `opacity: 0`, which hides the browser's focus ring with it. This gives
+  the three of them a keyboard-focus state to paint their own ring from.
+
 ## Porting rules
 
 **Port from the `.jsx` sources, not from `_ds_bundle.js`.** The bundle is a

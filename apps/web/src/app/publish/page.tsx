@@ -1,10 +1,19 @@
 'use client';
 
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, ChevronRight, MapPin, Plus, ShieldCheck, Star, Trash2, UploadCloud } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 
+import { Badge } from '@/components/ds/Badge';
+import { Button } from '@/components/ds/Button';
+import { Card } from '@/components/ds/Card';
+import { Icon } from '@/components/ds/Icon';
+import { IconButton } from '@/components/ds/IconButton';
+import { Input } from '@/components/ds/Input';
+import { Select } from '@/components/ds/Select';
+import { Tag } from '@/components/ds/Tag';
+import { Textarea } from '@/components/ds/Textarea';
 import { apiFetch, ApiError, apiOrigin } from '@/lib/api';
+import { CITIES } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
 import { AMENITY_LABELS, PROPERTY_TYPE_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
 import type { ListingPhoto, ListingStatus, PropertyType, RoomType } from '@/types/api';
@@ -31,21 +40,6 @@ type DraftListing = {
   status: ListingStatus;
 };
 
-const photoActionStyle = (disabled: boolean): React.CSSProperties => ({
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 30,
-  height: 30,
-  border: '1px solid var(--border-hairline)',
-  borderRadius: 'var(--radius-pill)',
-  background: 'var(--surface-card)',
-  color: 'var(--text-muted)',
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  opacity: disabled ? 0.45 : 1,
-  padding: 0,
-});
-
 /**
  * useSearchParams forces a Suspense boundary in the App Router; without one the
  * route cannot be statically rendered and the build fails.
@@ -65,7 +59,7 @@ function PublishWizard() {
   // so an owner who clicked through without editing published someone else's
   // words as their own. City and property/room type keep a default only
   // because they are closed selects that must hold a valid value.
-  const [city, setCity] = useState('Rabat');
+  const [city, setCity] = useState<string>('Rabat');
   const [district, setDistrict] = useState('');
   const [title, setTitle] = useState('');
   const [monthlyRent, setMonthlyRent] = useState('');
@@ -92,7 +86,18 @@ function PublishWizard() {
   useEffect(() => {
     let isCurrent = true;
     async function loadDraft() {
-      const token = await getIdToken();
+      // getIdToken rejects rather than resolving null when Firebase is missing
+      // or misconfigured, and this call sat outside the try — so a bad config
+      // surfaced as an unhandled promise rejection in the console and the step
+      // simply never populated. Nothing is said here on purpose: an anonymous
+      // visitor has no draft to resume either, and pressing Suivant reports the
+      // failure through the save path, which is where it is actionable.
+      let token: string | null = null;
+      try {
+        token = await getIdToken();
+      } catch {
+        return;
+      }
       if (!token) return;
       try {
         // Editing a named listing reads the owner-scoped route, never
@@ -123,9 +128,18 @@ function PublishWizard() {
         try {
           const existing = await apiFetch<ListingPhoto[]>(`/listings/${draft.id}/photos`, { token });
           if (isCurrent) setPhotos(existing);
-        } catch {
-          // Photos are additive to the step; failing to list them should not
-          // block resuming the rest of the draft.
+        } catch (cause) {
+          // Photos are additive to the step, so this does not block resuming the
+          // rest of the draft — but it is no longer silent. The publish button
+          // is disabled while the list looks empty, and an owner whose photos
+          // simply failed to load deserves to know that is why.
+          if (isCurrent) {
+            setPhotoError(
+              cause instanceof ApiError
+                ? cause.message
+                : 'Impossible de charger les photos déjà envoyées.',
+            );
+          }
         }
       } catch (cause) {
         // A 404 is normal when simply landing on /publish with no draft yet.
@@ -170,7 +184,7 @@ function PublishWizard() {
   const draftPayload = () => ({
     title: title.trim(),
     city,
-    neighborhood: district,
+    neighborhood: district.trim(),
     latitude: Number(latitude),
     longitude: Number(longitude),
     priceRent: Number(monthlyRent.replace(/\s/g, '')),
@@ -180,9 +194,29 @@ function PublishWizard() {
     amenityCodes: selectedAmenities,
   });
 
+  /**
+   * The six fields CreateListingRequest marks @NotBlank/@NotNull, checked here
+   * so the wizard names the missing one instead of bouncing off a 400.
+   *
+   * The guard used to cover latitude, longitude and the rent only, which left
+   * the two text fields to the server — and "Quartier requis" was reachable
+   * simply by not touching a control, because the neighbourhood select showed
+   * "Agdal" over empty state. Ville is in the list for completeness; a closed
+   * select cannot currently be empty.
+   */
+  const missingRequired = (): string | null => {
+    if (!title.trim()) return 'Donnez un titre à votre annonce avant de continuer.';
+    if (!city.trim()) return 'Choisissez une ville avant de continuer.';
+    if (!district.trim()) return 'Renseignez le quartier avant de continuer.';
+    if (!latitude || !longitude) return 'Renseignez la localisation avant de continuer.';
+    if (!monthlyRent.trim()) return 'Renseignez le loyer mensuel avant de continuer.';
+    return null;
+  };
+
   const persistDraft = async (token: string) => {
-    if (!latitude || !longitude || !monthlyRent.trim()) {
-      throw new ApiError(400, 'VALIDATION_FAILED', 'Renseignez la localisation et le loyer avant de continuer.');
+    const missing = missingRequired();
+    if (missing) {
+      throw new ApiError(400, 'VALIDATION_FAILED', missing);
     }
     const options = { method: draftId ? 'PATCH' : 'POST', token, body: draftPayload() } as const;
     const draft = await apiFetch<DraftListing>(
@@ -349,6 +383,12 @@ function PublishWizard() {
     }
   };
 
+  const isLastStep = stepIndex === STEPS.length - 1;
+  // The server refuses a submission with no active photo, so the wizard says so
+  // here rather than letting the owner press Publier and read a 400 back.
+  const missingPhotos = photos.length === 0;
+  const blockedFromPublishing = isLastStep && missingPhotos;
+
   return (
     <main
       style={{
@@ -358,8 +398,16 @@ function PublishWizard() {
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
-      <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', display: 'grid', gap: 'var(--space-5)' }}>
-        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+      <div
+        style={{
+          maxWidth: 'var(--container-prose)',
+          margin: '0 auto',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr)',
+          gap: 'var(--space-5)',
+        }}
+      >
+        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
           <div>
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Publier
@@ -374,34 +422,12 @@ function PublishWizard() {
             previously fixed text, so it made the same claim about draft safety
             before anything had been sent as it did afterwards.
           */}
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: 32,
-              borderRadius: 'var(--radius-pill)',
-              background: draftId ? 'var(--brand-subtle)' : 'var(--sable-100)',
-              color: draftId ? 'var(--clay-700)' : 'var(--text-muted)',
-              padding: '0.45rem 0.8rem',
-              font: 'var(--weight-medium) var(--type-label) var(--font-ui)',
-            }}
-          >
+          <Badge tone={draftId ? 'brand' : 'neutral'} icon={draftId ? 'check' : undefined}>
             {draftId ? 'Brouillon enregistré' : 'Brouillon non enregistré'}
-          </span>
+          </Badge>
         </header>
 
-        <section
-          style={{
-            background: 'var(--surface-card)',
-            border: '1px solid var(--border-hairline)',
-            borderRadius: 'var(--radius-card)',
-            boxShadow: 'var(--shadow-xs)',
-            padding: 'var(--space-5)',
-            display: 'grid',
-            gap: 'var(--space-4)',
-          }}
-        >
+        <Card padding="var(--card-pad-lg)" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-4)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Étape {stepIndex + 1} sur {STEPS.length}
@@ -409,226 +435,221 @@ function PublishWizard() {
             <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{step}</div>
           </div>
 
+          {/*
+            A native progress element rather than two nested divs: it announces
+            the value to a screen reader, which the divs did not, and it carries
+            the same semantics the visual bar implies.
+          */}
           <div
-            style={{
-              width: '100%',
-              height: 8,
-              borderRadius: '999px',
-              background: 'var(--sable-100)',
-              overflow: 'hidden',
-            }}
+            role="progressbar"
+            aria-valuenow={stepIndex + 1}
+            aria-valuemin={1}
+            aria-valuemax={STEPS.length}
+            aria-label="Progression du formulaire"
+            style={{ width: '100%', height: 8, borderRadius: 'var(--radius-pill)', background: 'var(--sable-100)', overflow: 'hidden' }}
           >
             <div
               style={{
                 width: `${progress}%`,
                 height: '100%',
-                background: 'linear-gradient(135deg, var(--brand), var(--brand-hover))',
+                background: 'var(--brand)',
                 borderRadius: 'inherit',
-                transition: 'width 180ms ease',
+                transition: 'width var(--dur-med) var(--ease-standard)',
               }}
             />
           </div>
 
-          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-            {STEPS.map((label, index) => (
-              <span
-                key={label}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minWidth: 80,
-                  borderRadius: 'var(--radius-pill)',
-                  background: index === stepIndex ? 'var(--brand-subtle)' : 'var(--sable-50)',
-                  color: index === stepIndex ? 'var(--clay-700)' : 'var(--text-muted)',
-                  padding: '0.45rem 0.7rem',
-                  font: 'var(--type-label)',
-                  border: index === stepIndex ? '1px solid var(--brand-border)' : '1px solid var(--border-hairline)',
-                }}
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-        </section>
+          {/*
+            The step chips were decorative spans: they highlighted the current
+            step but said nothing about which ones were done, and they could not
+            be clicked. A completed step is now a real button back to itself —
+            no capability the Retour button did not already have, just fewer
+            presses — while an upcoming step stays inert, because moving forward
+            has to go through the save that Suivant performs.
 
-        <section
-          style={{
-            background: 'var(--surface-card)',
-            border: '1px solid var(--border-hairline)',
-            borderRadius: 'var(--radius-card)',
-            boxShadow: 'var(--shadow-xs)',
-            padding: 'var(--space-5)',
-          }}
-        >
+            Written out rather than built on Tag on purpose. Tag is a filter
+            chip: it sets `aria-pressed` from `selected`, which is right for a
+            toggle and wrong here, where a step is a position in a sequence.
+            `aria-current="step"` is the attribute that says that, and the
+            markup below is small enough not to be worth bending Tag around.
+          */}
+          <ol
+            className="scroll-row"
+            style={{ display: 'flex', gap: 'var(--space-2)', listStyle: 'none', margin: 0, padding: 0 }}
+          >
+            {STEPS.map((label, index) => {
+              const done = index < stepIndex;
+              const current = index === stepIndex;
+              const chip: CSSProperties = {
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                height: 36,
+                padding: '0 14px',
+                whiteSpace: 'nowrap',
+                borderRadius: 'var(--radius-chip)',
+                font: 'var(--weight-medium) var(--text-body-sm)/1 var(--font-ui)',
+                background: current ? 'var(--sable-900)' : 'var(--surface-card)',
+                color: current ? 'var(--text-on-inverse)' : done ? 'var(--text-body)' : 'var(--text-muted)',
+                border: `1px solid ${current ? 'var(--sable-900)' : 'var(--border-hairline)'}`,
+                transition: 'var(--transition-control)',
+              };
+              return (
+                <li key={label} aria-current={current ? 'step' : undefined}>
+                  {done ? (
+                    <button type="button" onClick={() => setStepIndex(index)} style={{ ...chip, cursor: 'pointer' }}>
+                      <Icon name="check" size={15} />
+                      {label}
+                    </button>
+                  ) : (
+                    <span style={chip}>
+                      {index + 1}. {label}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </Card>
+
+        <Card padding="var(--card-pad-lg)" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)' }}>
           {step === 'Annonce' && (
-            <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-              <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
-                  <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase' }}>Titre de l’annonce</span>
-                  <input
-                    value={title}
-                    onChange={(event) => setTitle(event.target.value)}
-                    style={{
-                      border: '1px solid var(--border-default)',
-                      borderRadius: 'var(--radius-md)',
-                      background: 'var(--surface-card)',
-                      color: 'var(--text-heading)',
-                      padding: '0.82rem 0.9rem',
-                      font: 'var(--type-body)',
-                    }}
-                  />
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-                  <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
-                    <span style={{ font: 'var(--type-label)' }}>Latitude</span>
-                    <input required type="number" step="any" value={latitude} onChange={(event) => setLatitude(event.target.value)} placeholder="34.0209" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.82rem 0.9rem', font: 'var(--type-body)' }} />
-                  </label>
-                  <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
-                    <span style={{ font: 'var(--type-label)' }}>Longitude</span>
-                    <input required type="number" step="any" value={longitude} onChange={(event) => setLongitude(event.target.value)} placeholder="-6.8416" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.82rem 0.9rem', font: 'var(--type-body)' }} />
-                  </label>
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-5)' }}>
+              <Input
+                label="Titre de l’annonce"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Chambre meublée proche du tramway"
+                helper="Décrivez la chambre en quelques mots. C’est la première chose que lit un chercheur."
+              />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-                  <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
-                    <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase' }}>Ville</span>
-                    <select value={city} onChange={(event) => setCity(event.target.value)} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', color: 'var(--text-heading)', padding: '0.82rem 0.9rem', font: 'var(--type-body)' }}>
-                      <option>Rabat</option>
-                      <option>Casablanca</option>
-                      <option>Marrakech</option>
-                      <option>Tanger</option>
-                    </select>
-                  </label>
-
-                  <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
-                    <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase' }}>Quartier</span>
-                    <select value={district} onChange={(event) => setDistrict(event.target.value)} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', color: 'var(--text-heading)', padding: '0.82rem 0.9rem', font: 'var(--type-body)' }}>
-                      <option>Agdal</option>
-                      <option>Gauthier</option>
-                      <option>Hassan</option>
-                      <option>Médina</option>
-                    </select>
-                  </label>
-                </div>
+              <div className="wizard-pair">
+                <Select
+                  label="Ville"
+                  value={city}
+                  onChange={(event) => setCity(event.target.value)}
+                  options={[...CITIES]}
+                />
+                {/*
+                  Free text, not a select. The select here offered four fixed
+                  options -- Agdal, Gauthier, Hassan, Médina -- for every city,
+                  which is one neighbourhood list from Rabat and one from
+                  Casablanca shown to owners in Marrakech and Tanger. Worse, the
+                  state started empty while the closed select displayed "Agdal",
+                  so the form showed a neighbourhood it was not going to send.
+                  The API takes a free string and the search page already treats
+                  it as one.
+                */}
+                <Input
+                  label="Quartier"
+                  value={district}
+                  onChange={(event) => setDistrict(event.target.value)}
+                  placeholder="Agdal"
+                />
               </div>
 
-              <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
-                <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase' }}>Description</span>
-                <textarea
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  rows={5}
-                  style={{
-                    border: '1px solid var(--border-default)',
-                    borderRadius: 'var(--radius-md)',
-                    background: 'var(--surface-card)',
-                    color: 'var(--text-heading)',
-                    padding: '0.82rem 0.9rem',
-                    font: 'var(--type-body)',
-                    resize: 'vertical',
-                  }}
+              <div className="wizard-pair">
+                <Input
+                  label="Latitude"
+                  type="number"
+                  step={0.000001}
+                  required
+                  value={latitude}
+                  onChange={(event) => setLatitude(event.target.value)}
+                  placeholder="34.0209"
                 />
-              </label>
+                <Input
+                  label="Longitude"
+                  type="number"
+                  step={0.000001}
+                  required
+                  value={longitude}
+                  onChange={(event) => setLongitude(event.target.value)}
+                  placeholder="-6.8416"
+                />
+              </div>
+              <p style={{ margin: 0, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
+                La position exacte reste privée : les chercheurs voient un cercle approximatif, jamais
+                votre adresse.
+              </p>
+
+              <Textarea
+                label="Description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={6}
+                placeholder="Le logement, le quartier, les colocataires, les règles de vie."
+              />
             </div>
           )}
 
           {step === 'Chambre' && (
-            <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-                <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
-                  <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase' }}>Loyer mensuel</span>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      value={monthlyRent}
-                      onChange={(event) => setMonthlyRent(event.target.value)}
-                      style={{
-                        width: '100%',
-                        border: '1px solid var(--border-default)',
-                        borderRadius: 'var(--radius-md)',
-                        background: 'var(--surface-card)',
-                        color: 'var(--text-heading)',
-                        padding: '0.82rem 2.7rem 0.82rem 0.9rem',
-                        font: 'var(--type-body)',
-                      }}
-                    />
-                    <span style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', font: 'var(--type-label)' }}>MAD</span>
-                  </div>
-                </label>
-
-                <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
-                  <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase' }}>Type de bien</span>
-                  <select
-                    value={propertyType}
-                    onChange={(event) => setPropertyType(event.target.value as PropertyType)}
-                    style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', color: 'var(--text-heading)', padding: '0.82rem 0.9rem', font: 'var(--type-body)' }}
-                  >
-                    {(Object.keys(PROPERTY_TYPE_LABELS) as PropertyType[]).map((value) => (
-                      <option key={value} value={value}>{PROPERTY_TYPE_LABELS[value]}</option>
-                    ))}
-                  </select>
-                </label>
-
-                <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
-                  <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase' }}>Type de chambre</span>
-                  <select
-                    value={roomType}
-                    onChange={(event) => setRoomType(event.target.value as RoomType)}
-                    style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', color: 'var(--text-heading)', padding: '0.82rem 0.9rem', font: 'var(--type-body)' }}
-                  >
-                    {(Object.keys(ROOM_TYPE_LABELS) as RoomType[]).map((value) => (
-                      <option key={value} value={value}>{ROOM_TYPE_LABELS[value]}</option>
-                    ))}
-                  </select>
-                </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-5)' }}>
+              <div className="wizard-pair">
+                <Input
+                  label="Loyer mensuel"
+                  value={monthlyRent}
+                  onChange={(event) => setMonthlyRent(event.target.value)}
+                  inputMode="numeric"
+                  placeholder="3 200"
+                  suffix="MAD"
+                />
+                <Select
+                  label="Type de bien"
+                  value={propertyType}
+                  onChange={(event) => setPropertyType(event.target.value as PropertyType)}
+                  options={(Object.keys(PROPERTY_TYPE_LABELS) as PropertyType[]).map((value) => ({
+                    value,
+                    label: PROPERTY_TYPE_LABELS[value],
+                  }))}
+                />
               </div>
 
-              <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Équipements</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+              <Select
+                label="Type de chambre"
+                value={roomType}
+                onChange={(event) => setRoomType(event.target.value as RoomType)}
+                options={(Object.keys(ROOM_TYPE_LABELS) as RoomType[]).map((value) => ({
+                  value,
+                  label: ROOM_TYPE_LABELS[value],
+                }))}
+              />
+
+              <fieldset style={{ border: 'none', margin: 0, padding: 0, minWidth: 0 }}>
+                <legend style={{ padding: 0, font: 'var(--type-label)', color: 'var(--text-heading)' }}>
+                  Équipements
+                </legend>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
                   {amenityOptions.map((amenity) => {
                     const isSelected = selectedAmenities.includes(amenity);
                     return (
-                      <button
+                      <Tag
                         key={amenity}
-                        type="button"
+                        icon={isSelected ? 'check' : 'plus'}
+                        selected={isSelected}
                         onClick={() => toggleAmenity(amenity)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.4rem',
-                          borderRadius: 'var(--radius-pill)',
-                          border: isSelected ? '1px solid var(--brand-border)' : '1px solid var(--border-default)',
-                          background: isSelected ? 'var(--brand-subtle)' : 'var(--surface-card)',
-                          color: isSelected ? 'var(--clay-700)' : 'var(--text-heading)',
-                          padding: '0.6rem 0.8rem',
-                          font: 'var(--type-body-sm)',
-                          cursor: 'pointer',
-                        }}
                       >
-                        {isSelected ? <Check size={14} /> : <Plus size={14} />}
                         {AMENITY_LABELS[amenity] ?? amenity}
-                      </button>
+                      </Tag>
                     );
                   })}
                 </div>
-              </div>
+              </fieldset>
             </div>
           )}
 
           {step === 'Photos' && (
-            <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-5)' }}>
               <div
                 style={{
                   border: '1px dashed var(--border-default)',
                   borderRadius: 'var(--radius-card)',
                   background: 'var(--sable-50)',
-                  padding: 'var(--space-6)',
+                  padding: 'var(--space-6) var(--space-5)',
                   display: 'grid',
                   justifyItems: 'center',
                   textAlign: 'center',
-                  gap: 'var(--space-3)',
+                  gap: 'var(--space-4)',
                 }}
               >
                 <span
@@ -643,14 +664,14 @@ function PublishWizard() {
                     color: 'var(--clay-700)',
                   }}
                 >
-                  <UploadCloud size={26} />
+                  <Icon name="upload-cloud" size={26} />
                 </span>
                 <div>
                   <div style={{ font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Ajouter des photos</div>
-                  <div style={{ marginTop: 6, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
+                  <p style={{ margin: '6px 0 0', font: 'var(--type-body-sm)', color: 'var(--text-body)' }}>
                     La première photo devient la couverture. Formats JPG, PNG ou WebP, 5 Mo maximum.
                     Les métadonnées GPS sont retirées à l’enregistrement.
-                  </div>
+                  </p>
                 </div>
 
                 <input
@@ -661,24 +682,13 @@ function PublishWizard() {
                   onChange={(event) => void uploadFiles(event.target.files)}
                   style={{ display: 'none' }}
                 />
-                <button
-                  type="button"
-                  disabled={photoBusy}
+                <Button
+                  loading={photoBusy}
+                  iconLeft={photoBusy ? undefined : 'plus'}
                   onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    border: 'none',
-                    background: 'var(--brand)',
-                    color: '#fff',
-                    borderRadius: 'var(--radius-pill)',
-                    padding: '0.9rem 1.2rem',
-                    font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
-                    cursor: photoBusy ? 'wait' : 'pointer',
-                    opacity: photoBusy ? 0.7 : 1,
-                    boxShadow: 'var(--shadow-brand)',
-                  }}
                 >
                   {photoBusy ? 'Envoi en cours…' : 'Sélectionner des fichiers'}
-                </button>
+                </Button>
               </div>
 
               {photoError && (
@@ -688,7 +698,7 @@ function PublishWizard() {
               )}
 
               {photos.length === 0 ? (
-                <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
+                <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-body)' }}>
                   Au moins une photo est requise pour publier votre annonce.
                 </p>
               ) : (
@@ -699,7 +709,10 @@ function PublishWizard() {
                     padding: 0,
                     display: 'grid',
                     gap: 'var(--space-3)',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                    // 168px floor: four 36px action buttons plus their gaps and
+                    // the tile's own padding need 162, so a narrower track puts
+                    // the control row wider than the tile holding it.
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))',
                   }}
                 >
                   {photos.map((photo, index) => (
@@ -710,77 +723,63 @@ function PublishWizard() {
                         borderRadius: 'var(--radius-card)',
                         overflow: 'hidden',
                         background: 'var(--surface-card)',
+                        minWidth: 0,
                       }}
                     >
                       <div style={{ position: 'relative', aspectRatio: '4 / 3', background: 'var(--sable-200)' }}>
                         <img
                           src={`${apiOrigin}${photo.url}`}
                           alt={`Photo ${index + 1} de l’annonce`}
+                          loading="lazy"
+                          decoding="async"
                           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                         />
                         {photo.isCover && (
-                          <span
-                            style={{
-                              position: 'absolute',
-                              top: 8,
-                              left: 8,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              borderRadius: 'var(--radius-pill)',
-                              background: 'var(--brand)',
-                              color: '#fff',
-                              padding: '0.25rem 0.6rem',
-                              font: 'var(--weight-medium) var(--type-label) var(--font-ui)',
-                            }}
-                          >
-                            <Star size={12} fill="currentColor" /> Couverture
-                          </span>
+                          <Badge tone="brand" icon="star" size="sm" style={{ position: 'absolute', top: 8, left: 8 }}>
+                            Couverture
+                          </Badge>
                         )}
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, padding: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, padding: 'var(--space-2)' }}>
                         <div style={{ display: 'flex', gap: 2 }}>
-                          <button
-                            type="button"
-                            aria-label="Déplacer la photo vers la gauche"
+                          <IconButton
+                            icon="arrow-left"
+                            size="sm"
+                            variant="ghost"
+                            label={`Déplacer la photo ${index + 1} vers la gauche`}
                             disabled={photoBusy || index === 0}
                             onClick={() => void movePhoto(index, -1)}
-                            style={photoActionStyle(photoBusy || index === 0)}
-                          >
-                            <ArrowLeft size={15} />
-                          </button>
-                          <button
-                            type="button"
-                            aria-label="Déplacer la photo vers la droite"
+                          />
+                          <IconButton
+                            icon="arrow-right"
+                            size="sm"
+                            variant="ghost"
+                            label={`Déplacer la photo ${index + 1} vers la droite`}
                             disabled={photoBusy || index === photos.length - 1}
                             onClick={() => void movePhoto(index, 1)}
-                            style={photoActionStyle(photoBusy || index === photos.length - 1)}
-                          >
-                            <ArrowRight size={15} />
-                          </button>
+                          />
                         </div>
                         <div style={{ display: 'flex', gap: 2 }}>
                           {!photo.isCover && (
-                            <button
-                              type="button"
-                              aria-label="Définir comme photo de couverture"
+                            <IconButton
+                              icon="star"
+                              size="sm"
+                              variant="ghost"
+                              label={`Définir la photo ${index + 1} comme couverture`}
                               disabled={photoBusy}
                               onClick={() => void makeCover(photo.id)}
-                              style={photoActionStyle(photoBusy)}
-                            >
-                              <Star size={15} />
-                            </button>
+                            />
                           )}
-                          <button
-                            type="button"
-                            aria-label="Supprimer la photo"
+                          <IconButton
+                            icon="trash-2"
+                            size="sm"
+                            variant="ghost"
+                            label={`Supprimer la photo ${index + 1}`}
                             disabled={photoBusy}
                             onClick={() => void removePhoto(photo.id)}
-                            style={{ ...photoActionStyle(photoBusy), color: 'var(--danger)' }}
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                            style={{ color: 'var(--danger)' }}
+                          />
                         </div>
                       </div>
                     </li>
@@ -791,32 +790,48 @@ function PublishWizard() {
           )}
 
           {step === 'Validation' && (
-            <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-              <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-heading)' }}>
-                  <ShieldCheck size={18} color="var(--success)" />
-                  <span style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)' }}>Vérification avant publication</span>
-                </div>
-
-                <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', borderBottom: '1px solid var(--border-hairline)', paddingBottom: 'var(--space-2)' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Ville</span>
-                    <span style={{ font: 'var(--weight-medium)', color: 'var(--text-heading)' }}>{city}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', borderBottom: '1px solid var(--border-hairline)', paddingBottom: 'var(--space-2)' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Quartier</span>
-                    <span style={{ font: 'var(--weight-medium)', color: 'var(--text-heading)' }}>{district}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', borderBottom: '1px solid var(--border-hairline)', paddingBottom: 'var(--space-2)' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Prix</span>
-                    <span style={{ font: 'var(--weight-medium)', color: 'var(--text-heading)' }}>{monthlyRent} MAD</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Photos</span>
-                    <span style={{ font: 'var(--weight-medium)', color: 'var(--text-heading)' }}>1 ajoutée</span>
-                  </div>
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-5)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', color: 'var(--text-heading)' }}>
+                <Icon name="shield-check" size={18} color="var(--success)" />
+                <span style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)' }}>
+                  Vérification avant publication
+                </span>
               </div>
+
+              {/*
+                A description list, and every row reads real state. The photo row
+                previously said "1 ajoutée" as fixed text: an owner who had
+                uploaded nothing, or six, was told the same thing, and the one
+                number on the page that decides whether publishing succeeds was
+                the one number that was invented.
+              */}
+              <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-3)' }}>
+                <SummaryRow required label="Titre" value={title.trim() || undefined} />
+                <SummaryRow required label="Ville" value={city} />
+                <SummaryRow required label="Quartier" value={district.trim() || undefined} />
+                <SummaryRow required label="Loyer" value={monthlyRent.trim() ? `${monthlyRent.trim()} MAD` : undefined} />
+                <SummaryRow label="Type de bien" value={PROPERTY_TYPE_LABELS[propertyType]} />
+                <SummaryRow label="Type de chambre" value={ROOM_TYPE_LABELS[roomType]} />
+                <SummaryRow label="Description" value={description.trim() ? 'Rédigée' : undefined} />
+                <SummaryRow
+                  label="Équipements"
+                  value={selectedAmenities.length > 0 ? `${selectedAmenities.length} sélectionné${selectedAmenities.length > 1 ? 's' : ''}` : undefined}
+                  missingLabel="Aucun"
+                />
+                <SummaryRow
+                  required
+                  label="Photos"
+                  value={photos.length > 0 ? `${photos.length} ajoutée${photos.length > 1 ? 's' : ''}` : undefined}
+                  missingLabel="Aucune"
+                />
+              </dl>
+
+              {missingPhotos && (
+                <p role="alert" style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--danger)' }}>
+                  Ajoutez au moins une photo à l’étape précédente : une annonce sans photo ne peut pas
+                  être publiée.
+                </p>
+              )}
 
               <div
                 style={{
@@ -827,14 +842,17 @@ function PublishWizard() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 'var(--space-3)',
+                  minWidth: 0,
                 }}
               >
-                <MapPin size={18} color="var(--brand)" />
-                <span style={{ color: 'var(--text-body)' }}>{title} · {district}, {city}</span>
+                <Icon name="map-pin" size={18} color="var(--brand)" />
+                <span style={{ color: 'var(--text-body)', minWidth: 0 }}>
+                  {[title.trim(), [district.trim(), city].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
+                </span>
               </div>
             </div>
           )}
-        </section>
+        </Card>
 
         {error ? <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
         {saved ? <p role="status" style={{ margin: 0, color: 'var(--success)', font: 'var(--type-body-sm)' }}>Annonce envoyée pour validation.</p> : null}
@@ -844,73 +862,94 @@ function PublishWizard() {
           again.
         */}
         {isEditing && wasLive && !saved ? (
-          <p style={{ margin: 0, color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>
+          <p style={{ margin: 0, color: 'var(--text-body)', font: 'var(--type-body-sm)' }}>
             Cette annonce est en ligne. Après modification, elle repassera en validation et ne sera
             pas visible dans les résultats de recherche tant qu’elle n’aura pas été approuvée.
           </p>
         ) : null}
-        <footer style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-          <button
-            type="button"
-            onClick={() => canGoBack && setStepIndex((value) => value - 1)}
-            disabled={!canGoBack}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              minHeight: 44,
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-pill)',
-              background: 'var(--surface-card)',
-              color: 'var(--text-heading)',
-              padding: '0.8rem 1rem',
-              font: 'var(--weight-medium) var(--type-body) var(--font-ui)',
-              cursor: canGoBack ? 'pointer' : 'not-allowed',
-              opacity: canGoBack ? 1 : 0.55,
-            }}
-          >
-            <ChevronLeft size={16} />
-            Retour
-          </button>
 
-          <button
-            type="button"
+        <footer style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+          <Button
+            variant="secondary"
+            iconLeft="chevron-left"
+            disabled={!canGoBack}
+            onClick={() => canGoBack && setStepIndex((value) => value - 1)}
+          >
+            Retour
+          </Button>
+
+          <Button
+            variant="primary"
+            iconRight={isLastStep ? undefined : 'chevron-right'}
+            loading={submitting}
+            disabled={saved || blockedFromPublishing}
             onClick={() => {
-              if (stepIndex === STEPS.length - 1) {
+              if (isLastStep) {
                 void publish();
               } else if (canGoNext) {
                 void saveAndContinue();
               }
-            }}
-            disabled={submitting || saved}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              minHeight: 44,
-              border: 'none',
-              borderRadius: 'var(--radius-pill)',
-              background: 'linear-gradient(135deg, var(--brand), var(--brand-hover))',
-              color: '#fff',
-              padding: '0.8rem 1.2rem',
-              font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
-              cursor: 'pointer',
-              boxShadow: 'var(--shadow-brand)',
             }}
           >
             {submitting
               ? 'Enregistrement…'
               : saved
                 ? 'Annonce envoyée'
-                : stepIndex === STEPS.length - 1
+                : isLastStep
                   ? (isEditing ? 'Enregistrer les modifications' : 'Publier l’annonce')
                   : 'Suivant'}
-            {stepIndex === STEPS.length - 1 ? null : <ChevronRight size={16} />}
-          </button>
+          </Button>
         </footer>
       </div>
     </main>
+  );
+}
+
+/**
+ * One line of the pre-publication summary.
+ *
+ * A field the owner never filled shows as missing rather than as an empty gap,
+ * so the review step reads as a checklist instead of as a list with holes in it.
+ *
+ * `required` marks the six fields the API refuses a listing without. Only those
+ * are red: an empty description is a choice, and colouring it like a blocker
+ * would put seven alarms on a page where three are real.
+ */
+function SummaryRow({
+  label,
+  value,
+  required = false,
+  missingLabel = 'Non renseigné',
+}: {
+  label: string;
+  value?: string;
+  required?: boolean;
+  missingLabel?: string;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 'var(--space-2) var(--space-4)',
+        borderBottom: '1px solid var(--border-hairline)',
+        paddingBottom: 'var(--space-3)',
+      }}
+    >
+      <dt style={{ color: 'var(--text-body)', font: 'var(--type-body-sm)' }}>{label}</dt>
+      <dd
+        style={{
+          margin: 0,
+          minWidth: 0,
+          textAlign: 'right',
+          font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)',
+          color: value ? 'var(--text-heading)' : required ? 'var(--danger)' : 'var(--text-muted)',
+        }}
+      >
+        {value ?? (required ? `${missingLabel} — obligatoire` : missingLabel)}
+      </dd>
+    </div>
   );
 }
