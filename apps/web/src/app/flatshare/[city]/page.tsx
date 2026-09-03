@@ -2,6 +2,8 @@ import { ArrowRight, MapPin, ShieldCheck } from 'lucide-react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
+import { ListingCard } from '@/components/ds/ListingCard';
+import { amount } from '@/lib/format';
 import { apiFetch, apiOrigin, type CursorPage } from '@/lib/api';
 import type { PublicListing } from '@/types/api';
 
@@ -110,7 +112,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
   if (!data) notFound();
 
   const { cityName, listings, count, priceRange, neighborhoods } = data;
-  const money = (value: number) => new Intl.NumberFormat('fr-MA').format(value);
+  const money = amount;
 
   return (
     <main style={{ padding: 'var(--space-8) var(--gutter-desktop) var(--space-11)' }}>
@@ -231,39 +233,15 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 'var(--space-5)' }}>
               {listings.slice(0, 6).map((listing) => (
-                <a
+                <ListingCard
                   key={listing.id}
+                  title={listing.title}
+                  district={listing.neighborhood}
+                  city={listing.city}
+                  price={money(listing.priceRent)}
+                  image={listing.coverPhotoUrl ? `${apiOrigin}${listing.coverPhotoUrl}` : undefined}
                   href={`/listings/${listing.id}`}
-                  style={{
-                    background: 'var(--surface-card)',
-                    border: '1px solid var(--border-hairline)',
-                    borderRadius: 'var(--radius-card)',
-                    overflow: 'hidden',
-                    color: 'var(--text-heading)',
-                    textDecoration: 'none',
-                    display: 'block',
-                  }}
-                >
-                  {listing.coverPhotoUrl ? (
-                    <img
-                      src={`${apiOrigin}${listing.coverPhotoUrl}`}
-                      alt=""
-                      loading="lazy"
-                      style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
-                    />
-                  ) : (
-                    <div style={{ height: 160, background: 'var(--sable-200)' }} />
-                  )}
-                  <div style={{ padding: 'var(--space-4)' }}>
-                    <div style={{ color: 'var(--text-subtle)', font: 'var(--type-eyebrow)', textTransform: 'uppercase' }}>
-                      {listing.neighborhood}
-                    </div>
-                    <div style={{ marginTop: '0.3rem', font: 'var(--type-h3)' }}>{listing.title}</div>
-                    <div style={{ marginTop: 'var(--space-3)', color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>
-                      {money(listing.priceRent)} MAD/mois
-                    </div>
-                  </div>
-                </a>
+                />
               ))}
             </div>
           )}

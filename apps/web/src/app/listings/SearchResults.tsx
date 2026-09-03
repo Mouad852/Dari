@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Heart, List, Map as MapIcon, MapPin as MapPinIcon, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, ArrowRight, List, Map as MapIcon, SlidersHorizontal } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -8,7 +8,9 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
+import { ListingCard } from '@/components/ds/ListingCard';
 import { Tag } from '@/components/ds/Tag';
+import { amount, distance } from '@/lib/format';
 import { AMENITY_LABELS } from '@/lib/labels';
 import type { MapPin, PublicListing } from '@/types/api';
 
@@ -89,17 +91,28 @@ const cardStyle = {
   boxShadow: 'var(--shadow-sm)',
 } as const;
 
-function formatPrice(value: number): string {
-  return `${new Intl.NumberFormat('fr-MA', { maximumFractionDigits: 0 }).format(value)} MAD/mois`;
-}
+/**
+ * A search result, rendered by the design system's own card.
+ *
+ * This replaces ~150 lines of hand-rolled markup that predated the component
+ * port. What the port brings beyond the visuals: the whole card is a real
+ * anchor rather than a div with a click handler, the photo is lazy-loaded, and
+ * the save button sits above the link instead of beside it.
+ *
+ * Two deliberate differences from the markup it replaces:
+ *
+ * - The card no longer prints a creation date. The design's card carries
+ *   district, city, price and an optional badge; a date has no slot, and the
+ *   sort control already says whether the list is ordered by recency.
+ * - "Nouveau" used to appear on every card, because the condition was
+ *   `listing.createdAt ? ... : undefined` and a listing always has one. A badge
+ *   that is always present says nothing, so it is now shown only for listings
+ *   published within the week -- and a proximity search still shows distance,
+ *   which is the more useful fact when it exists.
+ */
+const NEW_FOR_DAYS = 7;
 
-function formatCreatedAt(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Récemment';
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function ListingCard({
+function SearchListingCard({
   listing,
   favorited,
   favoritePending,
@@ -110,150 +123,31 @@ function ListingCard({
   favoritePending: boolean;
   onToggleFavorite: (listingId: string) => void;
 }) {
-  const title = listing.title || 'Annonce';
-  const badge = listing.createdAt ? 'Nouveau' : undefined;
+  const published = new Date(listing.createdAt).getTime();
+  const isNew =
+    Number.isFinite(published) && Date.now() - published < NEW_FOR_DAYS * 24 * 60 * 60 * 1000;
+
+  // distance() rounds to 100m on purpose: metre-accurate distances from
+  // several reference points triangulate straight through the location fuzzing.
+  const badge = listing.distanceMetres
+    ? distance(listing.distanceMetres)
+    : isNew
+      ? 'Nouveau'
+      : undefined;
 
   return (
-    <article
-      style={{
-        ...cardStyle,
-        position: 'relative',
-        overflow: 'hidden',
-        display: 'grid',
-        gridTemplateRows: '170px 1fr',
-      }}
-    >
-      {/* Full-card link, painted under the heart button (z-index) so both stay independently clickable. */}
-      <Link href={`/listings/${listing.id}`} aria-label={title} style={{ position: 'absolute', inset: 0, zIndex: 1 }} />
-
-      <div
-        style={{
-          position: 'relative',
-          background: 'var(--sable-200)',
-          color: 'var(--text-body)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          font: 'var(--type-caption)',
-          letterSpacing: 'var(--ls-caps)',
-          textTransform: 'uppercase',
-        }}
-      >
-        {listing.coverPhotoUrl ? (
-          <img
-            src={`${apiOrigin}${listing.coverPhotoUrl}`}
-            alt=""
-            loading="lazy"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        ) : (
-          'Photo'
-        )}
-        <button
-          type="button"
-          aria-label={favorited ? 'Retirer des favoris' : 'Enregistrer'}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onToggleFavorite(listing.id);
-          }}
-          disabled={favoritePending}
-          style={{
-            position: 'absolute',
-            top: 10,
-            right: 10,
-            zIndex: 2,
-            width: 32,
-            height: 32,
-            borderRadius: '50%',
-            border: 'none',
-            background: 'rgba(255, 255, 255, 0.9)',
-            color: 'var(--brand)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: 'var(--shadow-xs)',
-            cursor: favoritePending ? 'default' : 'pointer',
-            opacity: favoritePending ? 0.6 : 1,
-          }}
-        >
-          <Heart size={15} fill={favorited ? 'currentColor' : 'none'} />
-        </button>
-        <div
-          style={{
-            position: 'absolute',
-            inset: 'auto 12px 12px 12px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '0.5rem',
-          }}
-        >
-          <span
-            style={{
-              background: 'rgba(36, 31, 28, 0.56)',
-              backdropFilter: 'blur(12px)',
-              color: '#fff',
-              borderRadius: '999px',
-              padding: '0.45rem 0.7rem',
-              font: 'var(--type-label)',
-            }}
-          >
-            {formatPrice(listing.priceRent)}
-          </span>
-          <span
-            style={{
-              background: 'rgba(255,255,255,0.82)',
-              color: 'var(--text-heading)',
-              borderRadius: '999px',
-              padding: '0.45rem 0.7rem',
-              font: 'var(--type-label)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-            }}
-          >
-            {listing.distanceMetres ? (
-              <>
-                <MapPinIcon size={12} />
-                {Math.round(listing.distanceMetres)} m
-              </>
-            ) : (
-              'Nouveau'
-            )}
-          </span>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gap: '0.9rem', padding: '1rem 1rem 1.1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem' }}>
-          <div>
-            <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
-              {listing.neighborhood}
-            </div>
-            <h3 style={{ margin: '0.15rem 0 0', font: 'var(--type-h3)' }}>{title}</h3>
-          </div>
-          {badge ? (
-            <span
-              style={{
-                background: 'var(--sand-100)',
-                color: 'var(--text-heading)',
-                borderRadius: '999px',
-                padding: '0.35rem 0.65rem',
-                font: 'var(--type-label)',
-              }}
-            >
-              {badge}
-            </span>
-          ) : null}
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>
-          <span>{listing.city}</span>
-          <span>{formatCreatedAt(listing.createdAt)}</span>
-        </div>
-      </div>
-    </article>
+    <ListingCard
+      title={listing.title || 'Annonce'}
+      district={listing.neighborhood}
+      city={listing.city}
+      price={amount(listing.priceRent)}
+      image={listing.coverPhotoUrl ? `${apiOrigin}${listing.coverPhotoUrl}` : undefined}
+      badge={badge}
+      badgeTone={listing.distanceMetres ? 'neutral' : 'brand'}
+      href={`/listings/${listing.id}`}
+      saved={favorited}
+      onSave={favoritePending ? undefined : () => onToggleFavorite(listing.id)}
+    />
   );
 }
 
@@ -327,10 +221,14 @@ function SearchResultsPageContent() {
     let isCurrent = true;
 
     void (async () => {
-      const idToken = await getIdToken();
-      if (!idToken || !isCurrent) return;
-      setFavoriteToken(idToken);
+      // The try started one line too late: `getIdToken` throws when Firebase is
+      // not configured, which escaped as an unhandled rejection on every load.
+      // Scoped to this effect on purpose -- knowing which cards are favorited is
+      // cosmetic, so it may fail quietly; sign-in and every write still do not.
       try {
+        const idToken = await getIdToken();
+        if (!idToken || !isCurrent) return;
+        setFavoriteToken(idToken);
         const ids = await apiFetch<string[]>('/favorites/ids', { token: idToken });
         if (isCurrent) setFavoritedIds(new Set(ids));
       } catch {
@@ -1088,7 +986,7 @@ function SearchResultsPageContent() {
                   ) : null}
 
                   {listings.map((listing) => (
-                    <ListingCard
+                    <SearchListingCard
                       key={listing.id}
                       listing={listing}
                       favorited={favoritedIds.has(listing.id)}

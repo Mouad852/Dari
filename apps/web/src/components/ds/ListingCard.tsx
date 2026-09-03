@@ -15,7 +15,7 @@ import { useFocusRing } from './useFocusRing';
  * radius, shadow and dimension is as written — this is the object a visitor
  * looks at more than any other, so drift here is drift everywhere.
  *
- * Three deliberate departures:
+ * Deliberate departures, each recorded at the line it affects:
  *
  * - **No `rating`.** The source's own example passes `rating="4,8"`, and nothing
  *   in Dari records a rating: no schema, no endpoint, no way for anyone to leave
@@ -29,6 +29,10 @@ import { useFocusRing } from './useFocusRing';
  * - **A real `<img>`,** not a CSS background: `loading="lazy"` and decoding off
  *   the main thread matter on a feed of twenty cards over a mobile connection.
  *   `alt=""` because the adjacent link already names the listing.
+ * - **The save button exists in both layouts,** and a saved heart is filled
+ *   rather than only tinted — colour alone is not a status cue.
+ * - **The badge moves to the price row in `horizontal`,** where the 116px
+ *   thumbnail cannot hold it and the title will not share a line with it.
  */
 export interface ListingCardProps {
   /** Photo URL. Renders the warm placeholder when absent. */
@@ -138,7 +142,13 @@ export function ListingCard({
           </span>
         )}
         {!row && <div style={{ position: 'absolute', inset: 0, background: 'var(--scrim-image)' }} />}
-        {badge && (
+        {/*
+          Over the photo in the vertical layout, as designed. The horizontal
+          thumbnail is 116px wide, where anything longer than "Nouveau" wraps
+          under the save button, so there the badge moves beside the title --
+          the source has no horizontal example carrying one.
+        */}
+        {badge && !row && (
           <Badge
             tone={badgeTone}
             size="sm"
@@ -154,20 +164,25 @@ export function ListingCard({
             {badge}
           </Badge>
         )}
-        {!row && onSave && (
+        {onSave && (
           // Above the card link, and outside it: a button inside an anchor is
           // invalid markup and ambiguous to assistive technology.
+          //
+          // The source renders this only in the vertical layout. That reading
+          // does not survive its own prompt file, which assigns `horizontal` to
+          // "saved/search lists" — a saved list whose rows cannot be unsaved.
           <IconButton
             icon="heart"
             variant="glass"
             size="sm"
             active={saved}
+            fill={saved ? 'currentColor' : undefined}
             label={saved ? 'Retirer des favoris' : 'Enregistrer'}
             onClick={(event) => {
               event.stopPropagation();
               onSave();
             }}
-            style={{ position: 'absolute', top: 8, right: 8, zIndex: 2 }}
+            style={{ position: 'absolute', top: row ? 4 : 8, right: row ? 4 : 8, zIndex: 2 }}
           />
         )}
       </div>
@@ -226,30 +241,44 @@ export function ListingCard({
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'space-between',
-            gap: 'var(--space-4)',
+            // Wraps rather than compressing: the price is the one thing on this
+            // card that must never break mid-number, so a badge that cannot fit
+            // beside it drops to its own line instead.
+            flexWrap: 'wrap',
+            gap: 'var(--space-3) var(--space-4)',
             marginTop: 'var(--space-4)',
           }}
         >
-          <span style={{ font: 'var(--type-price)', color: 'var(--text-price)' }}>
+          <span style={{ font: 'var(--type-price)', color: 'var(--text-price)', whiteSpace: 'nowrap' }}>
             {price}
             <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginLeft: 4 }}>
               MAD/{period}
             </span>
           </span>
-          {flatmates && (
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                font: 'var(--type-caption)',
-                color: 'var(--text-muted)',
-              }}
-            >
-              <Icon name="users-round" size={13} />
-              {flatmates}
-            </span>
-          )}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            {/* In the horizontal layout this is the badge's home: beside the
+                title it truncated the title, and over the 116px thumbnail it
+                wrapped under the save button. */}
+            {badge && row && (
+              <Badge tone={badgeTone} size="sm">
+                {badge}
+              </Badge>
+            )}
+            {flatmates && (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  font: 'var(--type-caption)',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                <Icon name="users-round" size={13} />
+                {flatmates}
+              </span>
+            )}
+          </span>
         </div>
       </div>
     </div>

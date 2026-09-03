@@ -1161,9 +1161,66 @@ Also unified the focus treatment. `tokens/base.css` paints `--focus-ring` global
 made them two concentric terracotta rings. The outline is the treatment now; the token stays for the
 controls that hide their native input and paint their own box.
 
+## Every listing card now comes from the design system (2026-09-03)
+
+Four hand-rolled listing cards replaced with the ported `ListingCard`: search results, the homepage
+featured grid, the city landing pages, and favourites. Roughly 300 lines of duplicated markup gone,
+and the differences between the four — which had drifted independently — gone with it.
+
+What the component brings that the hand-rolled versions did not: the whole card is a real anchor
+rather than a div with a click handler, the photo is lazy-loaded with `object-fit: cover`, and the
+save button is layered above the link instead of competing with it.
+
+**Two things the swap removed on purpose.** The search card no longer prints a creation date — the
+design's card carries district, city, price and one badge, and the sort control already says whether
+the list is ordered by recency. And "Nouveau" no longer appears on every card: the old condition was
+`listing.createdAt ? … : undefined`, and a listing always has one, so the badge was decoration. It now
+means published within the week.
+
+### Four defects found while verifying, none of them in the swap
+
+- **Prices read "4.034".** Six call sites used `Intl.NumberFormat('fr-MA')` directly, and this ICU
+  renders the group separator as a full stop — a price that reads as four-point-oh-three-four to
+  anyone outside Morocco. `lib/format.ts` exists precisely for this and says so in its own header:
+  *"they are violated one component at a time when each screen formats its own strings."* It had no
+  export for a bare grouped amount, so every caller reached past it. Added `amount()`; all six now go
+  through the module and render `4 034` with U+202F.
+- **A privacy leak I had just carried forward.** The card badge showed `Math.round(distanceMetres)`
+  — metre-accurate. `format.ts` has a `distance()` helper that rounds to 100m with the reason
+  attached: *"metre-accurate distances from several reference points triangulate straight through the
+  location fuzzing."* The hand-rolled card predated the helper; the port copied the bug. Now fixed.
+- **An unhandled promise rejection on `/listings`,** and the same shape on `/favorites` with a worse
+  outcome: `getIdToken()` sat outside the `try`, so when it threw, favourites hung on "Chargement de
+  vos favoris…" forever and the signed-out message below it was unreachable. Both now start the try
+  one line earlier. Scoped deliberately — knowing which cards are favorited is cosmetic, so it may
+  fail quietly; sign-in and every write path still do not.
+- **A saved heart was tinted, not filled.** `IconButton` needs `fill`, and the source passes only
+  `active`, so saved state was carried by hue alone.
+
+### Two more departures in `ListingCard`, both found by looking at it
+
+The source renders the save button only in the vertical layout. That reading does not survive its own
+prompt file, which assigns `horizontal` to *"saved/search lists"* — a saved list whose rows cannot be
+unsaved. It now renders in both.
+
+And the badge cannot live over a horizontal card's 116px thumbnail: "Annonce suspendue" wrapped under
+the save button. Beside the title it truncated the title to "Cha…". It now sits in the price row,
+which wraps rather than compressing — the price is the one thing on this card that must never break
+mid-number, and it did, rendering "3" above "200 MAD/mois".
+
+### Blocked: signed-in surfaces cannot be verified locally
+
+`NEXT_PUBLIC_FIREBASE_API_KEY` is empty in `apps/web/.env.local`, so `getAuth()` throws and every
+authenticated page — favourites, messages, publish, account, admin — cannot be exercised in a browser.
+This is the **web** API key (a public, client-side value), not the service-account private key that
+was rotated earlier. The favourites card was verified against a temporary harness route instead,
+deleted before the build.
+
 ### Next
 
-Rebuild pages against `design-system/ui_kits/website/*.jsx`, then art-direct beyond the kit.
+Rebuild the remaining page structure against `design-system/ui_kits/website/*.jsx` — the search page's
+filter rail and segmented sort are the next pieces — then art-direct beyond the kit.
 
-Carry forward: `/publish` and `/sign-up` still overflow horizontally at 412px, and the hand-rolled
-listing cards in `SearchResults.tsx` (plus three other places) are what `ListingCard` replaces.
+Carry forward: `/publish` and `/sign-up` still overflow horizontally at 412px. Twelve `await
+getIdToken()` calls sit outside a try; harmless with a valid config, but they fail as silent hangs
+rather than errors when one is missing.

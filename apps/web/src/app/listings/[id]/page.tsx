@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { ReportDialog } from '@/components/ReportDialog';
 import { apiFetch, ApiError, apiOrigin } from '@/lib/api';
+import { amount } from '@/lib/format';
 import { AMENITY_LABELS, PROPERTY_TYPE_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
 import type { PublicListingDetail } from '@/types/api';
 
@@ -54,7 +55,7 @@ export async function generateMetadata({
     return { title: 'Annonce introuvable', robots: { index: false, follow: false } };
   }
 
-  const price = new Intl.NumberFormat('fr-MA').format(listing.priceRent);
+  const price = amount(listing.priceRent);
   const title = `${listing.title} — ${listing.neighborhood}, ${listing.city}`;
   const description =
     listing.description?.slice(0, 155) ??
@@ -142,7 +143,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
             {listing.neighborhood}, {listing.city}
           </p>
           <strong style={{ font: 'var(--weight-bold) 26px/1.2 var(--font-ui)', color: 'var(--text-price)' }}>
-            {new Intl.NumberFormat('fr-MA').format(listing.priceRent)}{' '}
+            {amount(listing.priceRent)}{' '}
             <small style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>MAD/mois</small>
           </strong>
           {(propertyLabel || roomLabel || listing.roomFurnishing) && (

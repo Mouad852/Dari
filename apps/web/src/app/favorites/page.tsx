@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { Heart, MapPin } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { ListingCard } from '@/components/ds/ListingCard';
 import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
-import { rentPerMonth } from '@/lib/format';
+import { amount } from '@/lib/format';
 import { UNAVAILABLE_REASON_LABELS } from '@/lib/labels';
 import type { PublicListing } from '@/types/api';
 
@@ -38,13 +39,16 @@ export default function FavoritesPage() {
     let isCurrent = true;
 
     async function load() {
-      const idToken = await getIdToken();
-      if (!idToken) {
-        if (isCurrent) setError('Connectez-vous pour voir vos annonces sauvegardées.');
-        return;
-      }
-
       try {
+        // Inside the try: `getIdToken` throws when Firebase is misconfigured,
+        // and an unhandled rejection here left the page on "Chargement de vos
+        // favoris…" forever — the signed-out message below was unreachable.
+        const idToken = await getIdToken();
+        if (!idToken) {
+          if (isCurrent) setError('Connectez-vous pour voir vos annonces sauvegardées.');
+          return;
+        }
+
         const page = await apiFetch<CursorPage<PublicListing>>('/favorites', { token: idToken });
         if (isCurrent) {
           setToken(idToken);
@@ -203,125 +207,25 @@ export default function FavoritesPage() {
                 const available = reason === null;
 
                 return (
-                  <article
+                  <ListingCard
                     key={listing.id}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '140px 1fr',
-                      gap: 'var(--space-4)',
-                      background: 'var(--surface-card)',
-                      border: '1px solid var(--border-hairline)',
-                      borderRadius: 'var(--radius-card)',
-                      boxShadow: 'var(--shadow-xs)',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      style={{
-                        minHeight: 150,
-                        background: available
-                          ? 'linear-gradient(135deg, var(--sand-100), var(--sable-100))'
-                          : 'linear-gradient(135deg, var(--sable-200), var(--sable-100))',
-                        color: 'var(--text-body)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        font: 'var(--type-caption)',
-                        letterSpacing: 'var(--ls-caps)',
-                        textTransform: 'uppercase',
-                        position: 'relative',
-                      }}
-                    >
-                      {listing.coverPhotoUrl ? (
-                        <img
-                          src={`${apiOrigin}${listing.coverPhotoUrl}`}
-                          alt=""
-                          loading="lazy"
-                          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        'Photo'
-                      )}
-                      <button
-                        type="button"
-                        aria-label="Retirer des favoris"
-                        onClick={() => handleRemove(listing.id)}
-                        disabled={removingId === listing.id}
-                        style={{
-                          position: 'absolute',
-                          top: 'var(--space-3)',
-                          right: 'var(--space-3)',
-                          width: 34,
-                          height: 34,
-                          borderRadius: '50%',
-                          border: 'none',
-                          background: 'rgba(255, 255, 255, 0.9)',
-                          color: 'var(--brand)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: 'var(--shadow-xs)',
-                          cursor: removingId === listing.id ? 'default' : 'pointer',
-                          opacity: removingId === listing.id ? 0.6 : 1,
-                        }}
-                      >
-                        <Heart size={16} fill="currentColor" />
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-4)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 'var(--space-3)' }}>
-                        <div>
-                          <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
-                            {listing.neighborhood}
-                          </div>
-                          <h2 style={{ margin: '0.2rem 0 0', font: 'var(--type-h3)', color: 'var(--text-heading)' }}>{listing.title}</h2>
-                        </div>
-
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            borderRadius: 'var(--radius-pill)',
-                            background: available ? 'var(--brand-subtle)' : 'var(--sable-100)',
-                            color: available ? 'var(--clay-700)' : 'var(--text-muted)',
-                            padding: '0.35rem 0.6rem',
-                            font: 'var(--type-label)',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {available ? 'Disponible' : reason}
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
-                        <MapPin size={14} />
-                        {listing.city}
-                      </div>
-
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 'var(--space-3)',
-                          paddingTop: 'var(--space-2)',
-                          borderTop: '1px solid var(--border-hairline)',
-                        }}
-                      >
-                        <span style={{ font: 'var(--weight-bold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>
-                          {rentPerMonth(listing.priceRent)}
-                        </span>
-                        <Link
-                          href={`/listings/${listing.id}`}
-                          style={{ color: 'var(--brand)', font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)', textDecoration: 'none' }}
-                        >
-                          Voir l’annonce
-                        </Link>
-                      </div>
-                    </div>
-                  </article>
+                    layout="horizontal"
+                    title={listing.title}
+                    district={listing.neighborhood}
+                    city={listing.city}
+                    price={amount(listing.priceRent)}
+                    image={listing.coverPhotoUrl ? `${apiOrigin}${listing.coverPhotoUrl}` : undefined}
+                    /*
+                      Why a saved listing is no longer reachable is the whole
+                      point of this page -- a room that is gone should say so
+                      before you click it, not after.
+                    */
+                    badge={available ? undefined : reason ?? undefined}
+                    badgeTone="neutral"
+                    href={`/listings/${listing.id}`}
+                    saved
+                    onSave={removingId === listing.id ? undefined : () => handleRemove(listing.id)}
+                  />
                 );
               })}
             </div>

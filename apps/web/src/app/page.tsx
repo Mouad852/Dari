@@ -9,11 +9,13 @@ import {
 import type { Metadata } from 'next';
 
 import { apiFetch, apiOrigin } from '@/lib/api';
+import { amount } from '@/lib/format';
 import { CITIES as CITY_NAMES, citySlug } from '@/lib/cities';
 import { PROPERTY_TYPE_LABELS } from '@/lib/labels';
 import type { PublicListing } from '@/types/api';
 
 import { Button } from '@/components/ds/Button';
+import { ListingCard } from '@/components/ds/ListingCard';
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
@@ -184,73 +186,24 @@ function SearchBar() {
   );
 }
 
-function ListingCard({ listing }: { listing: PublicListing }) {
+/**
+ * A featured listing, rendered by the design system's own card.
+ *
+ * Replaces markup hand-rolled before the component port. The price moves out of
+ * the photo overlay and into the card body, where the design puts it -- an
+ * overlay only works when there is a photo to overlay, and most listings here
+ * are still showing the placeholder.
+ */
+function FeaturedListingCard({ listing }: { listing: PublicListing }) {
   return (
-    <a
+    <ListingCard
+      title={listing.title}
+      district={listing.neighborhood}
+      city={listing.city}
+      price={amount(listing.priceRent)}
+      image={listing.coverPhotoUrl ? `${apiOrigin}${listing.coverPhotoUrl}` : undefined}
       href={`/listings/${listing.id}`}
-      style={{
-        ...cardStyle,
-        overflow: 'hidden',
-        display: 'grid',
-        gridTemplateRows: '170px 1fr',
-        color: 'var(--text-heading)',
-        textDecoration: 'none',
-      }}
-    >
-      <div
-        style={{
-          position: 'relative',
-          background: 'var(--sable-200)',
-          color: 'var(--text-body)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          font: 'var(--type-caption)',
-          letterSpacing: 'var(--ls-caps)',
-          textTransform: 'uppercase',
-        }}
-      >
-        {listing.coverPhotoUrl ? (
-          <img
-            src={`${apiOrigin}${listing.coverPhotoUrl}`}
-            alt=""
-            loading="lazy"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-          />
-        ) : (
-          'Photo'
-        )}
-        {/*
-          Price only. This overlay used to carry a star rating too -- "4,8" and
-          the like -- on a product with no reviews system of any kind.
-        */}
-        <span
-          style={{
-            position: 'absolute',
-            left: 12,
-            bottom: 12,
-            background: 'rgba(36, 31, 28, 0.56)',
-            backdropFilter: 'blur(12px)',
-            color: '#fff',
-            borderRadius: '999px',
-            padding: '0.45rem 0.7rem',
-            font: 'var(--type-label)',
-          }}
-        >
-          {new Intl.NumberFormat('fr-MA').format(listing.priceRent)} MAD/mois
-        </span>
-      </div>
-
-      <div style={{ display: 'grid', gap: '0.9rem', padding: '1rem 1rem 1.1rem' }}>
-        <div>
-          <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
-            {listing.neighborhood}
-          </div>
-          <h3 style={{ margin: '0.15rem 0 0', font: 'var(--type-h3)' }}>{listing.title}</h3>
-        </div>
-        <div style={{ color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>{listing.city}</div>
-      </div>
-    </a>
+    />
   );
 }
 
@@ -398,7 +351,7 @@ export default async function HomePage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-5)' }}>
             {featured.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
+              <FeaturedListingCard key={listing.id} listing={listing} />
             ))}
           </div>
         </div>

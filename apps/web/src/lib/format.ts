@@ -17,6 +17,17 @@ function groupThousands(value: number): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, THIN_SPACE);
 }
 
+/**
+ * 3200 -> "3 200". The bare amount, for a component that supplies its own
+ * currency and period -- the design system's ListingCard appends "MAD/mois"
+ * itself. Exported because six call sites were reaching for
+ * `Intl.NumberFormat('fr-MA')` instead, which this ICU renders as "4.034":
+ * a price that reads as four-point-oh-three-four to anyone outside Morocco.
+ */
+export function amount(value: number): string {
+  return groupThousands(value);
+}
+
 /** 3200 -> "3 200 MAD/mois". Rent always states its period. */
 export function rentPerMonth(amount: number): string {
   return `${groupThousands(amount)}${THIN_SPACE}MAD/mois`;
