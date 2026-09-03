@@ -723,3 +723,54 @@ until the directory is cleared and dev restarted. The build output looked clean;
 broken. Worth not interleaving the two.
 
 Suite: **95 tests, 0 failures** (was 94). Frontend `typecheck` and `build` clean.
+
+## Track 3 — public surface and SEO
+
+**T3.1/T3.2/T3.3 (listing detail) — done (2026-09-03).**
+
+Started with the listing detail page: individual listings are what rank, and it was a `'use client'`
+component that fetched after hydration, so a crawler received an empty shell. Verified as a shell
+during the visual pass, and now verified as fixed the same way — by reading the HTML a crawler
+actually receives, not by inspecting the code.
+
+- **The page is a Server Component.** Content — title, price, description, attributes, amenities,
+  charges, availability — is rendered on the server. Two client islands carry the interactivity:
+  `ListingGallery` (photo carousel, save, share, back) and `ContactOwnerButton`. `ReportDialog` was
+  already an island.
+- **Real metadata per listing**: `<title>`, description drawn from the listing's own text, canonical
+  URL, and Open Graph tags including the cover photo. Confirmed present in the served HTML.
+- **schema.org `Accommodation`** with an `Offer` carrying the monthly rent, so a result can show a
+  price. **Coordinates are deliberately omitted** — the ones in this response are fuzzed, and
+  publishing a fuzzed point as structured geo data would assert a precision the product deliberately
+  does not have.
+- **Unavailable listings now return a real 404**, not a 200 page that says "unavailable". Verified by
+  flipping a listing to `ROOM_FOUND` and re-requesting it: HTTP 404. A 200 would have kept it
+  indexed, which is the specific failure phase 08 calls out.
+- **The sitemap carries listing URLs**, sourced from the public search endpoint — which reads the
+  `published_listings` view, so drafts, listings in review and suspended listings cannot leak into
+  it. Verified by suspending a listing and watching the sitemap go from 33 URLs to 32 with that id
+  absent.
+- **The sitemap revalidates hourly.** Next prerendered it at build time by default, which would have
+  frozen the listing set at whatever existed when the bundle was built — every listing published
+  afterwards invisible to a crawler until the next deploy.
+
+Measured effect: the route's client JavaScript dropped from **5.22 kB to 2.09 kB**, because only the
+islands ship now.
+
+Verification, all against the running app rather than inferred:
+
+| check | result |
+| --- | --- |
+| description, price, amenities in HTML source | present |
+| `<title>`, description, canonical, `og:image` | present |
+| JSON-LD block | present |
+| unknown listing | HTTP 404 |
+| room-found listing | HTTP 404 |
+| sitemap URL count | 33, dropping to 32 when one is suspended |
+| console errors after hydration | none |
+
+**Still open in this track:** `/flatshare/[city]` and `/listings` are still client-rendered. The city
+pages are the next real SEO win and should follow the same island pattern. `/listings` matters less —
+filtered search permutations should not be indexed anyway, and it needs a canonical pointing at the
+city page rather than server rendering. The homepage is still entirely hardcoded and does not use
+`GET /listings/featured`.

@@ -40,13 +40,13 @@ There is no obviously correct answer — it depends on how much you expect organ
 **Public content and SEO**
 - [ ] City landing pages — `/flatshare/rabat`, `/flatshare/casablanca`, and so on. These are the pages most likely to rank.
 - [ ] Neighborhood pages if the rendering strategy makes them cheap
-- [ ] Server-rendered or prerendered listing detail pages with real metadata
-- [ ] Title, meta description and Open Graph tags per page, in French
-- [ ] `JobPosting`-style structured data does not apply; use `Product` or `Accommodation` schema.org markup on listings
-- [ ] `sitemap.xml`, generated from published listings and regenerated as they change
+- [x] Server-rendered listing detail pages with real metadata (2026-09-03). Interactivity moved into two client islands; route client JS dropped from 5.22 kB to 2.09 kB. Verified by reading the served HTML, not by inspecting the code.
+- [~] Title, meta description, canonical and Open Graph tags per page, in French — done for listing detail (2026-09-03); city landing pages and the homepage still have only the root layout's metadata.
+- [x] schema.org `Accommodation` with an `Offer` carrying the monthly rent (2026-09-03). Coordinates are deliberately omitted: the values in the public response are fuzzed, and publishing them as structured geo data would assert a precision the product does not have.
+- [x] `sitemap.xml` includes listing URLs, sourced from the public search endpoint so it reads `published_listings` and cannot advertise drafts or suspended listings (2026-09-03). Revalidates hourly — without that Next prerenders it at build time and every listing published afterwards stays invisible until the next deploy.
 - [ ] `robots.txt` — and confirm it **excludes** admin, account and messaging routes
 - [ ] Canonical URLs, so filtered search permutations do not fragment ranking
-- [ ] Ensure `SUSPENDED`, `EXPIRED` and `ROOM_FOUND` listings return 404 or 410 rather than staying indexed
+- [x] `SUSPENDED`, `EXPIRED` and `ROOM_FOUND` listings return a real 404 (2026-09-03) rather than a 200 page saying "unavailable". Verified by flipping a listing to ROOM_FOUND and re-requesting it.
 - [ ] Static pages: about, contact, and the legal pages phase 10 requires
 
 **Performance**, since it affects both ranking and the market
