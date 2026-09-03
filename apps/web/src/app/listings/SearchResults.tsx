@@ -8,6 +8,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
+import { Tag } from '@/components/ds/Tag';
 import { AMENITY_LABELS } from '@/lib/labels';
 import type { MapPin, PublicListing } from '@/types/api';
 
@@ -1005,33 +1006,20 @@ function SearchResultsPageContent() {
                     <div style={{ display: 'grid', gap: '0.5rem' }}>
                       <div style={{ font: 'var(--type-label)', color: 'var(--text-subtle)' }}>Équipements</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        {amenityOptions.map((amenity) => {
-                          const selected = amenities.includes(amenity);
-                          return (
-                            <button
-                              key={amenity}
-                              type="button"
-                              onClick={() => toggleAmenity(amenity)}
-                              aria-pressed={selected}
-                              style={{
-                                // Selected chips invert to charcoal, not
-                                // terracotta: the design system reserves the
-                                // brand colour for the primary action, and a
-                                // terracotta chip competes with "Voir les
-                                // annonces" sitting directly beneath it.
-                                border: selected ? '1px solid var(--sable-900)' : '1px solid var(--border-default)',
-                                background: selected ? 'var(--sable-900)' : 'transparent',
-                                color: selected ? '#fff' : 'var(--text-primary)',
-                                borderRadius: 'var(--radius-pill)',
-                                padding: '0.45rem 0.7rem',
-                                font: 'var(--type-label)',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {AMENITY_LABELS[amenity] ?? amenity}
-                            </button>
-                          );
-                        })}
+                        {/*
+                          The design-system Tag. The charcoal-when-selected rule
+                          this replaces was re-derived by hand here before the
+                          component was ported -- Tag already specified it.
+                        */}
+                        {amenityOptions.map((amenity) => (
+                          <Tag
+                            key={amenity}
+                            selected={amenities.includes(amenity)}
+                            onClick={() => toggleAmenity(amenity)}
+                          >
+                            {AMENITY_LABELS[amenity] ?? amenity}
+                          </Tag>
+                        ))}
                       </div>
                       <small style={{ color: 'var(--text-muted)', font: 'var(--type-label)' }}>Sélection multiple : tous les équipements choisis doivent être présents.</small>
                     </div>

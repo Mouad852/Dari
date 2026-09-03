@@ -980,6 +980,28 @@ Ported so far, both verified in a browser:
    logo was "none provided" and "No logo exists. The brand is set in plain type wherever a mark would
    go." Both cannot be true, and it matters because the user has been asked to supply the files.
 
+### Ported in the second batch (2026-09-03)
+
+`Card`, `Badge`, `Tag`, `IconButton` — all faithful, tokens untouched, every referenced token verified
+to resolve before committing.
+
+Two deliberate deviations from the sources, both recorded rather than silent:
+
+- **`IconButton.label` is required.** The source falls back to the icon slug for `aria-label`, so a
+  screen reader would announce "heart" or "share-2" instead of what the control does.
+- **`Tag`'s remove affordance is a span, not a button.** The source nests a clickable icon inside the
+  chip button, which is invalid markup. It is pointer-only as a result; a keyboard user removes a tag
+  by activating the chip. Worth revisiting if a design ever needs the two actions to differ.
+
+`Tag` proved the value of the port immediately: it already specified charcoal `--sable-900` for the
+selected state — the exact rule re-derived by hand in the search filter panel a few steps earlier.
+The filter chips now use the component, verified in the browser as charcoal fill with cream
+`--text-on-inverse` text at 36px and pill radius.
+
+**A bug this introduced and caught:** the root layout sets a title template of `%s | Dari`, and the
+new `generateMetadata` functions appended `| Dari` themselves, so the city and search pages rendered
+"… | Dari | Dari". Fixed, and all three titles verified against the served HTML.
+
 ### Remaining port order
 
 `Card`, `Badge`, `Tag`, `IconButton` → `Input`, `Select`, `Checkbox`, `Radio`, `Switch` → `Tabs`,

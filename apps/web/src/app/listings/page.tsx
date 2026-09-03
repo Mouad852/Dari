@@ -35,7 +35,9 @@ export async function generateMetadata({
   // unrecognised value falls back to the bare search URL.
   const city = CITIES.find((known) => known.toLowerCase() === (raw ?? '').trim().toLowerCase());
 
-  const title = city ? `Annonces de colocation à ${city} | Dari` : 'Rechercher une colocation | Dari';
+  // No " | Dari" here: the root layout's title template appends it. Adding it
+  // manually renders "... | Dari | Dari".
+  const title = city ? `Annonces de colocation à ${city}` : 'Rechercher une colocation';
 
   return {
     title,

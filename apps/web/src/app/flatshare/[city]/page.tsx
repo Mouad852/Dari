@@ -89,7 +89,8 @@ export async function generateMetadata({
     return { title: 'Ville introuvable', robots: { index: false, follow: false } };
   }
 
-  const title = `Colocation à ${cityName} — chambres et studios | Dari`;
+  // The root layout's title template appends " | Dari"; adding it here doubles it.
+  const title = `Colocation à ${cityName} — chambres et studios`;
   const description = `Trouvez une chambre ou un studio en colocation à ${cityName}. Loyers annoncés charges comprises, profils vérifiés avant le premier contact.`;
 
   return {
