@@ -1313,6 +1313,53 @@ Not verified in a browser: the photo grid with real photos, and every path past 
 behind sign-in can be exercised. The steps past the first were rendered by temporarily changing the
 wizard's initial step, which is not the same as walking through it.
 
+## Placing a listing on a map, not typing its coordinates (2026-09-03)
+
+The wizard asked owners for a latitude and a longitude in two number fields. Nobody knows their own
+coordinates, so that pair was either left empty — which blocks the save, since both are `@NotNull` —
+or filled with the placeholder, which puts every listing on the same corner of Rabat. `LocationPicker`
+replaces it: click the map to place a pin, drag it to adjust.
+
+### The pin is exact; what seekers see is not
+
+Worth being explicit, because the two are easy to conflate. The point placed here **is** the exact
+address and is stored as given — that is what makes radius search and distance sorting correct. It is
+not what anyone else sees. Every public read path in `ListingSearchService` and `FavoriteService`
+runs it through `LocationFuzzer`, which displaces it by up to 200 m using the listing id as the seed:
+stable per listing, so it cannot be averaged away across page loads, and the real coordinate never
+leaves the server. The picker says so on screen, because an owner deciding how precisely to place a
+pin needs to know which of the two things they are deciding. **Showing the exact point to seekers
+would be a change to that privacy model, not a change to this component** — flagging it rather than
+assuming it.
+
+### Decisions inside the picker
+
+- **The coordinate fields survive, collapsed.** A map you can only click is unreachable by keyboard,
+  and Leaflet gives a marker focus but no arrow-key movement. The numeric pair is the accessible
+  path and doubles as the precise one; it is no longer the primary affordance.
+- **The view recentres in two cases only:** the city changed and no pin exists yet, or a pin arrived
+  from outside the component — a resumed draft, or a typed coordinate, where following the number is
+  the point. A click or a drag stops it recentring, because panning the point you just clicked into
+  the middle of the map is disorienting in exactly the moment the user is concentrating on it.
+  Measured: click at (272, 737), marker lands at (271, 736), map pane transform unchanged.
+- **A pin more than 60 km from the selected city warns, and does not block.** City and coordinates
+  are two independent fields and a mismatch is silent otherwise — the listing simply never appears in
+  its city's results. Amber `--saffron-700`, not `--warning`: the palette's `--warning` is
+  saffron-500, a fill colour that does not carry text on a white card.
+- **`CITY_CENTERS` moved into `lib/cities.ts`.** The search map had its own copy; two copies of four
+  coordinate pairs drift. `centerFor()` and `distanceMetres()` live there now and both maps use them.
+
+### Verified
+
+Click-to-place, marker drag, the city-mismatch warning, and the manual disclosure all exercised in a
+browser at 390px and 1280px. Zero contrast failures, page scrollWidth equal to the viewport at both.
+The search map still renders (20 tiles, 7 pins, no overflow) on the shared `centerFor`. Typecheck,
+`tokens:check` and build clean.
+
+**Operational note, learned the hard way:** `npm run build` and `next dev` share `.next`, so running
+a build while the dev server is up leaves it serving 404s and `text/plain` for every chunk — the page
+renders as unstyled serif with no JS. Stop the dev server, build, restart.
+
 ### Next
 
 Art-direct beyond the kit. The remaining hand-rolled surfaces are the account screens, the admin

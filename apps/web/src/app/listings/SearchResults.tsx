@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
+import { centerFor } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
 import { Badge } from '@/components/ds/Badge';
 import { Button } from '@/components/ds/Button';
@@ -39,13 +40,6 @@ const SORTS = [
 
 type SortValue = (typeof SORTS)[number]['value'];
 type ViewValue = 'results' | 'map';
-
-const CITY_CENTERS: Record<string, [number, number]> = {
-  Rabat: [33.9716, -6.8498],
-  Casablanca: [33.5731, -7.5898],
-  Marrakech: [31.6295, -7.9811],
-  Tanger: [35.7595, -5.834],
-};
 
 const MapPanel = dynamic(
   async () => {
@@ -292,7 +286,7 @@ function SearchResultsPageContent() {
   const effectiveRadiusM = Number.parseInt(radius, 10);
   const visibleSorts = hasRadiusMode ? SORTS : SORTS.filter((option) => option.value !== 'closest');
   const referencePoint = useMemo(() => {
-    const center = (CITY_CENTERS[city] ?? CITY_CENTERS.Rabat ?? [33.9716, -6.8498]) as [number, number];
+    const center = centerFor(city);
     return { lat: center[0], lng: center[1] };
   }, [city]);
 

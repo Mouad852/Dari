@@ -12,6 +12,7 @@ import { Input } from '@/components/ds/Input';
 import { Select } from '@/components/ds/Select';
 import { Tag } from '@/components/ds/Tag';
 import { Textarea } from '@/components/ds/Textarea';
+import { LocationPicker } from '@/components/LocationPicker';
 import { apiFetch, ApiError, apiOrigin } from '@/lib/api';
 import { CITIES } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
@@ -208,7 +209,7 @@ function PublishWizard() {
     if (!title.trim()) return 'Donnez un titre à votre annonce avant de continuer.';
     if (!city.trim()) return 'Choisissez une ville avant de continuer.';
     if (!district.trim()) return 'Renseignez le quartier avant de continuer.';
-    if (!latitude || !longitude) return 'Renseignez la localisation avant de continuer.';
+    if (!latitude || !longitude) return 'Placez un point sur la carte pour indiquer où se trouve le logement.';
     if (!monthlyRent.trim()) return 'Renseignez le loyer mensuel avant de continuer.';
     return null;
   };
@@ -548,30 +549,23 @@ function PublishWizard() {
                 />
               </div>
 
-              <div className="wizard-pair">
-                <Input
-                  label="Latitude"
-                  type="number"
-                  step={0.000001}
-                  required
-                  value={latitude}
-                  onChange={(event) => setLatitude(event.target.value)}
-                  placeholder="34.0209"
-                />
-                <Input
-                  label="Longitude"
-                  type="number"
-                  step={0.000001}
-                  required
-                  value={longitude}
-                  onChange={(event) => setLongitude(event.target.value)}
-                  placeholder="-6.8416"
-                />
-              </div>
-              <p style={{ margin: 0, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
-                La position exacte reste privée : les chercheurs voient un cercle approximatif, jamais
-                votre adresse.
-              </p>
+              {/*
+                A map, not two number fields. Nobody knows their own latitude, so
+                the pair this replaces was either left empty -- blocking the save,
+                since both are @NotNull -- or filled with the placeholder, which
+                put every listing on the same corner of Rabat. The manual pair is
+                still there, collapsed inside the picker, because a map you can
+                only click is unreachable by keyboard.
+              */}
+              <LocationPicker
+                latitude={latitude}
+                longitude={longitude}
+                city={city}
+                onChange={(lat, lng) => {
+                  setLatitude(lat);
+                  setLongitude(lng);
+                }}
+              />
 
               <Textarea
                 label="Description"
@@ -809,6 +803,12 @@ function PublishWizard() {
                 <SummaryRow required label="Titre" value={title.trim() || undefined} />
                 <SummaryRow required label="Ville" value={city} />
                 <SummaryRow required label="Quartier" value={district.trim() || undefined} />
+                <SummaryRow
+                  required
+                  label="Emplacement"
+                  value={latitude && longitude ? `${Number(latitude).toFixed(5)}, ${Number(longitude).toFixed(5)}` : undefined}
+                  missingLabel="Aucun point placé"
+                />
                 <SummaryRow required label="Loyer" value={monthlyRent.trim() ? `${monthlyRent.trim()} MAD` : undefined} />
                 <SummaryRow label="Type de bien" value={PROPERTY_TYPE_LABELS[propertyType]} />
                 <SummaryRow label="Type de chambre" value={ROOM_TYPE_LABELS[roomType]} />
