@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties, type MouseEvent } from 'react';
 
 import { Icon } from './Icon';
 
@@ -43,7 +43,8 @@ export interface IconButtonProps {
   /** Fills the glyph — the saved heart, a filled star. */
   fill?: string;
   disabled?: boolean;
-  onClick?: () => void;
+  /** Receives the event, so a button layered over a card link can stop it. */
+  onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   style?: CSSProperties;
 }
 

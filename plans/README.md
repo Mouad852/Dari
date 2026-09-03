@@ -1038,10 +1038,61 @@ to the trigger afterwards.
 try/catch, which papered over a missing Firebase key in the local dev environment and would have
 silently swallowed real auth failures in production. Reverted to the direct import.
 
-### Remaining port order
+### Fourth batch: the rest — port complete (2026-09-03)
 
-`Card`, `Badge`, `Tag`, `IconButton` → `Input`, `Select`, `Checkbox`, `Radio`, `Switch` → `Tabs`,
-`Dialog`, `Toast`, `Tooltip` → `ListingCard`. Then rebuild pages against the UI kits, then art-direct.
-Note when porting `ListingCard`: its own example includes `rating="4,8"`. The design system's examples
-are not a product spec — that rating is exactly the fabrication removed from the homepage, and the
-port must take the visual language without the invented data.
+`Checkbox`, `Radio`, `Switch`, `Tabs`, `Toast`, `Tooltip` and `ListingCard`. **Fifteen of fifteen.**
+
+The three selection controls share one defect worth naming, because it is the kind that never shows up
+in a screenshot: each hides its native `<input>` behind `opacity: 0` and paints its own box, which
+hides the browser's focus ring with it. A keyboard user tabbing through a filter panel had no
+indication of where they were. New `useFocusRing` matches `:focus-visible` — the heuristic the browser
+already computes for "focus that deserves a ring", true on tab and false on click — rather than
+reimplementing the distinction from key and pointer events. Their hidden inputs are now anchored to
+their own row too; absolutely positioned with no positioned ancestor, they escape to whatever
+container happens to be positioned, and browsers scroll to a focused element wherever it landed.
+
+`Tabs` announced `role="tablist"` and `role="tab"` while implementing none of the keyboard behaviour
+those roles promise: a screen reader told the user arrow keys move between tabs, and nothing happened.
+Now arrow keys move, Home and End jump to the ends, only the active tab is in the tab order, and the
+buttons are `type="button"` so a tab bar inside a form no longer submits it.
+
+`Toast` is presentational on purpose — the lifetime belongs to whatever renders it, because a toast
+that dismisses itself cannot be paused while it is being read. One deviation: a `danger` toast is
+`role="alert"`, not `role="status"`. Polite is right for "Annonce enregistrée" and wrong for a failure.
+
+`Tooltip` rendered text a screen reader never reached, which makes it decoration for anyone not using
+a mouse. It now links to its trigger with `aria-describedby`, and Escape dismisses it (WCAG 1.4.13).
+
+**`ListingCard`, the product's hero object, has three departures:**
+
+- **No `rating`.** The source's own example passes `rating="4,8"` and nothing in Dari records a
+  rating: no schema, no endpoint, no way for anyone to leave one. Same invented figure already removed
+  from the homepage. A design system's examples are a visual language, not a product spec.
+- **It is a link.** The source is a `div` with `onClick`: not keyboard reachable, no middle-click, no
+  open-in-new-tab, and invisible to a crawler — on the pages this product most needs indexed. `href`
+  now renders a real anchor whose hit area is stretched over the card, with the save button layered
+  above it, so a control is never nested inside a link. `IconButton`'s `onClick` was widened to
+  receive the event so that button can stop the click reaching the card.
+- **A real `<img>`,** not a CSS background: `loading="lazy"` and off-thread decoding matter on a feed
+  of twenty cards over a Moroccan mobile connection.
+
+Verified in the browser against a temporary harness route, since typecheck cannot prove behaviour —
+the harness was deleted before the build. Confirmed live: focus ring painted terracotta on
+`:focus-visible` and the hidden input anchored to its own label; arrow keys and End moving tab
+selection with the roving tabindex following; `role="status"` and `role="alert"` on the two toasts;
+the tooltip's `aria-describedby` resolving to its own `role="tooltip"` node and Escape clearing both;
+the card's stretched overlay resolving a click at the card's bottom edge to `/listings` while the save
+button stays above it; and no "4,8" anywhere in the rendered page.
+
+One measurement error worth recording: the first focus-ring check read `getComputedStyle` in the same
+script tick that called `.focus()`, before React had re-rendered, and reported no ring. Reading in a
+separate call showed the ring. Nearly "fixed" a working component — the same stale-read mistake as the
+`Tag` measurement earlier in the session.
+
+### Next
+
+Rebuild pages against `design-system/ui_kits/website/*.jsx`, then art-direct beyond the kit.
+
+Two token fixes are deliberately still outstanding, and belong in the tokens rather than at call sites
+so one edit repairs every use: `--text-subtle` and the placeholder grey fail WCAG AA (`Tabs` carries a
+comment where it is used for a count badge), and `--clay-500` needs a shift along its own ramp.
