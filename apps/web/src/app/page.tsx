@@ -10,6 +10,7 @@ import type { Metadata } from 'next';
 
 import { apiFetch, apiOrigin } from '@/lib/api';
 import { CITIES as CITY_NAMES, citySlug } from '@/lib/cities';
+import { PROPERTY_TYPE_LABELS } from '@/lib/labels';
 import type { PublicListing } from '@/types/api';
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
@@ -70,58 +71,75 @@ const cardStyle = {
   boxShadow: 'var(--shadow-sm)',
 };
 
+/**
+ * The hero search, as a plain GET form.
+ *
+ * Every control here was previously inert: the selects and the budget field
+ * were unbound, and the submit button was a `type="button"` with no handler, so
+ * the site's primary call to action did nothing at all. The "Type" select also
+ * offered Chambre / Logement entier / Coliving — none of which are values the
+ * API knows, the same fictional dropdown that was found and fixed in the
+ * publish wizard.
+ *
+ * A GET form rather than a client component: the field names are exactly the
+ * query parameters /listings already reads, so the browser builds the URL
+ * itself. That keeps the homepage a Server Component, ships no JavaScript for
+ * it, and means search works before hydration — which matters more on a slow
+ * mobile connection than anywhere else.
+ */
 function SearchBar() {
+  const fieldLabelStyle = {
+    font: 'var(--type-label)',
+    letterSpacing: 'var(--ls-caps)',
+    textTransform: 'uppercase',
+  } as const;
+
+  const controlStyle = {
+    border: '1px solid var(--border-default)',
+    borderRadius: 'var(--radius-md)',
+    background: 'var(--surface-card)',
+    color: 'var(--text-primary)',
+    padding: '0.8rem 0.9rem',
+    font: 'var(--type-body-md)',
+    width: '100%',
+    boxSizing: 'border-box',
+  } as const;
+
   return (
-    <div
+    <form
+      method="GET"
+      action="/listings"
       style={{
+        ...cardStyle,
         display: 'flex',
-        gap: 'var(--space-3)',
+        flexWrap: 'wrap',
+        gap: 'var(--space-4)',
         alignItems: 'flex-end',
-        background: 'var(--surface-card)',
-        border: '1px solid var(--border-hairline)',
-        borderRadius: 'var(--radius-xl)',
-        boxShadow: 'var(--shadow-lg)',
-        padding: 'var(--space-5)',
+        padding: 'var(--card-pad-lg)',
       }}
     >
-      <label style={{ display: 'grid', gap: '0.4rem', flex: 1, color: 'var(--text-muted)' }}>
-        <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase' }}>
-          Ville
-        </span>
-        <select
-          defaultValue="Rabat"
-          style={{
-            border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--surface-card)',
-            color: 'var(--text-primary)',
-            padding: '0.8rem 0.9rem',
-            font: 'var(--type-body-md)',
-          }}
-        >
-          <option>Rabat</option>
-          <option>Casablanca</option>
-          <option>Marrakech</option>
-          <option>Tanger</option>
+      <label style={{ display: 'grid', gap: '0.4rem', flex: '1 1 180px', color: 'var(--text-muted)' }}>
+        <span style={fieldLabelStyle}>Ville</span>
+        <select name="city" defaultValue="Rabat" style={controlStyle}>
+          {CITY_NAMES.map((city) => (
+            <option key={city} value={city}>
+              {city}
+            </option>
+          ))}
         </select>
       </label>
 
-      <label style={{ display: 'grid', gap: '0.4rem', flex: 1, color: 'var(--text-muted)' }}>
-        <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase' }}>
-          Budget max.
-        </span>
+      <label style={{ display: 'grid', gap: '0.4rem', flex: '1 1 180px', color: 'var(--text-muted)' }}>
+        <span style={fieldLabelStyle}>Budget max.</span>
         <div style={{ position: 'relative' }}>
           <input
-            placeholder="4 000"
-            style={{
-              width: '100%',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--surface-card)',
-              color: 'var(--text-primary)',
-              padding: '0.8rem 2.8rem 0.8rem 0.9rem',
-              font: 'var(--type-body-md)',
-            }}
+            name="priceMax"
+            type="number"
+            min={0}
+            step={100}
+            inputMode="numeric"
+            placeholder="4000"
+            style={{ ...controlStyle, padding: '0.8rem 2.8rem 0.8rem 0.9rem' }}
           />
           <span
             style={{
@@ -138,49 +156,41 @@ function SearchBar() {
         </div>
       </label>
 
-      <label style={{ display: 'grid', gap: '0.4rem', flex: 1, color: 'var(--text-muted)' }}>
-        <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase' }}>
-          Type
-        </span>
-        <select
-          defaultValue="Chambre"
-          style={{
-            border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--surface-card)',
-            color: 'var(--text-primary)',
-            padding: '0.8rem 0.9rem',
-            font: 'var(--type-body-md)',
-          }}
-        >
-          <option>Chambre</option>
-          <option>Logement entier</option>
-          <option>Coliving</option>
+      <label style={{ display: 'grid', gap: '0.4rem', flex: '1 1 180px', color: 'var(--text-muted)' }}>
+        <span style={fieldLabelStyle}>Type de logement</span>
+        {/* Real PropertyType values, with the shared labels rather than invented ones. */}
+        <select name="propertyType" defaultValue="" style={controlStyle}>
+          <option value="">Tous les logements</option>
+          {(Object.keys(PROPERTY_TYPE_LABELS) as Array<keyof typeof PROPERTY_TYPE_LABELS>).map((value) => (
+            <option key={value} value={value}>
+              {PROPERTY_TYPE_LABELS[value]}
+            </option>
+          ))}
         </select>
       </label>
 
       <button
-        type="button"
+        type="submit"
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '0.5rem',
-          height: '3.25rem',
-          padding: '0 1.25rem',
-          background: 'var(--brand)',
-          color: '#fff',
           border: 'none',
           borderRadius: 'var(--radius-pill)',
+          background: 'var(--brand)',
+          color: '#fff',
+          padding: '0.9rem 1.4rem',
           font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
           cursor: 'pointer',
           boxShadow: 'var(--shadow-brand)',
+          flex: '0 0 auto',
         }}
       >
-        <Search size={18} />
+        <Search size={17} />
         Rechercher
       </button>
-    </div>
+    </form>
   );
 }
 

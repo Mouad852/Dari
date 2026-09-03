@@ -30,12 +30,12 @@ There is no obviously correct answer — it depends on how much you expect organ
 ## Tasks
 
 **Homepage**, from `ui_kits/website/HomePage.jsx`
-- [ ] Hero with the elevated search bar, wired to the real search endpoint
+- [x] Hero search bar wired (2026-09-03). It was completely inert — unbound selects, an unbound budget field, a `type="button"` submit with no handler, and a Type select offering values the API does not know. Rebuilt as a plain GET form posting to `/listings`, so it ships no JavaScript and works before hydration.
 - [x] Featured listings grid wired to `GET /listings/featured` (2026-09-03), which currently means most-recent published. It previously showed four invented listings with fabricated star ratings on a product with no reviews system. A richer definition of "featured" is still open, and shares the unresolved "recommended" ranking question in phase 07.
 - [x] Four-step "Comment ça marche" (2026-09-03). Its last step claimed "Bail signé en ligne, caution protégée" — online lease signing and deposit protection, neither of which exists anywhere in the product. Rewritten to describe what actually happens.
 - [x] Live per-city listing counts on both the city landing pages and the homepage tiles (2026-09-03), which now link through to the city pages. The tiles previously carried invented counts and a `cursor: pointer` with no link behind it. Scrims are in place; the tile photography is still the missing brand asset.
-- [ ] Terracotta CTA band
-- [ ] The one permitted hero gradient, `--clay-50 → --bg-page`, per the design system
+- [x] Terracotta CTA band — already present, verified 2026-09-03.
+- [x] The one permitted hero gradient, `--clay-50 → --bg-page` — already present, verified 2026-09-03.
 
 **Public content and SEO**
 - [x] City landing pages (2026-09-03) — prerendered per city with 15-minute revalidation, per-city metadata and canonical, real listing counts, a real price range and neighbourhood chips derived from actual listings. Route client JS went from 3.75 kB to 143 B. They previously published three invented statistics and showed Rabat's neighbourhoods on all four cities.
@@ -44,13 +44,13 @@ There is no obviously correct answer — it depends on how much you expect organ
 - [~] Title, meta description, canonical and Open Graph tags per page, in French — done for listing detail (2026-09-03); city landing pages and the homepage still have only the root layout's metadata.
 - [x] schema.org `Accommodation` with an `Offer` carrying the monthly rent (2026-09-03). Coordinates are deliberately omitted: the values in the public response are fuzzed, and publishing them as structured geo data would assert a precision the product does not have.
 - [x] `sitemap.xml` includes listing URLs, sourced from the public search endpoint so it reads `published_listings` and cannot advertise drafts or suspended listings (2026-09-03). Revalidates hourly — without that Next prerenders it at build time and every listing published afterwards stays invisible until the next deploy.
-- [ ] `robots.txt` — and confirm it **excludes** admin, account and messaging routes
-- [ ] Canonical URLs, so filtered search permutations do not fragment ranking
+- [x] `robots.txt` — verified 2026-09-03: excludes `/admin`, `/account`, `/messages`, `/favorites`, `/publish` and `/api`, and points at the sitemap.
+- [x] Canonical URLs (2026-09-03) — every `/listings` filter permutation canonicalises to `/flatshare/{city}`, consolidating them instead of letting each become its own indexable page. Canonical rather than `noindex`, since the two together are contradictory signals.
 - [x] `SUSPENDED`, `EXPIRED` and `ROOM_FOUND` listings return a real 404 (2026-09-03) rather than a 200 page saying "unavailable". Verified by flipping a listing to ROOM_FOUND and re-requesting it.
 - [ ] Static pages: about, contact, and the legal pages phase 10 requires
 
 **Performance**, since it affects both ranking and the market
-- [ ] Core Web Vitals on the homepage and listing pages
+- [~] Lighthouse against a production build (2026-09-03): **SEO 100, best practices 100, accessibility 96**. Field Core Web Vitals still need a real deployment to measure; the lab audit is the closest available signal.
 - [ ] Image optimisation and lazy loading — significant on Moroccan mobile connections
 - [ ] No layout shift on load, per the design system's own quality floor
 

@@ -863,3 +863,70 @@ recorded in `design-system/assets/README.md`, not a fabrication — there is gen
 **Still open in this track:** `/listings` remains client-rendered with no canonical, so filtered
 permutations can each become their own indexable URL. That is the last structural SEO item; the rest
 of phase 08 is performance and static pages.
+
+**T3 search canonicals + phase 08 sweep — done (2026-09-03).**
+
+**Canonical URLs.** `/listings` is now a thin Server Component wrapper around the existing client
+search, added solely to carry metadata. Every filter combination is its own URL
+(`?city=Rabat&amenities=wifi&priceMin=2000`) and each was an independently indexable page competing
+with the city landing page and with every other permutation of itself. All of them now canonicalise
+to `/flatshare/{city}`. Verified: three different Rabat permutations and a bare `/listings` all
+resolve to the expected canonical, and Casablanca to its own.
+
+Canonical rather than `noindex` deliberately — the two together are contradictory signals, and
+consolidation is what is wanted rather than exclusion.
+
+**The hero search bar was completely inert.** The city and type selects and the budget field were
+unbound, and the submit button was a `type="button"` with no handler, so the site's primary call to
+action did nothing. Its "Type" select also offered *Chambre / Logement entier / Coliving*, none of
+which are values the API knows — the same fictional dropdown that was found and fixed in the publish
+wizard months of commits earlier.
+
+Rebuilt as a plain `method="GET" action="/listings"` form whose field names are exactly the query
+parameters the search page already reads, so the browser builds the URL itself. That keeps the
+homepage a Server Component, ships no JavaScript for it, and means search works before hydration —
+which matters most on the slow mobile connections this product targets. Submitted it in a real
+browser: landed on `/listings?city=Casablanca&priceMax=4000&propertyType=STUDIO` showing
+"1 annonce à Casablanca" with one matching card.
+
+**Already built, verified and ticked rather than rebuilt:** `robots.txt` (excludes `/admin`,
+`/account`, `/messages`, `/favorites`, `/publish`, `/api` and points at the sitemap), the permitted
+`--clay-50 → --bg-page` hero gradient, and the terracotta CTA band.
+
+**Lighthouse, against a production build** (dev-server numbers would have been meaningless):
+
+| category | score |
+| --- | --- |
+| SEO | **100** |
+| Best practices | **100** |
+| Accessibility | **96** |
+
+### The accessibility failure is a design-token defect, not a page defect
+
+Eleven elements fail WCAG AA colour contrast on the homepage alone, and they resolve to four token
+pairs — so the same failures exist on every page that uses them. Measured ratios:
+
+| pair | tokens | ratio | needs |
+| --- | --- | --- | --- |
+| eyebrow labels on white | `--text-subtle` (#8C8075) | **3.84** | 4.5 |
+| white text on primary buttons | `--brand` (#C05F3C) | **4.24** | 4.5 |
+| brand text on its own tint | `--brand` on `--brand-subtle` | **3.83** | 4.5 |
+| CTA band body text | `--clay-50` on `--clay-500` | **3.83** | 4.5 |
+| photo placeholder label | `--sable-500` on `--sable-200` | **2.96** | 4.5 |
+
+**Deliberately not fixed here.** Patching each usage would fragment the design system, which is
+precisely what tokens exist to prevent — and there are eleven instances on one page, so hundreds
+across the app. Fixing it properly is a token change, and `design-system/tokens/colors.css` is the
+vendored source of truth.
+
+Two of these are cheap and safe: `--text-subtle` and the placeholder label are neutral greys, and the
+palette **already contains** `--sable-600` (#6E635C), which clears AA without inventing a colour.
+
+The other three are not mine to decide: they all come down to the terracotta `--clay-500` being one
+step too light to carry white text at body size. The palette already has `--clay-600` (#A94E2E, today
+the hover state) and `--clay-700`, so the fix is a shift along the existing ramp rather than a new
+colour — but it changes the product's primary brand colour on every button and band, which is a brand
+decision and not an engineering one.
+
+Recorded for a deliberate answer rather than settled quietly. The quality floor this project sets
+asks for AA, and today the design system itself does not meet it.
