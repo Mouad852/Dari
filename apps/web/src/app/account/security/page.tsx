@@ -45,7 +45,7 @@ export default function AccountSecurityPage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
@@ -67,7 +67,7 @@ export default function AccountSecurityPage() {
               border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-pill)',
               background: 'var(--surface-card)',
-              color: 'var(--text-primary)',
+              color: 'var(--text-heading)',
               padding: '0.7rem 1rem',
               font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)',
               cursor: 'pointer',
@@ -122,15 +122,15 @@ export default function AccountSecurityPage() {
           >
             <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Protection</div>
-              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>92 %</div>
+              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>92 %</div>
             </div>
             <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Vérification</div>
-              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>Oui</div>
+              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>Oui</div>
             </div>
             <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Alertes</div>
-              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>2</div>
+              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>2</div>
             </div>
           </div>
         </section>
@@ -168,14 +168,14 @@ export default function AccountSecurityPage() {
                   justifyContent: 'center',
                   borderRadius: 'var(--radius-pill)',
                   background: 'var(--brand-subtle)',
-                  color: 'var(--brand)',
+                  color: 'var(--clay-700)',
                 }}
               >
                 <Icon size={18} />
               </span>
 
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>{title}</div>
+                <div style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>{title}</div>
                 <div style={{ marginTop: 4, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>{detail}</div>
               </div>
 
@@ -210,9 +210,9 @@ export default function AccountSecurityPage() {
             gap: 'var(--space-3)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--warning-700)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--saffron-700)' }}>
             <TriangleAlert size={18} />
-            <div style={{ font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)' }}>Attention</div>
+            <div style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)' }}>Attention</div>
           </div>
 
           <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)', lineHeight: 1.6 }}>

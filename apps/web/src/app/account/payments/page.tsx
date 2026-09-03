@@ -38,7 +38,7 @@ export default function AccountPaymentsPage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
@@ -60,7 +60,7 @@ export default function AccountPaymentsPage() {
               border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-pill)',
               background: 'var(--surface-card)',
-              color: 'var(--text-primary)',
+              color: 'var(--text-heading)',
               padding: '0.7rem 1rem',
               font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)',
               cursor: 'pointer',
@@ -109,11 +109,11 @@ export default function AccountPaymentsPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-3)' }}>
             <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Versements</div>
-              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>3 600 MAD</div>
+              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>3 600 MAD</div>
             </div>
             <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Remboursements</div>
-              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>480 MAD</div>
+              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>480 MAD</div>
             </div>
           </div>
         </section>
@@ -151,14 +151,14 @@ export default function AccountPaymentsPage() {
                   justifyContent: 'center',
                   borderRadius: 'var(--radius-pill)',
                   background: 'var(--brand-subtle)',
-                  color: 'var(--brand)',
+                  color: 'var(--clay-700)',
                 }}
               >
                 <Icon size={18} />
               </span>
 
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>{title}</div>
+                <div style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>{title}</div>
                 <div style={{ marginTop: 4, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>{detail}</div>
               </div>
 

@@ -25,6 +25,17 @@
 *:focus-visible {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
+  /*
+   * tokens/base.css also paints --focus-ring globally as a box-shadow. While
+   * that ring was a faint 28% halo the two read as one glow; now that it is
+   * solid, they render as two concentric terracotta rings. The outline is the
+   * treatment. The token is still deliberately used by the controls that hide
+   * their native input and paint their own box (Checkbox, Radio, Switch) and by
+   * Input's wrapper — none of which is the focused element, so this rule does
+   * not reach them. Nothing else in the app takes a box-shadow from a
+   * stylesheet: component shadows are inline, and inline wins over this.
+   */
+  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -45,7 +56,7 @@ html {
 
 body {
   background: var(--bg-page);
-  color: var(--text-primary, var(--sable-900));
+  color: var(--text-heading, var(--sable-900));
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
 }

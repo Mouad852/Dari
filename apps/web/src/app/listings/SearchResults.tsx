@@ -65,7 +65,7 @@ const MapPanel = dynamic(
             <Marker key={pin.id} position={[pin.latitude, pin.longitude]} icon={mapMarkerIcon}>
               <Popup>
                 <div style={{ display: 'grid', gap: '0.3rem', minWidth: 160 }}>
-                  <strong style={{ font: 'var(--type-body-sm)', color: 'var(--text-primary)' }}>{pin.title}</strong>
+                  <strong style={{ font: 'var(--type-body-sm)', color: 'var(--text-heading)' }}>{pin.title}</strong>
                   <span style={{ color: 'var(--text-muted)', font: 'var(--type-label)' }}>{pin.neighborhood}</span>
                   <span style={{ color: 'var(--text-muted)', font: 'var(--type-label)' }}>{pin.city}</span>
                   <Link href={`/listings/${pin.id}`} style={{ color: 'var(--brand)', font: 'var(--weight-medium) var(--type-label) var(--font-ui)' }}>
@@ -130,7 +130,7 @@ function ListingCard({
         style={{
           position: 'relative',
           background: 'var(--sable-200)',
-          color: 'var(--sable-500)',
+          color: 'var(--text-body)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -204,7 +204,7 @@ function ListingCard({
           <span
             style={{
               background: 'rgba(255,255,255,0.82)',
-              color: 'var(--text-primary)',
+              color: 'var(--text-heading)',
               borderRadius: '999px',
               padding: '0.45rem 0.7rem',
               font: 'var(--type-label)',
@@ -237,7 +237,7 @@ function ListingCard({
             <span
               style={{
                 background: 'var(--sand-100)',
-                color: 'var(--text-primary)',
+                color: 'var(--text-heading)',
                 borderRadius: '999px',
                 padding: '0.35rem 0.65rem',
                 font: 'var(--type-label)',
@@ -757,7 +757,7 @@ function SearchResultsPageContent() {
               background: 'transparent',
               border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-pill)',
-              color: 'var(--text-primary)',
+              color: 'var(--text-heading)',
               padding: '0.55rem 0.9rem',
               cursor: 'pointer',
             }}
@@ -781,7 +781,7 @@ function SearchResultsPageContent() {
             contents under the results grid.
           */}
           <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
-                <div style={{ display: 'inline-flex', gap: '0.25rem', background: 'var(--surface-muted)', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-hairline)', padding: '0.2rem' }}>
+                <div style={{ display: 'inline-flex', gap: '0.25rem', background: 'var(--bg-inset)', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-hairline)', padding: '0.2rem' }}>
                   <button
                     type="button"
                     onClick={() => toggleView('results')}
@@ -792,7 +792,7 @@ function SearchResultsPageContent() {
                       border: 'none',
                       borderRadius: 'var(--radius-pill)',
                       background: view === 'results' ? 'var(--sable-900)' : 'transparent',
-                      color: view === 'results' ? '#fff' : 'var(--text-primary)',
+                      color: view === 'results' ? '#fff' : 'var(--text-heading)',
                       padding: '0.45rem 0.7rem',
                       font: 'var(--type-label)',
                       cursor: 'pointer',
@@ -811,7 +811,7 @@ function SearchResultsPageContent() {
                       border: 'none',
                       borderRadius: 'var(--radius-pill)',
                       background: view === 'map' ? 'var(--sable-900)' : 'transparent',
-                      color: view === 'map' ? '#fff' : 'var(--text-primary)',
+                      color: view === 'map' ? '#fff' : 'var(--text-heading)',
                       padding: '0.45rem 0.7rem',
                       font: 'var(--type-label)',
                       cursor: 'pointer',
@@ -824,7 +824,7 @@ function SearchResultsPageContent() {
 
           <div
             className="scroll-row"
-            style={{ display: 'inline-flex', flexShrink: 0, maxWidth: '100%', background: 'var(--surface-muted)', borderRadius: 'var(--radius-pill)', padding: '0.25rem', border: '1px solid var(--border-hairline)' }}
+            style={{ display: 'inline-flex', flexShrink: 0, maxWidth: '100%', background: 'var(--bg-inset)', borderRadius: 'var(--radius-pill)', padding: '0.25rem', border: '1px solid var(--border-hairline)' }}
           >
             {visibleSorts.map((option) => (
               <button
@@ -833,7 +833,7 @@ function SearchResultsPageContent() {
                 onClick={() => setSort(option.value)}
                 style={{
                   background: currentSort === option.value ? 'var(--sable-900)' : 'transparent',
-                  color: currentSort === option.value ? '#fff' : 'var(--text-primary)',
+                  color: currentSort === option.value ? '#fff' : 'var(--text-heading)',
                   border: 'none',
                   borderRadius: 'var(--radius-pill)',
                   padding: '0.55rem 0.9rem',
@@ -868,7 +868,7 @@ function SearchResultsPageContent() {
             border: '1px solid var(--border-default)',
             borderRadius: 'var(--radius-pill)',
             background: 'var(--surface-card)',
-            color: 'var(--text-primary)',
+            color: 'var(--text-heading)',
             padding: '0.8rem 1rem',
             font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)',
             cursor: 'pointer',
@@ -911,7 +911,7 @@ function SearchResultsPageContent() {
             >
               <h3 style={{ margin: 0, font: 'var(--type-h3)' }}>Filtres</h3>
 
-              <div style={{ display: 'grid', gap: '0.75rem', color: 'var(--text-muted)', font: 'var(--type-body-md)' }}>
+              <div style={{ display: 'grid', gap: '0.75rem', color: 'var(--text-muted)', font: 'var(--type-body)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' }}>
                   <button
                     type="button"
@@ -922,7 +922,7 @@ function SearchResultsPageContent() {
                     }}
                     style={{
                       background: !hasRadiusMode ? 'var(--sable-900)' : 'transparent',
-                      color: !hasRadiusMode ? '#fff' : 'var(--text-primary)',
+                      color: !hasRadiusMode ? '#fff' : 'var(--text-heading)',
                       borderRadius: 'var(--radius-pill)',
                       border: '1px solid var(--border-default)',
                       padding: '0.6rem 0.8rem',
@@ -942,7 +942,7 @@ function SearchResultsPageContent() {
                     }}
                     style={{
                       background: hasRadiusMode ? 'var(--sable-900)' : 'transparent',
-                      color: hasRadiusMode ? '#fff' : 'var(--text-primary)',
+                      color: hasRadiusMode ? '#fff' : 'var(--text-heading)',
                       borderRadius: 'var(--radius-pill)',
                       border: '1px solid var(--border-default)',
                       padding: '0.6rem 0.8rem',
@@ -1065,13 +1065,13 @@ function SearchResultsPageContent() {
 
           <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
             {error ? (
-              <div style={{ ...cardStyle, padding: '1.5rem', color: 'var(--text-primary)' }}>{error}</div>
+              <div style={{ ...cardStyle, padding: '1.5rem', color: 'var(--text-heading)' }}>{error}</div>
             ) : null}
 
             {view === 'map' ? (
               <div style={{ ...cardStyle, overflow: 'hidden', minHeight: 620 }}>
                 {mapError ? (
-                  <div style={{ padding: '1.5rem', color: 'var(--text-primary)' }}>{mapError}</div>
+                  <div style={{ padding: '1.5rem', color: 'var(--text-heading)' }}>{mapError}</div>
                 ) : mapLoading ? (
                   <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Chargement de la carte…</div>
                 ) : (
@@ -1113,11 +1113,11 @@ function SearchResultsPageContent() {
                         gap: '0.5rem',
                         background: 'transparent',
                         border: '1px solid var(--border-default)',
-                        color: 'var(--text-primary)',
+                        color: 'var(--text-heading)',
                         borderRadius: 'var(--radius-pill)',
                         height: '2.75rem',
                         padding: '0 1.2rem',
-                        font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
+                        font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
                         cursor: loadingMore ? 'wait' : 'pointer',
                         opacity: loadingMore ? 0.7 : 1,
                       }}

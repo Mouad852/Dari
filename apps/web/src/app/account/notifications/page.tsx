@@ -45,7 +45,7 @@ export default function AccountNotificationsPage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
@@ -84,7 +84,7 @@ export default function AccountNotificationsPage() {
               border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-pill)',
               background: 'var(--surface-card)',
-              color: 'var(--text-primary)',
+              color: 'var(--text-heading)',
               padding: '0.7rem 1rem',
               font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)',
               cursor: 'pointer',
@@ -127,14 +127,14 @@ export default function AccountNotificationsPage() {
                   justifyContent: 'center',
                   borderRadius: 'var(--radius-pill)',
                   background: 'var(--brand-subtle)',
-                  color: 'var(--brand)',
+                  color: 'var(--clay-700)',
                 }}
               >
                 <Icon size={18} />
               </span>
 
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>
+                <div style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>
                   {title}
                 </div>
                 <div style={{ marginTop: 4, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
@@ -207,7 +207,7 @@ export default function AccountNotificationsPage() {
             }}
           >
             <div>
-              <div style={{ font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>
+              <div style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>
                 E-mail principal
               </div>
               <div style={{ marginTop: 4, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>

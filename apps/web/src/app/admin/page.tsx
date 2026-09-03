@@ -40,7 +40,7 @@ export default function AdminDashboardPage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
@@ -61,7 +61,7 @@ export default function AdminDashboardPage() {
               borderRadius: 'var(--radius-pill)',
               background: 'var(--brand-subtle)',
               border: '1px solid var(--brand-border)',
-              color: 'var(--brand)',
+              color: 'var(--clay-700)',
               padding: '0.5rem 0.8rem',
               font: 'var(--type-label)',
             }}
@@ -100,7 +100,7 @@ export default function AdminDashboardPage() {
                     height: 44,
                     borderRadius: 'var(--radius-pill)',
                     background: 'var(--brand-subtle)',
-                    color: 'var(--brand)',
+                    color: 'var(--clay-700)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -138,8 +138,8 @@ export default function AdminDashboardPage() {
                     width: 44,
                     height: 44,
                     borderRadius: 'var(--radius-pill)',
-                    background: 'var(--error-subtle)',
-                    color: 'var(--error)',
+                    background: 'var(--danger-subtle)',
+                    color: 'var(--danger)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',

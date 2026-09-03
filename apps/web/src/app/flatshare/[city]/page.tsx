@@ -124,7 +124,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
           }}
         >
           <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 700 }}>
-            <span style={{ display: 'inline-flex', width: 'fit-content', alignItems: 'center', gap: '0.5rem', color: 'var(--brand)', background: 'var(--brand-subtle)', borderRadius: 'var(--radius-pill)', padding: '0.5rem 0.8rem', font: 'var(--type-label)' }}>
+            <span style={{ display: 'inline-flex', width: 'fit-content', alignItems: 'center', gap: '0.5rem', color: 'var(--clay-700)', background: 'var(--brand-subtle)', borderRadius: 'var(--radius-pill)', padding: '0.5rem 0.8rem', font: 'var(--type-label)' }}>
               <ShieldCheck size={16} />
               Annonces vérifiées
             </span>
@@ -147,7 +147,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
                   borderRadius: 'var(--radius-pill)',
                   padding: '0.85rem 1.2rem',
                   textDecoration: 'none',
-                  font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
+                  font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
                 }}
               >
                 Voir les annonces
@@ -155,7 +155,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
               </a>
               {/* Stated only when there are real listings to derive it from. */}
               {priceRange && (
-                <span style={{ color: 'var(--text-muted)', font: 'var(--type-body-md)' }}>
+                <span style={{ color: 'var(--text-muted)', font: 'var(--type-body)' }}>
                   Loyers de {money(priceRange.min)} à {money(priceRange.max)} MAD
                 </span>
               )}
@@ -171,7 +171,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
           <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-5)' }}>
             {count && (
               <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-hairline)', borderRadius: 'var(--radius-card)', padding: '1.25rem' }}>
-                <div style={{ font: 'var(--weight-bold) 28px/1.2 var(--font-display)', color: 'var(--text-primary)' }}>
+                <div style={{ font: 'var(--weight-bold) 28px/1.2 var(--font-display)', color: 'var(--text-heading)' }}>
                   {count.capped ? `${count.count}+` : count.count}
                 </div>
                 <div style={{ color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>
@@ -181,7 +181,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
             )}
             {priceRange && (
               <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-hairline)', borderRadius: 'var(--radius-card)', padding: '1.25rem' }}>
-                <div style={{ font: 'var(--weight-bold) 28px/1.2 var(--font-display)', color: 'var(--text-primary)' }}>
+                <div style={{ font: 'var(--weight-bold) 28px/1.2 var(--font-display)', color: 'var(--text-heading)' }}>
                   {money(priceRange.min)} MAD
                 </div>
                 <div style={{ color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>loyer le plus bas</div>
@@ -207,7 +207,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
                     border: '1px solid var(--border-default)',
                     borderRadius: 'var(--radius-pill)',
                     padding: '0.6rem 0.9rem',
-                    color: 'var(--text-primary)',
+                    color: 'var(--text-heading)',
                     textDecoration: 'none',
                     font: 'var(--type-body-sm)',
                   }}
@@ -239,7 +239,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
                     border: '1px solid var(--border-hairline)',
                     borderRadius: 'var(--radius-card)',
                     overflow: 'hidden',
-                    color: 'var(--text-primary)',
+                    color: 'var(--text-heading)',
                     textDecoration: 'none',
                     display: 'block',
                   }}

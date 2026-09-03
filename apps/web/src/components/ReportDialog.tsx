@@ -181,7 +181,7 @@ export function ReportDialog({
                     background: reason === value ? 'var(--brand-subtle)' : 'var(--surface-card)',
                     cursor: 'pointer',
                     font: 'var(--type-body-sm)',
-                    color: 'var(--text-primary)',
+                    color: 'var(--text-heading)',
                   }}
                 >
                   <input

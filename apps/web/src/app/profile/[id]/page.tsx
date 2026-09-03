@@ -32,7 +32,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       style={{
         minHeight: '100vh',
         background: 'var(--bg-page)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
@@ -95,7 +95,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
               padding: 'var(--space-5)',
             }}
           >
-            <p style={{ margin: 0, font: 'var(--type-body-md)', color: 'var(--text-primary)', lineHeight: 1.6 }}>{profile.bio}</p>
+            <p style={{ margin: 0, font: 'var(--type-body)', color: 'var(--text-heading)', lineHeight: 1.6 }}>{profile.bio}</p>
           </section>
         ) : null}
 

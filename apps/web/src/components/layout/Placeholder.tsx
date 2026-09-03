@@ -34,7 +34,7 @@ export function Placeholder({
           fontSize: '0.75rem',
           letterSpacing: '0.04em',
           textTransform: 'uppercase',
-          color: 'var(--sable-500)',
+          color: 'var(--text-muted)',
         }}
       >
         {phase}
@@ -43,7 +43,7 @@ export function Placeholder({
       <h1
         style={{
           fontFamily: 'var(--font-display)',
-          fontSize: 'var(--text-2xl, 1.75rem)',
+          fontSize: 'var(--text-h1)',
           fontWeight: 700,
           color: 'var(--sable-900)',
           marginTop: 'var(--space-2, 0.5rem)',
@@ -58,7 +58,7 @@ export function Placeholder({
           style={{
             fontFamily: 'var(--font-mono)',
             fontSize: '0.8125rem',
-            color: 'var(--sable-500)',
+            color: 'var(--text-muted)',
             marginTop: 'var(--space-4, 1rem)',
           }}
         >

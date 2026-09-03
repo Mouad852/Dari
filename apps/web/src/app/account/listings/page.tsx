@@ -28,8 +28,8 @@ const STATUS_META: Record<ListingStatus, { chipBg: string; chipColor: string; ic
   DRAFT: { chipBg: 'var(--sable-100)', chipColor: 'var(--text-muted)', icon: Clock3 },
   PENDING_REVIEW: { chipBg: 'var(--sand-100)', chipColor: 'var(--sand-700)', icon: Clock3 },
   PUBLISHED: { chipBg: 'var(--brand-subtle)', chipColor: 'var(--brand)', icon: CheckCircle2 },
-  REJECTED: { chipBg: 'var(--error-subtle)', chipColor: 'var(--error)', icon: ShieldAlert },
-  SUSPENDED: { chipBg: 'var(--error-subtle)', chipColor: 'var(--error)', icon: ShieldAlert },
+  REJECTED: { chipBg: 'var(--danger-subtle)', chipColor: 'var(--danger)', icon: ShieldAlert },
+  SUSPENDED: { chipBg: 'var(--danger-subtle)', chipColor: 'var(--danger)', icon: ShieldAlert },
   EXPIRED: { chipBg: 'var(--sable-100)', chipColor: 'var(--text-muted)', icon: Clock3 },
 };
 
@@ -141,7 +141,7 @@ export default function MyListingsPage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
@@ -203,7 +203,7 @@ export default function MyListingsPage() {
                     }}
                   >
                     <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{label}</span>
-                    <span style={{ font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>{value}</span>
+                    <span style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>{value}</span>
                   </div>
                 ))}
               </section>
@@ -256,7 +256,7 @@ export default function MyListingsPage() {
                         style={{
                           minHeight: 180,
                           background: 'linear-gradient(135deg, var(--sable-200), var(--sable-100))',
-                          color: 'var(--sable-500)',
+                          color: 'var(--text-body)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -308,7 +308,7 @@ export default function MyListingsPage() {
                             <MapPin size={14} />
                             {listing.city}
                           </span>
-                          <span style={{ font: 'var(--weight-bold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>
+                          <span style={{ font: 'var(--weight-bold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>
                             {rentPerMonth(listing.priceRent)}
                           </span>
                         </div>
@@ -320,9 +320,9 @@ export default function MyListingsPage() {
                               alignItems: 'flex-start',
                               gap: '0.5rem',
                               borderRadius: 'var(--radius-card-inner)',
-                              background: 'var(--error-subtle)',
-                              border: '1px solid var(--error-light)',
-                              color: 'var(--error)',
+                              background: 'var(--danger-subtle)',
+                              border: '1px solid var(--danger-border)',
+                              color: 'var(--danger)',
                               padding: '0.75rem 0.8rem',
                               font: 'var(--type-body-sm)',
                             }}
@@ -347,7 +347,7 @@ export default function MyListingsPage() {
                                 border: '1px solid var(--brand-border)',
                                 borderRadius: 'var(--radius-pill)',
                                 background: 'var(--brand-subtle)',
-                                color: 'var(--brand)',
+                                color: 'var(--clay-700)',
                                 padding: '0.6rem 0.9rem',
                                 font: 'var(--type-body-sm)',
                                 textDecoration: 'none',
@@ -416,7 +416,7 @@ export default function MyListingsPage() {
                     border: '1px solid var(--border-default)',
                     background: 'var(--surface-card)',
                     borderRadius: 'var(--radius-pill)',
-                    color: 'var(--text-primary)',
+                    color: 'var(--text-heading)',
                     padding: '0.7rem 1.3rem',
                     font: 'var(--type-body-sm)',
                     cursor: loadingMore ? 'default' : 'pointer',
@@ -440,7 +440,7 @@ const actionButtonStyle: CSSProperties = {
   border: '1px solid var(--border-default)',
   borderRadius: 'var(--radius-pill)',
   background: 'var(--surface-card)',
-  color: 'var(--text-primary)',
+  color: 'var(--text-heading)',
   padding: '0.6rem 0.9rem',
   font: 'var(--type-body-sm)',
   cursor: 'pointer',

@@ -126,7 +126,9 @@ export function ListingCard({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--sable-400)',
+              // Source used --sable-400: 1.82:1 on --sable-200. It is real text
+              // telling the reader a photo is missing, not decoration.
+              color: 'var(--text-muted)',
               font: 'var(--type-caption)',
               letterSpacing: 'var(--ls-caps)',
               textTransform: 'uppercase',
@@ -189,7 +191,13 @@ export function ListingCard({
             }}
           >
             {href ? (
-              <a href={href} {...focusProps} style={{ color: 'inherit', textDecoration: 'none' }}>
+              <a
+                href={href}
+                {...focusProps}
+                // The card paints the focus ring; without this the anchor also
+                // draws the global outline, ringing the title inside the ring.
+                style={{ color: 'inherit', textDecoration: 'none', outline: 'none' }}
+              >
                 {title}
                 {/* Stretches the link over the whole card. Positioned against
                     the card, which is the only positioned ancestor. */}

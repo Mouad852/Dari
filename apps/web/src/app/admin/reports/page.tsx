@@ -22,7 +22,7 @@ const queueActionStyle = (pending: boolean): React.CSSProperties => ({
   border: '1px solid var(--border-default)',
   borderRadius: 'var(--radius-pill)',
   background: 'var(--surface-card)',
-  color: 'var(--text-primary)',
+  color: 'var(--text-heading)',
   padding: '0.6rem 0.9rem',
   font: 'var(--type-body-sm)',
   cursor: pending ? 'default' : 'pointer',
@@ -98,7 +98,7 @@ export default function AdminReportsPage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
@@ -120,7 +120,7 @@ export default function AdminReportsPage() {
                 borderRadius: 'var(--radius-pill)',
                 background: 'var(--brand-subtle)',
                 border: '1px solid var(--brand-border)',
-                color: 'var(--brand)',
+                color: 'var(--clay-700)',
                 padding: '0.5rem 0.8rem',
                 font: 'var(--type-label)',
               }}
@@ -162,7 +162,7 @@ export default function AdminReportsPage() {
                   key={key}
                   style={{
                     background: 'var(--surface-card)',
-                    border: item.autoFlagged ? '1px solid var(--error-light)' : '1px solid var(--border-hairline)',
+                    border: item.autoFlagged ? '1px solid var(--danger-border)' : '1px solid var(--border-hairline)',
                     borderRadius: 'var(--radius-card)',
                     boxShadow: 'var(--shadow-xs)',
                     padding: 'var(--space-4)',
@@ -193,8 +193,8 @@ export default function AdminReportsPage() {
                             alignItems: 'center',
                             gap: '0.3rem',
                             borderRadius: 'var(--radius-pill)',
-                            background: 'var(--error-subtle)',
-                            color: 'var(--error)',
+                            background: 'var(--danger-subtle)',
+                            color: 'var(--danger)',
                             padding: '0.35rem 0.6rem',
                             font: 'var(--type-label)',
                           }}
@@ -260,7 +260,7 @@ export default function AdminReportsPage() {
                         type="button"
                         disabled={isPending}
                         onClick={() => handleAction(item, 'SUSPEND')}
-                        style={{ ...queueActionStyle(isPending), color: 'var(--error)', borderColor: 'var(--error-light)' }}
+                        style={{ ...queueActionStyle(isPending), color: 'var(--danger)', borderColor: 'var(--danger-border)' }}
                       >
                         <AlertTriangle size={14} />
                         {item.targetType === 'LISTING' ? 'Suspendre l’annonce' : 'Suspendre le compte'}
@@ -272,7 +272,7 @@ export default function AdminReportsPage() {
                           type="button"
                           disabled={isPending}
                           onClick={() => handleAction(item, 'BAN')}
-                          style={{ ...queueActionStyle(isPending), color: 'var(--error)', borderColor: 'var(--error-light)' }}
+                          style={{ ...queueActionStyle(isPending), color: 'var(--danger)', borderColor: 'var(--danger-border)' }}
                         >
                           <Ban size={14} />
                           Bannir

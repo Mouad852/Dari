@@ -46,7 +46,7 @@ export function ContactButton({ userId }: { userId: string }) {
           color: '#fff',
           borderRadius: 'var(--radius-pill)',
           padding: '0.95rem 1.2rem',
-          font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
+          font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
           cursor: pending ? 'default' : 'pointer',
           opacity: pending ? 0.7 : 1,
           boxShadow: 'var(--shadow-brand)',

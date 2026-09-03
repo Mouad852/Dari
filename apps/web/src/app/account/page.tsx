@@ -106,7 +106,7 @@ export default function AccountPage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
@@ -125,7 +125,7 @@ export default function AccountPage() {
               border: '1px solid var(--border-default)',
               background: 'var(--surface-card)',
               borderRadius: 'var(--radius-pill)',
-              color: 'var(--text-primary)',
+              color: 'var(--text-heading)',
               padding: '0.65rem 0.9rem',
               font: 'var(--type-body-sm)',
               cursor: 'pointer',
@@ -207,7 +207,7 @@ export default function AccountPage() {
                 }}
               >
                 <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{label}</span>
-                <span style={{ font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>{value}</span>
+                <span style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>{value}</span>
               </div>
             ))}
           </div>
@@ -259,14 +259,14 @@ export default function AccountPage() {
                   justifyContent: 'center',
                   borderRadius: 'var(--radius-pill)',
                   background: 'var(--brand-subtle)',
-                  color: 'var(--brand)',
+                  color: 'var(--clay-700)',
                 }}
               >
                 <Icon size={18} />
               </span>
 
               <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>{label}</span>
+                <span style={{ display: 'block', font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>{label}</span>
                 <span style={{ display: 'block', marginTop: 2, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{detail}</span>
               </span>
 
@@ -318,7 +318,7 @@ export default function AccountPage() {
               color: '#fff',
               borderRadius: 'var(--radius-pill)',
               padding: '0.95rem 1.2rem',
-              font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
+              font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
               boxShadow: 'var(--shadow-brand)',
               cursor: 'pointer',
             }}
@@ -345,7 +345,7 @@ export default function AccountPage() {
             color: 'var(--danger)',
             borderRadius: 'var(--radius-pill)',
             padding: '0.9rem 1rem',
-            font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
+            font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
             cursor: signingOut ? 'default' : 'pointer',
             opacity: signingOut ? 0.7 : 1,
           }}

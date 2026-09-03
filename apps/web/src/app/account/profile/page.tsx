@@ -140,7 +140,7 @@ export default function AccountProfilePage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
@@ -258,7 +258,7 @@ export default function AccountProfilePage() {
                     gap: '0.3rem',
                     borderRadius: 'var(--radius-pill)',
                     background: profile.verification === 'NONE' ? 'var(--sable-100)' : 'var(--brand-subtle)',
-                    color: profile.verification === 'NONE' ? 'var(--text-muted)' : 'var(--brand)',
+                    color: profile.verification === 'NONE' ? 'var(--text-muted)' : 'var(--clay-700)',
                     padding: '0.3rem 0.55rem',
                     font: 'var(--type-label)',
                   }}
@@ -383,7 +383,7 @@ const inputStyle = {
   border: '1px solid var(--border-default)',
   borderRadius: 'var(--radius-md)',
   background: 'var(--surface-card)',
-  color: 'var(--text-primary)',
+  color: 'var(--text-heading)',
   padding: '0.82rem 0.9rem',
-  font: 'var(--type-body-md)',
+  font: 'var(--type-body)',
 } as const;

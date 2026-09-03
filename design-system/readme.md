@@ -54,7 +54,7 @@ Because no product source existed, the following are **proposals, not recreation
 
 ## Visual foundations
 
-**Colour.** Terracotta `--clay-500 #C05F3C` is the single action colour; sand `--sand-400 #DDA046` is a highlight (ratings, illustration fills, eyebrows on dark) and never a button fill. Backgrounds are cream `--sable-50 #FBF7F2`, surfaces white, text charcoal `--sable-900 #241F1C` — no pure white page, no pure black text. Semantics are warm-shifted: atlas green `#35786A`, saffron `#C98A16`, rose clay `#B33A2B`. Majorelle blue `#3F5AA6` is informational only. **Maximum two background tones per screen** (cream + one of white / `--bg-page-alt` / a single terracotta band).
+**Colour.** Terracotta `--clay-500 #B55535` is the single action colour; sand `--sand-400 #DDA046` is a highlight (ratings, illustration fills, eyebrows on dark) and never a button fill. Backgrounds are cream `--sable-50 #FBF7F2`, surfaces white, text charcoal `--sable-900 #241F1C` — no pure white page, no pure black text. Semantics are warm-shifted: atlas green `#35786A`, saffron `#C98A16`, rose clay `#B33A2B`. Majorelle blue `#3F5AA6` is informational only. **Maximum two background tones per screen** (cream + one of white / `--bg-page-alt` / a single terracotta band).
 
 **Typography.** One family, Plus Jakarta Sans: 800 for display, 700 for H1–H2, 600 for H3/labels/buttons, 400 for body. Display tracking `-.02em`; body `0`. Mobile scale: 40/32/28/22/18 headings, 17/15/13/12/11 text. Line-height 1.55 body, 1.24 headings. IBM Plex Mono appears only for reference IDs.
 

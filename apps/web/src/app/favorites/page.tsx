@@ -105,7 +105,7 @@ export default function FavoritesPage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
@@ -127,7 +127,7 @@ export default function FavoritesPage() {
                 minHeight: 32,
                 borderRadius: 'var(--radius-pill)',
                 background: 'var(--brand-subtle)',
-                color: 'var(--brand)',
+                color: 'var(--clay-700)',
                 padding: '0.45rem 0.8rem',
                 font: 'var(--weight-medium) var(--type-label) var(--font-ui)',
               }}
@@ -183,7 +183,7 @@ export default function FavoritesPage() {
                 justifyContent: 'center',
                 borderRadius: '50%',
                 background: 'var(--brand-subtle)',
-                color: 'var(--brand)',
+                color: 'var(--clay-700)',
               }}
             >
               <Heart size={28} />
@@ -222,7 +222,7 @@ export default function FavoritesPage() {
                         background: available
                           ? 'linear-gradient(135deg, var(--sand-100), var(--sable-100))'
                           : 'linear-gradient(135deg, var(--sable-200), var(--sable-100))',
-                        color: 'var(--sable-500)',
+                        color: 'var(--text-body)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -285,7 +285,7 @@ export default function FavoritesPage() {
                             gap: '0.25rem',
                             borderRadius: 'var(--radius-pill)',
                             background: available ? 'var(--brand-subtle)' : 'var(--sable-100)',
-                            color: available ? 'var(--brand)' : 'var(--text-muted)',
+                            color: available ? 'var(--clay-700)' : 'var(--text-muted)',
                             padding: '0.35rem 0.6rem',
                             font: 'var(--type-label)',
                             whiteSpace: 'nowrap',
@@ -310,7 +310,7 @@ export default function FavoritesPage() {
                           borderTop: '1px solid var(--border-hairline)',
                         }}
                       >
-                        <span style={{ font: 'var(--weight-bold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>
+                        <span style={{ font: 'var(--weight-bold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>
                           {rentPerMonth(listing.priceRent)}
                         </span>
                         <Link
@@ -336,7 +336,7 @@ export default function FavoritesPage() {
                   border: '1px solid var(--border-default)',
                   background: 'var(--surface-card)',
                   borderRadius: 'var(--radius-pill)',
-                  color: 'var(--text-primary)',
+                  color: 'var(--text-heading)',
                   padding: '0.7rem 1.3rem',
                   font: 'var(--type-body-sm)',
                   cursor: loadingMore ? 'default' : 'pointer',

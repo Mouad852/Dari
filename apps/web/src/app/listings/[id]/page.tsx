@@ -126,7 +126,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   };
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--bg-page)', color: 'var(--text-primary)' }}>
+    <main style={{ minHeight: '100vh', background: 'var(--bg-page)', color: 'var(--text-heading)' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

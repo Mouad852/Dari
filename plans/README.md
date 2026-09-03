@@ -931,6 +931,11 @@ decision and not an engineering one.
 Recorded for a deliberate answer rather than settled quietly. The quality floor this project sets
 asks for AA, and today the design system itself does not meet it.
 
+> **Resolved 2026-09-03** — all five pairs fixed in the tokens, plus a sixth (`--focus-ring`) and a
+> seventh (`--scrim-image`) the Lighthouse run could not see. See *Token layer: WCAG AA* below. The
+> brand shift turned out not to be a brand decision after all: the palette is an unconfirmed proposal,
+> not client identity.
+
 ## Design-system port (2026-09-03)
 
 Stepped back at the user's request to work out why the frontend looks competent rather than good. The
@@ -1089,10 +1094,76 @@ script tick that called `.focus()`, before React had re-rendered, and reported n
 separate call showed the ring. Nearly "fixed" a working component — the same stale-read mistake as the
 `Tag` measurement earlier in the session.
 
+## Token layer: WCAG AA, and a much larger bug underneath it (2026-09-03)
+
+The outstanding AA failures were fixed in the tokens, where one edit repairs every call site. Every
+number below was measured, not estimated, and then re-measured in a real browser afterwards.
+
+| token | was | is | why |
+| --- | --- | --- | --- |
+| `--clay-500` | `#C05F3C` | `#B55535` | white on it was **4.25:1** — every primary button label in the product was illegal. The smallest shift along its own hue that clears AA (4.87:1). |
+| `--text-subtle` | `--sable-500` | `--sable-600` | **3.85:1** on a card, **3.61:1** on the page. It failed everywhere it was legal to use, so it was never a third text tier — it was a trap. `--sable-500` stays in the ramp for icons, which answer to 3:1. |
+| `--focus-ring` | `rgba(192,95,60,.28)` | `0 0 0 2px var(--brand)` | the 28% halo composites to **1.43:1**. A focus indicator you cannot see is not one. |
+| `--scrim-image` | `.62` at 0%, `.18` by 42% | `.68` at 0%, `.62` to 28% | the scrim exists so white text can sit on a photo, but the text sits 14–52px up, where it had decayed to **2.4–3.4:1** over a bright photo. `.62` was the right floor (4.63:1 over a pure-white photo); it just had to still be `.62` where the words are. |
+
+The brand shift is not a brand override: `design-system/assets/README.md` records this palette as an
+unconfirmed proposal, not client-supplied identity. The old hex was propagated out of `--shadow-brand`,
+the design system's own readme and swatch card, and the React Native theme sketch in
+`plans/guides/11-mobile-react-native.md`, so the two clients cannot start out disagreeing.
+
+**Terracotta is an action colour, not a text colour.** At `#B55535` it clears AA as text on white
+(4.87:1) but not on its own tint (4.40:1). 27 call sites put brand text on `--brand-subtle`; they now
+use `--clay-700`, which is what the `Badge` component already did on that tint.
+
+### The larger bug: 155 references to custom properties that do not exist
+
+Auditing every `var(--…)` in the app against every token actually defined turned up **twelve
+undefined names across 27 files** — `--text-primary` (23 files), `--type-body-md` (18), `--error`,
+`--error-subtle`, `--error-light`, `--surface-muted`, `--warning-700`, `--type-micro`, `--text-2xl`.
+
+An undefined custom property is silent. `color: var(--text-primary)` does not fall back to a default —
+the declaration is invalid at computed-value time, so the element inherits whatever its ancestor
+happened to set. Consequences found in the browser: a "Nouveau" chip inheriting a photo placeholder's
+grey and rendering at 2.97:1, and **the admin console's error banners not being red**, because
+`--error` was never a token; the palette calls it `--danger`.
+
+All 155 now point at real tokens. `npm run tokens:check` (new, `scripts/check-tokens.mjs`) fails the
+moment another one appears — it strips comments first, so a component doc that mentions `var(--token)`
+is not a false positive. Ablated to prove it fails: a deliberately bogus name in `not-found.tsx`
+exited 1 and named the file; restoring it returned to `ok: 192 tokens defined`.
+
+### Verified in the browser, not in the stylesheet
+
+A contrast sweep that walks every text node, composites every translucent layer up the tree, and
+applies the large-text exemption. At 412px:
+
+| page | contrast failures | horizontal overflow |
+| --- | --- | --- |
+| `/` | 0 | none |
+| `/listings` | 0 | none |
+| `/publish` | 0 | **454px at a 412px viewport** |
+| `/sign-up` | 0 | **454px, 17 elements** |
+| `/flatshare/rabat` | 0 | none |
+
+Two classes of false positive had to be ruled out by hand rather than trusted: text over a
+`background-image` gradient (the `Suivant` button is white on a clay-500→clay-600 gradient, 4.87–5.50)
+and text over the image scrim (computed analytically instead — the tile's text block tops out at
+27.4% of the tile height, and the scrim now holds full strength to 28%).
+
+**A homepage bug the sweep found on the way:** four grids were `repeat(4, …)` with no breakpoint, so a
+412px phone rendered four 63px-wide cards — clipped city names, clipped listing titles, and 49px of
+overflow that `html { overflow-x: hidden }` was silently clipping rather than scrolling. Now
+`repeat(auto-fit, minmax(…, 1fr))`; measured after the fix, the city tile is 301px and the page no
+longer overflows.
+
+Also unified the focus treatment. `tokens/base.css` paints `--focus-ring` globally as a box-shadow and
+`app.css` draws an outline; while the ring was a faint halo the two read as one glow, but a solid ring
+made them two concentric terracotta rings. The outline is the treatment now; the token stays for the
+controls that hide their native input and paint their own box.
+
 ### Next
 
 Rebuild pages against `design-system/ui_kits/website/*.jsx`, then art-direct beyond the kit.
 
-Two token fixes are deliberately still outstanding, and belong in the tokens rather than at call sites
-so one edit repairs every use: `--text-subtle` and the placeholder grey fail WCAG AA (`Tabs` carries a
-comment where it is used for a count badge), and `--clay-500` needs a shift along its own ramp.
+Carry forward: `/publish` and `/sign-up` still overflow horizontally at 412px, and the hand-rolled
+listing cards in `SearchResults.tsx` (plus three other places) are what `ListingCard` replaces.

@@ -82,7 +82,7 @@ export default function AdminListingsQueuePage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
@@ -104,7 +104,7 @@ export default function AdminListingsQueuePage() {
                 borderRadius: 'var(--radius-pill)',
                 background: 'var(--brand-subtle)',
                 border: '1px solid var(--brand-border)',
-                color: 'var(--brand)',
+                color: 'var(--clay-700)',
                 padding: '0.5rem 0.8rem',
                 font: 'var(--type-label)',
               }}
@@ -155,7 +155,7 @@ export default function AdminListingsQueuePage() {
                     style={{
                       minHeight: 160,
                       background: 'linear-gradient(135deg, var(--sand-100), var(--sable-100))',
-                      color: 'var(--sable-500)',
+                      color: 'var(--text-muted)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -183,7 +183,7 @@ export default function AdminListingsQueuePage() {
                         <MapPin size={14} />
                         {item.city}
                       </span>
-                      <span style={{ font: 'var(--weight-bold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>
+                      <span style={{ font: 'var(--weight-bold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>
                         {rentPerMonth(item.priceRent)}
                       </span>
                     </div>
@@ -209,7 +209,7 @@ export default function AdminListingsQueuePage() {
                             border: '1px solid var(--brand-border)',
                             borderRadius: 'var(--radius-pill)',
                             background: 'var(--brand-subtle)',
-                            color: 'var(--brand)',
+                            color: 'var(--clay-700)',
                             padding: '0.6rem 0.9rem',
                             font: 'var(--type-body-sm)',
                             cursor: isPending ? 'default' : 'pointer',
@@ -227,10 +227,10 @@ export default function AdminListingsQueuePage() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '0.4rem',
-                            border: '1px solid var(--error-light)',
+                            border: '1px solid var(--danger-border)',
                             borderRadius: 'var(--radius-pill)',
-                            background: 'var(--error-subtle)',
-                            color: 'var(--error)',
+                            background: 'var(--danger-subtle)',
+                            color: 'var(--danger)',
                             padding: '0.6rem 0.9rem',
                             font: 'var(--type-body-sm)',
                             cursor: isPending ? 'default' : 'pointer',

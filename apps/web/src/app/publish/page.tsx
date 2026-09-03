@@ -354,7 +354,7 @@ function PublishWizard() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
@@ -382,7 +382,7 @@ function PublishWizard() {
               minHeight: 32,
               borderRadius: 'var(--radius-pill)',
               background: draftId ? 'var(--brand-subtle)' : 'var(--sable-100)',
-              color: draftId ? 'var(--brand)' : 'var(--text-muted)',
+              color: draftId ? 'var(--clay-700)' : 'var(--text-muted)',
               padding: '0.45rem 0.8rem',
               font: 'var(--weight-medium) var(--type-label) var(--font-ui)',
             }}
@@ -440,7 +440,7 @@ function PublishWizard() {
                   minWidth: 80,
                   borderRadius: 'var(--radius-pill)',
                   background: index === stepIndex ? 'var(--brand-subtle)' : 'var(--sable-50)',
-                  color: index === stepIndex ? 'var(--brand)' : 'var(--text-muted)',
+                  color: index === stepIndex ? 'var(--clay-700)' : 'var(--text-muted)',
                   padding: '0.45rem 0.7rem',
                   font: 'var(--type-label)',
                   border: index === stepIndex ? '1px solid var(--brand-border)' : '1px solid var(--border-hairline)',
@@ -473,27 +473,27 @@ function PublishWizard() {
                       border: '1px solid var(--border-default)',
                       borderRadius: 'var(--radius-md)',
                       background: 'var(--surface-card)',
-                      color: 'var(--text-primary)',
+                      color: 'var(--text-heading)',
                       padding: '0.82rem 0.9rem',
-                      font: 'var(--type-body-md)',
+                      font: 'var(--type-body)',
                     }}
                   />
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
                   <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
                     <span style={{ font: 'var(--type-label)' }}>Latitude</span>
-                    <input required type="number" step="any" value={latitude} onChange={(event) => setLatitude(event.target.value)} placeholder="34.0209" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.82rem 0.9rem', font: 'var(--type-body-md)' }} />
+                    <input required type="number" step="any" value={latitude} onChange={(event) => setLatitude(event.target.value)} placeholder="34.0209" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.82rem 0.9rem', font: 'var(--type-body)' }} />
                   </label>
                   <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
                     <span style={{ font: 'var(--type-label)' }}>Longitude</span>
-                    <input required type="number" step="any" value={longitude} onChange={(event) => setLongitude(event.target.value)} placeholder="-6.8416" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.82rem 0.9rem', font: 'var(--type-body-md)' }} />
+                    <input required type="number" step="any" value={longitude} onChange={(event) => setLongitude(event.target.value)} placeholder="-6.8416" style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', padding: '0.82rem 0.9rem', font: 'var(--type-body)' }} />
                   </label>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
                   <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
                     <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase' }}>Ville</span>
-                    <select value={city} onChange={(event) => setCity(event.target.value)} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', color: 'var(--text-primary)', padding: '0.82rem 0.9rem', font: 'var(--type-body-md)' }}>
+                    <select value={city} onChange={(event) => setCity(event.target.value)} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', color: 'var(--text-heading)', padding: '0.82rem 0.9rem', font: 'var(--type-body)' }}>
                       <option>Rabat</option>
                       <option>Casablanca</option>
                       <option>Marrakech</option>
@@ -503,7 +503,7 @@ function PublishWizard() {
 
                   <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
                     <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase' }}>Quartier</span>
-                    <select value={district} onChange={(event) => setDistrict(event.target.value)} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', color: 'var(--text-primary)', padding: '0.82rem 0.9rem', font: 'var(--type-body-md)' }}>
+                    <select value={district} onChange={(event) => setDistrict(event.target.value)} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', color: 'var(--text-heading)', padding: '0.82rem 0.9rem', font: 'var(--type-body)' }}>
                       <option>Agdal</option>
                       <option>Gauthier</option>
                       <option>Hassan</option>
@@ -523,9 +523,9 @@ function PublishWizard() {
                     border: '1px solid var(--border-default)',
                     borderRadius: 'var(--radius-md)',
                     background: 'var(--surface-card)',
-                    color: 'var(--text-primary)',
+                    color: 'var(--text-heading)',
                     padding: '0.82rem 0.9rem',
-                    font: 'var(--type-body-md)',
+                    font: 'var(--type-body)',
                     resize: 'vertical',
                   }}
                 />
@@ -547,9 +547,9 @@ function PublishWizard() {
                         border: '1px solid var(--border-default)',
                         borderRadius: 'var(--radius-md)',
                         background: 'var(--surface-card)',
-                        color: 'var(--text-primary)',
+                        color: 'var(--text-heading)',
                         padding: '0.82rem 2.7rem 0.82rem 0.9rem',
-                        font: 'var(--type-body-md)',
+                        font: 'var(--type-body)',
                       }}
                     />
                     <span style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', font: 'var(--type-label)' }}>MAD</span>
@@ -561,7 +561,7 @@ function PublishWizard() {
                   <select
                     value={propertyType}
                     onChange={(event) => setPropertyType(event.target.value as PropertyType)}
-                    style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', color: 'var(--text-primary)', padding: '0.82rem 0.9rem', font: 'var(--type-body-md)' }}
+                    style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', color: 'var(--text-heading)', padding: '0.82rem 0.9rem', font: 'var(--type-body)' }}
                   >
                     {(Object.keys(PROPERTY_TYPE_LABELS) as PropertyType[]).map((value) => (
                       <option key={value} value={value}>{PROPERTY_TYPE_LABELS[value]}</option>
@@ -574,7 +574,7 @@ function PublishWizard() {
                   <select
                     value={roomType}
                     onChange={(event) => setRoomType(event.target.value as RoomType)}
-                    style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', color: 'var(--text-primary)', padding: '0.82rem 0.9rem', font: 'var(--type-body-md)' }}
+                    style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', color: 'var(--text-heading)', padding: '0.82rem 0.9rem', font: 'var(--type-body)' }}
                   >
                     {(Object.keys(ROOM_TYPE_LABELS) as RoomType[]).map((value) => (
                       <option key={value} value={value}>{ROOM_TYPE_LABELS[value]}</option>
@@ -601,7 +601,7 @@ function PublishWizard() {
                           borderRadius: 'var(--radius-pill)',
                           border: isSelected ? '1px solid var(--brand-border)' : '1px solid var(--border-default)',
                           background: isSelected ? 'var(--brand-subtle)' : 'var(--surface-card)',
-                          color: isSelected ? 'var(--brand)' : 'var(--text-primary)',
+                          color: isSelected ? 'var(--clay-700)' : 'var(--text-heading)',
                           padding: '0.6rem 0.8rem',
                           font: 'var(--type-body-sm)',
                           cursor: 'pointer',
@@ -640,7 +640,7 @@ function PublishWizard() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: 'var(--brand-subtle)',
-                    color: 'var(--brand)',
+                    color: 'var(--clay-700)',
                   }}
                 >
                   <UploadCloud size={26} />
@@ -671,7 +671,7 @@ function PublishWizard() {
                     color: '#fff',
                     borderRadius: 'var(--radius-pill)',
                     padding: '0.9rem 1.2rem',
-                    font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
+                    font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
                     cursor: photoBusy ? 'wait' : 'pointer',
                     opacity: photoBusy ? 0.7 : 1,
                     boxShadow: 'var(--shadow-brand)',
@@ -795,7 +795,7 @@ function PublishWizard() {
               <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-heading)' }}>
                   <ShieldCheck size={18} color="var(--success)" />
-                  <span style={{ font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)' }}>Vérification avant publication</span>
+                  <span style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)' }}>Vérification avant publication</span>
                 </div>
 
                 <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
@@ -836,7 +836,7 @@ function PublishWizard() {
           )}
         </section>
 
-        {error ? <p role="alert" style={{ margin: 0, color: 'var(--error)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
+        {error ? <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
         {saved ? <p role="status" style={{ margin: 0, color: 'var(--success)', font: 'var(--type-body-sm)' }}>Annonce envoyée pour validation.</p> : null}
         {/*
           Stated up front, not discovered after saving: an edit to a live
@@ -863,9 +863,9 @@ function PublishWizard() {
               border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-pill)',
               background: 'var(--surface-card)',
-              color: 'var(--text-primary)',
+              color: 'var(--text-heading)',
               padding: '0.8rem 1rem',
-              font: 'var(--weight-medium) var(--type-body-md) var(--font-ui)',
+              font: 'var(--weight-medium) var(--type-body) var(--font-ui)',
               cursor: canGoBack ? 'pointer' : 'not-allowed',
               opacity: canGoBack ? 1 : 0.55,
             }}
@@ -895,7 +895,7 @@ function PublishWizard() {
               background: 'linear-gradient(135deg, var(--brand), var(--brand-hover))',
               color: '#fff',
               padding: '0.8rem 1.2rem',
-              font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
+              font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
               cursor: 'pointer',
               boxShadow: 'var(--shadow-brand)',
             }}

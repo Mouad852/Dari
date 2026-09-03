@@ -84,7 +84,7 @@ export function ListingGallery({
             inset: 0,
             display: 'grid',
             placeItems: 'center',
-            color: 'var(--sable-500)',
+            color: 'var(--text-muted)',
             font: 'var(--type-caption)',
             textTransform: 'uppercase',
           }}

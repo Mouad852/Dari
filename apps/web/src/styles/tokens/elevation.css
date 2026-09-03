@@ -6,8 +6,13 @@
   --shadow-md:0 4px 12px rgba(58,42,32,.08),0 1px 3px rgba(58,42,32,.05);
   --shadow-lg:0 12px 28px rgba(58,42,32,.10),0 2px 6px rgba(58,42,32,.05);
   --shadow-sheet:0 -8px 32px rgba(58,42,32,.14);
-  --shadow-brand:0 6px 16px rgba(192,95,60,.24);
+  --shadow-brand:0 6px 16px rgba(181,85,53,.24);
   --inset-hairline:inset 0 0 0 1px var(--border-hairline);
-  --scrim-image:linear-gradient(to top,rgba(36,31,28,.62) 0%,rgba(36,31,28,.18) 42%,rgba(36,31,28,0) 72%); /* @kind other */
+  /* The scrim exists so white text can sit on an arbitrary photo. It reached
+     .62 only at the very bottom edge and had decayed to .18 by 42% — but the
+     text it protects sits 14-52px up. Over a bright photo that region measured
+     2.4-3.4:1. .62 is the right floor (4.63:1 over a pure-white photo); it just
+     has to still be .62 where the words are, so it now holds to 28%. */
+  --scrim-image:linear-gradient(to top,rgba(36,31,28,.68) 0%,rgba(36,31,28,.62) 28%,rgba(36,31,28,.18) 58%,rgba(36,31,28,0) 80%); /* @kind other */
   --blur-glass:saturate(120%) blur(12px); /* @kind other */
 }

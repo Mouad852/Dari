@@ -9,9 +9,9 @@ import { USER_ACCOUNT_STATUS_LABELS } from '@/lib/labels';
 import type { AdminUser, UserAccountStatus } from '@/types/api';
 
 const STATUS_STYLE: Record<UserAccountStatus, { bg: string; color: string }> = {
-  ACTIVE: { bg: 'var(--brand-subtle)', color: 'var(--brand)' },
+  ACTIVE: { bg: 'var(--brand-subtle)', color: 'var(--clay-700)' },
   SUSPENDED: { bg: 'var(--sand-100)', color: 'var(--sand-700)' },
-  BANNED: { bg: 'var(--error-subtle)', color: 'var(--error)' },
+  BANNED: { bg: 'var(--danger-subtle)', color: 'var(--danger)' },
 };
 
 export default function AdminUsersPage() {
@@ -92,7 +92,7 @@ export default function AdminUsersPage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
@@ -106,7 +106,7 @@ export default function AdminUsersPage() {
           </div>
 
           {users ? (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', borderRadius: 'var(--radius-pill)', background: 'var(--brand-subtle)', border: '1px solid var(--brand-border)', color: 'var(--brand)', padding: '0.5rem 0.8rem', font: 'var(--type-label)' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', borderRadius: 'var(--radius-pill)', background: 'var(--brand-subtle)', border: '1px solid var(--brand-border)', color: 'var(--clay-700)', padding: '0.5rem 0.8rem', font: 'var(--type-label)' }}>
               <UserRound size={14} />
               {users.length} compte{users.length > 1 ? 's' : ''}
             </div>
@@ -123,9 +123,9 @@ export default function AdminUsersPage() {
               border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-pill)',
               background: 'var(--surface-card)',
-              color: 'var(--text-primary)',
+              color: 'var(--text-heading)',
               padding: '0.65rem 1rem',
-              font: 'var(--type-body-md)',
+              font: 'var(--type-body)',
             }}
           />
           <button
@@ -134,7 +134,7 @@ export default function AdminUsersPage() {
               border: '1px solid var(--border-default)',
               borderRadius: 'var(--radius-pill)',
               background: 'var(--surface-card)',
-              color: 'var(--text-primary)',
+              color: 'var(--text-heading)',
               padding: '0.65rem 1.1rem',
               font: 'var(--type-body-sm)',
               cursor: 'pointer',
@@ -203,7 +203,7 @@ export default function AdminUsersPage() {
 
                   <div style={{ flex: 1, minWidth: 200 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span style={{ font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)', color: 'var(--text-heading)' }}>{user.displayName}</span>
+                      <span style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>{user.displayName}</span>
                       <span
                         style={{
                           borderRadius: 'var(--radius-pill)',
@@ -240,7 +240,7 @@ export default function AdminUsersPage() {
                             border: '1px solid var(--border-default)',
                             borderRadius: 'var(--radius-pill)',
                             background: 'var(--surface-card)',
-                            color: 'var(--text-primary)',
+                            color: 'var(--text-heading)',
                             padding: '0.55rem 0.85rem',
                             font: 'var(--type-body-sm)',
                             cursor: isPending ? 'default' : 'pointer',
@@ -258,10 +258,10 @@ export default function AdminUsersPage() {
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '0.4rem',
-                          border: '1px solid var(--error-light)',
+                          border: '1px solid var(--danger-border)',
                           borderRadius: 'var(--radius-pill)',
-                          background: 'var(--error-subtle)',
-                          color: 'var(--error)',
+                          background: 'var(--danger-subtle)',
+                          color: 'var(--danger)',
                           padding: '0.55rem 0.85rem',
                           font: 'var(--type-body-sm)',
                           cursor: isPending ? 'default' : 'pointer',

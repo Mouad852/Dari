@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "tokens:sync": "node scripts/sync-tokens.mjs"
+    "tokens:sync": "node scripts/sync-tokens.mjs",
+    "tokens:check": "node scripts/check-tokens.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "5.90.2",

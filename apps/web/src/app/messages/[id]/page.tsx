@@ -135,7 +135,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -163,7 +163,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             borderRadius: 'var(--radius-pill)',
             border: '1px solid var(--border-default)',
             background: 'var(--surface-card)',
-            color: 'var(--text-primary)',
+            color: 'var(--text-heading)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -219,8 +219,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                font: 'var(--type-micro)',
-                color: 'var(--sable-500)',
+                font: 'var(--type-eyebrow)',
+                color: 'var(--text-muted)',
                 flex: '0 0 auto',
               }}
             >
@@ -250,7 +250,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
               border: '1px solid var(--border-default)',
               background: 'var(--surface-card)',
               borderRadius: 'var(--radius-pill)',
-              color: 'var(--text-primary)',
+              color: 'var(--text-heading)',
               padding: '0.5rem 1rem',
               font: 'var(--type-caption)',
               cursor: loadingMore ? 'default' : 'pointer',
@@ -312,9 +312,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             border: '1px solid var(--border-default)',
             borderRadius: 'var(--radius-pill)',
             background: 'var(--surface-card)',
-            color: 'var(--text-primary)',
+            color: 'var(--text-heading)',
             padding: '0.75rem 1rem',
-            font: 'var(--type-body-md)',
+            font: 'var(--type-body)',
           }}
         />
         <button
@@ -332,7 +332,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             background: 'linear-gradient(135deg, var(--brand), var(--brand-hover))',
             color: '#fff',
             padding: '0 16px',
-            font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
+            font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
             cursor: sending ? 'default' : 'pointer',
             opacity: sending ? 0.7 : 1,
             boxShadow: 'var(--shadow-brand)',

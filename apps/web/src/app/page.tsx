@@ -100,9 +100,9 @@ function SearchBar() {
     border: '1px solid var(--border-default)',
     borderRadius: 'var(--radius-md)',
     background: 'var(--surface-card)',
-    color: 'var(--text-primary)',
+    color: 'var(--text-heading)',
     padding: '0.8rem 0.9rem',
-    font: 'var(--type-body-md)',
+    font: 'var(--type-body)',
     width: '100%',
     boxSizing: 'border-box',
   } as const;
@@ -193,7 +193,7 @@ function ListingCard({ listing }: { listing: PublicListing }) {
         overflow: 'hidden',
         display: 'grid',
         gridTemplateRows: '170px 1fr',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
         textDecoration: 'none',
       }}
     >
@@ -201,7 +201,7 @@ function ListingCard({ listing }: { listing: PublicListing }) {
         style={{
           position: 'relative',
           background: 'var(--sable-200)',
-          color: 'var(--sable-500)',
+          color: 'var(--text-body)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -271,7 +271,7 @@ export default async function HomePage() {
             maxWidth: 'var(--container-max)',
             margin: '0 auto',
             display: 'grid',
-            gridTemplateColumns: '1.05fr .95fr',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
             gap: 'var(--space-9)',
             alignItems: 'center',
           }}
@@ -287,7 +287,9 @@ export default async function HomePage() {
                   border: '1px solid var(--border-hairline)',
                   borderRadius: 'var(--radius-pill)',
                   padding: '0.5rem 0.75rem',
-                  color: 'var(--brand)',
+                  // Terracotta on --brand-subtle is 4.40:1. clay-700 is the
+                  // shade the Badge component already uses on this tint.
+                  color: 'var(--clay-700)',
                   font: 'var(--type-label)',
                 }}
               >
@@ -300,7 +302,7 @@ export default async function HomePage() {
                 margin: 0,
                 font: 'var(--weight-extra) 52px/1.08 var(--font-display)',
                 letterSpacing: 'var(--ls-display)',
-                color: 'var(--text-primary)',
+                color: 'var(--text-heading)',
               }}
             >
               Une chambre, des colocataires, une vraie adresse.
@@ -329,7 +331,7 @@ export default async function HomePage() {
                   color: '#fff',
                   border: 'none',
                   borderRadius: 'var(--radius-pill)',
-                  font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
+                  font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
                   boxShadow: 'var(--shadow-brand)',
                   cursor: 'pointer',
                 }}
@@ -346,10 +348,10 @@ export default async function HomePage() {
                   height: '3.25rem',
                   padding: '0 1.35rem',
                   background: 'transparent',
-                  color: 'var(--text-primary)',
+                  color: 'var(--text-heading)',
                   border: '1px solid var(--border-default)',
                   borderRadius: 'var(--radius-pill)',
-                  font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
+                  font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
                   cursor: 'pointer',
                 }}
               >
@@ -367,7 +369,7 @@ export default async function HomePage() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--sable-500)',
+              color: 'var(--text-body)',
               font: 'var(--type-caption)',
               letterSpacing: 'var(--ls-caps)',
               textTransform: 'uppercase',
@@ -389,12 +391,12 @@ export default async function HomePage() {
             <h2 style={{ margin: 0, font: 'var(--weight-bold) 32px/1.2 var(--font-display)' }}>Chambres en vedette</h2>
             <a
               href="/listings"
-              style={{ color: 'var(--brand)', textDecoration: 'none', font: 'var(--type-body-md)' }}
+              style={{ color: 'var(--brand)', textDecoration: 'none', font: 'var(--type-body)' }}
             >
               Voir les 1 843 annonces <ArrowRight size={16} style={{ verticalAlign: 'middle' }} />
             </a>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--space-5)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-5)' }}>
             {featured.map((listing) => (
               <ListingCard key={listing.id} listing={listing} />
             ))}
@@ -405,7 +407,7 @@ export default async function HomePage() {
       <section style={{ padding: 'var(--space-10) var(--gutter-desktop)', background: 'var(--bg-page-alt)' }}>
         <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', display: 'grid', gap: 'var(--space-6)' }}>
           <h2 style={{ margin: 0, font: 'var(--weight-bold) 32px/1.2 var(--font-display)' }}>Comment ça marche</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--space-5)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-5)' }}>
             {STEPS.map(([icon, title, description], index) => {
               const IconComponent =
                 icon === 'search'
@@ -436,7 +438,7 @@ export default async function HomePage() {
                       background: 'var(--brand-subtle)',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: 'var(--brand)',
+                      color: 'var(--clay-700)',
                     }}
                   >
                     <IconComponent size={20} />
@@ -463,7 +465,7 @@ export default async function HomePage() {
       <section style={{ padding: 'var(--space-10) var(--gutter-desktop)' }}>
         <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', display: 'grid', gap: 'var(--space-6)' }}>
           <h2 style={{ margin: 0, font: 'var(--weight-bold) 32px/1.2 var(--font-display)' }}>Explorer par ville</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--space-5)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-5)' }}>
             {/*
               Real counts, and real links. The tiles carried invented figures
               ("412 chambres") and a cursor:pointer with nothing behind it.
@@ -489,7 +491,7 @@ export default async function HomePage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'var(--sable-500)',
+                    color: 'var(--text-body)',
                     font: 'var(--type-caption)',
                     letterSpacing: 'var(--ls-caps)',
                     textTransform: 'uppercase',
@@ -535,7 +537,7 @@ export default async function HomePage() {
             >
               Vous avez une chambre libre ?
             </h2>
-            <p style={{ margin: 0, font: 'var(--type-body-lg)', color: 'var(--clay-50)', maxWidth: 520 }}>
+            <p style={{ margin: 0, font: 'var(--type-body-lg)', color: 'var(--text-on-brand)', maxWidth: 520 }}>
               Publiez gratuitement, choisissez vos colocataires, encaissez le loyer en ligne.
             </p>
           </div>
@@ -549,10 +551,10 @@ export default async function HomePage() {
               height: '3.25rem',
               padding: '0 1.3rem',
               background: '#fff',
-              color: 'var(--text-primary)',
+              color: 'var(--text-heading)',
               border: 'none',
               borderRadius: 'var(--radius-pill)',
-              font: 'var(--weight-semibold) var(--type-body-md) var(--font-ui)',
+              font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
               boxShadow: 'var(--shadow-sm)',
               cursor: 'pointer',
             }}

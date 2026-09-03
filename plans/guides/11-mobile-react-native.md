@@ -55,14 +55,14 @@ apps/
 ```ts
 // theme/tokens.ts — transcribed from design-system/tokens/*.css
 export const color = {
-  clay500: '#C05F3C',  clay600: '#A94E2E',  clay50: '#FDF1EC',
+  clay500: '#B55535',  clay600: '#A94E2E',  clay50: '#FDF1EC',
   sand400: '#DDA046',
   sable0: '#FFFFFF',   sable50: '#FBF7F2',  sable100: '#F5EFE7',
   sable200: '#E9E1D6',  sable500: '#8C8075', sable600: '#6E635C',
   sable900: '#241F1C',
   atlas500: '#35786A', saffron500: '#C98A16', rose500: '#B33A2B',
 
-  brand: '#C05F3C',
+  brand: '#B55535',
   bgPage: '#FBF7F2',
   surfaceCard: '#FFFFFF',
   textHeading: '#241F1C',

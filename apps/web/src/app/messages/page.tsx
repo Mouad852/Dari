@@ -82,7 +82,7 @@ export default function InboxPage() {
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
-        color: 'var(--text-primary)',
+        color: 'var(--text-heading)',
       }}
     >
       <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', padding: 'var(--space-6) 0 var(--space-8)' }}>
@@ -112,7 +112,7 @@ export default function InboxPage() {
                 minHeight: 32,
                 borderRadius: 'var(--radius-pill)',
                 background: 'var(--brand-subtle)',
-                color: 'var(--brand)',
+                color: 'var(--clay-700)',
                 padding: '0.45rem 0.8rem',
                 font: 'var(--weight-medium) var(--type-label) var(--font-ui)',
               }}
@@ -222,7 +222,7 @@ export default function InboxPage() {
                       border: '1px solid var(--border-default)',
                       background: 'var(--surface-card)',
                       borderRadius: 'var(--radius-pill)',
-                      color: 'var(--text-primary)',
+                      color: 'var(--text-heading)',
                       padding: '0.7rem 1.3rem',
                       font: 'var(--type-body-sm)',
                       cursor: loadingMore ? 'default' : 'pointer',
