@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { ArrowLeft, ArrowRight, Heart, List, Map as MapIcon, MapPin as MapPinIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Heart, List, Map as MapIcon, MapPin as MapPinIcon, SlidersHorizontal } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -267,6 +267,9 @@ function SearchResultsPageContent() {
   const [furnishing, setFurnishing] = useState(searchParams.get('furnishing') ?? '');
   const [amenities, setAmenities] = useState<string[]>(() => searchParams.getAll('amenities'));
   const [resultCount, setResultCount] = useState<{ count: number; capped: boolean } | null>(null);
+  // Only meaningful below the 900px breakpoint; above it CSS keeps the rail
+  // visible regardless, so this never has to know the viewport width.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [amenityOptions, setAmenityOptions] = useState<string[]>([]);
   const [priceMin, setPriceMin] = useState(searchParams.get('priceMin') ?? '');
   const [priceMax, setPriceMax] = useState(searchParams.get('priceMax') ?? '');
@@ -482,6 +485,36 @@ function SearchResultsPageContent() {
     updateUrl();
   };
 
+  /**
+   * Clears every narrowing filter, keeping the city.
+   *
+   * The city is the search itself rather than a refinement of it, so resetting
+   * to no city would empty the page instead of widening it.
+   */
+  const resetFilters = () => {
+    setNeighborhood('');
+    setPropertyType('');
+    setRoomType('');
+    setFurnishing('');
+    setPriceMin('');
+    setPriceMax('');
+    setAvailableFrom('');
+    setAmenities([]);
+    // Every cleared field is passed as an override, not left to state: these
+    // setters have not flushed yet when updateUrl runs, so reading state here
+    // would rebuild the URL from the values being cleared.
+    updateUrl(view, radius, {
+      neighborhood: '',
+      propertyType: '',
+      roomType: '',
+      furnishing: '',
+      amenities: [],
+      priceMin: '',
+      priceMax: '',
+      availableFrom: '',
+    });
+  };
+
   const toggleView = (nextView: ViewValue) => {
     setView(nextView);
     updateUrl(nextView);
@@ -639,6 +672,26 @@ function SearchResultsPageContent() {
     };
   }, [city, currentSort, effectiveRadiusM, furnishing, hasRadiusMode, neighborhood, priceMax, priceMin, propertyType, referencePoint.lat, referencePoint.lng, roomType, searchParams, view]);
 
+  /**
+   * How many filters are actually narrowing the search.
+   *
+   * City is excluded: every search has one, so counting it would mean the
+   * button always claimed at least one active filter and "Réinitialiser" would
+   * look like it had something to undo on a completely untouched page.
+   */
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (neighborhood.trim()) n += 1;
+    if (propertyType) n += 1;
+    if (roomType) n += 1;
+    if (furnishing) n += 1;
+    if (priceMin) n += 1;
+    if (priceMax) n += 1;
+    n += amenities.length;
+    if (availableFrom) n += 1;
+    return n;
+  }, [amenities, availableFrom, furnishing, neighborhood, priceMax, priceMin, propertyType, roomType]);
+
   const resultHeading = useMemo(() => {
     // Previously this reported listings.length -- the number of rows *loaded* --
     // so a search of 12,500 listings in Rabat announced "20 annonces à Rabat"
@@ -705,54 +758,19 @@ function SearchResultsPageContent() {
           <span style={{ font: 'var(--type-caption)', color: 'var(--text-subtle)' }}>{city} · Colocation</span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-5)' }}>
-          <div>
-            <h1 style={{ margin: 0, font: 'var(--weight-bold) 32px/1.2 var(--font-display)' }}>{resultHeading}</h1>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-5)', flexWrap: 'wrap', minWidth: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <h1 style={{ margin: 0, font: 'var(--weight-bold) clamp(24px, 5vw, 32px)/1.2 var(--font-display)' }}>{resultHeading}</h1>
             <p style={{ marginTop: 6, font: 'var(--type-body-sm, 13px)', color: 'var(--text-muted)' }}>Mises à jour aujourd'hui · loyers charges comprises</p>
           </div>
 
-          <div style={{ display: 'inline-flex', background: 'var(--surface-muted)', borderRadius: 'var(--radius-pill)', padding: '0.25rem', border: '1px solid var(--border-hairline)' }}>
-            {visibleSorts.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setSort(option.value)}
-                style={{
-                  background: currentSort === option.value ? 'var(--sable-900)' : 'transparent',
-                  color: currentSort === option.value ? '#fff' : 'var(--text-primary)',
-                  border: 'none',
-                  borderRadius: 'var(--radius-pill)',
-                  padding: '0.55rem 0.9rem',
-                  font: 'var(--type-body-sm)',
-                  cursor: 'pointer',
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 'var(--space-7)', alignItems: 'start' }}>
-          <aside
-            style={{
-              position: 'sticky',
-              top: 'calc(var(--nav-h-desktop) + 24px)',
-              display: 'grid',
-              gap: 'var(--space-6)',
-              alignContent: 'start',
-            }}
-          >
-            <div
-              style={{
-                ...cardStyle,
-                display: 'grid',
-                gap: 'var(--space-5)',
-                padding: 'var(--card-pad-lg)',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)' }}>
-                <h3 style={{ margin: 0, font: 'var(--type-h3)' }}>Filtres</h3>
+          {/*
+            The view switch lives with the results, not inside the filter panel.
+            It controls how results are presented, not what is matched -- and in
+            a 300px rail its row measured 341px, which is what pushed the panel's
+            contents under the results grid.
+          */}
+          <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
                 <div style={{ display: 'inline-flex', gap: '0.25rem', background: 'var(--surface-muted)', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-hairline)', padding: '0.2rem' }}>
                   <button
                     type="button"
@@ -793,7 +811,95 @@ function SearchResultsPageContent() {
                     Carte
                   </button>
                 </div>
-              </div>
+
+          <div
+            className="scroll-row"
+            style={{ display: 'inline-flex', flexShrink: 0, maxWidth: '100%', background: 'var(--surface-muted)', borderRadius: 'var(--radius-pill)', padding: '0.25rem', border: '1px solid var(--border-hairline)' }}
+          >
+            {visibleSorts.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setSort(option.value)}
+                style={{
+                  background: currentSort === option.value ? 'var(--sable-900)' : 'transparent',
+                  color: currentSort === option.value ? '#fff' : 'var(--text-primary)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-pill)',
+                  padding: '0.55rem 0.9rem',
+                  font: 'var(--type-body-sm)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          </div>
+        </div>
+
+        {/*
+          Below 900px the rail is a disclosure panel: a seeker arrives to read
+          results, and a full filter column ahead of them is the wrong default.
+          Hidden above the breakpoint by CSS, so no viewport check is needed here.
+        */}
+        <button
+          type="button"
+          className="search-filters-toggle"
+          onClick={() => setFiltersOpen((open) => !open)}
+          aria-expanded={filtersOpen}
+          style={{
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            width: '100%',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-pill)',
+            background: 'var(--surface-card)',
+            color: 'var(--text-primary)',
+            padding: '0.8rem 1rem',
+            font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)',
+            cursor: 'pointer',
+          }}
+        >
+          <SlidersHorizontal size={16} />
+          {filtersOpen ? 'Masquer les filtres' : 'Filtres'}
+          {activeFilterCount > 0 && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: 20,
+                height: 20,
+                borderRadius: 'var(--radius-pill)',
+                background: 'var(--sable-900)',
+                color: '#fff',
+                font: 'var(--type-label)',
+              }}
+            >
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+
+        <div className="search-layout">
+          <aside
+            className="search-filters"
+            data-collapsed={filtersOpen ? 'false' : 'true'}
+            style={{ gap: 'var(--space-6)', alignContent: 'start' }}
+          >
+            <div
+              style={{
+                ...cardStyle,
+                display: 'grid',
+                gap: 'var(--space-5)',
+                padding: 'var(--card-pad-lg)',
+              }}
+            >
+              <h3 style={{ margin: 0, font: 'var(--type-h3)' }}>Filtres</h3>
 
               <div style={{ display: 'grid', gap: '0.75rem', color: 'var(--text-muted)', font: 'var(--type-body-md)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' }}>
@@ -897,10 +1003,16 @@ function SearchResultsPageContent() {
                               key={amenity}
                               type="button"
                               onClick={() => toggleAmenity(amenity)}
+                              aria-pressed={selected}
                               style={{
-                                border: selected ? '1px solid var(--brand)' : '1px solid var(--border-default)',
-                                background: selected ? 'var(--sand-100)' : 'transparent',
-                                color: 'var(--text-primary)',
+                                // Selected chips invert to charcoal, not
+                                // terracotta: the design system reserves the
+                                // brand colour for the primary action, and a
+                                // terracotta chip competes with "Voir les
+                                // annonces" sitting directly beneath it.
+                                border: selected ? '1px solid var(--sable-900)' : '1px solid var(--border-default)',
+                                background: selected ? 'var(--sable-900)' : 'transparent',
+                                color: selected ? '#fff' : 'var(--text-primary)',
                                 borderRadius: 'var(--radius-pill)',
                                 padding: '0.45rem 0.7rem',
                                 font: 'var(--type-label)',
@@ -931,7 +1043,25 @@ function SearchResultsPageContent() {
                   </>
                 )}
 
-                <button type="button" onClick={applyFilters} style={{ border: 0, borderRadius: 'var(--radius-pill)', background: 'var(--brand)', color: '#fff', padding: '0.7rem 1rem', font: 'var(--type-body-sm)', cursor: 'pointer' }}>Appliquer les filtres</button>
+                <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+                  <button type="button" onClick={applyFilters} style={{ border: 0, borderRadius: 'var(--radius-pill)', background: 'var(--brand)', color: '#fff', padding: '0.7rem 1rem', font: 'var(--type-body-sm)', cursor: 'pointer' }}>
+                    {resultCount
+                      ? resultCount.capped
+                        ? 'Voir plus de 200 annonces'
+                        : `Voir ${resultCount.count} annonce${resultCount.count > 1 ? 's' : ''}`
+                      : 'Appliquer les filtres'}
+                  </button>
+                  {/* Offered only when there is something to undo. */}
+                  {activeFilterCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={resetFilters}
+                      style={{ border: 0, background: 'transparent', color: 'var(--text-muted)', padding: '0.4rem', font: 'var(--type-body-sm)', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Réinitialiser
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </aside>
@@ -953,7 +1083,7 @@ function SearchResultsPageContent() {
               </div>
             ) : (
               <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-5)' }}>
+                <div className="results-grid">
                   {!loading && listings.length === 0 ? (
                     <div style={{ gridColumn: '1 / -1', ...cardStyle, padding: '2rem', color: 'var(--text-muted)' }}>
                       Aucune annonce n'a été trouvée pour cette recherche.

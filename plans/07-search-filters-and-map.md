@@ -28,10 +28,10 @@ That amenity exception is the single most likely thing in this phase to be imple
 - [x] Index review (2026-09-02). `V15__search_sort_indexes.sql`: recently-updated had no index and took 21.6 ms per page (now 0.38 ms); the price index lacked `id`, so the keyset tiebreaker needed an incremental sort (now a pure index scan in both directions). Also verified the CASE-based ORDER BY does not defeat index usage, including under repeated prepared-statement execution.
 
 **Frontend**
-- [ ] Desktop sticky filter rail, from `ui_kits/website/SearchResultsPage.jsx`
-- [ ] Mobile filter bottom sheet, from `ui_kits/mobile_app/FiltersSheet.jsx`
-- [ ] Filter chip row with active-filter counts, and a reset — *Réinitialiser*
-- [ ] Selected chips invert to **charcoal, not terracotta**, so selection never competes with the primary action (a design-system rule that is easy to miss)
+- [x] Desktop sticky filter rail (2026-09-03). Widened to fit its own contents — the 300px track was 83px narrower than the panel needed, so 19 elements were painted under the results grid.
+- [~] Mobile filters (2026-09-03) — implemented as a disclosure panel behind a "Filtres" button with an active-filter count, not the prototype's bottom sheet. The layout bug it fixes was real (114px of horizontal page overflow); porting the sheet's exact presentation from `ui_kits/mobile_app/FiltersSheet.jsx` is still open.
+- [x] Active-filter count on the mobile Filtres button, and *Réinitialiser* shown only when something is active (2026-09-03). Reset keeps the city, which is the search rather than a refinement of it.
+- [x] Selected chips invert to charcoal, not terracotta (2026-09-03) — verified in the browser as `rgb(36, 31, 28)` on white text.
 - [ ] Full listing detail page, from `ui_kits/mobile_app/ListingScreen.jsx` — photo header with glass controls, price block, logement / colocataires / règles tabs, sticky contact bar
 - [x] Map view with Leaflet, pins and a popup linking to the listing; already built, corrected 2026-09-02
 - [x] All filter state in the URL; already built, corrected 2026-09-02

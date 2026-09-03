@@ -639,3 +639,56 @@ marketplace a photo-less results feed is a serious product gap, and it needs a b
 
 Suite: **94 tests, 0 failures** (was 93; +1 for public media). The dev database now holds 28 seeded
 listings and 12 photos for local inspection.
+
+**T2.3 filter UI — done (2026-09-03).**
+
+Built against the measurements from the visual pass rather than the plan doc's bullets, and verified
+in the browser at each step instead of at the end.
+
+**The app had no media queries at all.** Every layout was an inline `style={{...}}` with hard-coded
+pixel tracks, and an inline style cannot express a breakpoint — which is the underlying reason
+nothing in the product was responsive. `src/styles/app.css` now carries the first real breakpoints,
+in CSS rather than a JS width hook: a hook resolves after hydration, so every load would visibly
+reflow, and this project's own quality floor asks for no layout shift.
+
+- **The rail's own grid track was sizing itself to its content** — 382.78px inside a 360px box, which
+  is what pushed the panel out from the inside and left 19 elements painted under the results.
+  `minmax(0, 1fr)` plus `min-width: 0` on the grid items fixed it: the inner card went from 383px to
+  360px and the residual overshoot is 1.78px of border rounding.
+- **The view switch moved out of the filter panel** to sit beside the sort control. It belongs with
+  the results — it changes how they are presented, not what is matched — and inside a 300px rail its
+  row measured 341px, which was the single largest source of the overflow.
+- **Mobile gets a disclosure panel**, not a column: the rail is hidden below 900px behind a "Filtres"
+  button carrying a count of active filters. A seeker arrives to read results, and a full filter
+  column ahead of them is the wrong default.
+- **Rows that used to widen the page now scroll inside themselves.** The sort options overflow their
+  container by design and scroll; the page does not. Horizontal page overflow went from **114px to
+  0** at the narrowest viewport tested.
+- **Selected chips invert to charcoal, not terracotta** — verified as `rgb(36, 31, 28)` on white
+  text. The design system reserves the brand colour for the primary action, and a terracotta chip
+  competes with the apply button sitting directly beneath it.
+- **The apply button carries the count**: "Voir 5 annonces", falling back to "Appliquer les filtres"
+  before the count arrives. This is the `plans/07` copy requirement, now real — watched live going
+  from 7 to 5 when an amenity filter was applied. **Réinitialiser** appears only when there is
+  something to undo, and clears every narrowing filter while keeping the city, since the city is the
+  search rather than a refinement of it.
+
+**A CSS precedence trap, hit twice and worth recording:** an inline `display` beats a class rule, so
+the first version left the mobile toggle visible on desktop and the rail permanently open on mobile —
+the media queries were correct and simply lost. Both elements now declare `display` in CSS only.
+Found by looking at the rendered page, not by reading the code, and it would have been invisible to
+any test in this repo.
+
+**Disclosed, not fixed, both pre-existing and outside this step:**
+
+1. **Deep-linking to the map does not stick.** Loading `/listings?view=map` directly rewrites itself
+   to `view=results` before the map mounts; clicking "Carte" works correctly and renders 7 markers
+   for 7 listings. A shared or bookmarked map URL silently lands on the list.
+2. **Selecting amenity chips quickly loses selections.** Each chip click writes the URL immediately
+   from state that has not flushed, so a second click within the same render reads the pre-first-click
+   value and overwrites it — last write wins. Reproduced by clicking two chips in succession and
+   getting one.
+
+Frontend `typecheck` and `build` clean. Verified in a real browser at 1440px and at the narrowest
+viewport the tool allows, including the disclosure toggle, chip selection, reset, live count and the
+map view.

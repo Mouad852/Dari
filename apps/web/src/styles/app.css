@@ -49,3 +49,114 @@ body {
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
 }
+
+/* ---------------------------------------------------------------------------
+   Search layout (phase 07)
+
+   The first real breakpoints in the app. Until now every layout was inline
+   `style={{...}}` with hard-coded pixel tracks, which cannot express a media
+   query -- so the search page shipped a 300px filter column that never
+   collapsed. A browser pass measured the result: the rail's content needs
+   383px, so 25 elements overflowed it and were painted under the results grid
+   on desktop, and a 500px viewport scrolled 114px horizontally.
+
+   Done in CSS rather than a JS width hook on purpose: a hook resolves after
+   hydration, which means a visible reflow on every load, and the quality floor
+   this project sets asks for no layout shift.
+   --------------------------------------------------------------------------- */
+
+.search-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* A grid item defaults to min-width:auto, so its content can force the track
+   wider than the track was declared. That is why the rail measured 383px inside
+   a 360px column and spilled under the results. Both columns opt out. */
+.search-layout > * {
+  min-width: 0;
+}
+
+/* The rail is itself a grid, and its implicit track was sized to its content --
+   382.78px inside a 360px box, which is what pushed the panel out from the
+   inside. minmax(0, 1fr) lets the track be narrower than its content wants,
+   which is what makes the inner card wrap instead of overflow. */
+.search-filters {
+  /* `display` belongs here for the same reason as the toggle: an inline
+     declaration would win over the collapse rule below and the rail would stay
+     open on mobile no matter what the disclosure button did. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.search-filters > * {
+  min-width: 0;
+}
+
+/* The rail is wider than the old 300px because its own contents measured 383px.
+   Sizing it to fit the content, rather than clipping the content to fit it. */
+@media (min-width: 900px) {
+  .search-layout {
+    grid-template-columns: minmax(320px, 360px) 1fr;
+    gap: var(--space-7);
+  }
+
+  .search-filters {
+    position: sticky;
+    top: calc(var(--nav-h-desktop) + 24px);
+  }
+}
+
+/* Below the breakpoint the rail is a disclosure panel rather than a column, so
+   filters never occupy the screen a seeker came to read results on. */
+.search-filters[data-collapsed='true'] {
+  display: none;
+}
+
+/* `display` lives here, not in an inline style: an inline declaration wins over
+   a class rule, so a `display` set on the element would defeat the media query
+   below and leave the toggle visible on desktop. */
+.search-filters-toggle {
+  display: inline-flex;
+}
+
+@media (min-width: 900px) {
+  .search-filters[data-collapsed='true'] {
+    display: grid;
+  }
+
+  .search-filters-toggle {
+    display: none;
+  }
+}
+
+/* Rows that would otherwise push the page wide scroll within themselves. */
+.scroll-row {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-row::-webkit-scrollbar {
+  display: none;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+}
+
+@media (min-width: 620px) {
+  .results-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  .results-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
