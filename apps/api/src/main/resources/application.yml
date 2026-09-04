@@ -27,7 +27,20 @@ spring:
     # strand the schema: expand, backfill, switch reads, contract later.
 
   jackson:
-    default-property-inclusion: non_null
+    # `always`, not `non_null`. Omitting nulls made the wire disagree with the
+    # TypeScript the web client is written against: every response DTO field is
+    # declared `T | null` there, but an absent key arrives as `undefined`, and
+    # `undefined !== null` is true -- so nine `x !== null` guards in the client
+    # rendered their branch for a field the server had simply not sent. The
+    # listing detail page showed "chambre", "salle de bain" and
+    # "Séjour minimum : mois" with the numbers missing.
+    #
+    # The two DTOs that genuinely want omission say so themselves with
+    # @JsonInclude(NON_NULL) -- ErrorResponse's optional `details`, and
+    # CursorPage's `nextCursor`, whose absence is what "no more pages" means --
+    # and an annotation beats this setting, so both keep the shape their
+    # consumers expect.
+    default-property-inclusion: always
 
   servlet:
     multipart:

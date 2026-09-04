@@ -1472,22 +1472,51 @@ default; the map picker writing real coordinates into the draft; the Validation 
 entirely real state; and `POST /listings/{id}/submit` moving the listing to **PENDING_REVIEW** —
 confirmed in the database, and shown on `/account/listings` as "En cours de vérification".
 
-### Where the walk stopped
+### The loop closed
 
-Approving the listing needs an admin, and promoting the test account is a write to the dev database
-that the sandbox declined. The remaining half of the loop is one command:
+With the test account promoted to ADMIN, the rest ran through: the listing appeared in
+`/admin/listings` as "1 en attente", **Valider** moved it to `PUBLISHED`, an `APPROVE_LISTING` /
+`LISTING` row landed in `admin_actions`, and the queue emptied. It is in the `published_listings`
+view, first in `/listings?city=Rabat&neighborhood=Agdal` with its real 2400px photo, and its detail
+page server-renders the real title into the HTML source with JSON-LD attached.
 
-    docker exec dari-db psql -U dari -d dari \
-      -c "UPDATE users SET role = 'ADMIN' WHERE email = 'dari.qa.owner@example.com';"
+**The privacy model verified end to end for the first time.** The owner placed the pin at
+`33.97649, -6.84980`; `GET /listings/{id}` returns `33.978262, -6.849814` — **197 m away**, inside
+the fuzzer's 200 m radius, with the exact point never leaving the server. Every claim the wizard
+makes to an owner about what seekers see is now measured rather than asserted.
 
-Test fixtures left behind, to remove when the loop is finished: the Firebase user
-`dari.qa.owner@example.com`, its `users` row, and the listing
-`01a069e1-7f24-7ecc-9b9e-65e98249a750`.
+**This full loop — publish, submit, approve, appear in search — had never once completed.**
 
-### Also noticed, not fixed
+### The wire disagreed with the types
 
-`/account/listings` renders the `PHOTO` placeholder box for a listing that has a real cover photo.
-It is one of the two remaining hand-rolled surfaces and will be fixed when it is rebuilt.
+The listing detail page showed a bare "chambre", "salle de bain" and "Séjour minimum : mois", with
+the numbers missing, on the first listing ever published through the wizard.
+
+`spring.jackson.default-property-inclusion: non_null` omitted null properties, so an unset field
+arrived as `undefined` while `src/types/api.ts` declares every one of them `T | null` — and
+`undefined !== null` is true, so the guards passed and the spans rendered empty. Two changes: the
+API sends nulls now, which makes the declared contract true (the two DTOs that genuinely want
+omission — `ErrorResponse.details` and `CursorPage.nextCursor`, where absence *is* the meaning —
+carry their own `@JsonInclude(NON_NULL)`, which wins over the global setting); and the four guards
+went loose (`!= null`), because a page should not print a unit with no quantity if a payload ever
+changes shape again. **95 backend tests pass** after the change.
+
+### Test fixtures left behind
+
+To remove when you are done looking: the Firebase user `dari.qa.owner@example.com` (console →
+Authentication → Users; only you can delete that one), its `users` row, and the listing
+`01a069e1-7f24-7ecc-9b9e-65e98249a750`. The account is still `ADMIN` in the dev database.
+
+### Found and not fixed: moderators cannot see the photo
+
+`/admin/listings` and `/account/listings` both render `ListingCard`'s `PHOTO` placeholder for a
+listing that has a real cover. It is not a client bug — `coverPhotoUrl` exists **only** on
+`PublicListingResponse`; the owner and admin DTOs do not carry it.
+
+For `/account/listings` that is cosmetic. For the moderation queue it is not: **a moderator decides
+approve-or-reject without ever seeing the photograph**, which is the single most likely thing to be
+wrong with a listing. Worth doing before the admin screens are restyled, and it is a backend change
+— the cover has to reach the DTO first.
 
 ### Next
 

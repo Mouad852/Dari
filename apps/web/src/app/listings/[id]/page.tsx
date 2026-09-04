@@ -162,12 +162,28 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
           </section>
         )}
 
-        {(listing.amenityCodes.length > 0 || listing.numBedrooms !== null || listing.numBathrooms !== null) && (
+        {/*
+          `!= null`, loose on purpose, at all four sites below.
+
+          These fields are declared `number | null` in src/types/api.ts, but the
+          API was configured to omit null properties, so an unset one arrived as
+          `undefined` — and `undefined !== null` is true. The guards passed, the
+          spans rendered, and the page showed a bare "chambre", "salle de bain"
+          and "Séjour minimum : mois" with the numbers missing. Found on the
+          first listing ever published through the wizard, which had none of
+          them filled in.
+
+          The server now sends nulls (spring.jackson.default-property-inclusion),
+          so the declared type is true again. These stay loose anyway: a page
+          should not print a unit with no quantity because a payload changed
+          shape.
+        */}
+        {(listing.amenityCodes.length > 0 || listing.numBedrooms != null || listing.numBathrooms != null) && (
           <section>
             <h2 style={sectionHeadingStyle}>Le logement</h2>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
-              {listing.numBedrooms !== null && <span>{listing.numBedrooms} chambre{listing.numBedrooms > 1 ? 's' : ''}</span>}
-              {listing.numBathrooms !== null && <span>{listing.numBathrooms} salle{listing.numBathrooms > 1 ? 's' : ''} de bain</span>}
+              {listing.numBedrooms != null && <span>{listing.numBedrooms} chambre{listing.numBedrooms > 1 ? 's' : ''}</span>}
+              {listing.numBathrooms != null && <span>{listing.numBathrooms} salle{listing.numBathrooms > 1 ? 's' : ''} de bain</span>}
               {listing.amenityCodes.map((code) => (
                 <span key={code}>{AMENITY_LABELS[code] ?? code}</span>
               ))}
@@ -187,7 +203,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
                 {new Intl.DateTimeFormat('fr-MA').format(new Date(`${listing.availableFrom}T00:00:00`))}
               </span>
             )}
-            {listing.minStayMonths !== null && <span>Séjour minimum : {listing.minStayMonths} mois</span>}
+            {listing.minStayMonths != null && <span>Séjour minimum : {listing.minStayMonths} mois</span>}
           </div>
         </section>
 
