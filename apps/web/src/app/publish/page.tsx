@@ -196,23 +196,32 @@ function PublishWizard() {
   });
 
   /**
-   * The six fields CreateListingRequest marks @NotBlank/@NotNull, checked here
-   * so the wizard names the missing one instead of bouncing off a 400.
+   * The six fields `CreateListingRequest` marks @NotBlank/@NotNull, checked so
+   * the wizard names the missing one instead of bouncing off a 400 — but only
+   * as far as the step the owner has actually reached.
    *
-   * The guard used to cover latitude, longitude and the rent only, which left
-   * the two text fields to the server — and "Quartier requis" was reachable
-   * simply by not touching a control, because the neighbourhood select showed
-   * "Agdal" over empty state. Ville is in the list for completeness; a closed
-   * select cannot currently be empty.
+   * This is checked per step because the whole-form version could not be
+   * satisfied from step 1: the rent lives on step 2, so pressing Suivant on
+   * step 1 asked for a field that was not on screen and the wizard could never
+   * advance. That was true before the guard named its fields too — the old
+   * condition required `monthlyRent` on the same first press — so publishing
+   * has never worked from a fresh start. Found by walking the flow in a browser
+   * with a real account, which nothing before this could do.
+   *
+   * `through` is the index of the last step whose fields count. Step 0 collects
+   * everything but the rent; step 1 adds it.
    */
-  const missingRequired = (): string | null => {
+  const missingThrough = (through: number): string | null => {
     if (!title.trim()) return 'Donnez un titre à votre annonce avant de continuer.';
     if (!city.trim()) return 'Choisissez une ville avant de continuer.';
     if (!district.trim()) return 'Renseignez le quartier avant de continuer.';
     if (!latitude || !longitude) return 'Placez un point sur la carte pour indiquer où se trouve le logement.';
-    if (!monthlyRent.trim()) return 'Renseignez le loyer mensuel avant de continuer.';
+    if (through >= 1 && !monthlyRent.trim()) return 'Renseignez le loyer mensuel avant de continuer.';
     return null;
   };
+
+  /** Everything the API requires. Null means a draft row can be written. */
+  const missingRequired = (): string | null => missingThrough(STEPS.length - 1);
 
   const persistDraft = async (token: string) => {
     const missing = missingRequired();
@@ -338,6 +347,14 @@ function PublishWizard() {
   };
 
   const saveAndContinue = async () => {
+    // Only what this step was responsible for. Complaining about the rent while
+    // standing on the step before it is what made the wizard impassable.
+    const missingHere = missingThrough(stepIndex);
+    if (missingHere) {
+      setError(missingHere);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
@@ -346,7 +363,12 @@ function PublishWizard() {
         setError('Connectez-vous pour enregistrer votre brouillon.');
         return;
       }
-      await persistDraft(token);
+      // The draft row cannot exist until the API has all six required fields,
+      // so step 1 advances without writing anything and the badge keeps telling
+      // the truth: "Brouillon non enregistré" until there is a row to enregistrer.
+      if (!missingRequired()) {
+        await persistDraft(token);
+      }
       setStepIndex((value) => value + 1);
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'Impossible d’enregistrer le brouillon.');
@@ -385,10 +407,32 @@ function PublishWizard() {
   };
 
   const isLastStep = stepIndex === STEPS.length - 1;
-  // The server refuses a submission with no active photo, so the wizard says so
-  // here rather than letting the owner press Publier and read a 400 back.
   const missingPhotos = photos.length === 0;
-  const blockedFromPublishing = isLastStep && missingPhotos;
+
+  /**
+   * What `ListingSearchService.submit` demands on top of what a draft needs.
+   *
+   * A draft row only needs the six fields the create DTO marks required. The
+   * submit gate adds four more — description, at least one photo, a property
+   * type and a room type — and this wizard only knew about the photo, so
+   * pressing Publier with everything else filled in returned a bare
+   * "Description requise" from the server. Found by publishing a real listing
+   * with a real account, which is a thing that has never worked from a fresh
+   * start until now.
+   *
+   * Property and room type are closed selects that hold a default, so they
+   * cannot actually be empty here; they are listed because the server checks
+   * them and this function is meant to be a mirror of that gate, not a subset
+   * that happens to pass today.
+   */
+  const missingForSubmit = (): string | null =>
+    missingRequired() ??
+    (!description.trim() ? 'Ajoutez une description avant de publier.' : null) ??
+    (missingPhotos ? 'Ajoutez au moins une photo avant de publier.' : null) ??
+    (!propertyType ? 'Choisissez un type de bien avant de publier.' : null) ??
+    (!roomType ? 'Choisissez un type de chambre avant de publier.' : null);
+
+  const submitBlocker = isLastStep ? missingForSubmit() : null;
 
   return (
     <main
@@ -812,7 +856,8 @@ function PublishWizard() {
                 <SummaryRow required label="Loyer" value={monthlyRent.trim() ? `${monthlyRent.trim()} MAD` : undefined} />
                 <SummaryRow label="Type de bien" value={PROPERTY_TYPE_LABELS[propertyType]} />
                 <SummaryRow label="Type de chambre" value={ROOM_TYPE_LABELS[roomType]} />
-                <SummaryRow label="Description" value={description.trim() ? 'Rédigée' : undefined} />
+                {/* Required: submit() refuses a listing with a blank description. */}
+                <SummaryRow required label="Description" value={description.trim() ? 'Rédigée' : undefined} />
                 <SummaryRow
                   label="Équipements"
                   value={selectedAmenities.length > 0 ? `${selectedAmenities.length} sélectionné${selectedAmenities.length > 1 ? 's' : ''}` : undefined}
@@ -826,10 +871,9 @@ function PublishWizard() {
                 />
               </dl>
 
-              {missingPhotos && (
+              {submitBlocker && (
                 <p role="alert" style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--danger)' }}>
-                  Ajoutez au moins une photo à l’étape précédente : une annonce sans photo ne peut pas
-                  être publiée.
+                  {submitBlocker} Revenez à l’étape concernée pour la compléter.
                 </p>
               )}
 
@@ -882,7 +926,7 @@ function PublishWizard() {
             variant="primary"
             iconRight={isLastStep ? undefined : 'chevron-right'}
             loading={submitting}
-            disabled={saved || blockedFromPublishing}
+            disabled={saved || submitBlocker !== null}
             onClick={() => {
               if (isLastStep) {
                 void publish();

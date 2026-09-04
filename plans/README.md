@@ -1417,6 +1417,78 @@ the newest messages are several "Voir les messages suivants" away. Scrolling to 
 loaded does not fix that — the fix is a backend one, paging backwards from the most recent, and it
 belongs with the T5 messaging work rather than in a kit rebuild.
 
+## The first real sign-in, and the three things it found (2026-09-04)
+
+`NEXT_PUBLIC_FIREBASE_API_KEY` is filled in, so an account could sign in for the first time and the
+owner loop could be walked in a browser instead of reasoned about. It found three defects in the
+first ten minutes, none of which any amount of typechecking would have surfaced.
+
+### 1. Every authenticated page rendered its signed-out state on a fresh load
+
+`getIdToken()` read `auth.currentUser` synchronously. Firebase restores a persisted session from
+IndexedDB **asynchronously**, so on any hard load or refresh `currentUser` was still null when the
+page's mount effect asked for a token — and the page concluded the user was signed out.
+
+The network log is unambiguous: on a reload of `/publish` the only requests were `/amenities` and
+Firebase's own `accounts:lookup`. `GET /listings/draft` was never called at all.
+
+This is the bug behind everything that looked like a config problem: the inbox saying it could not
+load your conversations, the wizard failing to resume a draft it had just written, and the same on
+`/account`, `/favorites` and the admin console. One line fixes all of them — `await
+auth.authStateReady()` before reading `currentUser`. Verified after: the draft resumes across a
+hard reload with its title, neighbourhood and map pin intact, and the inbox shows its real empty
+state rather than an error.
+
+It survived this long precisely because the config *was* broken, so the symptom had a plausible
+wrong explanation.
+
+### 2. The wizard could never advance past step 1
+
+`persistDraft` required `monthlyRent`, and the rent field is on step 2. So pressing Suivant on step 1
+asked for a field that was not on screen, and the message — correct, and mine — was
+"Renseignez le loyer mensuel avant de continuer."
+
+The old guard had the same condition, so **publishing has never worked from a fresh start**; the
+clearer message just made it obvious. Validation is now per step: step 0 collects everything except
+the rent, step 1 adds it, and the draft row is only written once the API has all six fields it
+requires. Until then the badge honestly reads "Brouillon non enregistré", because there is nothing
+saved yet.
+
+### 3. The submit gate asks for four things the wizard only knew one of
+
+`ListingSearchService.submit` requires a description, at least one photo, a property type and a room
+type — on top of the six the create DTO requires. The wizard only guarded the photo, and the
+Validation summary listed Description as *optional*. Pressing Publier with everything else filled in
+returned a bare `Description requise`.
+
+`missingForSubmit()` now mirrors that gate exactly, including the two closed selects that cannot be
+empty today — a mirror, not a subset that happens to pass.
+
+### What the walk confirmed working
+
+Signup creating both a Firebase user and a backend row; a **2.81 MB** photo uploading, being stored
+and served back at 2400×1800 as the cover, which proves the multipart raise past Spring's 1 MB
+default; the map picker writing real coordinates into the draft; the Validation summary reading
+entirely real state; and `POST /listings/{id}/submit` moving the listing to **PENDING_REVIEW** —
+confirmed in the database, and shown on `/account/listings` as "En cours de vérification".
+
+### Where the walk stopped
+
+Approving the listing needs an admin, and promoting the test account is a write to the dev database
+that the sandbox declined. The remaining half of the loop is one command:
+
+    docker exec dari-db psql -U dari -d dari \
+      -c "UPDATE users SET role = 'ADMIN' WHERE email = 'dari.qa.owner@example.com';"
+
+Test fixtures left behind, to remove when the loop is finished: the Firebase user
+`dari.qa.owner@example.com`, its `users` row, and the listing
+`01a069e1-7f24-7ecc-9b9e-65e98249a750`.
+
+### Also noticed, not fixed
+
+`/account/listings` renders the `PHOTO` placeholder box for a listing that has a real cover photo.
+It is one of the two remaining hand-rolled surfaces and will be fixed when it is rebuilt.
+
 ### Next
 
 Art-direct beyond the kit. The remaining hand-rolled surfaces are the account screens and the admin

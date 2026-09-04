@@ -33,9 +33,25 @@ export function getFirebaseAuth(): Auth {
  * Firebase ID tokens expire after an hour and the SDK refreshes them
  * transparently. A token stashed in module state or localStorage goes stale and
  * produces intermittent 401s that are miserable to reproduce.
+ *
+ * `authStateReady()` is the important line. Firebase restores a persisted
+ * session from IndexedDB *asynchronously*, and `currentUser` is null until that
+ * lands — so reading it synchronously on mount returned null for a user who was
+ * perfectly well signed in. Every authenticated page in this app asks for a
+ * token in a mount effect, which meant that on a fresh load or a hard refresh
+ * they all rendered their signed-out state: the inbox said it could not load
+ * your conversations, the publish wizard failed to resume a draft it had just
+ * written, and /account, /favorites and the admin console did the same.
+ *
+ * It looked like a config problem for as long as the config was actually
+ * broken, which is why it survived — it only became visible once a real account
+ * could sign in and reload a page. The promise resolves immediately once the
+ * first restore has completed, so this costs nothing after the first call.
  */
 export async function getIdToken(): Promise<string | null> {
-  const user = getFirebaseAuth().currentUser;
+  const auth = getFirebaseAuth();
+  await auth.authStateReady();
+  const user = auth.currentUser;
   return user ? user.getIdToken() : null;
 }
 
