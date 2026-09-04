@@ -200,3 +200,32 @@ body {
 .wizard-pair > * {
   min-width: 0;
 }
+
+/* ---------------------------------------------------------------------------
+   Moderation queue row
+
+   Photo beside the details on a wide screen, photo above them on a narrow one.
+   The queue's job is judging a photograph, so the photo column is landscape
+   (280px against a ~200px height) rather than the 160px portrait slot it had,
+   which showed a vertical sliver of a picture shot in landscape.
+
+   A media query rather than auto-fit: the two tracks are not interchangeable —
+   one is a fixed-width image, the other is text that should take the rest — so
+   there is no sensible `minmax` that expresses it.
+   --------------------------------------------------------------------------- */
+
+.moderation-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  background: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+@media (min-width: 720px) {
+  .moderation-row {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+}

@@ -31,13 +31,17 @@ export function ListingThumb({
 }) {
   if (coverPhotoUrl) {
     return (
-      <div style={{ minHeight, background: 'var(--sable-100)', position: 'relative' }}>
+      // `height: 100%` on both, with minHeight only as a floor. On
+      // /account/listings the thumb is a grid item beside a text column, so it
+      // stretches to whatever that column needs; pinning the image to minHeight
+      // instead would leave a gap under it the moment the text grew past 180px.
+      <div style={{ minHeight, height: '100%', background: 'var(--sable-100)' }}>
         <img
           src={`${apiOrigin}${coverPhotoUrl}`}
           alt={alt}
           loading="lazy"
           decoding="async"
-          style={{ display: 'block', width: '100%', height: minHeight, objectFit: 'cover' }}
+          style={{ display: 'block', width: '100%', height: '100%', minHeight, objectFit: 'cover' }}
         />
       </div>
     );

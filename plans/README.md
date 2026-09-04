@@ -1583,10 +1583,72 @@ The task loads the repo-root `.env` now and resolves `FIREBASE_CREDENTIALS_PATH`
 on the way in. The synopsis line claiming the API runs on `:8080` was wrong too, and now points at
 `API_PORT`.
 
+## The moderation queue, rebuilt (2026-09-04)
+
+Started by looking at the two dashboards left unverified in the previous pass. The cover photo does
+reach both. Looking at them turned up three more things.
+
+### The rejection reason was collected with `window.prompt`
+
+The reason is the **only** part of the moderation flow the owner ever reads, and it was typed into a
+native browser prompt: no label, no character guidance, no styling, one line of room, and browsers
+are free to suppress prompts entirely — at which point rejecting a listing silently does nothing.
+
+It is now the design system's `Dialog` with a real `Textarea`, a 500-character cap, and helper text
+that says what the box is for: *"Ce texte est envoyé au propriétaire. Écrivez ce qu'il doit changer,
+pas seulement ce qui ne va pas."* The submit button stays disabled until something is typed.
+
+### A moderator could not read the description
+
+`ListingDetail` never declared `description`, though `ListingResponse` has always sent it. So the
+queue showed a title, a city and a price — and a scam, a phone number, or discriminatory wording
+lives in the description and nowhere else. It is in the queue now, clamped to three lines.
+
+### The photo had a portrait slot
+
+160px wide by 220 tall, for photographs shot in landscape — `object-fit: cover` gave the moderator a
+vertical sliver of the one thing this screen exists to judge. The row is now a 280px landscape
+column above 720px and stacks below it, with the photo at its natural 4:3 on mobile.
+
+`.moderation-row` is a media query rather than `auto-fit`: the two tracks are not interchangeable —
+one is a fixed-width image, the other is text taking the remainder — so there is no `minmax` that
+honestly expresses it.
+
+Also on this screen: raw buttons became `Button` (including the `danger` variant, which had no call
+site before), the status chip became `Badge`, the empty state became a `Card`, and `getIdToken()`
+moved inside its try. Eight of the ten remaining are now nine.
+
+### Verified by using it
+
+The whole moderation loop was driven through the UI against the real API, not just rendered:
+
+- **Reject** with a real reason → the listing left the queue, and `/account/listings` showed the
+  owner *"Non publiée"* plus the moderator's words verbatim.
+- **Resubmit** from the owner side → back to `PENDING_REVIEW`, and the stale rejection reason
+  cleared from the display.
+- **Approve** → `PUBLISHED`. `admin_actions` holds 2 × `APPROVE_LISTING` and 1 × `REJECT_LISTING`,
+  all from real button presses.
+
+The dialog was checked for the things a dialog is usually wrong about: `aria-labelledby` wired, focus
+moved inside on open, body scroll locked, submit disabled while empty. Zero contrast failures and
+scrollWidth equal to the viewport at 390px and 1280px. 97 backend tests pass.
+
+### One thing deliberately not changed
+
+`REJECTED` renders as **"Non publiée"**, not "Rejetée", which looked like understatement until
+`lib/labels.ts` turned out to explain it: the copy rules ask for plain and non-blaming, the owner is
+given the outcome and the reason separately, and *"Rejetée" adds a verdict to a fact*. Left alone.
+
+### Carry forward
+
+`ListingThumb` now stretches to its row (`height: 100%` with `minHeight` as a floor) rather than
+pinning to a fixed height, so it cannot leave a gap when the text column grows past it.
+
+`/account/listings` still has its own hand-rolled card and is the last such surface.
+
 ### Next
 
-Art-direct beyond the kit. The remaining hand-rolled surfaces are the account screens and the admin
-screens.
+Rebuild `/account/listings` -- the last hand-rolled surface -- then art-direct beyond the kit.
 
 Carry forward: `/sign-up` still overflows horizontally at 412px. **Ten** `await getIdToken()` calls
 sit outside a try — counted, not estimated, by a brace-tracking pass over `src`; the publish wizard

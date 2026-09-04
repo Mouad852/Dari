@@ -1,9 +1,14 @@
 'use client';
 
-import { CheckCircle2, Eye, MapPin, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { Badge } from '@/components/ds/Badge';
+import { Button } from '@/components/ds/Button';
+import { Card } from '@/components/ds/Card';
+import { Dialog } from '@/components/ds/Dialog';
+import { Icon } from '@/components/ds/Icon';
+import { Textarea } from '@/components/ds/Textarea';
 import { ListingThumb } from '@/components/ListingThumb';
 import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
@@ -16,14 +21,23 @@ export default function AdminListingsQueuePage() {
   const [token, setToken] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** The listing being rejected, while the reason dialog is open. */
+  const [rejecting, setRejecting] = useState<ListingDetail | null>(null);
+  const [reason, setReason] = useState('');
 
   useEffect(() => {
     let isCurrent = true;
 
     void (async () => {
-      const idToken = await getIdToken();
-      if (!idToken) return;
+      // Inside the try: getIdToken rejects rather than resolving null when the
+      // Firebase session has not been restored yet, and outside it that was an
+      // unhandled rejection and a queue stuck on "Chargement…".
       try {
+        const idToken = await getIdToken();
+        if (!idToken) {
+          if (isCurrent) setError('Connectez-vous avec un compte administrateur.');
+          return;
+        }
         const result = await apiFetch<ListingDetail[]>('/admin/listings', { token: idToken });
         if (isCurrent) {
           setToken(idToken);
@@ -55,21 +69,33 @@ export default function AdminListingsQueuePage() {
     })();
   };
 
-  const handleReject = (id: string) => {
-    if (pendingId || !token) return;
-    const reason = window.prompt('Raison du rejet (visible par le propriétaire) :');
-    if (!reason || !reason.trim()) return;
+  /**
+   * The rejection reason is copy the owner reads, and it was collected with
+   * `window.prompt`.
+   *
+   * A native prompt gives no label, no character guidance, no styling, no way to
+   * write more than a line comfortably, and browsers are free to suppress it
+   * entirely — at which point rejecting a listing silently does nothing. It is
+   * the only piece of the moderation flow the owner actually sees, so it gets a
+   * real dialog and a real textarea.
+   */
+  const confirmReject = () => {
+    const value = reason.trim();
+    if (!value || !rejecting || !token) return;
+    const id = rejecting.id;
 
     setPendingId(id);
     setError(null);
+    setRejecting(null);
     void (async () => {
       try {
         await apiFetch(`/admin/listings/${encodeURIComponent(id)}/reject`, {
           method: 'POST',
           token,
-          body: { reason: reason.trim() },
+          body: { reason: value },
         });
         setQueue((prev) => (prev ?? []).filter((item) => item.id !== id));
+        setReason('');
       } catch (cause) {
         setError(cause instanceof ApiError ? cause.message : 'Impossible de rejeter cette annonce.');
       } finally {
@@ -87,7 +113,15 @@ export default function AdminListingsQueuePage() {
         padding: 'var(--space-6) var(--gutter-mobile) var(--space-8)',
       }}
     >
-      <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', display: 'grid', gap: 'var(--space-5)' }}>
+      <div
+        style={{
+          maxWidth: 'var(--container-max)',
+          margin: '0 auto',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr)',
+          gap: 'var(--space-5)',
+        }}
+      >
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
           <div>
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
@@ -96,149 +130,161 @@ export default function AdminListingsQueuePage() {
             <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>File de modération</h1>
           </div>
 
+          {/*
+            This count is honest, unlike the inbox's was: /admin/listings returns
+            the whole queue in one response, with no cursor, so `length` is the
+            total rather than the number loaded so far.
+          */}
           {queue ? (
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                borderRadius: 'var(--radius-pill)',
-                background: 'var(--brand-subtle)',
-                border: '1px solid var(--brand-border)',
-                color: 'var(--clay-700)',
-                padding: '0.5rem 0.8rem',
-                font: 'var(--type-label)',
-              }}
-            >
+            <Badge tone={queue.length > 0 ? 'brand' : 'neutral'}>
               {queue.length} en attente
-            </div>
+            </Badge>
           ) : null}
         </header>
 
         {error ? <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
 
         {!queue ? (
-          <p style={{ color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>Chargement…</p>
+          <p style={{ color: 'var(--text-body)', font: 'var(--type-body-sm)' }}>Chargement…</p>
         ) : queue.length === 0 ? (
-          <div
-            style={{
-              background: 'var(--surface-card)',
-              border: '1px solid var(--border-hairline)',
-              borderRadius: 'var(--radius-card)',
-              boxShadow: 'var(--shadow-xs)',
-              padding: 'var(--space-6)',
-              textAlign: 'center',
-              color: 'var(--text-muted)',
-              font: 'var(--type-body-sm)',
-            }}
-          >
-            Aucune annonce en attente de validation.
-          </div>
+          <Card padding="var(--space-7)" style={{ display: 'grid', gap: 'var(--space-3)', justifyItems: 'center', textAlign: 'center' }}>
+            <Icon name="check-circle-2" size={28} color="var(--success)" />
+            <p style={{ margin: 0, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>File vide</p>
+            <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-body)' }}>
+              Aucune annonce n’attend de validation.
+            </p>
+          </Card>
         ) : (
-          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-4)' }}>
             {queue.map((item) => {
               const isPending = pendingId === item.id;
               return (
-                <article
-                  key={item.id}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '160px 1fr',
-                    gap: 'var(--space-4)',
-                    background: 'var(--surface-card)',
-                    border: '1px solid var(--border-hairline)',
-                    borderRadius: 'var(--radius-card)',
-                    boxShadow: 'var(--shadow-xs)',
-                    overflow: 'hidden',
-                  }}
-                >
+                <li key={item.id} style={{ minWidth: 0 }}>
                   {/*
-                    The photograph is the thing a moderator is mostly judging, so
-                    it is bigger here than on the owner's own list.
+                    The photograph gets a landscape column, not the 160px portrait
+                    slot it had. Listing photos are shot landscape, so a narrow
+                    tall crop showed a moderator a vertical sliver of the one
+                    thing this screen exists to judge.
                   */}
-                  <ListingThumb coverPhotoUrl={item.coverPhotoUrl} alt={item.title} minHeight={220} />
+                  <article className="moderation-row">
+                    <ListingThumb coverPhotoUrl={item.coverPhotoUrl} alt={item.title} minHeight={200} />
 
-                  <div style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-4)' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-                      <div>
-                        <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
-                          {item.neighborhood}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-3)', padding: 'var(--card-pad-lg)', minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
+                            {item.neighborhood}
+                          </div>
+                          <h2 style={{ margin: '0.3rem 0 0', font: 'var(--type-h3)', color: 'var(--text-heading)' }}>{item.title}</h2>
                         </div>
-                        <h3 style={{ margin: '0.3rem 0 0', font: 'var(--type-h3)', color: 'var(--text-heading)' }}>{item.title}</h3>
+                        <Badge tone="neutral">{LISTING_STATUS_LABELS[item.status]}</Badge>
                       </div>
-                      <span style={{ font: 'var(--type-label)', color: 'var(--text-muted)' }}>{LISTING_STATUS_LABELS[item.status]}</span>
-                    </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
-                        <MapPin size={14} />
-                        {item.city}
-                      </span>
-                      <span style={{ font: 'var(--weight-bold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>
-                        {rentPerMonth(item.priceRent)}
-                      </span>
-                    </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', font: 'var(--type-body-sm)', color: 'var(--text-body)' }}>
+                          <Icon name="map-pin" size={14} />
+                          {item.city}
+                        </span>
+                        <span style={{ font: 'var(--weight-bold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>
+                          {rentPerMonth(item.priceRent)}
+                        </span>
+                      </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-                      <Link
-                        href={`/listings/${item.id}`}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--brand)', font: 'var(--type-body-sm)', textDecoration: 'none' }}
-                      >
-                        <Eye size={14} />
-                        Voir l’annonce
-                      </Link>
-
-                      <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          disabled={isPending}
-                          onClick={() => handleApprove(item.id)}
+                      {/*
+                        The description, in the queue rather than one click away.
+                        A scam, a phone number, or discriminatory wording lives
+                        here and nowhere else, and a moderator was being asked to
+                        decide without reading it.
+                      */}
+                      {item.description ? (
+                        <p
                           style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.4rem',
-                            border: '1px solid var(--brand-border)',
-                            borderRadius: 'var(--radius-pill)',
-                            background: 'var(--brand-subtle)',
-                            color: 'var(--clay-700)',
-                            padding: '0.6rem 0.9rem',
+                            margin: 0,
                             font: 'var(--type-body-sm)',
-                            cursor: isPending ? 'default' : 'pointer',
+                            color: 'var(--text-body)',
+                            lineHeight: 1.6,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
                           }}
                         >
-                          <CheckCircle2 size={14} />
-                          Valider
-                        </button>
+                          {item.description}
+                        </p>
+                      ) : (
+                        <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
+                          Aucune description.
+                        </p>
+                      )}
 
-                        <button
-                          type="button"
-                          disabled={isPending}
-                          onClick={() => handleReject(item.id)}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.4rem',
-                            border: '1px solid var(--danger-border)',
-                            borderRadius: 'var(--radius-pill)',
-                            background: 'var(--danger-subtle)',
-                            color: 'var(--danger)',
-                            padding: '0.6rem 0.9rem',
-                            font: 'var(--type-body-sm)',
-                            cursor: isPending ? 'default' : 'pointer',
-                          }}
-                        >
-                          <XCircle size={14} />
-                          Rejeter
-                        </button>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                        <Link href={`/listings/${item.id}`} style={{ textDecoration: 'none' }}>
+                          <Button variant="ghost" size="sm" iconLeft="eye">Voir l’annonce</Button>
+                        </Link>
+
+                        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            iconLeft="check"
+                            loading={isPending}
+                            onClick={() => handleApprove(item.id)}
+                          >
+                            Valider
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            iconLeft="x"
+                            disabled={isPending}
+                            onClick={() => {
+                              setReason('');
+                              setRejecting(item);
+                            }}
+                          >
+                            Rejeter
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </article>
+                  </article>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </div>
+
+      {rejecting && (
+        <Dialog
+          open
+          title="Rejeter cette annonce"
+          onClose={() => setRejecting(null)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setRejecting(null)}>Annuler</Button>
+              <Button variant="danger" disabled={!reason.trim()} onClick={confirmReject}>
+                Rejeter l’annonce
+              </Button>
+            </>
+          }
+        >
+          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+            <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-body)' }}>
+              <strong style={{ color: 'var(--text-heading)' }}>{rejecting.title}</strong>
+            </p>
+            <Textarea
+              label="Raison du rejet"
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              rows={4}
+              maxLength={500}
+              placeholder="Expliquez ce qui doit être corrigé pour que l’annonce puisse être publiée."
+              helper="Ce texte est envoyé au propriétaire. Écrivez ce qu’il doit changer, pas seulement ce qui ne va pas."
+            />
+          </div>
+        </Dialog>
+      )}
     </main>
   );
 }

@@ -154,6 +154,13 @@ export interface ListingDetail {
   city: string;
   neighborhood: string;
   priceRent: number;
+  /**
+   * The owner's own words. Present on the wire all along; declared late, because
+   * the moderation queue needed it — a moderator judging a submission has to be
+   * able to read the description without leaving the queue, since a scam, a
+   * phone number, or discriminatory wording lives there and nowhere else.
+   */
+  description: string | null;
   status: ListingStatus;
   availabilityState: AvailabilityState;
   createdAt: string;
