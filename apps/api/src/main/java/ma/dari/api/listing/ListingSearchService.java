@@ -32,13 +32,16 @@ public class ListingSearchService {
     private final ListingSearchRepository search;
     private final ListingAmenityRepository listingAmenities;
     private final ListingPhotoRepository listingPhotos;
+    private final ListingCovers covers;
 
     public ListingSearchService(ListingRepository listings, ListingSearchRepository search,
-                                ListingAmenityRepository listingAmenities, ListingPhotoRepository listingPhotos) {
+                                ListingAmenityRepository listingAmenities, ListingPhotoRepository listingPhotos,
+                                ListingCovers covers) {
         this.listings = listings;
         this.search = search;
         this.listingAmenities = listingAmenities;
         this.listingPhotos = listingPhotos;
+        this.covers = covers;
     }
 
     public CursorPage<PublicListingResponse> search(String city,
@@ -201,11 +204,11 @@ public class ListingSearchService {
         }
 
         // Map listings to responses with fuzzed coordinates and their cover photo
-        java.util.Map<UUID, String> covers = coverUrlsFor(page);
+        java.util.Map<UUID, String> coverUrls = covers.forEach(page);
         List<PublicListingResponse> items = page.stream()
                 .map(l -> PublicListingResponse.from(l,
                         LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude()),
-                        covers.get(l.getId())))
+                        coverUrls.get(l.getId())))
                 .toList();
 
         return CursorPage.of(items, nextCursor);
@@ -273,23 +276,6 @@ public class ListingSearchService {
      * <p>Search returns twenty rows at a time; resolving covers one listing at a
      * time would be twenty round trips on the busiest endpoint in the product.
      */
-    private java.util.Map<UUID, String> coverUrlsFor(List<Listing> rows) {
-        if (rows.isEmpty()) {
-            return java.util.Map.of();
-        }
-        List<UUID> ids = rows.stream().map(Listing::getId).toList();
-        java.util.Map<UUID, String> urls = new java.util.HashMap<>();
-        for (ListingPhoto photo : listingPhotos.findByListingIdInAndCoverTrueAndDeletedAtIsNull(ids)) {
-            urls.put(photo.getListing().getId(), ListingPhotoResponse.from(photo).url());
-        }
-        return urls;
-    }
-
-    private String coverUrlFor(UUID listingId) {
-        return listingPhotos.findByListingIdAndCoverTrueAndDeletedAtIsNull(listingId)
-                .map(photo -> ListingPhotoResponse.from(photo).url())
-                .orElse(null);
-    }
 
     public java.util.List<MapPinResponse> mapPins(String city,
                                                  String neighborhood,
@@ -342,7 +328,7 @@ public class ListingSearchService {
         // Use PostGIS query instead of loading all listings into memory
         List<Listing> featured = search.featuredListings(normalizedLimit);
 
-        java.util.Map<UUID, String> featuredCovers = coverUrlsFor(featured);
+        java.util.Map<UUID, String> featuredCovers = covers.forEach(featured);
         return featured.stream()
                 .map(l -> PublicListingResponse.from(l,
                         LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude()),
@@ -359,19 +345,19 @@ public class ListingSearchService {
         }
 
         if (viewer != null && listing.getOwner().getId().equals(viewer.getId())) {
-            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), coverUrlFor(listing.getId()));
+            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), covers.forListing(listing.getId()));
         }
 
         // Moderators review PENDING_REVIEW/SUSPENDED listings that belong to
         // someone else; without this, the admin console's own "view listing"
         // link 404s on exactly the listings it exists to review.
         if (viewer != null && viewer.getRole() == UserRole.ADMIN) {
-            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), coverUrlFor(listing.getId()));
+            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), covers.forListing(listing.getId()));
         }
 
         if (listing.getStatus() == ListingStatus.PUBLISHED
                 && listing.getAvailabilityState() == AvailabilityState.AVAILABLE) {
-            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), coverUrlFor(listing.getId()));
+            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), covers.forListing(listing.getId()));
         }
 
         throw new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable");

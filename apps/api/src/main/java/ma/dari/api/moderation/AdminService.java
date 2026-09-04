@@ -6,6 +6,8 @@ import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingAmenityRepository;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
+import ma.dari.api.listing.Listing;
+import ma.dari.api.listing.ListingCovers;
 import ma.dari.api.listing.dto.ListingResponse;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
@@ -29,6 +31,7 @@ public class AdminService {
 
     private final ListingRepository listings;
     private final ListingAmenityRepository listingAmenities;
+    private final ListingCovers covers;
     private final AdminActionRepository adminActions;
     private final ReportRepository reports;
     private final ReportService reportService;
@@ -37,6 +40,7 @@ public class AdminService {
 
     public AdminService(ListingRepository listings,
                        ListingAmenityRepository listingAmenities,
+                       ListingCovers covers,
                        AdminActionRepository adminActions,
                        ReportRepository reports,
                        ReportService reportService,
@@ -44,6 +48,7 @@ public class AdminService {
                        BannedIdentityRepository bannedIdentities) {
         this.listings = listings;
         this.listingAmenities = listingAmenities;
+        this.covers = covers;
         this.adminActions = adminActions;
         this.reports = reports;
         this.reportService = reportService;
@@ -53,8 +58,13 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public List<ListingResponse> pendingListings() {
-        return listings.findByStatus(ListingStatus.PENDING_REVIEW).stream()
-                .map(listing -> ListingResponse.from(listing, amenityCodesFor(listing.getId())))
+        List<Listing> rows = listings.findByStatus(ListingStatus.PENDING_REVIEW);
+        // One query for the whole queue, not one per row: a moderator opening a
+        // backlog of fifty should not cost fifty round trips to see fifty photos.
+        Map<UUID, String> coverUrls = covers.forEach(rows);
+        return rows.stream()
+                .map(listing -> ListingResponse.from(listing, amenityCodesFor(listing.getId()),
+                        coverUrls.get(listing.getId())))
                 .toList();
     }
 
@@ -172,7 +182,7 @@ public class AdminService {
         listing.setRejectionReason(null);
         listings.save(listing);
         adminActions.save(AdminAction.of(admin, "APPROVE_LISTING", ReportTarget.LISTING, listingId, null));
-        return ListingResponse.from(listing, amenityCodesFor(listing.getId()));
+        return ListingResponse.from(listing, amenityCodesFor(listing.getId()), covers.forListing(listing.getId()));
     }
 
     @Transactional
@@ -186,7 +196,7 @@ public class AdminService {
         listing.setRejectionReason(reason);
         listings.save(listing);
         adminActions.save(AdminAction.of(admin, "REJECT_LISTING", ReportTarget.LISTING, listingId, reason));
-        return ListingResponse.from(listing, amenityCodesFor(listing.getId()));
+        return ListingResponse.from(listing, amenityCodesFor(listing.getId()), covers.forListing(listing.getId()));
     }
 
     @Transactional

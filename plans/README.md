@@ -1518,6 +1518,71 @@ approve-or-reject without ever seeing the photograph**, which is the single most
 wrong with a listing. Worth doing before the admin screens are restyled, and it is a backend change
 — the cover has to reach the DTO first.
 
+## The cover photo reaches the moderation queue (2026-09-04)
+
+`coverPhotoUrl` lived only on `PublicListingResponse`, so `/admin/listings` and `/account/listings`
+both drew a hand-rolled gradient box with the word "Photo" in it — for listings that had a real
+photograph. On the owner's own list that was cosmetic; in the queue it meant **a moderator deciding
+approve-or-reject without ever seeing the picture**, which is the single most likely thing to be
+wrong with a listing.
+
+`ListingResponse` — shared by `/listings/mine` and `/admin/listings` — now carries it.
+
+### Two decisions worth recording
+
+**A required third argument, not an overload.** `ListingResponse.from(listing, amenities)` could have
+kept working with a null cover, and every stale caller would have compiled and gone on showing the
+placeholder. The plan's own verification note warns about exactly this ("Java will compile a stale
+overload"). Making it required turned the four remaining call sites in `ListingController` into
+compile errors, which is how they got found.
+
+**`ListingCovers`, extracted rather than copied.** `ListingSearchService` had two private helpers for
+this — one single, one batched — and `AdminService` and `ListingService` had neither. Three copies
+was already one too many, and five would have been worse. The batched form matters: the queue does
+one query for the whole page, not one per row, so a backlog of fifty listings costs one round trip
+rather than fifty. Extracting it surfaced a shadowing bug immediately — a local `Map` named `covers`
+hid the injected component — which the compiler caught.
+
+### On the client
+
+`ListingThumb` renders the cover, or an empty state that reads **"Sans photo"** rather than "Photo".
+"Photo" reads as a caption for an image that failed to load; "Sans photo" is a statement about the
+listing, and it is the one a moderator needs — `submit()` refuses a listing with no photograph, so a
+queue item without one is already anomalous. Deliberately not `ListingCard`: these two screens are
+dashboards with their own status chips and action rows, and swapping the whole card belongs to the
+rebuild they are still queued for.
+
+### Verified
+
+Signed in as the QA owner against the real API: `/listings/mine` returns
+`coverPhotoUrl: "/uploads/listings/…/….jpg"`, and every nullable field — `numBedrooms`,
+`minStayMonths`, `rejectionReason` — is present as a key rather than omitted, which is the Jackson
+change from earlier holding. **97 backend tests pass**, including two new ones in `AdminApiTest`: the
+queue carries a cover when the listing has one, and reports `coverPhotoUrl: null` (key present) when
+it does not.
+
+**Not verified visually.** The chrome-devtools browser wedged partway through and could not be
+restarted from inside the session, so the two dashboards were confirmed at the API and type level but
+never actually looked at. Worth a glance next session.
+
+**One flaky test.** A single full run reported 97 tests, 1 failure; three subsequent full runs passed
+97/97. The output was not captured and surefire had overwritten its reports by the time it was
+noticed, so the culprit is unidentified. `docs/AI_SESSION_HANDOFF_PROMPT.md` records historic
+flakiness in `ListingSearchOptimizationTest`, which is plan-dependent and the obvious suspect, but
+that is a guess and is written down here as one.
+
+### The dev script could not start the API
+
+Found while restarting the API to pick up the DTO change. `dev.ps1 api` fails twice over: the
+Firebase credentials path in `.env` is repo-root-relative while the task runs Maven from `apps/api`,
+and `API_PORT` also lives in `.env`, so without it the app tries 8080 — occupied here by an unrelated
+container. Spring Boot does not read `.env`, and anyone with those variables already exported in
+their shell would never have seen it.
+
+The task loads the repo-root `.env` now and resolves `FIREBASE_CREDENTIALS_PATH` to an absolute path
+on the way in. The synopsis line claiming the API runs on `:8080` was wrong too, and now points at
+`API_PORT`.
+
 ### Next
 
 Art-direct beyond the kit. The remaining hand-rolled surfaces are the account screens and the admin

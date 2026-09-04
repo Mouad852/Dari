@@ -14,6 +14,23 @@ import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * A listing as its owner and a moderator see it: unfuzzed coordinates, the
+ * fields the wizard writes, and the moderation state.
+ *
+ * `coverPhotoUrl` is the late addition. Only {@link ma.dari.api.listing.PublicListingResponse}
+ * carried a cover, so `/admin/listings` and `/account/listings` both rendered
+ * the design system's PHOTO placeholder for listings that had a real
+ * photograph. On the owner's own list that is cosmetic. In the moderation queue
+ * it is not: a moderator was deciding approve-or-reject without ever seeing the
+ * photograph, which is the single most likely thing to be wrong with a listing.
+ *
+ * The factory takes it as a parameter rather than looking it up, because this
+ * record has no repository, and it is a required third argument rather than an
+ * overload on purpose — an overload would let a caller keep compiling against
+ * the old two-argument form and silently go on showing the placeholder, which
+ * is exactly the failure being fixed.
+ */
 public record ListingResponse(
         UUID id,
         String title,
@@ -42,9 +59,11 @@ public record ListingResponse(
         Instant createdAt,
         Instant updatedAt,
         String rejectionReason,
-        Set<String> amenityCodes
+        Set<String> amenityCodes,
+        /** Root-relative, e.g. /uploads/listings/{id}/{photo}.jpg. Null when the listing has no photo. */
+        String coverPhotoUrl
 ) {
-    public static ListingResponse from(Listing listing, Set<String> amenityCodes) {
+    public static ListingResponse from(Listing listing, Set<String> amenityCodes, String coverPhotoUrl) {
         return new ListingResponse(
                 listing.getId(),
                 listing.getTitle(),
@@ -73,7 +92,8 @@ public record ListingResponse(
                 listing.getCreatedAt(),
                 listing.getUpdatedAt(),
                 listing.getRejectionReason(),
-                amenityCodes
+                amenityCodes,
+                coverPhotoUrl
         );
     }
 }

@@ -44,10 +44,13 @@ public class ListingController {
 
     private final ListingSearchService listingSearchService;
     private final ListingService listingService;
+    private final ListingCovers covers;
 
-    public ListingController(ListingSearchService listingSearchService, ListingService listingService) {
+    public ListingController(ListingSearchService listingSearchService, ListingService listingService,
+                            ListingCovers covers) {
         this.listingSearchService = listingSearchService;
         this.listingService = listingService;
+        this.covers = covers;
     }
 
     // --- public read (phase 02, extended 07) ---------------------------------
@@ -156,13 +159,16 @@ public class ListingController {
     @GetMapping("/mine/{id}")
     public ListingResponse mineById(@CurrentUser User owner, @PathVariable UUID id) {
         return ListingResponse.from(listingService.getOwned(owner, id),
-                listingService.amenityCodesFor(id));
+                listingService.amenityCodesFor(id), covers.forListing(id));
     }
 
     @GetMapping("/draft")
     public ListingResponse draft(@CurrentUser User owner) {
         Listing listing = listingService.getDraft(owner);
-        return ListingResponse.from(listing, listingService.amenityCodesFor(listing.getId()));
+        // A resumed draft carries its cover so the wizard's Photos step and the
+        // owner's list agree about whether a photo exists.
+        return ListingResponse.from(listing, listingService.amenityCodesFor(listing.getId()),
+                covers.forListing(listing.getId()));
     }
 
     /** Creates a DRAFT. The wizard persists server-side from step one. */
@@ -171,7 +177,8 @@ public class ListingController {
                                                 @Valid @RequestBody CreateListingRequest request) {
         Listing listing = listingService.create(owner, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ListingResponse.from(listing, listingService.amenityCodesFor(listing.getId())));
+                // A listing one request old has no photo yet; null is the honest answer.
+                .body(ListingResponse.from(listing, listingService.amenityCodesFor(listing.getId()), null));
     }
 
     /** Owner edit. Does not re-enter review (§7) and does not reset the expiry clock. */
@@ -180,7 +187,8 @@ public class ListingController {
                                  @PathVariable UUID id,
                                  @Valid @RequestBody UpdateListingRequest request) {
         Listing listing = listingService.update(owner, id, request);
-        return ListingResponse.from(listing, listingService.amenityCodesFor(listing.getId()));
+        return ListingResponse.from(listing, listingService.amenityCodesFor(listing.getId()),
+                covers.forListing(listing.getId()));
     }
 
     /** Soft delete. Every read path filters deleted_at IS NULL. */

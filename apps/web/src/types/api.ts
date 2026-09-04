@@ -160,6 +160,15 @@ export interface ListingDetail {
   updatedAt: string;
   rejectionReason: string | null;
   amenityCodes: string[];
+  /**
+   * Root-relative cover photo URL, or null when the listing has none. Prefix
+   * with `apiOrigin` — it is served by the API, not the web app.
+   *
+   * Added late: only PublicListing carried a cover, so the owner's list and the
+   * moderation queue both drew the design system's placeholder for listings that
+   * had a real photograph. In the queue that meant approving without seeing it.
+   */
+  coverPhotoUrl: string | null;
 }
 
 // --- moderation and admin (design doc §6, admin console gated on role) --------

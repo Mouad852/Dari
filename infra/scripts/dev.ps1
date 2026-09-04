@@ -5,7 +5,7 @@
 
 .EXAMPLE
     ./infra/scripts/dev.ps1 up        # start Postgres + MinIO
-    ./infra/scripts/dev.ps1 api       # run the API on :8080
+    ./infra/scripts/dev.ps1 api       # run the API on $env:API_PORT (see .env)
     ./infra/scripts/dev.ps1 web       # run the web app on :3000
     ./infra/scripts/dev.ps1 test      # API test suite (needs Docker)
     ./infra/scripts/dev.ps1 check     # compile + typecheck + token drift
@@ -19,6 +19,32 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Resolve-Path (Join-Path $PSScriptRoot '../..')
 
+<#
+    Load the repo-root .env into the process.
+
+    Spring Boot does not read .env, so `dev.ps1 api` could not actually start
+    the API: it failed on the Firebase credentials and then on port 8080 being
+    taken, because API_PORT and FIREBASE_CREDENTIALS_PATH live only in that
+    file. Anyone who had those exported in their own shell never noticed.
+
+    FIREBASE_CREDENTIALS_PATH is resolved to an absolute path on the way in. Its
+    value is repo-root-relative, and the 'api' task runs Maven from apps/api, so
+    the relative form pointed at apps/api/infra/firebase/ and found nothing.
+#>
+function Import-DotEnv {
+    $envFile = Join-Path $root '.env'
+    if (-not (Test-Path $envFile)) { return }
+    foreach ($line in Get-Content $envFile) {
+        if ($line -notmatch '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$') { continue }
+        $name = $Matches[1]
+        $value = $Matches[2].Trim().Trim('"').Trim("'")
+        if ($name -eq 'FIREBASE_CREDENTIALS_PATH' -and $value) {
+            $value = Join-Path $root ($value -replace '^\./', '')
+        }
+        [Environment]::SetEnvironmentVariable($name, $value, 'Process')
+    }
+}
+
 switch ($Task) {
     'up' {
         docker compose -f (Join-Path $root 'docker-compose.yml') up -d
@@ -30,6 +56,7 @@ switch ($Task) {
     }
 
     'api' {
+        Import-DotEnv
         Push-Location (Join-Path $root 'apps/api')
         try { ./mvnw spring-boot:run '-Dspring-boot.run.profiles=local' }
         finally { Pop-Location }

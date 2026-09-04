@@ -4,6 +4,7 @@ import { CheckCircle2, Eye, MapPin, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { ListingThumb } from '@/components/ListingThumb';
 import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { rentPerMonth } from '@/lib/format';
@@ -151,21 +152,11 @@ export default function AdminListingsQueuePage() {
                     overflow: 'hidden',
                   }}
                 >
-                  <div
-                    style={{
-                      minHeight: 160,
-                      background: 'linear-gradient(135deg, var(--sand-100), var(--sable-100))',
-                      color: 'var(--text-muted)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      font: 'var(--type-caption)',
-                      letterSpacing: 'var(--ls-caps)',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    Photo
-                  </div>
+                  {/*
+                    The photograph is the thing a moderator is mostly judging, so
+                    it is bigger here than on the owner's own list.
+                  */}
+                  <ListingThumb coverPhotoUrl={item.coverPhotoUrl} alt={item.title} minHeight={220} />
 
                   <div style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-4)' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>

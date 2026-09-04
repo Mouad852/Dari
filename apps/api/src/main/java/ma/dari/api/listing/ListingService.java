@@ -31,14 +31,17 @@ public class ListingService {
     private final ImageStore imageStore;
     private final AmenityRepository amenities;
     private final ListingAmenityRepository listingAmenities;
+    private final ListingCovers covers;
 
     public ListingService(ListingRepository listings, ListingPhotoRepository listingPhotos, ImageStore imageStore,
-                           AmenityRepository amenities, ListingAmenityRepository listingAmenities) {
+                           AmenityRepository amenities, ListingAmenityRepository listingAmenities,
+                           ListingCovers covers) {
         this.listings = listings;
         this.listingPhotos = listingPhotos;
         this.imageStore = imageStore;
         this.amenities = amenities;
         this.listingAmenities = listingAmenities;
+        this.covers = covers;
     }
 
     /** The owner's dashboard: every status, not just what search would show. */
@@ -56,8 +59,11 @@ public class ListingService {
 
         boolean hasMore = rows.size() > PAGE_SIZE;
         List<Listing> pageRows = hasMore ? rows.subList(0, PAGE_SIZE) : rows;
+        // One query for the page's covers rather than one per listing.
+        java.util.Map<UUID, String> coverUrls = covers.forEach(pageRows);
         List<ListingResponse> items = pageRows.stream()
-                .map(listing -> ListingResponse.from(listing, amenityCodesFor(listing.getId())))
+                .map(listing -> ListingResponse.from(listing, amenityCodesFor(listing.getId()),
+                        coverUrls.get(listing.getId())))
                 .toList();
 
         String nextCursor = null;

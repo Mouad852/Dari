@@ -3,6 +3,8 @@ package ma.dari.api.moderation;
 import com.google.firebase.auth.FirebaseToken;
 import ma.dari.api.listing.AvailabilityState;
 import ma.dari.api.listing.Listing;
+import ma.dari.api.listing.ListingPhoto;
+import ma.dari.api.listing.ListingPhotoRepository;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
 import ma.dari.api.support.AbstractIntegrationTest;
@@ -21,6 +23,8 @@ import java.util.UUID;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.hasKey;
 
 /**
  * The admin console over HTTP.
@@ -46,6 +50,9 @@ class AdminApiTest extends AbstractIntegrationTest {
 
     @Autowired
     AdminActionRepository adminActions;
+
+    @Autowired
+    ListingPhotoRepository listingPhotos;
 
     private void stubToken(String uid, String email) throws Exception {
         FirebaseToken token = Mockito.mock(FirebaseToken.class);
@@ -141,6 +148,48 @@ class AdminApiTest extends AbstractIntegrationTest {
     }
 
     // --- listing review ------------------------------------------------------
+
+    @Test
+    @DisplayName("the moderation queue carries each listing's cover photo")
+    void queueCarriesCoverPhoto() throws Exception {
+        User owner = users.saveAndFlush(new User(
+                "uid-owner-cover-" + System.nanoTime(), "owner-cover@example.ma", true, "Owner"));
+        Listing pending = listingFor(owner, ListingStatus.PENDING_REVIEW);
+        listingPhotos.saveAndFlush(new ListingPhoto(
+                pending, "listings/" + pending.getId() + "/cover.jpg", "image/jpeg", 1600, 1200, 0, true));
+
+        admin("cover");
+
+        // The queue used to return no cover at all -- coverPhotoUrl lived only on
+        // PublicListingResponse -- so the console showed its placeholder and a
+        // moderator decided approve-or-reject without ever seeing the photograph,
+        // which is the single most likely thing to be wrong with a listing.
+        given().header("Authorization", "Bearer admin-token")
+                .when().get("/admin/listings")
+                .then().statusCode(200)
+                .body("find { it.id == '" + pending.getId() + "' }.coverPhotoUrl",
+                        equalTo("/uploads/listings/" + pending.getId() + "/cover.jpg"));
+    }
+
+    @Test
+    @DisplayName("a listing with no photo reports a null cover rather than omitting the field")
+    void queueReportsNullCoverForListingWithoutPhoto() throws Exception {
+        User owner = users.saveAndFlush(new User(
+                "uid-owner-nocover-" + System.nanoTime(), "owner-nocover@example.ma", true, "Owner"));
+        Listing pending = listingFor(owner, ListingStatus.PENDING_REVIEW);
+
+        admin("nocover");
+
+        // The key has to be present and null, not absent: the web client declares
+        // these fields `T | null` and guards them, and an omitted key arrives as
+        // undefined, which slipped past a `!== null` check and rendered an empty
+        // value. spring.jackson.default-property-inclusion is `always` for this.
+        given().header("Authorization", "Bearer admin-token")
+                .when().get("/admin/listings")
+                .then().statusCode(200)
+                .body("find { it.id == '" + pending.getId() + "' }", hasKey("coverPhotoUrl"))
+                .body("find { it.id == '" + pending.getId() + "' }.coverPhotoUrl", nullValue());
+    }
 
     @Test
     @DisplayName("admin approves a pending listing and the decision is written to the audit log")

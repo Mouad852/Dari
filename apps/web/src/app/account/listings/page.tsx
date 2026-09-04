@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState, type CSSProperties } from 'react';
 
+import { ListingThumb } from '@/components/ListingThumb';
 import { apiFetch, ApiError, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { rentPerMonth } from '@/lib/format';
@@ -252,22 +253,7 @@ export default function MyListingsPage() {
                         overflow: 'hidden',
                       }}
                     >
-                      <div
-                        style={{
-                          minHeight: 180,
-                          background: 'linear-gradient(135deg, var(--sable-200), var(--sable-100))',
-                          color: 'var(--text-body)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          font: 'var(--type-caption)',
-                          letterSpacing: 'var(--ls-caps)',
-                          textTransform: 'uppercase',
-                          position: 'relative',
-                        }}
-                      >
-                        Photo
-                      </div>
+                      <ListingThumb coverPhotoUrl={listing.coverPhotoUrl} alt={listing.title} />
 
                       <div style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-4)' }}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
