@@ -5,6 +5,7 @@ import ma.dari.api.common.error.ErrorCode;
 import ma.dari.api.common.pagination.Cursor;
 import ma.dari.api.common.pagination.CursorPage;
 import ma.dari.api.listing.dto.CreateListingRequest;
+import ma.dari.api.listing.dto.HouseRulesRequest;
 import ma.dari.api.listing.dto.ListingResponse;
 import ma.dari.api.listing.dto.UpdateListingRequest;
 import ma.dari.api.media.ImageStore;
@@ -33,16 +34,18 @@ public class ListingService {
     private final ImageStore imageStore;
     private final AmenityRepository amenities;
     private final ListingAmenityRepository listingAmenities;
+    private final HouseRulesRepository houseRules;
     private final ListingCovers covers;
 
     public ListingService(ListingRepository listings, ListingPhotoRepository listingPhotos, ImageStore imageStore,
                            AmenityRepository amenities, ListingAmenityRepository listingAmenities,
-                           ListingCovers covers) {
+                           HouseRulesRepository houseRules, ListingCovers covers) {
         this.listings = listings;
         this.listingPhotos = listingPhotos;
         this.imageStore = imageStore;
         this.amenities = amenities;
         this.listingAmenities = listingAmenities;
+        this.houseRules = houseRules;
         this.covers = covers;
     }
 
@@ -118,11 +121,15 @@ public class ListingService {
                 AvailabilityState.AVAILABLE
         );
 
+        validateQuietHours(request.houseRules());
         applyCreate(request, listing);
         listing = listings.save(listing);
 
         if (request.amenityCodes() != null) {
             replaceAmenities(listing, request.amenityCodes());
+        }
+        if (request.houseRules() != null) {
+            replaceHouseRules(listing, request.houseRules());
         }
         return listing;
     }
@@ -136,6 +143,7 @@ public class ListingService {
                 request.currentRoommatesCount() != null ? request.currentRoommatesCount() : listing.getCurrentRoommatesCount(),
                 request.maxRoommates() != null ? request.maxRoommates() : listing.getMaxRoommates()
         );
+        validateQuietHours(request.houseRules());
         applyUpdate(request, listing);
 
         // Editing a live listing returns it to the moderation queue.
@@ -158,6 +166,9 @@ public class ListingService {
 
         if (request.amenityCodes() != null) {
             replaceAmenities(listing, request.amenityCodes());
+        }
+        if (request.houseRules() != null) {
+            replaceHouseRules(listing, request.houseRules());
         }
         return listing;
     }
@@ -187,6 +198,48 @@ public class ListingService {
         for (String code : requestedCodes) {
             listingAmenities.save(new ListingAmenity(listing, code));
         }
+    }
+
+    /**
+     * A one-sided quiet-hours window is not a rule anyone can follow.
+     *
+     * <p>Checked here rather than with a bean-validation annotation because it
+     * is a cross-field rule, same as {@link #validateRoommatesCount}. Clearing
+     * both together is allowed — that is an owner withdrawing the answer, not
+     * a half-filled form.
+     */
+    private void validateQuietHours(HouseRulesRequest rules) {
+        if (rules == null) {
+            return;
+        }
+        boolean startSet = rules.quietHoursStart() != null;
+        boolean endSet = rules.quietHoursEnd() != null;
+        if (startSet != endSet) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED,
+                    "Les heures de silence doivent avoir un début et une fin");
+        }
+    }
+
+    /**
+     * Full replace, upserting the single {@code house_rules} row.
+     *
+     * <p>Same semantics as {@link #replaceAmenities}: the wizard step submits
+     * every field every time, so a per-field merge would leave an owner no way
+     * to clear an answer they had previously given. A null inside a submitted
+     * object therefore means "no answer", and overwrites a previous one.
+     */
+    private void replaceHouseRules(Listing listing, HouseRulesRequest request) {
+        HouseRules rules = houseRules.findById(listing.getId())
+                .orElseGet(() -> new HouseRules(listing.getId()));
+
+        rules.setSmokingAllowed(request.smokingAllowed());
+        rules.setPetsAllowed(request.petsAllowed());
+        rules.setGuestsAllowed(request.guestsAllowed());
+        rules.setQuietHoursStart(request.quietHoursStart());
+        rules.setQuietHoursEnd(request.quietHoursEnd());
+        rules.setOtherRules(request.otherRules());
+
+        houseRules.save(rules);
     }
 
     @Transactional

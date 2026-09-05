@@ -17,7 +17,8 @@ This phase has an unusual advantage: **the wizard already exists as a working pr
 - [x] Seed the `amenities` lookup — the wizard's 10 are the starting set (`V12`, read via `AmenityRepository` since 2026-09-02)
 - [x] Expand `listings` to the full §3 column set (`V8`)
 - [x] `POST /listings` creating a `DRAFT`; `PATCH /listings/{id}`; `DELETE /listings/{id}` as soft-delete
-- [x] `GET /listings/{id}` — keeps the thin `PublicListingResponse` contract for search consumers and now returns a dedicated `PublicListingDetailResponse` with real listing attributes, charge inclusions, availability, amenities, stored photos, and (2026-09-05) house rules — `null` for every listing today, since no write path exists yet (below), but the read contract itself is real: `houseRules.smokingAllowed`/`petsAllowed`/`guestsAllowed`/`quietHoursStart`/`quietHoursEnd`/`otherRules`, each independently nullable per §5's "silence is not a promise" design.
+- [x] `GET /listings/{id}` — keeps the thin `PublicListingResponse` contract for search consumers and now returns a dedicated `PublicListingDetailResponse` with real listing attributes, charge inclusions, availability, amenities, stored photos, and (2026-09-05) house rules: `houseRules.smokingAllowed`/`petsAllowed`/`guestsAllowed`/`quietHoursStart`/`quietHoursEnd`/`otherRules`, each independently nullable per §5's "silence is not a promise" design, and `null` as a whole when the listing has no rules row.
+- [x] House-rules write contract (2026-09-05) — `POST /listings` and `PATCH /listings/{id}` accept a `houseRules` object, upserting the single `house_rules` row. Omitting it leaves existing rules untouched; sending it replaces all six answers including nulls, the same full-replace rule `amenityCodes` uses and for the same reason (the wizard step submits every field, so a per-field merge would make "clear this answer" inexpressible). A quiet-hours window with only a start or only an end is refused with a 400. The wizard step that fills this is the remaining piece.
 - [x] Ownership checks on every mutation
 - [x] Photo upload: `GET/POST/PATCH/DELETE /listings/{id}/photos`, with `sort_order` and `is_cover`; the public detail response reads the ordered active photos back for display. The owner-scoped `GET` was added 2026-09-02 — only write routes existed before, so a resumed draft could never show the photos the server already held.
 - [x] Storage abstraction behind an interface (`ImageStore`/`LocalImageStore`) — local disk now, swappable later without touching callers
@@ -79,7 +80,7 @@ Verified true as of 2026-09-05 (source and full test suite checked):
 **Verified false as of 2026-09-02** — do not assume these without re-checking:
 - Full prototype parity and per-step validation are not complete
 - Submitting without a photo or with a blank description is refused, with clear French validation messages
-- Rooms and house rules round-trip — no UI or endpoint touches `listing_rooms` or `house_rules` at all
+- Rooms round-trip — no UI or endpoint touches `listing_rooms` at all, and the table itself does not exist yet. House rules now round-trip through the API (2026-09-05); the wizard step that fills them is still missing.
 - The production wizard matches the prototype at 375px and 1440px — the live wizard has 4 steps, not the prototype's 8; never compared side by side
 
 ## Risks and open decisions

@@ -1,6 +1,7 @@
 package ma.dari.api.listing.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.FutureOrPresent;
@@ -83,6 +84,9 @@ public record CreateListingRequest(
         @Null(message = "La raison du rejet est réservée à la modération")
         String rejectionReason,
         @Size(max = 20, message = "20 équipements maximum")
-        Set<@Size(max = 64, message = "Code d'équipement trop long") String> amenityCodes
+        Set<@Size(max = 64, message = "Code d'équipement trop long") String> amenityCodes,
+
+        @Valid
+        HouseRulesRequest houseRules
 ) {
 }
