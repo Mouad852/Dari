@@ -84,9 +84,9 @@ export default function AccountPaymentsPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
             <div>
               <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                Solde du compte
+                Paiements
               </div>
-              <div style={{ marginTop: 4, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>1 240,00 MAD</div>
+              <div style={{ marginTop: 4, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Pas encore disponible</div>
             </div>
 
             <span
@@ -109,11 +109,11 @@ export default function AccountPaymentsPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--space-3)' }}>
             <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Versements</div>
-              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>3 600 MAD</div>
+              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>À venir</div>
             </div>
             <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Remboursements</div>
-              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>480 MAD</div>
+              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>À venir</div>
             </div>
           </div>
         </section>
@@ -200,7 +200,7 @@ export default function AccountPaymentsPage() {
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Historique
             </div>
-            <div style={{ marginTop: 4, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Derniers paiements</div>
+            <div style={{ marginTop: 4, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>            Historique indisponible</div>
           </div>
 
           <button
@@ -216,7 +216,7 @@ export default function AccountPaymentsPage() {
               cursor: 'pointer',
             }}
           >
-            Voir tout
+            Le paiement en ligne n’est pas encore disponible
             <ArrowUpRight size={16} />
           </button>
         </section>

@@ -93,7 +93,7 @@ export default function AccountSecurityPage() {
               <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                 Protection du compte
               </div>
-              <div style={{ marginTop: 4, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Votre compte est sécurisé</div>
+              <div style={{ marginTop: 4, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Gestion par Firebase</div>
             </div>
 
             <span
@@ -122,15 +122,15 @@ export default function AccountSecurityPage() {
           >
             <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Protection</div>
-              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>92 %</div>
+              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>Firebase</div>
             </div>
             <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Vérification</div>
-              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>Oui</div>
+              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>Non mesurée</div>
             </div>
             <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Alertes</div>
-              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>2</div>
+              <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>Non disponible</div>
             </div>
           </div>
         </section>
@@ -216,7 +216,7 @@ export default function AccountSecurityPage() {
           </div>
 
           <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-            Vérifiez vos identifiants si un appareil inconnu tente d’accéder à votre compte. Nous vous enverrons une alerte immédiate.
+            La gestion des sessions, du mot de passe et des alertes de connexion est assurée dans Firebase. Cette page ne simule pas de données d’appareils.
           </div>
         </section>
       </div>

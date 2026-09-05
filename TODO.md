@@ -49,10 +49,10 @@ Last verified: 2026-09-05
 
 - [ ] Add error tracking and production metrics
 - [ ] Add metrics for search latency, moderation queue depth, reports, jobs, notifications, and failures
-- [ ] Create deployment pipeline and migration rollback procedure
+- [x] Document deployment pipeline, migration compatibility, and rollback procedure in `docs/PRODUCTION_OPERATIONS.md`
 - [ ] Run realistic search load tests and record acceptance thresholds
 - [ ] Seed production amenities and neighborhood reference data
-- [ ] Document production secrets, storage, Firebase, database, and rollback procedures
+- [x] Document production backup storage, retention, restore verification, and rollback procedures in `docs/PRODUCTION_OPERATIONS.md`; Firebase and SMTP configuration remain in their dedicated guides
 
 ## Priority 2: Product completeness
 
@@ -83,9 +83,7 @@ Last verified: 2026-09-05
 - [ ] Decide whether optimistic message sending is required
 - [ ] Show an explicit unavailable-listing state in old conversation threads
 - [ ] Define and implement profile-completion rules and prompt
-- [ ] Replace static notifications page with a real contract or clearly mark it unavailable
-- [ ] Replace static payments page with a real contract or clearly mark it unavailable
-- [ ] Replace static security page with a real contract or clearly mark it unavailable
+- [x] Clearly mark notifications, payments, and security surfaces where no backend contract exists; do not present fabricated account data
 - [ ] Define verification-tier semantics and phone verification scope
 
 ### Design system and content
@@ -95,8 +93,8 @@ Last verified: 2026-09-05
 - [ ] Resolve the five WCAG AA token contrast failures
 - [ ] Complete final responsive and keyboard accessibility review
 - [ ] Add `prefers-reduced-motion` coverage where needed
-- [ ] Add legal pages: terms, privacy, and location-data explanation
-- [ ] Write moderator runbook and queue decision guidance
+- [x] Add legal pages: terms, privacy, and location-data explanation under `/legal/*`; complete operator identity/contact details before public launch
+- [x] Write moderator runbook and queue decision guidance in `docs/MODERATOR_RUNBOOK.md`
 
 ## Priority 3: Future client
 
@@ -128,6 +126,10 @@ Before marking a checkbox complete:
 - `git diff --check` passed for the Phase 10 input-validation hardening and documentation
 - Soft-delete read-path review completed on 2026-09-05: public search/detail, owner listings, favorites, profiles, conversations, report targets, and moderation queues exclude deleted rows where appropriate; account deletion, moderation history, and notification delivery intentionally retain historical-row access. Firestore mirror work remains out of scope.
 - Database backup and restore validation completed on 2026-09-05: `pg_dump -Fc` produced a 47,456-byte backup from the local PostGIS database; `pg_restore --no-owner --exit-on-error` restored it into a fresh `postgis/postgis:16-3.4` container, and validation confirmed 12 users, 29 listings, 12 Flyway history rows, and PostGIS availability. The scratch container was removed afterward. Firestore mirror work remains out of scope.
+- Production backup storage/retention and deployment rollback documented on 2026-09-05 in `docs/PRODUCTION_OPERATIONS.md`: encrypted versioned offsite storage, 35 daily/12 weekly/12 monthly retention, weekly isolated restore verification, immutable release artifacts, backward-compatible Flyway migrations, and application-first rollback with restore escalation for destructive changes.
+- Moderator runbook and initial French terms, privacy, and location-data pages added on 2026-09-05. The legal pages intentionally identify the remaining release gate: add the operator's legal identity, contact channel, and applicable legal bases before public launch.
+- Web validation passed on 2026-09-05: `npm run typecheck` and `npm run tokens:check`; `npm run build` completed successfully, with expected `ECONNREFUSED` warnings for API-backed pages because no API server was running.
+- Account placeholder audit completed on 2026-09-05: fabricated payment balances, fake email/device values, and unsupported security metrics were removed or explicitly marked unavailable; legal links are now present in the global footer.
 - Notification delivery is implemented through the opt-in SMTP worker: rows are claimed with row locks, retried with bounded backoff, marked sent idempotently, and malformed events are quarantined as dead
 - SMTP configuration guide created with provider examples (Gmail, Outlook, Moroccan ISP)
 - Notification delivery README documents transactional outbox architecture, retry behavior, claim-lock semantics, and production monitoring queries

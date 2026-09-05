@@ -211,7 +211,7 @@ export default function AccountNotificationsPage() {
                 E-mail principal
               </div>
               <div style={{ marginTop: 4, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
-                salma@dari.ma
+                Adresse gérée par Firebase
               </div>
             </div>
 

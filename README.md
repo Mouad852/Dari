@@ -109,6 +109,8 @@ The important remaining work is still phase-oriented and should be driven from t
 | `docs/` | Design specification, naming rules, and project handoff docs. |
 | `ARCHITECTURE.md` | How the system fits together and why. |
 | `docs/NAMING.md` | English vs French boundary, naming conventions, and glossary. |
+| `docs/PRODUCTION_OPERATIONS.md` | Production backup retention, restore verification, deployment, and rollback runbook. |
+| `docs/MODERATOR_RUNBOOK.md` | Queue triage, action criteria, and escalation guidance for moderators. |
 | `TODO.md` | The source-verified completion checklist; update it every coding session. |
 
 ## Core principles

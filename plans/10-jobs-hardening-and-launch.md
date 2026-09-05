@@ -43,14 +43,14 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 - [ ] Structured logging with correlation ids; error tracking
 - [ ] Metrics on the things that indicate trouble: search latency, moderation queue depth, report volume, mirror drift
 - [x] Database backup creation and restore validation in a clean PostGIS environment
-- [ ] Deployment pipeline, migration strategy, rollback plan
+- [x] Deployment pipeline, migration strategy, rollback plan documented in `docs/PRODUCTION_OPERATIONS.md`
 - [ ] Load test on the search path, which is the busiest and most complex query in the system
 - [ ] Seed the production amenity lookup and neighborhood lists as real reference data
 
 **Launch readiness**
 - [ ] End-to-end pass over the whole journey, twice: as a seeker and as an owner
-- [ ] Moderator runbook — what to do with each queue item type
-- [ ] Legal pages: terms, privacy, an accurate statement of what is done with location data
+- [x] Moderator runbook — documented in `docs/MODERATOR_RUNBOOK.md`
+- [x] Legal pages: terms, privacy, and location-data explanation are available under `/legal/*`; legal identity and contact details remain a pre-publication release gate
 - [ ] Accessibility pass to the standard already set: 360px, visible focus, WCAG AA contrast, `prefers-reduced-motion`
 
 ## Depends on
@@ -146,6 +146,12 @@ browser security headers on API responses. `application-production.yml` makes
 the production origin and Firebase credential path explicit instead of falling
 back to local development values.
 
+The account notification, payment, and security pages no longer present
+fabricated balances, email addresses, device counts, or security scores. They
+now identify unsupported contracts as unavailable, and the global footer links
+to the legal pages. The remaining accessibility gate requires a real 360px and
+keyboard pass before public launch.
+
 The next session must update the docs after each change, then commit and push the verified change before moving on.
 
 Input validation and write-size hardening now covers every request DTO: opening messages are
@@ -164,6 +170,13 @@ and 12 Flyway history rows, and `postgis_full_version()` succeeded. The scratch 
 removed after validation. The restore procedure waits for the image's init process to complete
 before checking readiness; `pg_isready` alone can succeed while PostGIS initialization is still
 running.
+
+Production backup storage and retention, restore verification, immutable release
+handling, migration compatibility, and the fast rollback procedure are now
+documented in `docs/PRODUCTION_OPERATIONS.md`. The policy uses encrypted,
+versioned offsite object storage with 35 daily, 12 weekly, and 12 monthly
+retention, plus a weekly isolated restore drill. Firestore mirror work remains
+out of scope.
 
 - **Compression risk.** This is the phase most likely to be cut short, and its contents are the ones that matter most when things go wrong. Consider pulling the fuzzing review and rate limits forward if the schedule tightens.
 - **The expiry window is a range, not a decision.** 60 versus 90 days is a product judgement about listing freshness.

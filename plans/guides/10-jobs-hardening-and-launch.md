@@ -245,8 +245,11 @@ validation message, and focused regression test together.
 
 ## 6. Operations
 
-**Backups.** Daily `pg_dump`, offsite, encrypted. Use the custom format so the archive can be
-checked with `pg_restore` before it is needed:
+**Backups.** The production backup, retention, restore-drill, and incident
+ownership policy is documented in [`docs/PRODUCTION_OPERATIONS.md`](../../docs/PRODUCTION_OPERATIONS.md).
+Daily `pg_dump` archives are offsite and encrypted, with 35 daily, 12 weekly,
+and 12 monthly copies. Use the custom format so the archive can be checked with
+`pg_restore` before it is needed:
 
 ```powershell
 docker exec dari-db pg_dump -U dari -d dari -Fc -f /tmp/dari-backup.dump
@@ -291,7 +294,12 @@ credentials outside the repository. Firestore mirror work is out of scope for th
 
 **Load test the search path** — it is the busiest and most complex query in the system. Realistic filter mixes at 100k listings. Verify the phase 02 and 07 query plans hold under concurrency, not just in isolation.
 
-**Deployment.** Flyway on startup; every migration backward-compatible for one release so a rollback does not strand the schema. Expand-then-contract for column changes: add, backfill, switch reads, drop in a later release.
+**Deployment.** Follow [`docs/PRODUCTION_OPERATIONS.md`](../../docs/PRODUCTION_OPERATIONS.md):
+deploy immutable artifacts, take a verified pre-deploy backup, run
+backward-compatible Flyway migrations, and keep the previous release available
+for fast application rollback. Expand-then-contract for column changes: add,
+backfill, switch reads, drop in a later release. Destructive changes require an
+explicit restore decision rather than deleting Flyway history.
 
 ---
 
@@ -318,6 +326,7 @@ credentials outside the repository. Firestore mirror work is out of scope for th
 - [ ] Rate limits hold under a deliberate abuse attempt
 - [x] **No public endpoint or rendered page exposes an exact coordinate or private field** — reviewed, not assumed
 - [x] A backup has been restored and tested
+- [x] Production backup storage, retention, and deployment rollback are documented
 - [ ] Search holds under load at 100k listings
 - [ ] Both end-to-end journeys pass by hand
 - [ ] Moderator runbook exists
