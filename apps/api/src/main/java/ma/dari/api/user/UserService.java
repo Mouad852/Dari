@@ -10,6 +10,7 @@ import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
 import ma.dari.api.media.ImageStore;
 import ma.dari.api.moderation.BannedIdentityRepository;
+import ma.dari.api.notification.NotificationDeliveryService;
 import ma.dari.api.user.dto.CreateUserRequest;
 import ma.dari.api.user.dto.PublicProfileResponse;
 import ma.dari.api.user.dto.UpdateUserRequest;
@@ -81,11 +82,18 @@ public class UserService {
      * Firebase identity goes, the row and the person's listings are
      * soft-deleted, and messages are retained — a conversation is two people's
      * data and one party cannot unilaterally erase the other's history.
+     * Everything that identifies the person beyond {@code deletedAt} itself —
+     * email, phone, name, city, bio, avatar — is cleared, since a soft-deleted
+     * row is still a live row in every backup and every database session an
+     * admin opens.
      *
-     * <p>The Firebase identity is removed last. If it were removed first and the
-     * transaction then rolled back, the person would be left with a live Dari
-     * row they could no longer authenticate against: locked out, still listed,
-     * and unable to retry.
+     * <p>The Firebase identity is removed before the avatar file, and the avatar
+     * file is removed last, after the transaction's writes are staged but before
+     * this method returns. If Firebase deletion fails, the whole transaction
+     * (including the PII scrub) rolls back, which is the recoverable outcome:
+     * the account still exists, undisturbed, and the person can retry. Deleting
+     * the file only after that point means a rollback never leaves a scrubbed
+     * row pointing at an already-deleted photo.
      */
     @Transactional
     public void deleteAccount(User user) {
@@ -99,6 +107,8 @@ public class UserService {
             }
         });
 
+        String previousAvatarUrl = user.getAvatarUrl();
+        scrubPii(user);
         user.setDeletedAt(now);
         users.save(user);
 
@@ -113,6 +123,41 @@ public class UserService {
             throw new ApiException(502, ErrorCode.INTERNAL_ERROR,
                     "La suppression du compte a échoué. Réessayez.");
         }
+
+        if (previousAvatarUrl != null && previousAvatarUrl.startsWith("/uploads/")) {
+            try {
+                imageStore.delete(previousAvatarUrl.substring("/uploads/".length()));
+            } catch (RuntimeException ignored) {
+                // Best-effort, same reasoning as uploadAvatar's replaced-file
+                // cleanup: the row is already correct without this file.
+            }
+        }
+    }
+
+    /**
+     * Clears every field that identifies the person, beyond the {@code
+     * deletedAt} flag itself. The row, its id, and any messages or moderation
+     * history stay — those belong to counterparties and moderators, not
+     * solely to this person — but nothing that identifies them personally
+     * should still be readable from the row afterward.
+     *
+     * <p>{@code email} and {@code displayName} are schema-{@code NOT NULL} and
+     * assumed present by other code, so they become an empty string and a
+     * fixed French placeholder rather than {@code null}. {@link
+     * NotificationDeliveryService} already treats a blank email exactly like a
+     * missing one, so a notification already queued for this person before
+     * deletion dies cleanly instead of erroring.
+     */
+    private void scrubPii(User user) {
+        user.setEmail("");
+        user.setEmailVerified(false);
+        user.setPhone(null);
+        user.setPhoneVerified(false);
+        user.setFirstName(null);
+        user.setDisplayName("Utilisateur supprimé");
+        user.setCity(null);
+        user.setBio(null);
+        user.setAvatarUrl(null);
     }
 
     /**

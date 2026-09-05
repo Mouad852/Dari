@@ -256,6 +256,51 @@ class UserApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("account deletion scrubs personal data from the row and removes the stored avatar")
+    void accountDeletionScrubsPii() throws Exception {
+        String uid = "uid-scrub-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        User user = new User(uid, email, true, "Personne Réelle");
+        user.setFirstName("Réelle");
+        user.setPhone("+212600000000");
+        user.setPhoneVerified(true);
+        user.setCity("Marrakech");
+        user.setBio("Ceci est ma bio.");
+        users.saveAndFlush(user);
+
+        String avatarUrl = given().header("Authorization", "Bearer scrub-token")
+                .multiPart("file", "me.jpg", generateJpeg(320, 240), "image/jpeg")
+                .when().post("/users/me/avatar")
+                .then().statusCode(200)
+                .extract().path("avatarUrl");
+        String storageKey = avatarUrl.substring("/uploads/".length());
+
+        given().basePath("").header("Authorization", "Bearer scrub-token")
+                .when().get("/uploads/" + storageKey)
+                .then().statusCode(200);
+
+        given().header("Authorization", "Bearer scrub-token")
+                .when().delete("/users/me")
+                .then().statusCode(204);
+
+        User deleted = users.findById(user.getId()).orElseThrow();
+        assertThat(deleted.getEmail()).isEmpty();
+        assertThat(deleted.isEmailVerified()).isFalse();
+        assertThat(deleted.getPhone()).isNull();
+        assertThat(deleted.isPhoneVerified()).isFalse();
+        assertThat(deleted.getFirstName()).isNull();
+        assertThat(deleted.getDisplayName()).isEqualTo("Utilisateur supprimé");
+        assertThat(deleted.getCity()).isNull();
+        assertThat(deleted.getBio()).isNull();
+        assertThat(deleted.getAvatarUrl()).isNull();
+
+        // The file itself, not just the row's pointer to it, must be gone.
+        given().basePath("").when().get("/uploads/" + storageKey)
+                .then().statusCode(404);
+    }
+
+    @Test
     @DisplayName("a deleted account's email can be used to register again")
     void deletedEmailCanRegisterAgain() throws Exception {
         String email = "reuse-" + System.nanoTime() + "@example.ma";

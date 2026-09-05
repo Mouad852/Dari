@@ -8,7 +8,7 @@ Last verified: 2026-09-05
 
 - [x] Spring Boot API builds and runs against PostgreSQL 16 + PostGIS
 - [x] Flyway migrations apply through `V19__notification_delivery_state.sql`
-- [x] Backend suite passes: 118 tests, 0 failures, 0 errors
+- [x] Backend suite passes: 119 tests, 0 failures, 0 errors
 - [x] Next.js frontend typecheck passes
 - [x] Design-token consistency check passes
 - [x] Next.js production build completes
@@ -42,7 +42,7 @@ Last verified: 2026-09-05
 - [x] Review CORS, security headers, TLS, and production cookie/token settings
 - [x] Verify ownership and role checks on every mutating endpoint
 - [x] Verify soft-delete filtering on every API read path; Firestore mirror remains out of scope
-- [ ] Decide and implement the PII policy for deleted users
+- [x] Decide and implement the PII policy for deleted users
 - [x] Create a custom-format database backup and restore it into a clean PostGIS environment
 
 ### Production operations
@@ -122,7 +122,9 @@ Before marking a checkbox complete:
 
 ## Latest verification
 
-- `cd apps/api && ./mvnw test` passed on 2026-09-05: 118 tests, 0 failures, 0 errors; migrations applied through `V19__notification_delivery_state.sql`
+- PII policy for deleted users implemented on 2026-09-05: `UserService#deleteAccount` now clears email, phone, first name, city, bio, and avatar URL and deletes the stored avatar file, alongside the existing soft-delete and Firebase-identity removal. `email`/`displayName` stay non-null (schema constraint) but become a blank string and "Utilisateur supprimé" respectively; `NotificationDeliveryService` already treats a blank email as "no recipient" and marks the event `DEAD`, so a notification already queued for a self-deleted user fails clean rather than erroring. The avatar file is only deleted after the Firebase call succeeds, so a rollback never leaves a scrubbed row pointing at an already-deleted file. New `UserApiTest.accountDeletionScrubsPii` covers both the field scrub and the file deletion.
+- Found and fixed in the same pass: any missing path under `/uploads/**` (e.g. a deleted avatar or photo) returned a raw 500 instead of 404 — `GlobalExceptionHandler`'s catch-all was swallowing Spring's `NoResourceFoundException`. Added a dedicated handler returning 404 `NOT_FOUND`. Pre-existing bug, unrelated to the PII scrub change; caught because the new test was the first to request a genuinely missing upload path.
+- `cd apps/api && ./mvnw test` passed on 2026-09-05: 119 tests, 0 failures, 0 errors; migrations applied through `V19__notification_delivery_state.sql`
 - `git diff --check` passed for the Phase 10 input-validation hardening and documentation
 - Soft-delete read-path review completed on 2026-09-05: public search/detail, owner listings, favorites, profiles, conversations, report targets, and moderation queues exclude deleted rows where appropriate; account deletion, moderation history, and notification delivery intentionally retain historical-row access. Firestore mirror work remains out of scope.
 - Database backup and restore validation completed on 2026-09-05: `pg_dump -Fc` produced a 47,456-byte backup from the local PostGIS database; `pg_restore --no-owner --exit-on-error` restored it into a fresh `postgis/postgis:16-3.4` container, and validation confirmed 12 users, 29 listings, 12 Flyway history rows, and PostGIS availability. The scratch container was removed afterward. Firestore mirror work remains out of scope.

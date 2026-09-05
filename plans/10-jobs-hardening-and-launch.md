@@ -29,6 +29,7 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 - [x] **A dedicated review of location fuzzing across every endpoint**, including map, search, detail and any admin route that might be reachable publicly. One leak makes the whole scheme decorative.
 - [x] Audit every response DTO for private-field leakage — email, phone, exact coordinates, internal status, `firebase_uid`
 - [x] Confirm soft-delete is honoured across API read paths; Firestore mirror work remains out of scope
+- [x] Decide and implement the PII policy for deleted users: email, phone, first name, city, bio, and the stored avatar file are cleared on self-deletion (see "Verified implementation" below)
 - [x] Input validation and size limits across all write paths
 - [x] CORS, security headers, and production token-setting review: CORS is an explicit
   origin allowlist with `Authorization`/`Content-Type` headers; API responses send
@@ -151,6 +152,30 @@ fabricated balances, email addresses, device counts, or security scores. They
 now identify unsupported contracts as unavailable, and the global footer links
 to the legal pages. The remaining accessibility gate requires a real 360px and
 keyboard pass before public launch.
+
+`UserService#deleteAccount` (self-deletion, `DELETE /users/me`) now scrubs PII beyond
+setting `deleted_at`: email becomes an empty string, phone/first name/city/bio/avatar URL
+become null, `displayName` becomes the fixed placeholder "Utilisateur supprimé", and the
+stored avatar file is deleted from disk — not merely unlinked. The row, its id, and any
+messages or moderation history are kept, since those belong to counterparties and
+moderators rather than solely to the deleted person, matching the existing "messages are
+retained" decision. `email`/`displayName` stay non-null because the schema requires it and
+other code assumes a value is present; `NotificationDeliveryService` already treats a blank
+email exactly like a missing one and marks the event `DEAD`, so a notification already
+queued for the person before deletion fails clean instead of erroring. The avatar file is
+deleted only after the Firebase identity call succeeds, so a failure there rolls back the
+whole transaction — including the in-memory scrub — without leaving a row pointing at an
+already-deleted file. This scrub applies only to self-initiated deletion; a banned or
+suspended account's row is untouched, since that PII remains legitimate audit-trail
+material for moderators (see §6 "Data retention on ban" in the design doc). Covered by
+`UserApiTest.accountDeletionScrubsPii`.
+
+Found and fixed in the same pass, unrelated to the PII scrub itself: any missing path
+under `/uploads/**` returned a raw 500 rather than 404, because `GlobalExceptionHandler`'s
+catch-all `Exception` handler was swallowing Spring's `NoResourceFoundException`. Added a
+dedicated handler mapping it to 404 `NOT_FOUND`. This is a general bug that would have hit
+any deleted or never-existed upload path, not something the PII scrub introduced — the new
+test was simply the first to exercise a genuinely missing upload.
 
 The next session must update the docs after each change, then commit and push the verified change before moving on.
 

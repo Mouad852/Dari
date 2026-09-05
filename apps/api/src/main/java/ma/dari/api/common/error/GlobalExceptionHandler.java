@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -111,6 +112,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException e) {
         return ResponseEntity.status(403).body(ErrorResponse.of(ErrorCode.FORBIDDEN, "Accès refusé"));
+    }
+
+    /**
+     * A static path under {@code /uploads/**} (or any other unmatched route)
+     * with nothing behind it — most commonly a photo or avatar that has since
+     * been deleted.
+     *
+     * <p>Without this, {@code NoResourceFoundException} fell through to the
+     * catch-all below and a plain missing file was reported as a server fault
+     * rather than the ordinary 404 it is — the same class of misreporting the
+     * {@code AccessDeniedException} handler above exists to prevent for denials.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    ResponseEntity<ErrorResponse> handleMissingResource(NoResourceFoundException e) {
+        return ResponseEntity.status(404).body(ErrorResponse.of(ErrorCode.NOT_FOUND, "Ressource introuvable"));
     }
 
     /**
