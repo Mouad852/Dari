@@ -7,8 +7,8 @@ Last verified: 2026-09-05
 ## Current baseline
 
 - [x] Spring Boot API builds and runs against PostgreSQL 16 + PostGIS
-- [x] Flyway migrations apply through `V18__listing_expiry_warning.sql`
-- [x] Backend suite passes: 102 tests, 0 failures, 0 errors
+- [x] Flyway migrations apply through `V19__notification_delivery_state.sql`
+- [x] Backend suite passes: 105 tests, 0 failures, 0 errors
 - [x] Next.js frontend typecheck passes
 - [x] Design-token consistency check passes
 - [x] Next.js production build completes
@@ -29,7 +29,7 @@ Last verified: 2026-09-05
 - [x] Warn owners seven days before expiry through the transactional notification outbox
 - [x] Track expiry warnings idempotently with `listings.expiry_warned_at` and clear it on renewal
 - [x] Enqueue expiry notifications in the transactional notification outbox
-- [ ] Deliver French notifications for approval, rejection, suspension, reinstatement, warning, expiry, and report acknowledgment
+- [x] Deliver French notifications for approval, rejection, suspension, reinstatement, warning, expiry, and report acknowledgment through the opt-in SMTP outbox worker
 - [ ] Replace the `WARN` report action 501 response once notification delivery exists
 - [x] Add tests for renewal and notification enqueueing
 - [x] Add focused tests for expiry warnings, duplicate job execution, and warning idempotency
@@ -120,9 +120,12 @@ Before marking a checkbox complete:
 - UI changes: perform a real browser check when browser automation is available
 - Update this file in the same session as the implementation
 - Record blockers and failed verification commands instead of marking work complete
+- After every change, update the relevant README and phase documentation, run the focused checks, then commit and push the verified change
 
 ## Latest verification
 
-- `cd apps/api && ./mvnw test` passed on 2026-09-05: 102 tests, 0 failures, 0 errors
+- `cd apps/api && ./mvnw test` passed on 2026-09-05: 105 tests, 0 failures, 0 errors; migrations applied through `V19__notification_delivery_state.sql`
 - `git diff --check` passed for the expiry-warning implementation and documentation
-- Notification delivery remains open: warning and expiry events are persisted in the outbox, but no email or in-app transport consumes it yet
+- Notification delivery is implemented through the opt-in SMTP worker: rows are claimed with row locks, retried with bounded backoff, marked sent idempotently, and malformed events are quarantined as dead
+- SMTP configuration guide created with provider examples (Gmail, Outlook, Moroccan ISP)
+- Notification delivery README documents transactional outbox architecture, retry behavior, claim-lock semantics, and production monitoring queries

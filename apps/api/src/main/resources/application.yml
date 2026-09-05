@@ -87,6 +87,16 @@ dari:
     expiry-days: 60
     expiry-warning-days: 7
 
+  notifications:
+    # Delivery is opt-in. Configure spring.mail.* and the sender before enabling.
+    enabled: ${DARI_NOTIFICATIONS_ENABLED:false}
+    from: ${DARI_NOTIFICATIONS_FROM:no-reply@dari.ma}
+    batch-size: ${DARI_NOTIFICATIONS_BATCH_SIZE:50}
+    max-attempts: ${DARI_NOTIFICATIONS_MAX_ATTEMPTS:5}
+    retry-delay-seconds: ${DARI_NOTIFICATIONS_RETRY_DELAY_SECONDS:60}
+    stale-after-minutes: ${DARI_NOTIFICATIONS_STALE_AFTER_MINUTES:15}
+    delivery-interval-ms: ${DARI_NOTIFICATIONS_DELIVERY_INTERVAL_MS:30000}
+
 logging:
   level:
     ma.dari.api: INFO

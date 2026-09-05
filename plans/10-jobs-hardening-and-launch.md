@@ -18,9 +18,9 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 - [ ] Decide what "update" means for the expiry clock: any `PATCH`, or a deliberate renewal? A listing kept alive by trivial edits defeats the purpose.
 
 **Notifications**
-- [ ] Delivery mechanism — email at minimum, in-app if it earns its place
-- [ ] The §6 set: suspension, rejection with reason, reinstatement, warnings
-- [ ] Reporter acknowledgment that is **generic and reveals no outcome**
+- [x] Delivery mechanism — opt-in SMTP email; in-app is out of scope for launch
+- [x] The §6 set: suspension, rejection with reason, reinstatement, warnings
+- [x] Reporter acknowledgment that is **generic and reveals no outcome**
 - [x] Expiry warning and confirmation are enqueued through the notification outbox
 - [ ] Templates in French, following the copy rules — no exclamation marks, no emoji, no *"Oups !"*
 
@@ -66,10 +66,37 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 
 ### Verified implementation (2026-09-05)
 
-`ListingExpiryJob` runs daily at 02:00 UTC, warns owners seven days before expiry, and uses the atomic `ListingRepository.expirePublishedBefore` update. `expiry_warned_at` prevents duplicate warnings and is cleared on renewal. ShedLock uses the JDBC provider and the `shedlock` table from `V16__shedlock.sql`. Warning and expiry events enqueue through the transactional `notification_outbox` table, and owners can renew only `EXPIRED` listings into `PENDING_REVIEW`. Focused expiry tests and the full API suite pass with 102 tests; email delivery remains open.
+`ListingExpiryJob` runs daily at 02:00 UTC, warns owners seven days before expiry, and uses the atomic `ListingRepository.expirePublishedBefore` update. `expiry_warned_at` prevents duplicate warnings and is cleared on renewal. ShedLock uses the JDBC provider and the `shedlock` table from `V16__shedlock.sql`. Warning and expiry events enqueue through the transactional `notification_outbox` table, and owners can renew only `EXPIRED` listings into `PENDING_REVIEW`.
+
+Notification delivery is an opt-in SMTP worker. `V19__notification_delivery_state.sql` adds `PENDING`, `SENDING`, `SENT`, and `DEAD` state, attempt tracking, stale-claim recovery, and retry timestamps. The worker claims rows with pessimistic locks and skips locked rows, sends outside the claim transaction, retries transport failures up to five attempts with increasing delays, and quarantines unsupported event types, empty payloads, or missing recipient email addresses. Existing French payloads are sent unchanged, and report acknowledgments remain generic.
+
+Production SMTP configuration is documented in `SMTP_CONFIGURATION.md` with:
+- Safe configuration examples for Gmail, Outlook, and Moroccan ISP providers
+- Environment variable reference and security best practices
+- Local testing with MailHog or other fake SMTP servers
+- Troubleshooting guide for common delivery failures
+- Production validation steps and monitoring queries
+
+The notification delivery architecture is documented in `apps/api/src/main/java/ma/dari/api/notification/README.md` with:
+- Transactional outbox design and durability guarantees
+- Pessimistic lock semantics and stale-claim recovery
+- Retry behavior with exponential backoff (60s base delay, up to 5 attempts)
+- State machine (`PENDING` → `SENDING` → `SENT` or `DEAD`)
+- Configuration reference and provider examples
+- Unit and integration test coverage
+- Monitoring queries for outbox health, failure patterns, and stuck messages
+
+The focused notification suite and full API suite pass with 105 tests (0 failures). Both unit tests and full integration tests validate:
+- Transactional enqueueing alongside listing/user changes
+- Claim semantics with non-blocking row locks (SKIP LOCKED)
+- Retry scheduling with exponential backoff on transient failures
+- Immediate DEAD state for validation errors
+- Idempotent sent-state handling
+
+The next session must update the docs after each change, then commit and push the verified change before moving on.
 
 - **Compression risk.** This is the phase most likely to be cut short, and its contents are the ones that matter most when things go wrong. Consider pulling the fuzzing review and rate limits forward if the schedule tightens.
 - **The expiry window is a range, not a decision.** 60 versus 90 days is a product judgement about listing freshness.
 - **Notification infrastructure may need to be earlier.** Phase 06 needs owner notifications to be genuinely usable; if that phase ships without them, moderation decisions land silently on owners. Stubbing there and completing here is fine — forgetting is not.
-- **No email provider chosen.** Deliverability to Moroccan inboxes is worth a moment's research rather than defaulting.
+- **SMTP provider still needs production selection and deliverability testing.** Use `SMTP_CONFIGURATION.md` to configure `spring.mail.*`, `DARI_NOTIFICATIONS_FROM`, and `DARI_NOTIFICATIONS_ENABLED=true`; test Gmail, Outlook, and at least one Moroccan ISP before launch.
 - **Restoring backups is the classic untested assumption.** Test it.

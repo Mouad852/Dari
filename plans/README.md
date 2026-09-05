@@ -7,8 +7,8 @@ This project has moved beyond a blank scaffold. The current repository already c
 The source is a working marketplace slice, not a scaffold. The API and web app both compile, and
 the complete backend suite passes against a real PostGIS Testcontainer.
 
-- Backend migrations run through `V18__listing_expiry_warning.sql`.
-- All 102 backend tests pass: listing, search optimization, favorites, messaging, moderation,
+- Backend migrations run through `V19__notification_delivery_state.sql`.
+- All 105 backend tests pass: listing, search optimization, favorites, messaging, moderation,
   users, and architecture rules.
 - The frontend passes `npm run typecheck`, `npm run tokens:check`, and `npm run build`.
 - The core web marketplace loop is implemented: authentication, search, listings, publishing,
@@ -16,12 +16,19 @@ the complete backend suite passes against a real PostGIS Testcontainer.
 - The scheduled 60-day listing expiry job warns owners seven days ahead with idempotent
   `expiry_warned_at` tracking, uses an atomic expiry update and JDBC ShedLock protection, and
   enqueues both warning and expiry notifications transactionally. Renewal clears the warning
-  marker and returns listings to `PENDING_REVIEW`; email delivery, rate limits and privacy review
-  remain launch-hardening work.
+  marker and returns listings to `PENDING_REVIEW`; opt-in SMTP delivery is now implemented,
+  while rate limits and privacy review remain launch-hardening work.
   contracts, full wizard parity, house rules/rooms/neighborhood reference data, and mobile.
 
 The dated entries below are historical implementation notes. When they conflict with this section
 or the source, this section and the source take precedence.
+
+## Session workflow
+
+After every implementation change, update `TODO.md`, the relevant phase plan, and the relevant
+README status. Run focused validation followed by the required project checks. Once the change and
+documentation are verified, create a commit and push it to the current branch. Do not claim a task
+is complete until the documentation, commit, and push are all accounted for.
 
 ## Index
 

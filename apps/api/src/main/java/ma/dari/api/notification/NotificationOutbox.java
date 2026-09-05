@@ -2,6 +2,8 @@ package ma.dari.api.notification;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import ma.dari.api.common.jpa.Ids;
@@ -31,6 +33,25 @@ public class NotificationOutbox {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    private NotificationOutboxStatus status = NotificationOutboxStatus.PENDING;
+
+    @Column(nullable = false)
+    private int attempts;
+
+    @Column(name = "next_attempt_at", nullable = false)
+    private Instant nextAttemptAt = Instant.now();
+
+    @Column(name = "locked_at")
+    private Instant lockedAt;
+
+    @Column(name = "sent_at")
+    private Instant sentAt;
+
+    @Column(name = "last_error", columnDefinition = "text")
+    private String lastError;
+
     protected NotificationOutbox() {
     }
 
@@ -55,5 +76,42 @@ public class NotificationOutbox {
 
     public String getPayload() {
         return payload;
+    }
+
+    public UUID getId() { return id; }
+
+    public NotificationOutboxStatus getStatus() { return status; }
+
+    public int getAttempts() { return attempts; }
+
+    public Instant getNextAttemptAt() { return nextAttemptAt; }
+
+    public String getLastError() { return lastError; }
+
+    public void markSending(Instant now) {
+        status = NotificationOutboxStatus.SENDING;
+        attempts++;
+        lockedAt = now;
+        lastError = null;
+    }
+
+    public void markSent(Instant now) {
+        status = NotificationOutboxStatus.SENT;
+        sentAt = now;
+        lockedAt = null;
+        lastError = null;
+    }
+
+    public void markRetry(Instant nextAttempt, String error) {
+        status = NotificationOutboxStatus.PENDING;
+        nextAttemptAt = nextAttempt;
+        lockedAt = null;
+        lastError = error;
+    }
+
+    public void markDead(String error) {
+        status = NotificationOutboxStatus.DEAD;
+        lockedAt = null;
+        lastError = error;
     }
 }
