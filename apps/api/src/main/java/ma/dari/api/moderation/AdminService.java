@@ -6,9 +6,9 @@ import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingAmenityRepository;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
-import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingCovers;
 import ma.dari.api.listing.dto.ListingResponse;
+import ma.dari.api.notification.NotificationService;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
 import ma.dari.api.user.UserStatus;
@@ -35,6 +35,7 @@ public class AdminService {
     private final AdminActionRepository adminActions;
     private final ReportRepository reports;
     private final ReportService reportService;
+    private final NotificationService notifications;
     private final UserRepository users;
     private final BannedIdentityRepository bannedIdentities;
 
@@ -44,6 +45,7 @@ public class AdminService {
                        AdminActionRepository adminActions,
                        ReportRepository reports,
                        ReportService reportService,
+                       NotificationService notifications,
                        UserRepository users,
                        BannedIdentityRepository bannedIdentities) {
         this.listings = listings;
@@ -52,6 +54,7 @@ public class AdminService {
         this.adminActions = adminActions;
         this.reports = reports;
         this.reportService = reportService;
+        this.notifications = notifications;
         this.users = users;
         this.bannedIdentities = bannedIdentities;
     }
@@ -208,11 +211,10 @@ public class AdminService {
     /**
      * Resolves a queue item with a real decision.
      *
-     * <p>{@link ModerationAction#WARN} is deliberately absent: its entire effect
-     * is notifying the owner, and {@code NotificationService} has no
-     * implementation yet (phase 10). Offering it would record that an owner was
-     * warned when nothing reached them — worse than not offering it, because a
-     * moderator would believe the matter was handled.
+     * <p>{@link ModerationAction#WARN} sends a generic warning notification to
+     * the target owner and resolves the reports as ACTION_TAKEN. The notification
+     * message is determined by the event type (USER_WARNED) and no further details
+     * are included to the target.
      */
     @Transactional
     public void actOnReports(User admin, ReportTarget targetType, UUID targetId, ModerationAction action, String reason) {
@@ -239,8 +241,19 @@ public class AdminService {
                 reportService.resolvePendingReports(admin, targetType, targetId, ReportStatus.ACTION_TAKEN, reason);
                 adminActions.save(AdminAction.of(admin, "BAN", targetType, targetId, reason));
             }
-            case WARN -> throw new ApiException(400, ErrorCode.NOT_IMPLEMENTED,
-                    "L'avertissement sera disponible avec les notifications");
+            case WARN -> {
+                if (targetType == ReportTarget.LISTING) {
+                    Listing listing = listings.findById(targetId)
+                            .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
+                    notifications.userWarned(listing.getOwner(), reason);
+                } else {
+                    User user = users.findById(targetId)
+                            .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Utilisateur introuvable"));
+                    notifications.userWarned(user, reason);
+                }
+                reportService.resolvePendingReports(admin, targetType, targetId, ReportStatus.ACTION_TAKEN, reason);
+                adminActions.save(AdminAction.of(admin, "WARN", targetType, targetId, reason));
+            }
         }
     }
 

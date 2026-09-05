@@ -14,14 +14,10 @@ import type { PublicListing } from '@/types/api';
 /**
  * Why a favorited listing is no longer bookable, or null if it still is.
  *
- * Mirrors the two independent lifecycle axes from the design doc: a listing
- * can stop being available either because moderation acted on `status`, or
- * because the owner changed `availabilityState`. Both must be checked —
- * neither implies the other.
+ * Public responses do not reveal moderation status. A favorite is unavailable
+ * whenever its public availability axis says so.
  */
 function unavailableReason(listing: PublicListing): string | null {
-  if (listing.status === 'SUSPENDED') return UNAVAILABLE_REASON_LABELS.SUSPENDED;
-  if (listing.status === 'EXPIRED') return UNAVAILABLE_REASON_LABELS.EXPIRED;
   if (listing.availabilityState === 'ROOM_FOUND') return UNAVAILABLE_REASON_LABELS.ROOM_FOUND;
   if (listing.availabilityState === 'CLOSED') return UNAVAILABLE_REASON_LABELS.CLOSED;
   return null;

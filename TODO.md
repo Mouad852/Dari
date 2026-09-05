@@ -8,7 +8,7 @@ Last verified: 2026-09-05
 
 - [x] Spring Boot API builds and runs against PostgreSQL 16 + PostGIS
 - [x] Flyway migrations apply through `V19__notification_delivery_state.sql`
-- [x] Backend suite passes: 105 tests, 0 failures, 0 errors
+- [x] Backend suite passes: 106 tests, 0 failures, 0 errors
 - [x] Next.js frontend typecheck passes
 - [x] Design-token consistency check passes
 - [x] Next.js production build completes
@@ -30,15 +30,15 @@ Last verified: 2026-09-05
 - [x] Track expiry warnings idempotently with `listings.expiry_warned_at` and clear it on renewal
 - [x] Enqueue expiry notifications in the transactional notification outbox
 - [x] Deliver French notifications for approval, rejection, suspension, reinstatement, warning, expiry, and report acknowledgment through the opt-in SMTP outbox worker
-- [ ] Replace the `WARN` report action 501 response once notification delivery exists
+- [x] Replace the `WARN` report action 501 response with transactional owner notification
 - [x] Add tests for renewal and notification enqueueing
 - [x] Add focused tests for expiry warnings, duplicate job execution, and warning idempotency
 
 ### Security and privacy hardening
 
-- [ ] Audit every public response for email, phone, Firebase UID, internal status, and exact coordinates
-- [ ] Audit location fuzzing across search, map, detail, sitemap, metadata, hydration payloads, and images
-- [ ] Add rate limits for reports, messages, listing creation, uploads, and signup abuse paths
+- [x] Audit every public response for email, phone, Firebase UID, internal status, and exact coordinates
+- [x] Audit location fuzzing across search, map, detail, sitemap, metadata, hydration payloads, and images
+- [x] Add rate limits for reports, messages, listing creation, uploads, and signup abuse paths
 - [ ] Review CORS, security headers, TLS, and production cookie/token settings
 - [ ] Verify ownership and role checks on every mutating endpoint
 - [ ] Verify soft-delete filtering on every read path
@@ -124,8 +124,11 @@ Before marking a checkbox complete:
 
 ## Latest verification
 
-- `cd apps/api && ./mvnw test` passed on 2026-09-05: 105 tests, 0 failures, 0 errors; migrations applied through `V19__notification_delivery_state.sql`
+- `cd apps/api && ./mvnw test` passed on 2026-09-05: 106 tests, 0 failures, 0 errors; migrations applied through `V19__notification_delivery_state.sql`
 - `git diff --check` passed for the expiry-warning implementation and documentation
 - Notification delivery is implemented through the opt-in SMTP worker: rows are claimed with row locks, retried with bounded backoff, marked sent idempotently, and malformed events are quarantined as dead
 - SMTP configuration guide created with provider examples (Gmail, Outlook, Moroccan ISP)
 - Notification delivery README documents transactional outbox architecture, retry behavior, claim-lock semantics, and production monitoring queries
+- Rate limits are enforced before controller invocation on report, message, listing creation, upload, and profile-signup writes. Production defaults use separate fixed windows for the authenticated Firebase identity and source address; 429 responses include `Retry-After`. The limiter is process-local until a shared store is introduced for horizontal scaling.
+- Public response audit verified on 2026-09-05: public listing/profile DTOs omit email, phone, Firebase UID, moderation status, and exact coordinates; search, map, detail, featured, and favorites all use fuzzed coordinates. Owner/admin listing responses retain the private status and exact-coordinate fields behind their existing access checks.
+- `WARN` moderation actions now enqueue a French owner warning transactionally and resolve the affected reports as `ACTION_TAKEN`

@@ -3,6 +3,8 @@ package ma.dari.api.listing;
 import jakarta.validation.Valid;
 import ma.dari.api.common.auth.AuthenticatedUser;
 import ma.dari.api.common.auth.CurrentUser;
+import ma.dari.api.common.ratelimit.RateLimited;
+import ma.dari.api.common.ratelimit.RateLimitType;
 import ma.dari.api.common.pagination.CursorPage;
 import ma.dari.api.listing.dto.CreateListingRequest;
 import ma.dari.api.listing.dto.ListingPhotoResponse;
@@ -172,6 +174,7 @@ public class ListingController {
 
     /** Creates a DRAFT. The wizard persists server-side from step one. */
     @PostMapping
+    @RateLimited(RateLimitType.LISTING)
     public ResponseEntity<ListingResponse> create(@CurrentUser User owner,
                                                 @Valid @RequestBody CreateListingRequest request) {
         Listing listing = listingService.create(owner, request);
@@ -201,25 +204,25 @@ public class ListingController {
 
     /** DRAFT | REJECTED -> PENDING_REVIEW. Full validation runs here, not per step. */
     @PostMapping("/{id}/submit")
-    public PublicListingResponse submit(@CurrentUser User owner, @PathVariable UUID id) {
+    public ListingResponse submit(@CurrentUser User owner, @PathVariable UUID id) {
         return listingSearchService.submit(id, owner);
     }
 
     /** AVAILABLE -> ROOM_FOUND. Touches availability only; status is untouched. */
     @PostMapping("/{id}/mark-room-found")
-    public PublicListingResponse markRoomFound(@CurrentUser User owner, @PathVariable UUID id) {
+    public ListingResponse markRoomFound(@CurrentUser User owner, @PathVariable UUID id) {
         return listingSearchService.markRoomFound(id, owner);
     }
 
     /** ROOM_FOUND -> AVAILABLE. Legal only while status is still PUBLISHED. */
     @PostMapping("/{id}/reopen")
-    public PublicListingResponse reopen(@CurrentUser User owner, @PathVariable UUID id) {
+    public ListingResponse reopen(@CurrentUser User owner, @PathVariable UUID id) {
         return listingSearchService.reopen(id, owner);
     }
 
     /** EXPIRED -> PENDING_REVIEW (phase 10). Re-review is deliberate, not a formality. */
     @PostMapping("/{id}/renew")
-    public PublicListingResponse renew(@CurrentUser User owner, @PathVariable UUID id) {
+    public ListingResponse renew(@CurrentUser User owner, @PathVariable UUID id) {
         return listingSearchService.renew(id, owner);
     }
 
@@ -235,6 +238,7 @@ public class ListingController {
 
     /** Uploads are re-encoded, which strips EXIF. A listing photo carries GPS. */
     @PostMapping("/{id}/photos")
+    @RateLimited(RateLimitType.UPLOAD)
     public ResponseEntity<ListingPhotoResponse> addPhoto(@CurrentUser User owner,
                                                       @PathVariable UUID id,
                                                       @RequestParam("file") MultipartFile file) {

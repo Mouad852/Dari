@@ -25,9 +25,9 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 - [ ] Templates in French, following the copy rules — no exclamation marks, no emoji, no *"Oups !"*
 
 **Hardening**
-- [ ] Rate limits on the abuse-prone routes: report creation, message sending, listing creation, signup
-- [ ] **A dedicated review of location fuzzing across every endpoint**, including map, search, detail and any admin route that might be reachable publicly. One leak makes the whole scheme decorative.
-- [ ] Audit every response DTO for private-field leakage — email, phone, exact coordinates, internal status, `firebase_uid`
+- [x] Rate limits on the abuse-prone routes: report creation, message sending, listing creation, uploads, signup
+- [x] **A dedicated review of location fuzzing across every endpoint**, including map, search, detail and any admin route that might be reachable publicly. One leak makes the whole scheme decorative.
+- [x] Audit every response DTO for private-field leakage — email, phone, exact coordinates, internal status, `firebase_uid`
 - [ ] Confirm soft-delete is honoured everywhere, including the Firestore mirror if it exists
 - [ ] Input validation and size limits across all write paths
 - [ ] CORS, security headers, TLS
@@ -66,9 +66,32 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 
 ### Verified implementation (2026-09-05)
 
-`ListingExpiryJob` runs daily at 02:00 UTC, warns owners seven days before expiry, and uses the atomic `ListingRepository.expirePublishedBefore` update. `expiry_warned_at` prevents duplicate warnings and is cleared on renewal. ShedLock uses the JDBC provider and the `shedlock` table from `V16__shedlock.sql`. Warning and expiry events enqueue through the transactional `notification_outbox` table, and owners can renew only `EXPIRED` listings into `PENDING_REVIEW`.
+Rate limits are enforced by a Spring MVC interceptor before controller invocation. Report creation,
+conversation/message writes, listing creation, listing photo uploads, avatar uploads, and profile
+signup are annotated explicitly. Each policy has independent fixed-window buckets for the Firebase
+identity and source address, and a rejected request returns the normal error envelope with HTTP 429
+and `Retry-After`. Defaults are configurable through `DARI_RATE_LIMIT_*` environment variables:
+reports 5/hour, messages 30/minute, listings 5/hour, uploads 20/hour, and signup 5/hour.
+The implementation is intentionally process-local; a shared Redis/database bucket is required before
+running multiple API instances.
 
-Notification delivery is an opt-in SMTP worker. `V19__notification_delivery_state.sql` adds `PENDING`, `SENDING`, `SENT`, and `DEAD` state, attempt tracking, stale-claim recovery, and retry timestamps. The worker claims rows with pessimistic locks and skips locked rows, sends outside the claim transaction, retries transport failures up to five attempts with increasing delays, and quarantines unsupported event types, empty payloads, or missing recipient email addresses. Existing French payloads are sent unchanged, and report acknowledgments remain generic.
+The public-response audit is complete. `PublicListingResponse` and
+`PublicListingDetailResponse` expose availability but not moderation status, and
+they receive coordinates only through `LocationFuzzer`. Search, map, detail,
+featured, and favorites use those DTOs. Lifecycle confirmations now use the
+owner-scoped `ListingResponse`, so status and exact coordinates remain available
+only to the authenticated owner or moderator paths. `PublicProfileResponse`
+structurally excludes email, phone, Firebase UID, and account status.
+
+Regression tests exercise the public JSON for private-field absence and verify
+that exact stored coordinates are not serialized across the public listing
+surfaces. The web `PublicListing` type and favorites page follow the same
+boundary.
+
+`ListingExpiryJob` runs daily at 02:00 UTC, warns owners seven days before expiry, and uses the atomic `ListingRepository.expirePublishedBefore` update. `expiry_warned_at` prevents duplicate warnings and is cleared on renewal. ShedLock uses the JDBC provider and the `shedlock` table from `V16__shedlock.sql`. Warning and expiry events enqueue through the transactional `notification_outbox` table, and owners can renew only `EXPIRED` listings into `PENDING_REVIEW`.
+Moderator `WARN` actions now enqueue `USER_WARNED` for the listing owner or user target and close pending reports as `ACTION_TAKEN`.
+
+Notification delivery is an opt-in SMTP worker. `V19__notification_delivery_state.sql` adds `PENDING`, `SENDING`, `SENT`, and `DEAD` state, attempt tracking, stale-claim recovery, and retry timestamps. The worker claims rows with pessimistic locks and skips locked rows, sends outside the claim transaction, retries transport failures up to five attempts with increasing delays, and quarantines unsupported event types, empty payloads, or missing recipient email addresses. Existing French payloads are sent unchanged, and report acknowledgments remain generic. The `WARN` report action now enqueues a `USER_WARNED` message for the reported listing owner or user and resolves the pending reports as acted on.
 
 Production SMTP configuration is documented in `SMTP_CONFIGURATION.md` with:
 - Safe configuration examples for Gmail, Outlook, and Moroccan ISP providers
@@ -86,7 +109,7 @@ The notification delivery architecture is documented in `apps/api/src/main/java/
 - Unit and integration test coverage
 - Monitoring queries for outbox health, failure patterns, and stuck messages
 
-The focused notification suite and full API suite pass with 105 tests (0 failures). Both unit tests and full integration tests validate:
+The focused notification suite and full API suite pass with 106 tests (0 failures). Both unit tests and full integration tests validate:
 - Transactional enqueueing alongside listing/user changes
 - Claim semantics with non-blocking row locks (SKIP LOCKED)
 - Retry scheduling with exponential backoff on transient failures

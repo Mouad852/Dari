@@ -2,6 +2,8 @@ package ma.dari.api.messaging;
 
 import jakarta.validation.Valid;
 import ma.dari.api.common.auth.CurrentUser;
+import ma.dari.api.common.ratelimit.RateLimited;
+import ma.dari.api.common.ratelimit.RateLimitType;
 import ma.dari.api.common.pagination.CursorPage;
 import ma.dari.api.messaging.dto.ConversationResponse;
 import ma.dari.api.messaging.dto.CreateConversationRequest;
@@ -60,6 +62,7 @@ public class ConversationController {
      * conversation with themselves.
      */
     @PostMapping
+    @RateLimited(RateLimitType.MESSAGE)
     public ResponseEntity<ConversationResponse> create(@CurrentUser User user,
                                                     @Valid @RequestBody CreateConversationRequest request) {
         var created = conversationService.create(user, request);
@@ -76,6 +79,7 @@ public class ConversationController {
     }
 
     @PostMapping("/{id}/messages")
+    @RateLimited(RateLimitType.MESSAGE)
     public ResponseEntity<MessageResponse> send(@CurrentUser User user,
                                              @PathVariable UUID id,
                                              @Valid @RequestBody CreateMessageRequest request) {

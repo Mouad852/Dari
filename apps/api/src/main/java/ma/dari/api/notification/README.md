@@ -112,7 +112,8 @@ Transient failures (network timeout, SMTP service unavailable) retry indefinitel
 
 ## Notification Events
 
-All notifications are enqueued through `NotificationService`:
+All notifications are enqueued through `NotificationService`, including
+moderator warnings from the report queue:
 
 ```java
 public interface NotificationService {
@@ -129,7 +130,7 @@ public interface NotificationService {
 }
 ```
 
-Implementations (currently `OutboxNotificationService`) persist to the outbox table. The delivery service sends the persisted payloads unchanged.
+Implementations (currently `OutboxNotificationService`) persist to the outbox table. The delivery service sends the persisted payloads unchanged. The `WARN` report action uses `userWarned` for the reported user or listing owner, then marks pending reports as acted on in the same transaction.
 
 ## Configuration
 
@@ -307,6 +308,6 @@ Potential enhancements (not in scope for launch):
 
 ---
 
-**Last updated:** 2026-09-05  
-**Version:** 1.0  
+**Last updated:** 2026-09-05
+**Version:** 1.0
 **Architecture Review:** Phase 10 (Scheduled jobs, notifications, hardening and launch readiness)

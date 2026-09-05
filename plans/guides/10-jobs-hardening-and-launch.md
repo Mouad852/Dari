@@ -97,6 +97,10 @@ Grep for every call site before implementing. The failure mode here is not a bro
 
 French, following the copy rules exactly — the same rules as the UI. No emoji. **No exclamation marks.** Plain and non-blaming.
 
+Moderator `WARN` actions use the same transactional outbox and enqueue a
+`USER_WARNED` message for the listing owner or user target before resolving the
+pending reports as `ACTION_TAKEN`.
+
 ```
 Subject: Votre annonce n'a pas été publiée
 
@@ -168,15 +172,15 @@ Not a checkbox. Sit down and audit every path that could carry a coordinate or a
 
 Every endpoint returning listing data:
 
-- [ ] `GET /listings` — search
-- [ ] `GET /listings/{id}` — public branch, and confirm the owner branch is genuinely owner-only
-- [ ] `GET /listings/map` — highest risk, renders location directly
-- [ ] `GET /listings/featured`
-- [ ] `GET /favorites`
-- [ ] Conversation listing context (phase 04)
-- [ ] **Rendered HTML from phase 08** — page source, JSON-LD, any `__NEXT_DATA__` hydration payload
-- [ ] Sitemap
-- [ ] Admin endpoints — exact coordinates are correct here; confirm they are role-gated
+- [x] `GET /listings` — search
+- [x] `GET /listings/{id}` — public branch, and confirm the owner branch is genuinely owner-only
+- [x] `GET /listings/map` — highest risk, renders location directly
+- [x] `GET /listings/featured`
+- [x] `GET /favorites`
+- [x] Conversation listing context (phase 04) — response contains only listing/user IDs, not coordinates or private fields
+- [x] **Rendered HTML from phase 08** — page source, JSON-LD, any `__NEXT_DATA__` hydration payload
+- [x] Sitemap
+- [x] Admin endpoints — exact coordinates are correct here; confirm they are role-gated
 
 The Next.js hydration payload is the one people miss. A Server Component that fetches a full listing object serializes it into the HTML, so an exact coordinate can leak into page source even when the visible component never renders it. **Fetch the public DTO server-side, not the entity.**
 
@@ -197,6 +201,12 @@ Also confirm distances are rounded to ~100 m, or radius queries let an attacker 
 ### Private fields
 
 Audit every DTO for `email`, `phone`, `firebase_uid`, internal `status`, `deleted_at`, `rejection_reason` on non-owner paths, and reporter identity anywhere near a reported user.
+
+The audit is complete for the current API. Public listing/profile DTOs omit
+email, phone, Firebase UID, moderation status, deleted timestamps, and
+rejection reasons. Owner and admin DTOs retain the fields needed by their
+authenticated workflows. Regression tests cover the public JSON and exact
+coordinate absence across search, map, detail, featured, and favorites.
 
 ### Soft-delete
 
@@ -247,7 +257,7 @@ Confirm every read path filters `deleted_at IS NULL`: search, favorites, profile
 - [ ] Listings expire at 60 days, warned at 53; renewal re-enters review
 - [ ] Every notification delivers, in French, following the copy rules
 - [ ] Rate limits hold under a deliberate abuse attempt
-- [ ] **No endpoint or rendered page exposes an exact coordinate or private field** — reviewed, not assumed
+- [x] **No public endpoint or rendered page exposes an exact coordinate or private field** — reviewed, not assumed
 - [ ] A backup has been restored and tested
 - [ ] Search holds under load at 100k listings
 - [ ] Both end-to-end journeys pass by hand

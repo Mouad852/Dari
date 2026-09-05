@@ -6,6 +6,8 @@ import ma.dari.api.common.auth.CurrentUser;
 import ma.dari.api.common.error.ApiException;
 import ma.dari.api.common.error.ErrorCode;
 import ma.dari.api.common.error.NotImplementedYetException;
+import ma.dari.api.common.ratelimit.RateLimited;
+import ma.dari.api.common.ratelimit.RateLimitType;
 import ma.dari.api.user.dto.CreateUserRequest;
 import ma.dari.api.user.dto.PublicProfileResponse;
 import ma.dari.api.user.dto.UpdateUserRequest;
@@ -43,6 +45,7 @@ public class UserController {
 
     /** First launch, and the client's retry after any PROFILE_NOT_FOUND. */
     @PostMapping
+    @RateLimited(RateLimitType.SIGNUP)
     public ResponseEntity<UserResponse> create(Authentication authentication,
                                                @Valid @RequestBody CreateUserRequest request) {
 
@@ -78,6 +81,7 @@ public class UserController {
     /** Reuses the listing photo pipeline, EXIF stripping included — a profile
      *  photo is as likely to have been taken at home as a listing photo. */
     @PostMapping("/me/avatar")
+    @RateLimited(RateLimitType.UPLOAD)
     public UserResponse uploadAvatar(@CurrentUser User user,
                                      @RequestParam("file") MultipartFile file) {
         return UserResponse.from(userService.uploadAvatar(user, file));

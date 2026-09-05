@@ -129,6 +129,11 @@ class UserApiTest extends AbstractIntegrationTest {
                 .then().statusCode(201)
                 .extract().path("id");
 
+        User existing = users.findById(java.util.UUID.fromString(id)).orElseThrow();
+        existing.setPhone("+212600000000");
+        existing.setStatus(UserStatus.SUSPENDED);
+        users.saveAndFlush(existing);
+
         String body = given().when().get("/users/" + id)
                 .then().statusCode(200)
                 .extract().asString();
@@ -137,7 +142,10 @@ class UserApiTest extends AbstractIntegrationTest {
                 .doesNotContain("email")
                 .doesNotContain("phone")
                 .doesNotContain("firebaseUid")
-                .doesNotContain("status");
+                .doesNotContain("status")
+                .doesNotContain("publique@example.ma")
+                .doesNotContain("+212600000000")
+                .doesNotContain("uid-public");
     }
 
     @Test

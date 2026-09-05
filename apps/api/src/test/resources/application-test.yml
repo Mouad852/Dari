@@ -12,6 +12,14 @@ dari:
   web-origins: http://localhost:3000
   firebase:
     credentials-path: unused-in-tests   # FirebaseConfig is excluded from this profile
+  # Integration tests exercise endpoint behavior, not production quotas. The
+  # limiter itself is covered with deliberately small windows in unit tests.
+  rate-limits:
+    report: { max: 10000, window: PT1H }
+    message: { max: 10000, window: PT1H }
+    listing: { max: 10000, window: PT1H }
+    upload: { max: 10000, window: PT1H }
+    signup: { max: 10000, window: PT1H }
 
 logging:
   level:

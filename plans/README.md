@@ -16,8 +16,8 @@ the complete backend suite passes against a real PostGIS Testcontainer.
 - The scheduled 60-day listing expiry job warns owners seven days ahead with idempotent
   `expiry_warned_at` tracking, uses an atomic expiry update and JDBC ShedLock protection, and
   enqueues both warning and expiry notifications transactionally. Renewal clears the warning
-  marker and returns listings to `PENDING_REVIEW`; opt-in SMTP delivery is now implemented,
-  while rate limits and privacy review remain launch-hardening work.
+  marker and returns listings to `PENDING_REVIEW`; opt-in SMTP delivery and abuse-path rate
+  limits are now implemented, while privacy review remains launch-hardening work.
   contracts, full wizard parity, house rules/rooms/neighborhood reference data, and mobile.
 
 The dated entries below are historical implementation notes. When they conflict with this section

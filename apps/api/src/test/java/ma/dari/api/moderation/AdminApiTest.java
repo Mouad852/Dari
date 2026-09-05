@@ -7,6 +7,8 @@ import ma.dari.api.listing.ListingPhoto;
 import ma.dari.api.listing.ListingPhotoRepository;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
+import ma.dari.api.notification.NotificationOutbox;
+import ma.dari.api.notification.NotificationOutboxRepository;
 import ma.dari.api.support.AbstractIntegrationTest;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
@@ -50,6 +52,9 @@ class AdminApiTest extends AbstractIntegrationTest {
 
     @Autowired
     AdminActionRepository adminActions;
+
+    @Autowired
+    NotificationOutboxRepository notificationOutbox;
 
     @Autowired
     ListingPhotoRepository listingPhotos;
@@ -262,8 +267,8 @@ class AdminApiTest extends AbstractIntegrationTest {
     // --- reports -------------------------------------------------------------
 
     @Test
-    @DisplayName("only DISMISS is accepted as a report action; the rest report themselves as unbuilt")
-    void unsupportedReportActionsAreRejected() throws Exception {
+    @DisplayName("WARN and DISMISS report actions resolve a listing report")
+    void warnAndDismissReportActionsResolveReports() throws Exception {
         User owner = users.saveAndFlush(new User(
                 "uid-owner-act-" + System.nanoTime(), "owner-act@example.ma", true, "Owner"));
         Listing listing = listingFor(owner, ListingStatus.PUBLISHED);
@@ -274,15 +279,13 @@ class AdminApiTest extends AbstractIntegrationTest {
 
         admin("action");
 
-        // Locks the documented limitation in place: warn / suspend-listing /
-        // reject-as-report-action are not implemented, and the API says so
-        // rather than silently doing nothing.
+        // WARN resolves the report and queues the owner notification.
         given().header("Authorization", "Bearer admin-token")
                 .contentType("application/json")
                 .body("{\"action\":\"WARN\",\"reason\":\"test\"}")
                 .when().post("/admin/reports/{type}/{id}/action", "LISTING", listing.getId())
-                .then().statusCode(400)
-                .body("code", equalTo("NOT_IMPLEMENTED"));
+                .then().statusCode(200)
+                .body("status", equalTo("ok"));
 
         given().header("Authorization", "Bearer admin-token")
                 .contentType("application/json")
@@ -367,12 +370,17 @@ class AdminApiTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("BAN is refused on a listing target, and WARN reports itself as unbuilt")
-    void banOnListingRefusedAndWarnUnbuilt() throws Exception {
+    @DisplayName("BAN is refused on a listing target, and WARN notifies its owner")
+    void banOnListingRefusedAndWarnNotifiesOwner() throws Exception {
         User owner = users.saveAndFlush(new User(
                 "uid-warn-owner-" + System.nanoTime(), "warn-owner-" + System.nanoTime() + "@example.ma",
                 true, "Owner"));
         Listing listing = listingFor(owner, ListingStatus.PUBLISHED);
+        User reporter = users.saveAndFlush(new User(
+                "uid-warn-reporter-" + System.nanoTime(), "warn-reporter-" + System.nanoTime() + "@example.ma",
+                true, "Reporter"));
+        reports.saveAndFlush(Report.create(reporter, new CreateReportRequest(
+                ReportTarget.LISTING, listing.getId(), ReportReason.OTHER, "A verifier")));
 
         admin("warn");
 
@@ -383,14 +391,24 @@ class AdminApiTest extends AbstractIntegrationTest {
                 .then().statusCode(400)
                 .body("code", equalTo("VALIDATION_FAILED"));
 
-        // WARN's only effect is notifying the owner, and delivery does not exist
-        // yet. Recording a warning nobody received would be worse than refusing.
         given().header("Authorization", "Bearer admin-token")
                 .contentType("application/json")
-                .body("{\"action\":\"WARN\",\"reason\":\"x\"}")
+                .body("{\"action\":\"WARN\",\"reason\":\"Veuillez verifier votre annonce\"}")
                 .when().post("/admin/reports/{type}/{id}/action", "LISTING", listing.getId())
-                .then().statusCode(400)
-                .body("code", equalTo("NOT_IMPLEMENTED"));
+                .then().statusCode(200)
+                .body("status", equalTo("ok"));
+
+        NotificationOutbox warning = notificationOutbox.findAll().stream()
+                .filter(event -> event.getEventType().equals("USER_WARNED")
+                        && event.getRecipientId().equals(owner.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(warning.getRecipientId()).isEqualTo(owner.getId());
+        assertThat(warning.getPayload()).isEqualTo("Veuillez verifier votre annonce");
+        assertThat(reports.findByTargetTypeAndTargetIdAndStatus(
+                ReportTarget.LISTING, listing.getId(), ReportStatus.PENDING)).isEmpty();
+        assertThat(reports.findByTargetTypeAndTargetIdAndStatus(
+                ReportTarget.LISTING, listing.getId(), ReportStatus.ACTION_TAKEN)).hasSize(1);
 
         given().header("Authorization", "Bearer admin-token")
                 .contentType("application/json")

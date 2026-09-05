@@ -143,7 +143,7 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .orElseThrow(() -> new AssertionError("Studio view Rabat not found in search results: " + items));
 
         assertThat(match.get("city")).isEqualTo("Rabat");
-        assertThat(match.get("status")).isEqualTo("PUBLISHED");
+        assertThat(match).doesNotContainKey("status");
         assertThat(match.get("availabilityState")).isEqualTo("AVAILABLE");
         assertThat((Number) match.get("latitude")).isNotEqualTo(33.9716);
         assertThat((Number) match.get("longitude")).isNotEqualTo(-6.8498);
@@ -335,11 +335,51 @@ class ListingApiTest extends AbstractIntegrationTest {
                 AvailabilityState.AVAILABLE
         ));
 
-        given().when()
+        String body = given().when()
                 .get("/listings/{id}", listing.getId())
                 .then().statusCode(200)
                 .body("id", equalTo(listing.getId().toString()))
-                .body("status", equalTo("PUBLISHED"));
+                .extract().asString();
+
+        assertThat(body)
+                .doesNotContain("\"status\"")
+                .doesNotContain("\"email\"")
+                .doesNotContain("\"phone\"")
+                .doesNotContain("\"firebaseUid\"")
+                .doesNotContain("\"latitude\":33.5652")
+                .doesNotContain("\"longitude\":-7.5923");
+    }
+
+    @Test
+    @DisplayName("all public listing surfaces omit moderation status and fuzz exact coordinates")
+    void publicListingSurfacesArePrivacySafe() {
+        User owner = users.saveAndFlush(new User(
+                "uid-public-audit", "public-audit@example.ma", true, "Public Audit Owner"));
+        String city = "AuditVille" + System.nanoTime();
+        double latitude = 33.9716;
+        double longitude = -6.8498;
+        Listing listing = listings.saveAndFlush(new Listing(
+                owner, "Annonce audit public", city, "Centre", latitude, longitude,
+                new BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+
+        String search = given().queryParam("city", city).when().get("/listings")
+                .then().statusCode(200).extract().asString();
+        String map = given().queryParam("city", city).when().get("/listings/map")
+                .then().statusCode(200).extract().asString();
+        String featured = given().when().get("/listings/featured?limit=12")
+                .then().statusCode(200).extract().asString();
+
+        for (String response : new String[] {search, map, featured}) {
+            assertThat(response)
+                    .doesNotContain("\"status\"")
+                    .doesNotContain("public-audit@example.ma")
+                    .doesNotContain("uid-public-audit")
+                    .doesNotContain("\"latitude\":" + latitude)
+                    .doesNotContain("\"longitude\":" + longitude);
+        }
+
+        assertThat(search).contains(listing.getId().toString());
+        assertThat(map).contains(listing.getId().toString());
     }
 
     @Test

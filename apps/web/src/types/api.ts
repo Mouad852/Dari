@@ -73,10 +73,8 @@ export interface PublicProfile {
 /**
  * A listing as the public sees it.
  *
- * There is no `latitude` or `longitude` here, and there must never be. The
- * coordinate pair below is fuzzed within ~200m at the server's DTO layer; the
- * type mirrors that so an exact coordinate has nowhere to land even if one were
- * somehow returned.
+ * Coordinates are fuzzed within ~200m at the server's DTO layer. Moderation
+ * status is intentionally absent; public callers only need availability.
  */
 export interface PublicListing {
   id: string;
@@ -86,7 +84,6 @@ export interface PublicListing {
   priceRent: number;
   latitude: number;
   longitude: number;
-  status: ListingStatus;
   availabilityState: AvailabilityState;
   createdAt: string;
   /**

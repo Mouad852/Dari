@@ -9,6 +9,7 @@ import ma.dari.api.common.pagination.CursorPage;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRole;
 import ma.dari.api.listing.dto.ListingPhotoResponse;
+import ma.dari.api.listing.dto.ListingResponse;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -391,7 +392,7 @@ public class ListingSearchService {
                 photos);
     }
 
-    public PublicListingResponse submit(UUID listingId, User owner) {
+    public ListingResponse submit(UUID listingId, User owner) {
         Listing listing = requireOwnedListing(listingId, owner);
         if (listing.getStatus() != ListingStatus.DRAFT && listing.getStatus() != ListingStatus.REJECTED) {
             throw illegalTransition("DRAFT | REJECTED -> PENDING_REVIEW");
@@ -414,11 +415,11 @@ public class ListingSearchService {
         // A lifecycle confirmation, not a card: the client already has the
         // listing on screen and re-reading its cover here would be a query for
         // data nothing renders. Null is the deliberate answer, not an oversight.
-        return PublicListingResponse.from(listings.save(listing),
-                LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), null);
+        Listing saved = listings.save(listing);
+        return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null);
     }
 
-    public PublicListingResponse renew(UUID listingId, User owner) {
+    public ListingResponse renew(UUID listingId, User owner) {
         Listing listing = requireOwnedListing(listingId, owner);
         if (listing.getStatus() != ListingStatus.EXPIRED) {
             throw illegalTransition("EXPIRED -> PENDING_REVIEW");
@@ -427,26 +428,26 @@ public class ListingSearchService {
         listing.setStatus(ListingStatus.PENDING_REVIEW);
         listing.setRejectionReason(null);
         listing.setExpiryWarnedAt(null);
-        return PublicListingResponse.from(listings.save(listing),
-                LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), null);
+        Listing saved = listings.save(listing);
+        return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null);
     }
 
-    public PublicListingResponse markRoomFound(UUID listingId, User owner) {
+    public ListingResponse markRoomFound(UUID listingId, User owner) {
         Listing listing = requireOwnedListing(listingId, owner);
         if (listing.getStatus() == ListingStatus.PUBLISHED && listing.getAvailabilityState() == AvailabilityState.AVAILABLE) {
             listing.setAvailabilityState(AvailabilityState.ROOM_FOUND);
-            return PublicListingResponse.from(listings.save(listing),
-                    LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), null);
+            Listing saved = listings.save(listing);
+            return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null);
         }
         throw illegalTransition("AVAILABLE -> ROOM_FOUND");
     }
 
-    public PublicListingResponse reopen(UUID listingId, User owner) {
+    public ListingResponse reopen(UUID listingId, User owner) {
         Listing listing = requireOwnedListing(listingId, owner);
         if (listing.getStatus() == ListingStatus.PUBLISHED && listing.getAvailabilityState() == AvailabilityState.ROOM_FOUND) {
             listing.setAvailabilityState(AvailabilityState.AVAILABLE);
-            return PublicListingResponse.from(listings.save(listing),
-                    LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), null);
+            Listing saved = listings.save(listing);
+            return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null);
         }
         throw illegalTransition("ROOM_FOUND -> AVAILABLE");
     }

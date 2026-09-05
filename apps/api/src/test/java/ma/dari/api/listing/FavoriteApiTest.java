@@ -63,11 +63,19 @@ class FavoriteApiTest extends AbstractIntegrationTest {
                 .when().post("/favorites/" + listing.getId())
                 .then().statusCode(204);
 
-        given().header("Authorization", "Bearer test-token")
+        String favoritesResponse = given().header("Authorization", "Bearer test-token")
                 .when().get("/favorites")
                 .then().statusCode(200)
                 .body("items.size()", equalTo(1))
-                .body("items[0].id", equalTo(listing.getId().toString()));
+                .body("items[0].id", equalTo(listing.getId().toString()))
+                .extract().asString();
+
+        org.assertj.core.api.Assertions.assertThat(favoritesResponse)
+                .doesNotContain("\"status\"")
+                .doesNotContain("owner.fav@example.ma")
+                .doesNotContain("uid-owner-fav")
+                .doesNotContain("\"latitude\":33.9716")
+                .doesNotContain("\"longitude\":-6.8498");
 
         given().header("Authorization", "Bearer test-token")
                 .when().delete("/favorites/" + listing.getId())

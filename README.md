@@ -40,6 +40,7 @@ The project has already crossed the foundational backend and product UI mileston
 - publish wizard persists a server-side draft across steps, resumes the owner's latest draft, and submits it through the listing lifecycle API
 - scheduled listing expiry warns owners seven days ahead with idempotent tracking, changes stale published listings to `EXPIRED`, enqueues warning and expiry notifications transactionally, and lets owners renew only into `PENDING_REVIEW`
 - notification delivery is implemented as an opt-in SMTP worker with durable claiming, bounded retries, sent/dead states, and the existing French outbox copy preserved
+- abuse-path rate limits cover report creation, messaging, listing creation, photo/avatar uploads, and profile signup with identity/source-address windows and 429 `Retry-After` responses
 - search filters for neighborhood, property type, room type, and rent bounds persist in the URL
 - publish, favorites, messaging, and profile flows
 - favorites is implemented end to end: backend (`GET/POST/DELETE /api/v1/favorites` plus `GET /api/v1/favorites/ids` for membership checks, idempotent, integration-tested) and frontend (the `/favorites` list, the listing detail page's save toggle, and the search-results feed cards all call the real API and reflect real favorited state on load)
@@ -82,6 +83,7 @@ The important remaining work is still phase-oriented and should be driven from t
 - `POST /listings/{id}/submit` requires a non-blank description and at least one active photo before moving a `DRAFT` or `REJECTED` listing to `PENDING_REVIEW`
 - the publish wizard uploads real photos: multi-file select, cover selection, delete, and reorder (move buttons rather than drag-and-drop, so reordering works with a keyboard and on touch), backed by `POST/PATCH/DELETE /listings/{id}/photos` and a new owner-scoped `GET /listings/{id}/photos`. Until this landed the Photos step was a button with no handler, so no listing could satisfy the submit precondition and publishing was impossible end to end
 - multipart limits are configured (6 MB per file) above `LocalImageStore`'s own 5 MB rule; Spring's 1 MB default previously rejected any ordinary phone photo as a bare 500 rather than the French error envelope
+- rate limits are configurable through `DARI_RATE_LIMIT_*` environment variables; the default process-local policies are 5 reports/hour, 30 messages/minute, 5 listings/hour, 20 uploads/hour, and 5 signups/hour. A shared store is still required before horizontal API scaling
 - owner-scoped GET routes (`/listings/mine`, `/listings/draft`, `/listings/{id}/photos`, `/users/me`) are gated by the security chain as well as by `@CurrentUser`; they previously sat under wildcard `permitAll` rules and were defended by one layer instead of the two this project requires
 - chain-level auth failures return the standard error envelope: 401 `UNAUTHENTICATED` with `WWW-Authenticate: Bearer` for anonymous callers, 403 `FORBIDDEN` for an authenticated caller without the role. Spring's default for both is a bodyless 403
 - Listing create and patch validate availability fields: minimum stay is 1–36 months and availability cannot be in the past

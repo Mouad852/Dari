@@ -12,7 +12,6 @@ public record PublicListingResponse(
         BigDecimal priceRent,
         double latitude,
         double longitude,
-        ListingStatus status,
         AvailabilityState availabilityState,
         Instant createdAt,
         /**
@@ -39,7 +38,6 @@ public record PublicListingResponse(
                 listing.getPriceRent(),
                 fuzzed[0],
                 fuzzed[1],
-                listing.getStatus(),
                 listing.getAvailabilityState(),
                 listing.getCreatedAt(),
                 coverPhotoUrl);

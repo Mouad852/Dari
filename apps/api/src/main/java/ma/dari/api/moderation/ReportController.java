@@ -2,6 +2,8 @@ package ma.dari.api.moderation;
 
 import jakarta.validation.Valid;
 import ma.dari.api.common.auth.CurrentUser;
+import ma.dari.api.common.ratelimit.RateLimited;
+import ma.dari.api.common.ratelimit.RateLimitType;
 import ma.dari.api.user.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +42,7 @@ public class ReportController {
      * rate in production.
      */
     @PostMapping
+    @RateLimited(RateLimitType.REPORT)
     public ResponseEntity<ReportResponse> create(@CurrentUser User reporter,
                                                @Valid @RequestBody CreateReportRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)

@@ -97,6 +97,25 @@ dari:
     stale-after-minutes: ${DARI_NOTIFICATIONS_STALE_AFTER_MINUTES:15}
     delivery-interval-ms: ${DARI_NOTIFICATIONS_DELIVERY_INTERVAL_MS:30000}
 
+  # Process-local abuse protection. Each policy applies independently to the
+  # authenticated Firebase identity and source address.
+  rate-limits:
+    report:
+      max: ${DARI_RATE_LIMIT_REPORT_MAX:5}
+      window: ${DARI_RATE_LIMIT_REPORT_WINDOW:PT1H}
+    message:
+      max: ${DARI_RATE_LIMIT_MESSAGE_MAX:30}
+      window: ${DARI_RATE_LIMIT_MESSAGE_WINDOW:PT1M}
+    listing:
+      max: ${DARI_RATE_LIMIT_LISTING_MAX:5}
+      window: ${DARI_RATE_LIMIT_LISTING_WINDOW:PT1H}
+    upload:
+      max: ${DARI_RATE_LIMIT_UPLOAD_MAX:20}
+      window: ${DARI_RATE_LIMIT_UPLOAD_WINDOW:PT1H}
+    signup:
+      max: ${DARI_RATE_LIMIT_SIGNUP_MAX:5}
+      window: ${DARI_RATE_LIMIT_SIGNUP_WINDOW:PT1H}
+
 logging:
   level:
     ma.dari.api: INFO
