@@ -10,6 +10,8 @@ description: Apply the user's preferred low-credit workflow for Dari coding sess
 - Start with the smallest targeted validation command that proves the changed behavior, then run the documented build/typecheck only when relevant.
 - Batch independent file reads and checks; avoid serial exploration when the next files are already predictable.
 - Preserve known project constraints and out-of-scope items from the handoff instead of rediscovering them.
+- Do not add contributor markers, co-author trailers, or other metadata identifying Copilot or Copilot assistance.
+- Start every change from the latest `master` in a dedicated branch; push the completed branch to the remote, then merge it into `master` and push the updated `master`.
 - Before stopping, update the relevant `README.md`, `plans/README.md`, and specific phase plan documents when the project status or documented scope changed.
 - End with a concise summary of changed files, rationale, commands run, failures, and anything not browser-verified.
 - Always provide a ready-to-paste prompt for the next session describing the next focused task, relevant files/docs, acceptance criteria, validation commands, known failures, and explicit out-of-scope items.
