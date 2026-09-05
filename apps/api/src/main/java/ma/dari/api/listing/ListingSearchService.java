@@ -429,10 +429,11 @@ public class ListingSearchService {
 
         listing.setStatus(ListingStatus.PENDING_REVIEW);
         // A lifecycle confirmation, not a card: the client already has the
-        // listing on screen and re-reading its cover here would be a query for
-        // data nothing renders. Null is the deliberate answer, not an oversight.
+        // listing on screen and re-reading its cover or house rules here would
+        // be a query for data nothing renders. Null is the deliberate answer,
+        // not an oversight.
         Listing saved = listings.save(listing);
-        return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null);
+        return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null);
     }
 
     public ListingResponse renew(UUID listingId, User owner) {
@@ -445,7 +446,7 @@ public class ListingSearchService {
         listing.setRejectionReason(null);
         listing.setExpiryWarnedAt(null);
         Listing saved = listings.save(listing);
-        return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null);
+        return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null);
     }
 
     public ListingResponse markRoomFound(UUID listingId, User owner) {
@@ -453,7 +454,7 @@ public class ListingSearchService {
         if (listing.getStatus() == ListingStatus.PUBLISHED && listing.getAvailabilityState() == AvailabilityState.AVAILABLE) {
             listing.setAvailabilityState(AvailabilityState.ROOM_FOUND);
             Listing saved = listings.save(listing);
-            return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null);
+            return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null);
         }
         throw illegalTransition("AVAILABLE -> ROOM_FOUND");
     }
@@ -463,7 +464,7 @@ public class ListingSearchService {
         if (listing.getStatus() == ListingStatus.PUBLISHED && listing.getAvailabilityState() == AvailabilityState.ROOM_FOUND) {
             listing.setAvailabilityState(AvailabilityState.AVAILABLE);
             Listing saved = listings.save(listing);
-            return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null);
+            return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null);
         }
         throw illegalTransition("ROOM_FOUND -> AVAILABLE");
     }

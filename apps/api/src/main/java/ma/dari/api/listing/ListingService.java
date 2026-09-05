@@ -6,6 +6,7 @@ import ma.dari.api.common.pagination.Cursor;
 import ma.dari.api.common.pagination.CursorPage;
 import ma.dari.api.listing.dto.CreateListingRequest;
 import ma.dari.api.listing.dto.HouseRulesRequest;
+import ma.dari.api.listing.dto.HouseRulesResponse;
 import ma.dari.api.listing.dto.ListingResponse;
 import ma.dari.api.listing.dto.UpdateListingRequest;
 import ma.dari.api.media.ImageStore;
@@ -68,7 +69,7 @@ public class ListingService {
         java.util.Map<UUID, String> coverUrls = covers.forEach(pageRows);
         List<ListingResponse> items = pageRows.stream()
                 .map(listing -> ListingResponse.from(listing, amenityCodesFor(listing.getId()),
-                        coverUrls.get(listing.getId())))
+                        coverUrls.get(listing.getId()), houseRulesFor(listing.getId())))
                 .toList();
 
         String nextCursor = null;
@@ -184,6 +185,12 @@ public class ListingService {
     @Transactional(readOnly = true)
     public Set<String> amenityCodesFor(UUID listingId) {
         return new HashSet<>(listingAmenities.findAmenityCodesByListingId(listingId));
+    }
+
+    /** House rules for a listing, for responses. Null when none have been set yet. */
+    @Transactional(readOnly = true)
+    public HouseRulesResponse houseRulesFor(UUID listingId) {
+        return houseRules.findById(listingId).map(HouseRulesResponse::from).orElse(null);
     }
 
     /** Full replace: simplest correct semantics for a checkbox-list UI. */

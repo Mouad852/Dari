@@ -2,11 +2,13 @@ package ma.dari.api.moderation;
 
 import ma.dari.api.common.error.ApiException;
 import ma.dari.api.common.error.ErrorCode;
+import ma.dari.api.listing.HouseRulesRepository;
 import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingAmenityRepository;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
 import ma.dari.api.listing.ListingCovers;
+import ma.dari.api.listing.dto.HouseRulesResponse;
 import ma.dari.api.listing.dto.ListingResponse;
 import ma.dari.api.notification.NotificationService;
 import ma.dari.api.user.User;
@@ -31,6 +33,7 @@ public class AdminService {
 
     private final ListingRepository listings;
     private final ListingAmenityRepository listingAmenities;
+    private final HouseRulesRepository houseRules;
     private final ListingCovers covers;
     private final AdminActionRepository adminActions;
     private final ReportRepository reports;
@@ -41,6 +44,7 @@ public class AdminService {
 
     public AdminService(ListingRepository listings,
                        ListingAmenityRepository listingAmenities,
+                       HouseRulesRepository houseRules,
                        ListingCovers covers,
                        AdminActionRepository adminActions,
                        ReportRepository reports,
@@ -50,6 +54,7 @@ public class AdminService {
                        BannedIdentityRepository bannedIdentities) {
         this.listings = listings;
         this.listingAmenities = listingAmenities;
+        this.houseRules = houseRules;
         this.covers = covers;
         this.adminActions = adminActions;
         this.reports = reports;
@@ -67,12 +72,16 @@ public class AdminService {
         Map<UUID, String> coverUrls = covers.forEach(rows);
         return rows.stream()
                 .map(listing -> ListingResponse.from(listing, amenityCodesFor(listing.getId()),
-                        coverUrls.get(listing.getId())))
+                        coverUrls.get(listing.getId()), houseRulesFor(listing.getId())))
                 .toList();
     }
 
     private Set<String> amenityCodesFor(UUID listingId) {
         return new HashSet<>(listingAmenities.findAmenityCodesByListingId(listingId));
+    }
+
+    private HouseRulesResponse houseRulesFor(UUID listingId) {
+        return houseRules.findById(listingId).map(HouseRulesResponse::from).orElse(null);
     }
 
     @Transactional(readOnly = true)
@@ -185,7 +194,8 @@ public class AdminService {
         listing.setRejectionReason(null);
         listings.save(listing);
         adminActions.save(AdminAction.of(admin, "APPROVE_LISTING", ReportTarget.LISTING, listingId, null));
-        return ListingResponse.from(listing, amenityCodesFor(listing.getId()), covers.forListing(listing.getId()));
+        return ListingResponse.from(listing, amenityCodesFor(listing.getId()), covers.forListing(listing.getId()),
+                houseRulesFor(listing.getId()));
     }
 
     @Transactional
@@ -199,7 +209,8 @@ public class AdminService {
         listing.setRejectionReason(reason);
         listings.save(listing);
         adminActions.save(AdminAction.of(admin, "REJECT_LISTING", ReportTarget.LISTING, listingId, reason));
-        return ListingResponse.from(listing, amenityCodesFor(listing.getId()), covers.forListing(listing.getId()));
+        return ListingResponse.from(listing, amenityCodesFor(listing.getId()), covers.forListing(listing.getId()),
+                houseRulesFor(listing.getId()));
     }
 
     @Transactional

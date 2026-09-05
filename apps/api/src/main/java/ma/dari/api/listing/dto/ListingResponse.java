@@ -61,9 +61,12 @@ public record ListingResponse(
         String rejectionReason,
         Set<String> amenityCodes,
         /** Root-relative, e.g. /uploads/listings/{id}/{photo}.jpg. Null when the listing has no photo. */
-        String coverPhotoUrl
+        String coverPhotoUrl,
+        /** Null when the listing has no house_rules row yet, same as an unset section of the wizard. */
+        HouseRulesResponse houseRules
 ) {
-    public static ListingResponse from(Listing listing, Set<String> amenityCodes, String coverPhotoUrl) {
+    public static ListingResponse from(Listing listing, Set<String> amenityCodes, String coverPhotoUrl,
+                                        HouseRulesResponse houseRules) {
         return new ListingResponse(
                 listing.getId(),
                 listing.getTitle(),
@@ -93,7 +96,8 @@ public record ListingResponse(
                 listing.getUpdatedAt(),
                 listing.getRejectionReason(),
                 amenityCodes,
-                coverPhotoUrl
+                coverPhotoUrl,
+                houseRules
         );
     }
 }

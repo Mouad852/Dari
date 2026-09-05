@@ -165,7 +165,7 @@ public class ListingController {
     @GetMapping("/mine/{id}")
     public ListingResponse mineById(@CurrentUser User owner, @PathVariable UUID id) {
         return ListingResponse.from(listingService.getOwned(owner, id),
-                listingService.amenityCodesFor(id), covers.forListing(id));
+                listingService.amenityCodesFor(id), covers.forListing(id), listingService.houseRulesFor(id));
     }
 
     @GetMapping("/draft")
@@ -174,7 +174,7 @@ public class ListingController {
         // A resumed draft carries its cover so the wizard's Photos step and the
         // owner's list agree about whether a photo exists.
         return ListingResponse.from(listing, listingService.amenityCodesFor(listing.getId()),
-                covers.forListing(listing.getId()));
+                covers.forListing(listing.getId()), listingService.houseRulesFor(listing.getId()));
     }
 
     /** Creates a DRAFT. The wizard persists server-side from step one. */
@@ -186,7 +186,8 @@ public class ListingController {
         Listing listing = listingService.create(owner, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 // A listing one request old has no photo yet; null is the honest answer.
-                .body(ListingResponse.from(listing, listingService.amenityCodesFor(listing.getId()), null));
+                .body(ListingResponse.from(listing, listingService.amenityCodesFor(listing.getId()), null,
+                        listingService.houseRulesFor(listing.getId())));
     }
 
     /** Owner edit. Does not re-enter review (§7) and does not reset the expiry clock. */
@@ -197,7 +198,7 @@ public class ListingController {
                                  @Valid @RequestBody UpdateListingRequest request) {
         Listing listing = listingService.update(owner, id, request);
         return ListingResponse.from(listing, listingService.amenityCodesFor(listing.getId()),
-                covers.forListing(listing.getId()));
+                covers.forListing(listing.getId()), listingService.houseRulesFor(listing.getId()));
     }
 
     /** Soft delete. Every read path filters deleted_at IS NULL. */
