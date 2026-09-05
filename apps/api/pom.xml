@@ -55,6 +55,14 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- Prometheus-format /actuator/prometheus, so the custom meters below
+             (search latency, moderation queue depth, notification outbox depth,
+             report volume, job outcomes, unhandled-error rate) are scrapable
+             without a hosted metrics service. -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>

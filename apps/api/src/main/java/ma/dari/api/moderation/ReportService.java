@@ -8,6 +8,7 @@ import ma.dari.api.listing.ListingStatus;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
 import ma.dari.api.user.UserStatus;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,11 +23,14 @@ public class ReportService {
     private final ReportRepository reports;
     private final ListingRepository listings;
     private final UserRepository users;
+    private final MeterRegistry meterRegistry;
 
-    public ReportService(ReportRepository reports, ListingRepository listings, UserRepository users) {
+    public ReportService(ReportRepository reports, ListingRepository listings, UserRepository users,
+                         MeterRegistry meterRegistry) {
         this.reports = reports;
         this.listings = listings;
         this.users = users;
+        this.meterRegistry = meterRegistry;
     }
 
     @Transactional
@@ -40,6 +44,7 @@ public class ReportService {
         }
 
         Report report = reports.save(Report.create(reporter, request));
+        meterRegistry.counter("dari.reports.created", "targetType", request.targetType().name()).increment();
 
         long distinctReporters = reports.countDistinctReportersSince(
                 request.targetType(),
@@ -49,6 +54,7 @@ public class ReportService {
 
         if (distinctReporters >= 3) {
             autoSuspendTarget(request.targetType(), request.targetId());
+            meterRegistry.counter("dari.moderation.auto_suspended", "targetType", request.targetType().name()).increment();
         }
 
         return report;

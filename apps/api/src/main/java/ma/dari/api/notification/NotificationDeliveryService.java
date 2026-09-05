@@ -1,6 +1,7 @@
 package ma.dari.api.notification;
 
 import ma.dari.api.user.UserRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -28,18 +29,21 @@ public class NotificationDeliveryService {
     private final int maxAttempts;
     private final Duration retryDelay;
     private final Duration staleAfter;
+    private final MeterRegistry meterRegistry;
 
     public NotificationDeliveryService(NotificationOutboxClaimService claims,
                                        NotificationOutboxRepository outbox,
                                        UserRepository users,
                                        NotificationSender sender,
                                        Clock clock,
-                                       org.springframework.core.env.Environment environment) {
+                                       org.springframework.core.env.Environment environment,
+                                       MeterRegistry meterRegistry) {
         this.claims = claims;
         this.outbox = outbox;
         this.users = users;
         this.sender = sender;
         this.clock = clock;
+        this.meterRegistry = meterRegistry;
         this.batchSize = environment.getProperty("dari.notifications.batch-size", Integer.class, 50);
         this.maxAttempts = environment.getProperty("dari.notifications.max-attempts", Integer.class, 5);
         this.retryDelay = Duration.ofSeconds(environment.getProperty(
@@ -60,6 +64,7 @@ public class NotificationDeliveryService {
         if (validationError != null) {
             event.markDead(validationError);
             outbox.save(event);
+            counter("dead").increment();
             return;
         }
 
@@ -69,19 +74,27 @@ public class NotificationDeliveryService {
                     .orElse(null);
             if (email == null || email.isBlank()) {
                 event.markDead("Recipient has no email address");
+                counter("dead").increment();
             } else {
                 sender.send(event, email);
                 event.markSent(now);
+                counter("sent").increment();
             }
         } catch (RuntimeException exception) {
             if (event.getAttempts() >= maxAttempts) {
                 event.markDead("Delivery failed after " + event.getAttempts()
                         + " attempts: " + message(exception));
+                counter("dead").increment();
             } else {
                 event.markRetry(now.plus(retryDelay.multipliedBy(event.getAttempts())), message(exception));
+                counter("retry").increment();
             }
         }
         outbox.save(event);
+    }
+
+    private io.micrometer.core.instrument.Counter counter(String outcome) {
+        return meterRegistry.counter("dari.notifications.delivery", "outcome", outcome);
     }
 
     private String validate(NotificationOutbox event) {

@@ -1,5 +1,6 @@
 package ma.dari.api.listing;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mock.env.MockEnvironment;
@@ -101,6 +102,7 @@ class ListingExpiryJobTest {
     private ListingExpiryJob job(ListingRepository listings, NotificationService notifications) {
         MockEnvironment environment = new MockEnvironment()
                 .withProperty("dari.listing.expiry-days", "60");
-        return new ListingExpiryJob(listings, Clock.fixed(NOW, ZoneOffset.UTC), environment, notifications);
+        return new ListingExpiryJob(listings, Clock.fixed(NOW, ZoneOffset.UTC), environment, notifications,
+                new SimpleMeterRegistry());
     }
 }

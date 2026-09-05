@@ -25,4 +25,7 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
 		    order by o.createdAt, o.id
 		    """)
 	    List<NotificationOutbox> findClaimable(Instant now, Instant staleBefore, Pageable pageable);
+
+	    /** Backs the notification-outbox-depth gauge, one series per status. */
+	    long countByStatus(NotificationOutboxStatus status);
 }

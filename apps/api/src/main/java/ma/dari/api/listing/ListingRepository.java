@@ -43,6 +43,9 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
 
     List<Listing> findByStatusAndDeletedAtIsNull(ListingStatus status);
 
+    /** Backs the moderation-queue-depth gauge; counting avoids loading the queue into memory on every scrape. */
+    long countByStatusAndDeletedAtIsNull(ListingStatus status);
+
     boolean existsByIdAndDeletedAtIsNull(UUID id);
 
     List<Listing> findByOwnerId(UUID ownerId);

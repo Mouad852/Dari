@@ -20,6 +20,9 @@ public interface ReportRepository extends JpaRepository<Report, UUID> {
 
     List<Report> findByStatus(ReportStatus status);
 
+    /** Backs the moderation-queue-depth gauge; counting avoids loading every pending report on each scrape. */
+    long countByStatus(ReportStatus status);
+
     List<Report> findByReporterIdOrderByCreatedAtDesc(UUID reporterId);
 
     List<Report> findByTargetTypeAndTargetIdAndStatus(

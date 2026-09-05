@@ -2,6 +2,7 @@ package ma.dari.api.notification;
 
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -33,7 +34,7 @@ class NotificationDeliveryServiceTest {
         users = mock(UserRepository.class);
         sender = mock(NotificationSender.class);
         service = new NotificationDeliveryService(claims, outbox, users, sender,
-                Clock.fixed(NOW, ZoneOffset.UTC), new MockEnvironment());
+                Clock.fixed(NOW, ZoneOffset.UTC), new MockEnvironment(), new SimpleMeterRegistry());
     }
 
     @Test

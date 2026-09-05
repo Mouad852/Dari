@@ -10,6 +10,8 @@ import ma.dari.api.user.User;
 import ma.dari.api.user.UserRole;
 import ma.dari.api.listing.dto.ListingPhotoResponse;
 import ma.dari.api.listing.dto.ListingResponse;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -34,15 +36,17 @@ public class ListingSearchService {
     private final ListingAmenityRepository listingAmenities;
     private final ListingPhotoRepository listingPhotos;
     private final ListingCovers covers;
+    private final MeterRegistry meterRegistry;
 
     public ListingSearchService(ListingRepository listings, ListingSearchRepository search,
                                 ListingAmenityRepository listingAmenities, ListingPhotoRepository listingPhotos,
-                                ListingCovers covers) {
+                                ListingCovers covers, MeterRegistry meterRegistry) {
         this.listings = listings;
         this.search = search;
         this.listingAmenities = listingAmenities;
         this.listingPhotos = listingPhotos;
         this.covers = covers;
+        this.meterRegistry = meterRegistry;
     }
 
     public CursorPage<PublicListingResponse> search(String city,
@@ -68,6 +72,8 @@ public class ListingSearchService {
         }
 
         String effectiveSort = sort == null ? "recommended" : sort;
+        boolean radiusMode = lat != null && lng != null && radiusM != null;
+        Timer.Sample searchTimerSample = Timer.start(meterRegistry);
 
         List<Listing> page;
         String nextCursor = null;
@@ -83,6 +89,7 @@ public class ListingSearchService {
         String[] normalizedAmenities = normalizeValues(amenities);
         int amenityCount = normalizedAmenities != null ? normalizedAmenities.length : 0;
 
+        try {
         if (lat != null && lng != null && radiusM != null) {
             // Radius search uses distance-based pagination
             if (!"closest".equalsIgnoreCase(normalizeSort(effectiveSort)) &&
@@ -213,6 +220,9 @@ public class ListingSearchService {
                 .toList();
 
         return CursorPage.of(items, nextCursor);
+        } finally {
+            searchTimerSample.stop(meterRegistry.timer("dari.search.latency", "mode", radiusMode ? "radius" : "location"));
+        }
     }
 
     /**
