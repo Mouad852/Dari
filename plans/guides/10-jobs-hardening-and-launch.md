@@ -245,7 +245,37 @@ validation message, and focused regression test together.
 
 ## 6. Operations
 
-**Backups.** Daily `pg_dump`, offsite, encrypted. Then — and this is the actual task — **restore one into a scratch environment and run the test suite against it.** An untested backup is a belief, not a backup.
+**Backups.** Daily `pg_dump`, offsite, encrypted. Use the custom format so the archive can be
+checked with `pg_restore` before it is needed:
+
+```powershell
+docker exec dari-db pg_dump -U dari -d dari -Fc -f /tmp/dari-backup.dump
+docker cp dari-db:/tmp/dari-backup.dump .\dari-backup.dump
+```
+
+Restore one into a clean `postgis/postgis:16-3.4` scratch environment and validate both application
+tables and the PostGIS extension:
+
+```powershell
+docker run --name dari-db-restore-validation `
+  -e POSTGRES_DB=dari -e POSTGRES_USER=dari -e POSTGRES_PASSWORD=restore_validation `
+  -d postgis/postgis:16-3.4
+
+# Wait for "PostgreSQL init process complete; ready for start up" in
+# `docker logs dari-db-restore-validation` before running pg_restore. `pg_isready`
+# can report success while the image's PostGIS init scripts are still running.
+docker cp .\dari-backup.dump dari-db-restore-validation:/tmp/restore.dump
+docker exec dari-db-restore-validation pg_restore -U dari -d dari `
+  --no-owner --exit-on-error /tmp/restore.dump
+docker exec dari-db-restore-validation psql -U dari -d dari -v ON_ERROR_STOP=1 `
+  -c "SELECT count(*) FROM users; SELECT count(*) FROM listings; SELECT count(*) FROM flyway_schema_history; SELECT postgis_full_version();"
+docker rm -f dari-db-restore-validation
+```
+
+Run `cd apps/api && ./mvnw test` after the restore validation. The restore check is complete only
+when `pg_restore` exits successfully, representative application tables and Flyway history are
+queryable, PostGIS is available, and the scratch container is removed. Keep backup storage and
+credentials outside the repository. Firestore mirror work is out of scope for this procedure.
 
 **Metrics** worth alerting on:
 
@@ -287,7 +317,7 @@ validation message, and focused regression test together.
 - [ ] Every notification delivers, in French, following the copy rules
 - [ ] Rate limits hold under a deliberate abuse attempt
 - [x] **No public endpoint or rendered page exposes an exact coordinate or private field** — reviewed, not assumed
-- [ ] A backup has been restored and tested
+- [x] A backup has been restored and tested
 - [ ] Search holds under load at 100k listings
 - [ ] Both end-to-end journeys pass by hand
 - [ ] Moderator runbook exists

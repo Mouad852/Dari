@@ -28,7 +28,7 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 - [x] Rate limits on the abuse-prone routes: report creation, message sending, listing creation, uploads, signup, and public search/count/map/featured reads
 - [x] **A dedicated review of location fuzzing across every endpoint**, including map, search, detail and any admin route that might be reachable publicly. One leak makes the whole scheme decorative.
 - [x] Audit every response DTO for private-field leakage — email, phone, exact coordinates, internal status, `firebase_uid`
-- [x] Confirm soft-delete is honoured across API read paths; the Firestore mirror, if introduced, remains open
+- [x] Confirm soft-delete is honoured across API read paths; Firestore mirror work remains out of scope
 - [x] Input validation and size limits across all write paths
 - [x] CORS, security headers, and production token-setting review: CORS is an explicit
   origin allowlist with `Authorization`/`Content-Type` headers; API responses send
@@ -42,7 +42,7 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 **Operations**
 - [ ] Structured logging with correlation ids; error tracking
 - [ ] Metrics on the things that indicate trouble: search latency, moderation queue depth, report volume, mirror drift
-- [ ] Database backups, and **a restore actually tested** rather than assumed
+- [x] Database backup creation and restore validation in a clean PostGIS environment
 - [ ] Deployment pipeline, migration strategy, rollback plan
 - [ ] Load test on the search path, which is the busiest and most complex query in the system
 - [ ] Seed the production amenity lookup and neighborhood lists as real reference data
@@ -78,7 +78,7 @@ before profile creation. Listing, favorite, messaging, report, profile, and admi
 also enforce ownership or target authorization in their services. HTTP regressions cover
 non-owner listing/photo mutation, user-scoped favorite removal, non-participant message
 sending, profileless listing mutation, and the existing doubled admin-role checks. Backup
-creation and restore remain intentionally out of scope for this pass.
+creation and restore were validated separately; Firestore mirror work remains out of scope.
 
 Rate limits are enforced by a Spring MVC interceptor before controller invocation. Report creation,
 conversation/message writes, listing creation, listing photo uploads, avatar uploads, profile signup,
@@ -114,7 +114,8 @@ membership checks, public profiles, conversation listing/creation context, repor
 targets, and the moderation pending-listings queue all apply the live-row boundary.
 Account-deletion cascades, moderation history, notification delivery, and
 authentication-token rejection intentionally retain historical-row access. No
-Firestore mirror exists, and backup creation/restore remains open.
+Firestore mirror exists; backup creation and restore validation are complete and remain
+independent of any future mirror work.
 
 Production SMTP configuration is documented in `SMTP_CONFIGURATION.md` with:
 - Safe configuration examples for Gmail, Outlook, and Moroccan ISP providers
@@ -153,8 +154,16 @@ admin action names cannot be blank, and listing amenity collections are capped a
 bounded code lengths. Listing uploads remain capped at 5 MB, are limited to 20 active photos per
 listing, and reject images over 10,000 pixels on either axis or 40 megapixels overall before
 re-encoding. The servlet's 6 MB file and 8 MB request backstops continue to return the standard
-validation envelope. Soft-delete filtering and backup creation/restore remain separate, explicitly
-out-of-scope work.
+validation envelope. Soft-delete filtering and backup/restore validation are complete; Firestore
+mirror work remains explicitly out of scope.
+
+Database backup validation completed on 2026-09-05. A custom-format `pg_dump` was created from
+the local PostGIS database and restored with `pg_restore --no-owner --exit-on-error` into a fresh
+`postgis/postgis:16-3.4` scratch container. The restored database contained 12 users, 29 listings,
+and 12 Flyway history rows, and `postgis_full_version()` succeeded. The scratch container was
+removed after validation. The restore procedure waits for the image's init process to complete
+before checking readiness; `pg_isready` alone can succeed while PostGIS initialization is still
+running.
 
 - **Compression risk.** This is the phase most likely to be cut short, and its contents are the ones that matter most when things go wrong. Consider pulling the fuzzing review and rate limits forward if the schedule tightens.
 - **The expiry window is a range, not a decision.** 60 versus 90 days is a product judgement about listing freshness.

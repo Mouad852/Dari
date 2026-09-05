@@ -41,9 +41,9 @@ Last verified: 2026-09-05
 - [x] Add rate limits for reports, messages, listing creation, uploads, signup, and public search abuse paths
 - [x] Review CORS, security headers, TLS, and production cookie/token settings
 - [x] Verify ownership and role checks on every mutating endpoint
-- [x] Verify soft-delete filtering on every API read path; backup and Firestore mirror remain open
+- [x] Verify soft-delete filtering on every API read path; Firestore mirror remains out of scope
 - [ ] Decide and implement the PII policy for deleted users
-- [ ] Test backup creation and restore into a clean environment
+- [x] Create a custom-format database backup and restore it into a clean PostGIS environment
 
 ### Production operations
 
@@ -126,7 +126,8 @@ Before marking a checkbox complete:
 
 - `cd apps/api && ./mvnw test` passed on 2026-09-05: 118 tests, 0 failures, 0 errors; migrations applied through `V19__notification_delivery_state.sql`
 - `git diff --check` passed for the Phase 10 input-validation hardening and documentation
-- Soft-delete read-path review completed on 2026-09-05: public search/detail, owner listings, favorites, profiles, conversations, report targets, and moderation queues exclude deleted rows where appropriate; account deletion, moderation history, and notification delivery intentionally retain historical-row access. Backup and Firestore mirror work remain open.
+- Soft-delete read-path review completed on 2026-09-05: public search/detail, owner listings, favorites, profiles, conversations, report targets, and moderation queues exclude deleted rows where appropriate; account deletion, moderation history, and notification delivery intentionally retain historical-row access. Firestore mirror work remains out of scope.
+- Database backup and restore validation completed on 2026-09-05: `pg_dump -Fc` produced a 47,456-byte backup from the local PostGIS database; `pg_restore --no-owner --exit-on-error` restored it into a fresh `postgis/postgis:16-3.4` container, and validation confirmed 12 users, 29 listings, 12 Flyway history rows, and PostGIS availability. The scratch container was removed afterward. Firestore mirror work remains out of scope.
 - Notification delivery is implemented through the opt-in SMTP worker: rows are claimed with row locks, retried with bounded backoff, marked sent idempotently, and malformed events are quarantined as dead
 - SMTP configuration guide created with provider examples (Gmail, Outlook, Moroccan ISP)
 - Notification delivery README documents transactional outbox architecture, retry behavior, claim-lock semantics, and production monitoring queries
