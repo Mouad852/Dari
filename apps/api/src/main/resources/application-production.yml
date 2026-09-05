@@ -1,0 +1,10 @@
+# Production requires explicit deployment values. TLS is terminated by the
+# ingress/load balancer; forwarded headers keep Spring's security behavior
+# aligned with the original HTTPS request.
+server:
+  forward-headers-strategy: framework
+
+dari:
+  web-origins: ${DARI_WEB_ORIGIN}
+  firebase:
+    credentials-path: ${FIREBASE_CREDENTIALS_PATH}

@@ -39,7 +39,7 @@ Last verified: 2026-09-05
 - [x] Audit every public response for email, phone, Firebase UID, internal status, and exact coordinates
 - [x] Audit location fuzzing across search, map, detail, sitemap, metadata, hydration payloads, and images
 - [x] Add rate limits for reports, messages, listing creation, uploads, signup, and public search abuse paths
-- [ ] Review CORS, security headers, TLS, and production cookie/token settings
+- [x] Review CORS, security headers, TLS, and production cookie/token settings
 - [ ] Verify ownership and role checks on every mutating endpoint
 - [ ] Verify soft-delete filtering on every read path
 - [ ] Decide and implement the PII policy for deleted users
@@ -131,4 +131,5 @@ Before marking a checkbox complete:
 - Notification delivery README documents transactional outbox architecture, retry behavior, claim-lock semantics, and production monitoring queries
 - Rate limits are enforced before controller invocation on report, message, listing creation, upload, and profile-signup writes. Production defaults use separate fixed windows for the authenticated Firebase identity and source address; 429 responses include `Retry-After`. The limiter is process-local until a shared store is introduced for horizontal scaling.
 - Public response audit verified on 2026-09-05: public listing/profile DTOs omit email, phone, Firebase UID, moderation status, and exact coordinates; search, map, detail, featured, and favorites all use fuzzed coordinates. Owner/admin listing responses retain the private status and exact-coordinate fields behind their existing access checks.
+- CORS/security review verified on 2026-09-05: CORS remains an explicit configured-origin allowlist; API responses include `nosniff`, `DENY`, referrer, permissions, and HSTS headers; production requires `DARI_WEB_ORIGIN` and `FIREBASE_CREDENTIALS_PATH`; the web client sends refreshed Firebase ID tokens only as bearer headers and never stores them in cookies, local storage, or URLs. Focused integration tests cover the header and preflight contracts.
 - `WARN` moderation actions now enqueue a French owner warning transactionally and resolve the affected reports as `ACTION_TAKEN`

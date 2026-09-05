@@ -41,6 +41,7 @@ The project has already crossed the foundational backend and product UI mileston
 - scheduled listing expiry warns owners seven days ahead with idempotent tracking, changes stale published listings to `EXPIRED`, enqueues warning and expiry notifications transactionally, and lets owners renew only into `PENDING_REVIEW`
 - notification delivery is implemented as an opt-in SMTP worker with durable claiming, bounded retries, sent/dead states, and the existing French outbox copy preserved
 - abuse-path rate limits cover report creation, messaging, listing creation, photo/avatar uploads, and profile signup with identity/source-address windows and 429 `Retry-After` responses
+- CORS is restricted to an explicit configured web origin, API responses carry browser security headers, production requires explicit origin and Firebase credential settings, and the web client sends refreshed Firebase ID tokens only as bearer headers
 - search filters for neighborhood, property type, room type, and rent bounds persist in the URL
 - publish, favorites, messaging, and profile flows
 - favorites is implemented end to end: backend (`GET/POST/DELETE /api/v1/favorites` plus `GET /api/v1/favorites/ids` for membership checks, idempotent, integration-tested) and frontend (the `/favorites` list, the listing detail page's save toggle, and the search-results feed cards all call the real API and reflect real favorited state on load)

@@ -30,7 +30,13 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 - [x] Audit every response DTO for private-field leakage — email, phone, exact coordinates, internal status, `firebase_uid`
 - [ ] Confirm soft-delete is honoured everywhere, including the Firestore mirror if it exists
 - [ ] Input validation and size limits across all write paths
-- [ ] CORS, security headers, TLS
+- [x] CORS, security headers, and production token-setting review: CORS is an explicit
+  origin allowlist with `Authorization`/`Content-Type` headers; API responses send
+  `nosniff`, `DENY`, referrer, permissions, and HSTS headers; production requires
+  `DARI_WEB_ORIGIN` and `FIREBASE_CREDENTIALS_PATH`, with TLS terminated at the
+  ingress and forwarded headers enabled. The web client uses the public HTTPS API
+  URL in `NEXT_PUBLIC_API_BASE_URL`, while server components may use `API_BASE_URL`;
+  Firebase ID tokens are refreshed by the SDK and sent only as bearer headers.
 - [ ] Verify ownership and role checks on every mutating route, systematically rather than by memory
 
 **Operations**
@@ -116,6 +122,12 @@ The focused notification suite and full API suite pass with 106 tests (0 failure
 - Retry scheduling with exponential backoff on transient failures
 - Immediate DEAD state for validation errors
 - Idempotent sent-state handling
+
+The Phase 10 CORS/security regression suite verifies the configured-origin
+preflight contract and rejects an untrusted origin. It also verifies the
+browser security headers on API responses. `application-production.yml` makes
+the production origin and Firebase credential path explicit instead of falling
+back to local development values.
 
 The next session must update the docs after each change, then commit and push the verified change before moving on.
 
