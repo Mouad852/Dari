@@ -85,7 +85,7 @@ dari:
   # stale listings are the exact failure Dari exists to replace.
   listing:
     expiry-days: 60
-    expiry-warning-days: 53
+    expiry-warning-days: 7
 
 logging:
   level:

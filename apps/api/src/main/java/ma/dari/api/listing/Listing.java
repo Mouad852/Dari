@@ -139,6 +139,9 @@ public class Listing {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
 
+    @Column(name = "expiry_warned_at")
+    private Instant expiryWarnedAt;
+
     protected Listing() {
         // JPA
     }
@@ -400,5 +403,13 @@ public class Listing {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Instant getExpiryWarnedAt() {
+        return expiryWarnedAt;
+    }
+
+    public void setExpiryWarnedAt(Instant expiryWarnedAt) {
+        this.expiryWarnedAt = expiryWarnedAt;
     }
 }

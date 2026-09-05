@@ -85,7 +85,7 @@ primitives. Do not rebuild until this is reconciled.
 ## Open items, in priority order
 
 1. **Recover the session-2 assets.** The client logo (6 JPEGs) and the 6 interior photos.
-   If the session-2 design-system project still exists in Claude, re-export it in full —
+   Re-export the session-2 design-system assets in full if they are still available —
    that also recovers the `listing_detail` kit and the two templates. Otherwise the original
    logo files need re-supplying.
 2. **Reconcile sources with the bundle.** Either port the v2 component changes back into the

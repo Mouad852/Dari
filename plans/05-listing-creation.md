@@ -67,8 +67,8 @@ The public detail page now consumes the richer `PublicListingDetailResponse`, in
 
 ## Done looks like
 
-Verified true as of 2026-09-02 (checked by reading the code, not assumed):
-- Editing a published listing leaves it published
+Verified true as of 2026-09-05 (source and full test suite checked):
+- Editing a published listing returns it to `PENDING_REVIEW`; drafts remain drafts while the wizard autosaves
 - Uploaded photos carry no GPS EXIF (no metadata at all, in fact)
 - Submitted listings sit in `PENDING_REVIEW` and are correctly invisible in search
 - Amenities round-trip on create/update
@@ -84,7 +84,7 @@ Verified true as of 2026-09-02 (checked by reading the code, not assumed):
 
 ## Risks and open decisions
 
-- **This is the largest phase in the plan.** If it needs splitting, the seam is backend write model first, wizard second — the wizard is useless without the API, and the API is testable without the wizard.
+- **This is the largest phase in the plan.** The backend write model is substantially complete; the remaining frontend work is prototype parity, map selection, room data, house rules, and reference-data validation.
 - **EXIF stripping is a real privacy hole**, not a nicety. A user's own photo can carry the exact address that fuzzing exists to hide.
 - **Draft persistence is server-side:** the wizard creates a `DRAFT` on the first completed step transition and resumes the owner's latest active draft through `GET /listings/draft`.
 - **Photo storage limits are unspecified** — max count, max size, whether server-side resizing happens at MVP. Cheap to set now.

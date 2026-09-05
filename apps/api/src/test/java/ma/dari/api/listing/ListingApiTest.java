@@ -372,6 +372,33 @@ class ListingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("owner can renew an expired listing into review, but cannot renew another lifecycle state")
+    void expiredListingCanBeRenewedIntoReview() throws Exception {
+        stubToken("uid-renew-owner", "renew-owner@example.ma", true);
+        User owner = users.saveAndFlush(new User("uid-renew-owner", "renew-owner@example.ma", true, "Renew Owner"));
+
+        Listing expired = new Listing(
+                owner, "Chambre expirée", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2100.00"), ListingStatus.EXPIRED, AvailabilityState.AVAILABLE);
+        expired.setRejectionReason("ancienne raison");
+        expired = listings.saveAndFlush(expired);
+
+        given().header("Authorization", "Bearer renew-token")
+                .when().post("/listings/{id}/renew", expired.getId())
+                .then().statusCode(200)
+                .body("status", equalTo("PENDING_REVIEW"));
+
+        Listing renewed = listings.findById(expired.getId()).orElseThrow();
+        assertThat(renewed.getStatus()).isEqualTo(ListingStatus.PENDING_REVIEW);
+        assertThat(renewed.getRejectionReason()).isNull();
+
+        given().header("Authorization", "Bearer renew-token")
+                .when().post("/listings/{id}/renew", expired.getId())
+                .then().statusCode(409)
+                .body("code", equalTo("ILLEGAL_TRANSITION"));
+    }
+
+    @Test
     @DisplayName("owner can create a draft listing")
     void createDraftListing() throws Exception {
         stubToken("uid-create-draft", "create-draft@example.ma", true);

@@ -38,11 +38,12 @@ The project has already crossed the foundational backend and product UI mileston
 - Firebase email authentication is wired to sign-in/sign-up; signup creates the Dari profile through authenticated `POST /users`
 - account overview loads `/api/v1/users/me` with the refreshed Firebase ID token
 - publish wizard persists a server-side draft across steps, resumes the owner's latest draft, and submits it through the listing lifecycle API
+- scheduled listing expiry warns owners seven days ahead with idempotent tracking, changes stale published listings to `EXPIRED`, enqueues warning and expiry notifications transactionally, and lets owners renew only into `PENDING_REVIEW`
 - search filters for neighborhood, property type, room type, and rent bounds persist in the URL
 - publish, favorites, messaging, and profile flows
 - favorites is implemented end to end: backend (`GET/POST/DELETE /api/v1/favorites` plus `GET /api/v1/favorites/ids` for membership checks, idempotent, integration-tested) and frontend (the `/favorites` list, the listing detail page's save toggle, and the search-results feed cards all call the real API and reflect real favorited state on load)
 - messaging is implemented end to end: `/messages` and `/messages/[id]` consume the real `/api/v1/conversations` API (including a new `GET /api/v1/conversations/{id}` for the thread header), and the listing detail page's "Contacter" button actually starts a conversation instead of doing nothing
-- owner listing management (`/account/listings`) consumes a new `GET /api/v1/listings/mine` endpoint (every status, paginated) and supports submit/mark-room-found/reopen/delete for real; editing is intentionally not offered since the publish wizard has no edit mode yet
+- owner listing management (`/account/listings`) consumes `GET /api/v1/listings/mine` and supports submit/mark-room-found/reopen/delete for real; it also links to the publish wizard's listing edit mode through owner-scoped `GET /api/v1/listings/mine/{id}`
 - the admin console (`/admin/*`, all 4 pages) is wired to the real, already-built `AdminController` API, with a role-gated layout that redirects non-admins before they see anything (the real enforcement is server-side and predates this work)
 - public profiles (`/profile/[id]`) and profile editing (`/account/profile`) are wired to the real, already-built `GET /users/{id}`/`PATCH /users/me` endpoints
 - the publish wizard's property/room type selection is now real (previously every listing silently published as a hardcoded type regardless of what the owner picked)
@@ -66,7 +67,7 @@ The important remaining work is still phase-oriented and should be driven from t
 - Phase 03 frontend validation: public routes, auth screens, account loading, publishing, and live search contracts are wired and production-build validated
 - search results, favorites and city landing cards show the listing's cover photo. `PublicListingResponse` carries `coverPhotoUrl`, resolved for a whole page in one query rather than per listing, and the placeholder is kept only for listings that genuinely have no photo
 - the search page is responsive: the filter rail is a sticky column on desktop and a disclosure panel with an active-filter count below 900px, selected chips invert to charcoal per the design system, and the apply button carries the live result count. `src/styles/app.css` holds the app's first media queries — inline style objects cannot express a breakpoint, which is why nothing was responsive before
-- **known, pre-existing**: deep-linking to `/listings?view=map` rewrites itself to the list view (clicking "Carte" works), and selecting amenity chips in quick succession can drop a selection, because each click writes the URL from state that has not flushed
+- **known, pre-existing**: deep-linking to `/listings?view=map` rewrites itself to the list view (clicking "Carte" works). Rapid amenity-chip selection was fixed on 2026-09-05 by keeping the latest selection synchronously while URL updates are in flight.
 - Phase 07 search filters and map: filters, map view and URL state are built. Sorting is now real — price ascending/descending, recency and recently-updated all order correctly with sort-aware keyset cursors; previously `sort` was parsed and discarded on non-radius searches, so three of the four options in the UI returned identical results. A genuine "recommended" ranking is still open, and the default is labelled "Plus récentes" rather than implying one exists
 - account sub-pages (notifications, payments, security) are still frontend-only mocks with no API calls — notifications and payments have no backend to wire to yet (phase 10); profile is now wired (see above)
 - account deletion and avatar upload are built: `POST /users/me/avatar` reuses the listing photo pipeline (so profile photos are EXIF-stripped too), and `DELETE /users/me` removes the Firebase identity, soft-deletes the row and the person's listings, and retains messages. Both are wired on `/account/profile`
@@ -103,7 +104,7 @@ The important remaining work is still phase-oriented and should be driven from t
 | `docs/` | Design specification, naming rules, and project handoff docs. |
 | `ARCHITECTURE.md` | How the system fits together and why. |
 | `docs/NAMING.md` | English vs French boundary, naming conventions, and glossary. |
-| `docs/AI_SESSION_HANDOFF_PROMPT.md` | A ready-to-paste handoff prompt for another AI session. |
+| `TODO.md` | The source-verified completion checklist; update it every coding session. |
 
 ## Core principles
 

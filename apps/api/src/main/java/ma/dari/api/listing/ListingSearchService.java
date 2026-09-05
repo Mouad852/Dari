@@ -70,7 +70,7 @@ public class ListingSearchService {
 
         List<Listing> page;
         String nextCursor = null;
-        
+
         // Convert price params to BigDecimal for SQL queries
         BigDecimal minPrice = priceMin == null ? null : BigDecimal.valueOf(priceMin);
         BigDecimal maxPrice = priceMax == null ? null : BigDecimal.valueOf(priceMax);
@@ -84,7 +84,7 @@ public class ListingSearchService {
 
         if (lat != null && lng != null && radiusM != null) {
             // Radius search uses distance-based pagination
-            if (!"closest".equalsIgnoreCase(normalizeSort(effectiveSort)) && 
+            if (!"closest".equalsIgnoreCase(normalizeSort(effectiveSort)) &&
                 !"distance".equalsIgnoreCase(normalizeSort(effectiveSort))) {
                 throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Le tri 'closest' ou 'distance' est obligatoire pour la recherche par rayon");
             }
@@ -99,7 +99,7 @@ public class ListingSearchService {
                     // For cursor pagination in distance mode, we need the actual distance of the last item
                     // Query to get it from the last listing
                     var lastItem = listings.findById(lastId);
-                    double lastDistance = lastItem.map(l -> 
+                    double lastDistance = lastItem.map(l ->
                         haversineMiles(lat, lng, l.getLatitude(), l.getLongitude()) * 1609.344
                     ).orElse(0.0);
 
@@ -414,6 +414,19 @@ public class ListingSearchService {
         // A lifecycle confirmation, not a card: the client already has the
         // listing on screen and re-reading its cover here would be a query for
         // data nothing renders. Null is the deliberate answer, not an oversight.
+        return PublicListingResponse.from(listings.save(listing),
+                LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), null);
+    }
+
+    public PublicListingResponse renew(UUID listingId, User owner) {
+        Listing listing = requireOwnedListing(listingId, owner);
+        if (listing.getStatus() != ListingStatus.EXPIRED) {
+            throw illegalTransition("EXPIRED -> PENDING_REVIEW");
+        }
+
+        listing.setStatus(ListingStatus.PENDING_REVIEW);
+        listing.setRejectionReason(null);
+        listing.setExpiryWarnedAt(null);
         return PublicListingResponse.from(listings.save(listing),
                 LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), null);
     }

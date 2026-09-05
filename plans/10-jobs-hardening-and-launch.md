@@ -1,4 +1,4 @@
-# 09 — Scheduled jobs, notifications, hardening and launch readiness
+# 10 — Scheduled jobs, notifications, hardening and launch readiness
 
 ## What this covers, and why it's here
 
@@ -11,17 +11,17 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 ## Tasks
 
 **Scheduled jobs**
-- [ ] `PUBLISHED → EXPIRED` after 60–90 days without update (§4). Confirm the exact window; the doc gives a range, not a number.
-- [ ] Owner notification ahead of expiry, so it is not a surprise
-- [ ] `EXPIRED → PENDING_REVIEW` on renewal, back through review rather than straight to published (§4)
-- [ ] Make the job idempotent and safe to run twice — it will be, eventually
+- [x] `PUBLISHED → EXPIRED` after 60 days without update (§4). The existing `updated_at` clock is used, so any PATCH resets freshness.
+- [x] Owner notification seven days ahead of expiry, using idempotent listing tracking
+- [x] `EXPIRED → PENDING_REVIEW` on renewal, back through review rather than straight to published (§4)
+- [x] Make the job idempotent and safe to run twice — the conditional update only matches `PUBLISHED` rows, and ShedLock protects multi-instance execution.
 - [ ] Decide what "update" means for the expiry clock: any `PATCH`, or a deliberate renewal? A listing kept alive by trivial edits defeats the purpose.
 
 **Notifications**
 - [ ] Delivery mechanism — email at minimum, in-app if it earns its place
 - [ ] The §6 set: suspension, rejection with reason, reinstatement, warnings
 - [ ] Reporter acknowledgment that is **generic and reveals no outcome**
-- [ ] Expiry warning and confirmation
+- [x] Expiry warning and confirmation are enqueued through the notification outbox
 - [ ] Templates in French, following the copy rules — no exclamation marks, no emoji, no *"Oups !"*
 
 **Hardening**
@@ -63,6 +63,10 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 - Both end-to-end journeys pass on a production-like environment
 
 ## Risks and open decisions
+
+### Verified implementation (2026-09-05)
+
+`ListingExpiryJob` runs daily at 02:00 UTC, warns owners seven days before expiry, and uses the atomic `ListingRepository.expirePublishedBefore` update. `expiry_warned_at` prevents duplicate warnings and is cleared on renewal. ShedLock uses the JDBC provider and the `shedlock` table from `V16__shedlock.sql`. Warning and expiry events enqueue through the transactional `notification_outbox` table, and owners can renew only `EXPIRED` listings into `PENDING_REVIEW`. Focused expiry tests and the full API suite pass with 102 tests; email delivery remains open.
 
 - **Compression risk.** This is the phase most likely to be cut short, and its contents are the ones that matter most when things go wrong. Consider pulling the fuzzing review and rate limits forward if the schedule tightens.
 - **The expiry window is a range, not a decision.** 60 versus 90 days is a product judgement about listing freshness.

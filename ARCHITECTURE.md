@@ -86,7 +86,7 @@ ma.dari.api
 ├── messaging/       conversations, messages, outbox
 ├── moderation/      reports, queue, admin actions
 ├── media/           upload, re-encode, EXIF strip
-├── notification/    email and push delivery
+├── notification/    notification contract; delivery is a phase-10 gap
 └── ...
 ```
 
@@ -145,8 +145,8 @@ r-request makes map pins visibly jitter,
 distances are rounded coarsely for the same reason.
 
 The enforcement is structural — the public DTO has no field that could hold an
-exact coordinate. Phase 10 audits every path, including Next.js hydration
-payloads, which is where this leaks if it leaks.
+exact coordinate. The phase-10 privacy audit must still inspect every path,
+including Next.js hydration payloads, where a leak would otherwise be easy to miss.
 
 ### Listing state is two independent axes
 

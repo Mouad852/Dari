@@ -2,14 +2,26 @@
 
 This project has moved beyond a blank scaffold. The current repository already contains the backend foundation and a substantial frontend product surface. The phase plan still governs sequencing, but it should be read as the roadmap for the next work item, not as a statement that nothing exists yet.
 
-## Current reality
+## Current reality (verified 2026-09-05)
 
-The project is currently in a mixed state:
+The source is a working marketplace slice, not a scaffold. The API and web app both compile, and
+the complete backend suite passes against a real PostGIS Testcontainer.
 
-- phase 01 backend foundation is in place
-- the Next.js app already has product UI slices across public, account, admin, messaging, and publishing flows
-- important backend gaps remain in the phase-01 list, especially the Firebase startup warmup, idempotent `POST /users`, and the remaining API tests
-- the roadmap still matters, but the order is now: close the remaining foundation gaps, then continue into the next real feature phase
+- Backend migrations run through `V18__listing_expiry_warning.sql`.
+- All 102 backend tests pass: listing, search optimization, favorites, messaging, moderation,
+  users, and architecture rules.
+- The frontend passes `npm run typecheck`, `npm run tokens:check`, and `npm run build`.
+- The core web marketplace loop is implemented: authentication, search, listings, publishing,
+  photos, favorites, messaging, profiles, reports, moderation, admin, and SEO routes.
+- The scheduled 60-day listing expiry job warns owners seven days ahead with idempotent
+  `expiry_warned_at` tracking, uses an atomic expiry update and JDBC ShedLock protection, and
+  enqueues both warning and expiry notifications transactionally. Renewal clears the warning
+  marker and returns listings to `PENDING_REVIEW`; email delivery, rate limits and privacy review
+  remain launch-hardening work.
+  contracts, full wizard parity, house rules/rooms/neighborhood reference data, and mobile.
+
+The dated entries below are historical implementation notes. When they conflict with this section
+or the source, this section and the source take precedence.
 
 ## Index
 
@@ -53,14 +65,14 @@ Phase 02 (PostGIS search optimization) is now complete:
 - Search invariant enforced at the database view level
 - Listing lifecycle state machine is implemented and tested
 
-### Current status (2026-08-31)
+### Historical status (2026-08-31)
 
 - Phase 03 frontend validation is substantially complete for public listings, city landing, listing detail, Firebase sign-in/sign-up, account profile loading, publishing, and URL-driven search filters.
 - `apps/web` production build and typecheck pass after each validated slice.
 - Phase 07 is now the active feature phase. The next implementation step is map view integration using `/api/v1/listings/map`, while preserving fuzzed coordinates and URL filter state.
 - Do not add frontend-only mocks for owner listings, favorites, or messaging until the corresponding backend read/write contracts are available.
 
-### Current status (2026-09-02)
+### Historical implementation log (2026-09-02)
 
 - Listing search filter composition was tightened: availability-date filtering now excludes
   undated listings when a move-in date is requested, and repeated/comma-separated filter values
@@ -76,6 +88,7 @@ Phase 02 (PostGIS search optimization) is now complete:
   - Verified: the full suite (`ListingApiTest`, `FavoriteApiTest`, `MessagingApiTest`, `ReportApiTest`, `UserApiTest`, `ArchitectureTest` — 35 tests) passes cleanly against real Testcontainers PostGIS.
   - One assertion in `ListingApiTest.publicSearchReturnsPublishedListings` was also tightened: it asserted the search result had exactly 1 item, which only ever worked by accident of test-execution order, since the Testcontainers database is shared across the whole suite (§7 of `ARCHITECTURE.md`) and several other test classes publish listings in the same city/neighborhood. It now asserts the created listing is present and correct instead of assuming it's the only result.
   - **Listing search optimization test isolation fixed (2026-09-02)**: `ListingSearchOptimizationTest` now clears only public-searchable listings before each test. This preserves drafts and other lifecycle states while preventing the shared Testcontainers database from contaminating city/radius result-count assertions. The focused class (5 tests) and complete API suite (61 tests) pass.
+- **Scheduled listing expiry and warning implemented (2026-09-05)**: `ListingExpiryJob` runs daily at 02:00 UTC, warns owners seven days before expiry, atomically changes stale `PUBLISHED` listings to `EXPIRED` after the configured 60-day window, ignores soft-deleted rows, and enqueues warning and expiry events in the transactional outbox. `expiry_warned_at` prevents duplicate warnings and is cleared on renewal. Owners can renew only `EXPIRED` listings into `PENDING_REVIEW`; repeat renewal remains illegal. The full API suite passes with 102 tests; email delivery remains open.
 - **`/favorites` frontend is now wired to the real backend**, closing the loop on the favorites work above: the list page fetches/paginates/removes for real, and the listing detail page's heart button (previously decorative) now calls the real endpoints with optimistic update. `npm run typecheck` and `npm run build` both pass.
 - **Both gaps from that step closed the same day**: added `GET /api/v1/favorites/ids` (unpaginated listing-id set, for cheap membership checks) on the backend; the `/listings` search-results feed cards now have the same favorite toggle as the detail page, and the detail page itself now checks real favorited state on load instead of always starting unfilled.
 - **Also fixed in passing, found while touching the same file**: search-result cards on `/listings` had no link to the listing detail page at all — clicking one did nothing. Every card now links to `/listings/{id}`, and the map popup got a "Voir l'annonce" link too. See `plans/07-search-filters-and-map.md`'s 2026-09-02 status note.
@@ -545,7 +558,7 @@ Suite: **92 tests, 0 failures**. No frontend change in this step.
 
 This was flagged as a conflict between `plans/07` asking for "Voir 32 annonces" and a no-total-counts
 rule. **The conflict was not real.** "No total counts" appears only in
-`docs/AI_SESSION_HANDOFF_PROMPT.md` and `docs/SESSION-PROMPT.md` — instructions written for AI
+`TODO.md` — the source-verified completion checklist for every coding session
 sessions. The authoritative documents say something narrower: `ARCHITECTURE.md` says the codebase
 "uses keyset pagination and never relies on `OFFSET`", and the design doc gives the reason as
 pagination stability as listings are added and removed. A separate count query affects neither. An
@@ -679,15 +692,15 @@ the media queries were correct and simply lost. Both elements now declare `displ
 Found by looking at the rendered page, not by reading the code, and it would have been invisible to
 any test in this repo.
 
-**Disclosed, not fixed, both pre-existing and outside this step:**
+**One pre-existing issue remains outside this step:**
 
 1. **Deep-linking to the map does not stick.** Loading `/listings?view=map` directly rewrites itself
    to `view=results` before the map mounts; clicking "Carte" works correctly and renders 7 markers
    for 7 listings. A shared or bookmarked map URL silently lands on the list.
-2. **Selecting amenity chips quickly loses selections.** Each chip click writes the URL immediately
-   from state that has not flushed, so a second click within the same render reads the pre-first-click
-   value and overwrites it — last write wins. Reproduced by clicking two chips in succession and
-   getting one.
+
+Rapid amenity-chip selection was fixed on 2026-09-05 in `SearchResults.tsx`. The toggle now reads and
+updates a synchronous latest-selection ref before writing the URL, and URL-driven navigation refreshes
+that ref. This prevents a second quick click from rebuilding the query from stale React state.
 
 Frontend `typecheck` and `build` clean. Verified in a real browser at 1440px and at the narrowest
 viewport the tool allows, including the disclosure toggle, chip selection, reset, live count and the
@@ -1567,7 +1580,7 @@ never actually looked at. Worth a glance next session.
 
 **One flaky test.** A single full run reported 97 tests, 1 failure; three subsequent full runs passed
 97/97. The output was not captured and surefire had overwritten its reports by the time it was
-noticed, so the culprit is unidentified. `docs/AI_SESSION_HANDOFF_PROMPT.md` records historic
+noticed, so the culprit is unidentified. The historical implementation notes record
 flakiness in `ListingSearchOptimizationTest`, which is plan-dependent and the obvious suspect, but
 that is a guess and is written down here as one.
 

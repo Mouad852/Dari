@@ -2,6 +2,7 @@ package ma.dari.api.listing;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -11,6 +12,31 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ListingRepository extends JpaRepository<Listing, UUID> {
+                @Modifying
+                @Query("""
+                                                update Listing l
+                                                set l.status = ma.dari.api.listing.ListingStatus.EXPIRED
+                                                where l.status = ma.dari.api.listing.ListingStatus.PUBLISHED
+                                                        and l.updatedAt < :cutoff
+                                                        and l.deletedAt is null
+                                                """)
+                int expirePublishedBefore(@Param("cutoff") Instant cutoff);
+
+                    List<Listing> findByStatusAndUpdatedAtBeforeAndDeletedAtIsNull(
+                            ListingStatus status, Instant cutoff);
+
+    @Query("""
+            select l from Listing l
+            where l.status = :status
+              and l.updatedAt < :warningCutoff
+              and l.updatedAt >= :expiryCutoff
+              and l.deletedAt is null
+              and l.expiryWarnedAt is null
+            """)
+    List<Listing> findExpiringSoon(@Param("status") ListingStatus status,
+                                   @Param("warningCutoff") Instant warningCutoff,
+                                   @Param("expiryCutoff") Instant expiryCutoff);
+
     List<Listing> findByStatusAndAvailabilityStateAndDeletedAtIsNull(
             ListingStatus status,
             AvailabilityState availabilityState);

@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
 import { centerFor } from '@/lib/cities';
@@ -169,6 +169,7 @@ function SearchResultsPageContent() {
   const [roomType, setRoomType] = useState(searchParams.get('roomType') ?? '');
   const [furnishing, setFurnishing] = useState(searchParams.get('furnishing') ?? '');
   const [amenities, setAmenities] = useState<string[]>(() => searchParams.getAll('amenities'));
+  const amenitiesRef = useRef(amenities);
   const [resultCount, setResultCount] = useState<{ count: number; capped: boolean } | null>(null);
   // Only meaningful below the 900px breakpoint; above it CSS keeps the rail
   // visible regardless, so this never has to know the viewport width.
@@ -185,7 +186,9 @@ function SearchResultsPageContent() {
     setPropertyType(searchParams.get('propertyType') ?? '');
     setRoomType(searchParams.get('roomType') ?? '');
     setFurnishing(searchParams.get('furnishing') ?? '');
-    setAmenities(searchParams.getAll('amenities'));
+    const nextAmenities = searchParams.getAll('amenities');
+    amenitiesRef.current = nextAmenities;
+    setAmenities(nextAmenities);
     setPriceMin(searchParams.get('priceMin') ?? '');
     setPriceMax(searchParams.get('priceMax') ?? '');
     setAvailableFrom(searchParams.get('availableFrom') ?? '');
@@ -448,9 +451,11 @@ function SearchResultsPageContent() {
   };
 
   const toggleAmenity = (amenity: string) => {
-    const nextAmenities = amenities.includes(amenity)
-      ? amenities.filter((item) => item !== amenity)
-      : [...amenities, amenity];
+    const currentAmenities = amenitiesRef.current;
+    const nextAmenities = currentAmenities.includes(amenity)
+      ? currentAmenities.filter((item) => item !== amenity)
+      : [...currentAmenities, amenity];
+    amenitiesRef.current = nextAmenities;
     setAmenities(nextAmenities);
     updateUrl(view, radius, { amenities: nextAmenities });
   };

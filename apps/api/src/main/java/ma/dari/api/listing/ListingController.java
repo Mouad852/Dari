@@ -3,7 +3,6 @@ package ma.dari.api.listing;
 import jakarta.validation.Valid;
 import ma.dari.api.common.auth.AuthenticatedUser;
 import ma.dari.api.common.auth.CurrentUser;
-import ma.dari.api.common.error.NotImplementedYetException;
 import ma.dari.api.common.pagination.CursorPage;
 import ma.dari.api.listing.dto.CreateListingRequest;
 import ma.dari.api.listing.dto.ListingPhotoResponse;
@@ -220,8 +219,8 @@ public class ListingController {
 
     /** EXPIRED -> PENDING_REVIEW (phase 10). Re-review is deliberate, not a formality. */
     @PostMapping("/{id}/renew")
-    public Object renew(@CurrentUser User owner, @PathVariable UUID id) {
-        throw new NotImplementedYetException("phase 10");
+    public PublicListingResponse renew(@CurrentUser User owner, @PathVariable UUID id) {
+        return listingSearchService.renew(id, owner);
     }
 
     // --- photos (phase 05) ---------------------------------------------------

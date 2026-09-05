@@ -32,7 +32,7 @@ That amenity exception is the single most likely thing in this phase to be imple
 - [~] Mobile filters (2026-09-03) — implemented as a disclosure panel behind a "Filtres" button with an active-filter count, not the prototype's bottom sheet. The layout bug it fixes was real (114px of horizontal page overflow); porting the sheet's exact presentation from `ui_kits/mobile_app/FiltersSheet.jsx` is still open.
 - [x] Active-filter count on the mobile Filtres button, and *Réinitialiser* shown only when something is active (2026-09-03). Reset keeps the city, which is the search rather than a refinement of it.
 - [x] Selected chips invert to charcoal, not terracotta (2026-09-03) — verified in the browser as `rgb(36, 31, 28)` on white text.
-- [ ] Full listing detail page, from `ui_kits/mobile_app/ListingScreen.jsx` — photo header with glass controls, price block, logement / colocataires / règles tabs, sticky contact bar
+- [~] Listing detail page — the real rich response, metadata, ordered photo gallery, favorite/contact actions, and unavailable-listing handling are implemented. Exact prototype parity remains open: glass photo controls, the `colocataires` and `règles` tabs (no supporting data contracts), and the sticky contact-bar treatment.
 - [x] Map view with Leaflet, pins and a popup linking to the listing; already built, corrected 2026-09-02
 - [x] All filter state in the URL; already built, corrected 2026-09-02
 - [x] Result counts (2026-09-02) — `GET /listings/count` returns `{count, capped}`, exact below 200 and "plus de 200" above. Capped because a count is more expensive than the page it labels: 85 ms against 35 ms on a filtered search over 50k listings, since a page stops at 21 rows and a count cannot stop at all. Reuses the existing search queries with a capped limit rather than adding a seventh copy of the filter predicate. The heading previously reported the number of rows *loaded*, so 12,500 Rabat listings announced as "20 annonces".
@@ -64,7 +64,7 @@ Fixed a real bug found while wiring favorites into this page, unrelated to that 
 - Query plans stay healthy with every filter applied at once — no sequential scan introduced by the amenity join
 - The map shows pins for a city, at fuzzed coordinates
 - Filter UI matches the mockups on both widths, and a filtered URL is shareable
-- The listing detail page is complete and reachable from search
+- The listing detail page is real and reachable from search; exact prototype parity and unsupported roommate/house-rule surfaces remain open
 
 ## Risks and open decisions
 
