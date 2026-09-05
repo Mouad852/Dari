@@ -1,5 +1,6 @@
 package ma.dari.api.listing;
 
+import ma.dari.api.listing.dto.HouseRulesResponse;
 import ma.dari.api.listing.dto.ListingPhotoResponse;
 
 import java.math.BigDecimal;
@@ -33,13 +34,15 @@ public record PublicListingDetailResponse(
         AvailabilityState availabilityState,
         Instant createdAt,
         Set<String> amenityCodes,
-        List<ListingPhotoResponse> photos) {
+        List<ListingPhotoResponse> photos,
+        HouseRulesResponse houseRules) {
 
     public static PublicListingDetailResponse from(
             Listing listing,
             double[] fuzzed,
             Set<String> amenityCodes,
-            List<ListingPhotoResponse> photos) {
+            List<ListingPhotoResponse> photos,
+            HouseRulesResponse houseRules) {
         return new PublicListingDetailResponse(
                 listing.getId(),
                 listing.getTitle(),
@@ -64,6 +67,7 @@ public record PublicListingDetailResponse(
                 listing.getAvailabilityState(),
                 listing.getCreatedAt(),
                 amenityCodes,
-                photos);
+                photos,
+                houseRules);
     }
 }

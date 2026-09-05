@@ -8,6 +8,7 @@ import ma.dari.api.common.pagination.Cursor;
 import ma.dari.api.common.pagination.CursorPage;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRole;
+import ma.dari.api.listing.dto.HouseRulesResponse;
 import ma.dari.api.listing.dto.ListingPhotoResponse;
 import ma.dari.api.listing.dto.ListingResponse;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -41,16 +42,19 @@ public class ListingSearchService {
     private final ListingSearchRepository search;
     private final ListingAmenityRepository listingAmenities;
     private final ListingPhotoRepository listingPhotos;
+    private final HouseRulesRepository houseRules;
     private final ListingCovers covers;
     private final MeterRegistry meterRegistry;
 
     public ListingSearchService(ListingRepository listings, ListingSearchRepository search,
                                 ListingAmenityRepository listingAmenities, ListingPhotoRepository listingPhotos,
+                                HouseRulesRepository houseRules,
                                 ListingCovers covers, MeterRegistry meterRegistry) {
         this.listings = listings;
         this.search = search;
         this.listingAmenities = listingAmenities;
         this.listingPhotos = listingPhotos;
+        this.houseRules = houseRules;
         this.covers = covers;
         this.meterRegistry = meterRegistry;
     }
@@ -393,11 +397,15 @@ public class ListingSearchService {
                 .stream()
                 .map(ListingPhotoResponse::from)
                 .toList();
+        HouseRulesResponse houseRulesResponse = houseRules.findById(listingId)
+                .map(HouseRulesResponse::from)
+                .orElse(null);
         return PublicListingDetailResponse.from(
                 listing,
                 LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()),
                 new HashSet<>(listingAmenities.findAmenityCodesByListingId(listingId)),
-                photos);
+                photos,
+                houseRulesResponse);
     }
 
     public ListingResponse submit(UUID listingId, User owner) {

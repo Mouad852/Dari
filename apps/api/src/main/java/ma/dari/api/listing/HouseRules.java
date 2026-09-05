@@ -3,9 +3,6 @@ package ma.dari.api.listing;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.MapsId;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -19,21 +16,44 @@ import java.util.UUID;
  * listing's own id as its primary key, which is exactly what
  * {@code house_rules.listing_id PRIMARY KEY REFERENCES listings(id)} says.
  *
- * <p>The id is mapped as a scalar {@code listingId} with {@code @MapsId} on
- * the association, rather than putting {@code @Id} directly on the
- * association the way {@link ListingAmenity} and {@code Favorite} do. Those
- * two carry a *composite* key and therefore an {@code @IdClass}; Spring Data
- * requires an {@code @IdClass} for any entity whose {@code @Id} is an
- * association, so the single-association form fails at repository creation
- * with "does not define an IdClass". {@code @MapsId} keeps the shared-key
- * semantics without inventing a composite key that the table does not have.
+ * <p>Deliberately a plain scalar {@code listingId}, not a JPA association to
+ * {@link Listing}. Two shapes were tried and rejected first:
+ *
+ * <ul>
+ *   <li>{@code @Id @OneToOne private Listing listing} — the shape
+ *       {@link ListingAmenity}/{@code Favorite} use — fails at repository-bean
+ *       creation with "does not define an IdClass": those two carry a
+ *       *composite* key with an {@code @IdClass}, and Spring Data requires one
+ *       for any entity whose {@code @Id} is an association. A single-column
+ *       shared key is not that.</li>
+ *   <li>A scalar {@code listingId} plus {@code @MapsId} on a parallel
+ *       {@code @OneToOne} association compiles and passes schema validation,
+ *       but only works when both entities are created in the same
+ *       persistence context/transaction — the real production write path
+ *       (a single {@code @Transactional} service method), but not a test that
+ *       loads an already-saved {@code Listing} via one repository call and
+ *       then saves {@code HouseRules} via another. There, Hibernate does not
+ *       recognize the referenced {@code Listing} as already persisted and
+ *       re-issues its {@code INSERT}, which collides on the primary key.
+ *       Caught by a genuine duplicate-key failure in
+ *       {@code ListingApiTest.publicDetailIncludesHouseRulesWhenPresent}, not
+ *       by inspection — the mapping looked correct and passed schema
+ *       validation.</li>
+ * </ul>
+ *
+ * <p>Neither this entity nor anything reading it needs to navigate to the
+ * {@code Listing} object graph — every caller already has the listing's id on
+ * hand — so there is no association to get wrong. The database foreign key
+ * (with {@code ON DELETE CASCADE}) still enforces referential integrity
+ * regardless of whether the ORM models it as an object reference.
  *
  * <p>Every answer is nullable on purpose, and that is the whole design. The
  * V12 migration puts it as "NULL does not equal false; silence is not a
- * promise": an owner who never answered "animaux acceptes ?" has not said no,
- * so an unanswered listing must drop out of a preference filter rather than
- * be counted as a refusal. Treating these as primitive booleans would erase
- * that distinction at the type level, which is why they are boxed.
+ * promise": an owner who never answered "animaux acceptés ?" has not said no,
+ * so an unanswered listing must drop out of a preference filter rather than be
+ * counted as a refusal. Boxed {@code Boolean} rather than {@code boolean}
+ * keeps that distinction at the type level, where it cannot be lost by
+ * accident.
  */
 @Entity
 @Table(name = "house_rules")
@@ -42,11 +62,6 @@ public class HouseRules {
     @Id
     @Column(name = "listing_id")
     private UUID listingId;
-
-    @MapsId
-    @OneToOne(optional = false)
-    @JoinColumn(name = "listing_id", nullable = false)
-    private Listing listing;
 
     @Column(name = "smoking_allowed")
     private Boolean smokingAllowed;
@@ -78,13 +93,11 @@ public class HouseRules {
         // JPA
     }
 
-    public HouseRules(Listing listing) {
-        this.listing = listing;
+    public HouseRules(UUID listingId) {
+        this.listingId = listingId;
     }
 
     public UUID getListingId() { return listingId; }
-
-    public Listing getListing() { return listing; }
 
     public Boolean getSmokingAllowed() { return smokingAllowed; }
 

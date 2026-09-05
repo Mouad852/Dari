@@ -24,6 +24,7 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.nullValue;
 
 class ListingApiTest extends AbstractIntegrationTest {
 
@@ -44,6 +45,9 @@ class ListingApiTest extends AbstractIntegrationTest {
 
     @Autowired
     Validator validator;
+
+    @Autowired
+    HouseRulesRepository houseRules;
 
     private void stubToken(String uid, String email, boolean emailVerified) throws Exception {
         FirebaseToken token = Mockito.mock(FirebaseToken.class);
@@ -377,6 +381,36 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .doesNotContain("\"firebaseUid\"")
                 .doesNotContain("\"latitude\":33.5652,")
                 .doesNotContain("\"longitude\":-7.5923");
+    }
+
+    @Test
+    @DisplayName("listing detail carries house rules when a row exists, and null when it does not")
+    void publicDetailIncludesHouseRulesWhenPresent() throws Exception {
+        User owner = users.save(new User("uid-house-rules", "house-rules@example.ma", true, "Owner Rules"));
+
+        Listing withoutRules = listings.saveAndFlush(new Listing(
+                owner, "Studio sans règles", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2400.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+
+        given().when().get("/listings/{id}", withoutRules.getId())
+                .then().statusCode(200)
+                .body("houseRules", nullValue());
+
+        Listing withRules = listings.saveAndFlush(new Listing(
+                owner, "Studio avec règles", "Rabat", "Hassan", 33.9716, -6.8498,
+                new BigDecimal("2600.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+        HouseRules rules = new HouseRules(withRules.getId());
+        rules.setSmokingAllowed(false);
+        rules.setPetsAllowed(true);
+        rules.setOtherRules("Pas de fêtes après 22h.");
+        houseRules.saveAndFlush(rules);
+
+        given().when().get("/listings/{id}", withRules.getId())
+                .then().statusCode(200)
+                .body("houseRules.smokingAllowed", equalTo(false))
+                .body("houseRules.petsAllowed", equalTo(true))
+                .body("houseRules.guestsAllowed", nullValue())
+                .body("houseRules.otherRules", equalTo("Pas de fêtes après 22h."));
     }
 
     @Test

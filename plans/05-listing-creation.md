@@ -17,7 +17,7 @@ This phase has an unusual advantage: **the wizard already exists as a working pr
 - [x] Seed the `amenities` lookup — the wizard's 10 are the starting set (`V12`, read via `AmenityRepository` since 2026-09-02)
 - [x] Expand `listings` to the full §3 column set (`V8`)
 - [x] `POST /listings` creating a `DRAFT`; `PATCH /listings/{id}`; `DELETE /listings/{id}` as soft-delete
-- [x] `GET /listings/{id}` — keeps the thin `PublicListingResponse` contract for search consumers and now returns a dedicated `PublicListingDetailResponse` with real listing attributes, charge inclusions, availability, amenities, and stored photos. House rules remain intentionally absent until a read contract is built.
+- [x] `GET /listings/{id}` — keeps the thin `PublicListingResponse` contract for search consumers and now returns a dedicated `PublicListingDetailResponse` with real listing attributes, charge inclusions, availability, amenities, stored photos, and (2026-09-05) house rules — `null` for every listing today, since no write path exists yet (below), but the read contract itself is real: `houseRules.smokingAllowed`/`petsAllowed`/`guestsAllowed`/`quietHoursStart`/`quietHoursEnd`/`otherRules`, each independently nullable per §5's "silence is not a promise" design.
 - [x] Ownership checks on every mutation
 - [x] Photo upload: `GET/POST/PATCH/DELETE /listings/{id}/photos`, with `sort_order` and `is_cover`; the public detail response reads the ordered active photos back for display. The owner-scoped `GET` was added 2026-09-02 — only write routes existed before, so a resumed draft could never show the photos the server already held.
 - [x] Storage abstraction behind an interface (`ImageStore`/`LocalImageStore`) — local disk now, swappable later without touching callers
