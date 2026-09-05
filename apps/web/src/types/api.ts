@@ -95,6 +95,17 @@ export interface PublicListing {
   distanceMetres?: number;
 }
 
+/** Mirrors HouseRulesResponse. Every field is independently nullable — an owner may answer some questions and leave others unset. */
+export interface HouseRules {
+  smokingAllowed: boolean | null;
+  petsAllowed: boolean | null;
+  guestsAllowed: boolean | null;
+  /** "HH:mm:ss", e.g. "22:00:00". Always both-set or both-null. */
+  quietHoursStart: string | null;
+  quietHoursEnd: string | null;
+  otherRules: string | null;
+}
+
 export interface PublicListingDetail extends PublicListing {
   priceDeposit: number | null;
   description: string | null;
@@ -111,6 +122,7 @@ export interface PublicListingDetail extends PublicListing {
   minStayMonths: number | null;
   amenityCodes: string[];
   photos: ListingPhoto[];
+  houseRules: HouseRules | null;
 }
 
 /**
@@ -173,6 +185,7 @@ export interface ListingDetail {
    * had a real photograph. In the queue that meant approving without seeing it.
    */
   coverPhotoUrl: string | null;
+  houseRules: HouseRules | null;
 }
 
 // --- moderation and admin (design doc §6, admin console gated on role) --------
@@ -240,6 +253,9 @@ export interface Message {
   sentAt: string;
   readAt: string | null;
 }
+
+
+
 
 // --- pagination ----------------------------------------------------------------
 

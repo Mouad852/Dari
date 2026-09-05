@@ -90,6 +90,15 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   const roomLabel = listing.roomType ? ROOM_TYPE_LABELS[listing.roomType] : null;
   const cover = listing.photos[0];
 
+  const rules = listing.houseRules;
+  const smokingLabel = rules?.smokingAllowed == null ? null : rules.smokingAllowed ? 'Fumeurs autorisés' : 'Non-fumeurs';
+  const petsLabel = rules?.petsAllowed == null ? null : rules.petsAllowed ? 'Animaux acceptés' : 'Animaux non acceptés';
+  const guestsLabel = rules?.guestsAllowed == null ? null : rules.guestsAllowed ? 'Invités autorisés' : 'Invités non autorisés';
+  const quietHours = rules?.quietHoursStart && rules?.quietHoursEnd
+    ? `Heures de silence : ${rules.quietHoursStart.slice(0, 5)} – ${rules.quietHoursEnd.slice(0, 5)}`
+    : null;
+  const hasRules = Boolean(smokingLabel || petsLabel || guestsLabel || quietHours || rules?.otherRules);
+
   /**
    * schema.org Accommodation. The design doc rules out JobPosting-style markup;
    * this is the accommodation equivalent, with the offer carrying the monthly
@@ -206,6 +215,19 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
             {listing.minStayMonths != null && <span>Séjour minimum : {listing.minStayMonths} mois</span>}
           </div>
         </section>
+
+        {hasRules && (
+          <section>
+            <h2 style={sectionHeadingStyle}>Règles de la maison</h2>
+            <div style={{ display: 'grid', gap: 8, color: 'var(--text-muted)' }}>
+              {smokingLabel && <span>{smokingLabel}</span>}
+              {petsLabel && <span>{petsLabel}</span>}
+              {guestsLabel && <span>{guestsLabel}</span>}
+              {quietHours && <span>{quietHours}</span>}
+              {rules?.otherRules && <span>{rules.otherRules}</span>}
+            </div>
+          </section>
+        )}
 
         <ContactOwnerButton listingId={listing.id} />
 
