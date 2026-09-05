@@ -82,7 +82,7 @@ public class ConversationService {
             throw ApiException.forbidden("Vous ne pouvez pas démarrer une conversation avec vous-même");
         }
 
-        Listing listing = request.listingId() == null ? null : listings.findById(request.listingId())
+        Listing listing = request.listingId() == null ? null : listings.findByIdAndDeletedAtIsNull(request.listingId())
                 .orElseThrow(() -> ApiException.notFound("Annonce introuvable"));
 
         UUID first = currentUser.getId();
@@ -165,7 +165,7 @@ public class ConversationService {
                     .orElseThrow(() -> ApiException.notFound("Utilisateur introuvable"));
         }
         if (request.listingId() != null) {
-            Listing listing = listings.findById(request.listingId())
+            Listing listing = listings.findByIdAndDeletedAtIsNull(request.listingId())
                     .orElseThrow(() -> ApiException.notFound("Annonce introuvable"));
             return listing.getOwner();
         }

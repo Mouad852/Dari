@@ -215,7 +215,11 @@ coordinate absence across search, map, detail, featured, and favorites.
 
 ### Soft-delete
 
-Confirm every read path filters `deleted_at IS NULL`: search, favorites, profiles, conversations, sitemap, and the Firestore mirror if phase 04 built one.
+Confirm every user-facing API read path filters `deleted_at IS NULL`: search, favorites,
+profiles, conversations, report targets, and moderation queues. Preserve deliberate
+historical reads for account-deletion cascades, moderation history, notification delivery,
+and authentication-token rejection. No Firestore mirror exists in the current API; backup
+creation and restore are separate launch work.
 
 ---
 

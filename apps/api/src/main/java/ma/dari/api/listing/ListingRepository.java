@@ -41,7 +41,9 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
             ListingStatus status,
             AvailabilityState availabilityState);
 
-    List<Listing> findByStatus(ListingStatus status);
+    List<Listing> findByStatusAndDeletedAtIsNull(ListingStatus status);
+
+    boolean existsByIdAndDeletedAtIsNull(UUID id);
 
     List<Listing> findByOwnerId(UUID ownerId);
 

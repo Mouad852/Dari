@@ -129,13 +129,13 @@ public class ReportService {
 
     private void validateTargetExists(ReportTarget targetType, UUID targetId) {
         if (targetType == ReportTarget.LISTING) {
-            if (!listings.existsById(targetId)) {
+            if (!listings.existsByIdAndDeletedAtIsNull(targetId)) {
                 throw new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable");
             }
             return;
         }
 
-        if (!users.existsById(targetId)) {
+        if (!users.existsByIdAndDeletedAtIsNull(targetId)) {
             throw new ApiException(404, ErrorCode.NOT_FOUND, "Utilisateur introuvable");
         }
     }

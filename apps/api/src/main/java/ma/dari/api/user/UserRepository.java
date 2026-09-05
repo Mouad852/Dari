@@ -12,5 +12,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByIdAndDeletedAtIsNull(UUID id);
 
+    boolean existsByIdAndDeletedAtIsNull(UUID id);
+
     boolean existsByFirebaseUid(String firebaseUid);
 }

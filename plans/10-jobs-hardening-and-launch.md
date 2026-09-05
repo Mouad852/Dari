@@ -28,7 +28,7 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 - [x] Rate limits on the abuse-prone routes: report creation, message sending, listing creation, uploads, signup, and public search/count/map/featured reads
 - [x] **A dedicated review of location fuzzing across every endpoint**, including map, search, detail and any admin route that might be reachable publicly. One leak makes the whole scheme decorative.
 - [x] Audit every response DTO for private-field leakage — email, phone, exact coordinates, internal status, `firebase_uid`
-- [ ] Confirm soft-delete is honoured everywhere, including the Firestore mirror if it exists
+- [x] Confirm soft-delete is honoured across API read paths; the Firestore mirror, if introduced, remains open
 - [x] Input validation and size limits across all write paths
 - [x] CORS, security headers, and production token-setting review: CORS is an explicit
   origin allowlist with `Authorization`/`Content-Type` headers; API responses send
@@ -77,8 +77,8 @@ All profile-backed mutating controllers now carry explicit method-security guard
 before profile creation. Listing, favorite, messaging, report, profile, and admin writes
 also enforce ownership or target authorization in their services. HTTP regressions cover
 non-owner listing/photo mutation, user-scoped favorite removal, non-participant message
-sending, profileless listing mutation, and the existing doubled admin-role checks. Soft-delete
-and backup work remain intentionally out of scope for this pass.
+sending, profileless listing mutation, and the existing doubled admin-role checks. Backup
+creation and restore remain intentionally out of scope for this pass.
 
 Rate limits are enforced by a Spring MVC interceptor before controller invocation. Report creation,
 conversation/message writes, listing creation, listing photo uploads, avatar uploads, profile signup,
@@ -107,6 +107,14 @@ boundary.
 Moderator `WARN` actions now enqueue `USER_WARNED` for the listing owner or user target and close pending reports as `ACTION_TAKEN`.
 
 Notification delivery is an opt-in SMTP worker. `V19__notification_delivery_state.sql` adds `PENDING`, `SENDING`, `SENT`, and `DEAD` state, attempt tracking, stale-claim recovery, and retry timestamps. The worker claims rows with pessimistic locks and skips locked rows, sends outside the claim transaction, retries transport failures up to five attempts with increasing delays, and quarantines unsupported event types, empty payloads, or missing recipient email addresses. Existing French payloads are sent unchanged, and report acknowledgments remain generic. The `WARN` report action now enqueues a `USER_WARNED` message for the reported listing owner or user and resolves the pending reports as acted on.
+
+The soft-delete read-path review is complete for the current API. Public listing
+search/detail and cursor lookups, owner dashboards, favorites and favorite-id
+membership checks, public profiles, conversation listing/creation context, report
+targets, and the moderation pending-listings queue all apply the live-row boundary.
+Account-deletion cascades, moderation history, notification delivery, and
+authentication-token rejection intentionally retain historical-row access. No
+Firestore mirror exists, and backup creation/restore remains open.
 
 Production SMTP configuration is documented in `SMTP_CONFIGURATION.md` with:
 - Safe configuration examples for Gmail, Outlook, and Moroccan ISP providers

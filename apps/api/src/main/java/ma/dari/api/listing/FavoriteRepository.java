@@ -14,7 +14,10 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Favorite.Fav
 
     Optional<Favorite> findByUserIdAndListingId(UUID userId, UUID listingId);
 
-    @Query("select f.listing.id from Favorite f where f.user.id = :userId")
+    @Query("""
+            select f.listing.id from Favorite f
+            where f.user.id = :userId and f.listing.deletedAt is null
+            """)
     List<UUID> findListingIdsByUserId(@Param("userId") UUID userId);
 
     /**

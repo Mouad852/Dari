@@ -41,7 +41,7 @@ Last verified: 2026-09-05
 - [x] Add rate limits for reports, messages, listing creation, uploads, signup, and public search abuse paths
 - [x] Review CORS, security headers, TLS, and production cookie/token settings
 - [x] Verify ownership and role checks on every mutating endpoint
-- [ ] Verify soft-delete filtering on every read path
+- [x] Verify soft-delete filtering on every API read path; backup and Firestore mirror remain open
 - [ ] Decide and implement the PII policy for deleted users
 - [ ] Test backup creation and restore into a clean environment
 
@@ -126,6 +126,7 @@ Before marking a checkbox complete:
 
 - `cd apps/api && ./mvnw test` passed on 2026-09-05: 118 tests, 0 failures, 0 errors; migrations applied through `V19__notification_delivery_state.sql`
 - `git diff --check` passed for the Phase 10 input-validation hardening and documentation
+- Soft-delete read-path review completed on 2026-09-05: public search/detail, owner listings, favorites, profiles, conversations, report targets, and moderation queues exclude deleted rows where appropriate; account deletion, moderation history, and notification delivery intentionally retain historical-row access. Backup and Firestore mirror work remain open.
 - Notification delivery is implemented through the opt-in SMTP worker: rows are claimed with row locks, retried with bounded backoff, marked sent idempotently, and malformed events are quarantined as dead
 - SMTP configuration guide created with provider examples (Gmail, Outlook, Moroccan ISP)
 - Notification delivery README documents transactional outbox architecture, retry behavior, claim-lock semantics, and production monitoring queries

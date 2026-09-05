@@ -61,7 +61,7 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public List<ListingResponse> pendingListings() {
-        List<Listing> rows = listings.findByStatus(ListingStatus.PENDING_REVIEW);
+        List<Listing> rows = listings.findByStatusAndDeletedAtIsNull(ListingStatus.PENDING_REVIEW);
         // One query for the whole queue, not one per row: a moderator opening a
         // backlog of fifty should not cost fifty round trips to see fifty photos.
         Map<UUID, String> coverUrls = covers.forEach(rows);

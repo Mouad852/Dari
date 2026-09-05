@@ -99,7 +99,7 @@ public class ListingSearchService {
                 if (lastId != null) {
                     // For cursor pagination in distance mode, we need the actual distance of the last item
                     // Query to get it from the last listing
-                    var lastItem = listings.findById(lastId);
+                    var lastItem = listings.findByIdAndDeletedAtIsNull(lastId);
                     double lastDistance = lastItem.map(l ->
                         haversineMiles(lat, lng, l.getLatitude(), l.getLongitude()) * 1609.344
                     ).orElse(0.0);
@@ -338,12 +338,8 @@ public class ListingSearchService {
     }
 
     public PublicListingResponse getPublicOrOwnerListing(UUID listingId, User viewer) {
-        Listing listing = listings.findById(listingId)
+        Listing listing = listings.findByIdAndDeletedAtIsNull(listingId)
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
-
-        if (listing.getDeletedAt() != null) {
-            throw new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable");
-        }
 
         if (viewer != null && listing.getOwner().getId().equals(viewer.getId())) {
             return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), covers.forListing(listing.getId()));
@@ -365,12 +361,8 @@ public class ListingSearchService {
     }
 
     public PublicListingDetailResponse getPublicOrOwnerListingDetail(UUID listingId, User viewer) {
-        Listing listing = listings.findById(listingId)
+        Listing listing = listings.findByIdAndDeletedAtIsNull(listingId)
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
-
-        if (listing.getDeletedAt() != null) {
-            throw new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable");
-        }
 
         boolean owner = viewer != null && listing.getOwner().getId().equals(viewer.getId());
         boolean admin = viewer != null && viewer.getRole() == UserRole.ADMIN;
