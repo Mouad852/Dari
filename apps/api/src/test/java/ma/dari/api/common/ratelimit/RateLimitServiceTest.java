@@ -15,7 +15,8 @@ class RateLimitServiceTest {
                 30, Duration.ofMinutes(1),
                 5, Duration.ofHours(1),
                 20, Duration.ofHours(1),
-                5, Duration.ofHours(1));
+                5, Duration.ofHours(1),
+                120, Duration.ofMinutes(1));
 
         assertThat(service.tryAcquire(RateLimitType.REPORT, "user:test").allowed()).isTrue();
         assertThat(service.tryAcquire(RateLimitType.REPORT, "user:test").allowed()).isTrue();
@@ -32,7 +33,8 @@ class RateLimitServiceTest {
                 30, Duration.ofMinutes(1),
                 5, Duration.ofHours(1),
                 20, Duration.ofHours(1),
-                5, Duration.ofHours(1));
+                5, Duration.ofHours(1),
+                120, Duration.ofMinutes(1));
 
         assertThat(service.tryAcquire(RateLimitType.REPORT, "user:first").allowed()).isTrue();
         assertThat(service.tryAcquire(RateLimitType.REPORT, "user:second").allowed()).isTrue();

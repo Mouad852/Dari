@@ -31,7 +31,9 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         }
 
         String identity = identity();
-        check(annotation.value(), "user:" + identity);
+        if (identity != null) {
+            check(annotation.value(), "user:" + identity);
+        }
         check(annotation.value(), "ip:" + request.getRemoteAddr());
         return true;
     }
@@ -48,6 +50,6 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser principal) {
             return principal.firebaseUid();
         }
-        return "anonymous";
+        return null;
     }
 }

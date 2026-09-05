@@ -22,13 +22,37 @@ class RateLimitInterceptorTest {
     }
 
     @Test
+    void doesNotUseOneGlobalAnonymousBucketForSearch() throws Exception {
+        RateLimitService service = new RateLimitService(
+                5, Duration.ofHours(1),
+                30, Duration.ofMinutes(1),
+                5, Duration.ofHours(1),
+                20, Duration.ofHours(1),
+                5, Duration.ofHours(1),
+                2, Duration.ofHours(1));
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service);
+        HandlerMethod handler = new HandlerMethod(new SearchEndpoint(), SearchEndpoint.class.getMethod("search"));
+
+        MockHttpServletRequest firstAddress = new MockHttpServletRequest();
+        firstAddress.setRemoteAddr("192.0.2.10");
+        MockHttpServletRequest secondAddress = new MockHttpServletRequest();
+        secondAddress.setRemoteAddr("192.0.2.11");
+
+        interceptor.preHandle(firstAddress, new MockHttpServletResponse(), handler);
+        interceptor.preHandle(secondAddress, new MockHttpServletResponse(), handler);
+        interceptor.preHandle(firstAddress, new MockHttpServletResponse(), handler);
+        interceptor.preHandle(secondAddress, new MockHttpServletResponse(), handler);
+    }
+
+    @Test
     void appliesAnnotationAndRejectsTheSixthSignupAttempt() throws Exception {
         RateLimitService service = new RateLimitService(
                 5, Duration.ofHours(1),
                 30, Duration.ofMinutes(1),
                 5, Duration.ofHours(1),
                 20, Duration.ofHours(1),
-                5, Duration.ofHours(1));
+                5, Duration.ofHours(1),
+                120, Duration.ofMinutes(1));
         RateLimitInterceptor interceptor = new RateLimitInterceptor(service);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
@@ -50,6 +74,12 @@ class RateLimitInterceptorTest {
     private static final class SignupEndpoint {
         @RateLimited(RateLimitType.SIGNUP)
         public void signup() {
+        }
+    }
+
+    private static final class SearchEndpoint {
+        @RateLimited(RateLimitType.SEARCH)
+        public void search() {
         }
     }
 }

@@ -25,7 +25,7 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 - [ ] Templates in French, following the copy rules — no exclamation marks, no emoji, no *"Oups !"*
 
 **Hardening**
-- [x] Rate limits on the abuse-prone routes: report creation, message sending, listing creation, uploads, signup
+- [x] Rate limits on the abuse-prone routes: report creation, message sending, listing creation, uploads, signup, and public search/count/map/featured reads
 - [x] **A dedicated review of location fuzzing across every endpoint**, including map, search, detail and any admin route that might be reachable publicly. One leak makes the whole scheme decorative.
 - [x] Audit every response DTO for private-field leakage — email, phone, exact coordinates, internal status, `firebase_uid`
 - [ ] Confirm soft-delete is honoured everywhere, including the Firestore mirror if it exists
@@ -67,11 +67,12 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 ### Verified implementation (2026-09-05)
 
 Rate limits are enforced by a Spring MVC interceptor before controller invocation. Report creation,
-conversation/message writes, listing creation, listing photo uploads, avatar uploads, and profile
-signup are annotated explicitly. Each policy has independent fixed-window buckets for the Firebase
-identity and source address, and a rejected request returns the normal error envelope with HTTP 429
-and `Retry-After`. Defaults are configurable through `DARI_RATE_LIMIT_*` environment variables:
-reports 5/hour, messages 30/minute, listings 5/hour, uploads 20/hour, and signup 5/hour.
+conversation/message writes, listing creation, listing photo uploads, avatar uploads, profile signup,
+and the public search/count/map/featured reads are annotated explicitly. Authenticated policies have
+independent fixed-window buckets for the Firebase identity and source address; anonymous search uses
+the source address only. A rejected request returns the normal error envelope with HTTP 429 and
+`Retry-After`. Defaults are configurable through `DARI_RATE_LIMIT_*` environment variables: reports
+5/hour, messages 30/minute, listings 5/hour, uploads 20/hour, signup 5/hour, and search 120/minute.
 The implementation is intentionally process-local; a shared Redis/database bucket is required before
 running multiple API instances.
 

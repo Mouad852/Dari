@@ -38,7 +38,7 @@ Last verified: 2026-09-05
 
 - [x] Audit every public response for email, phone, Firebase UID, internal status, and exact coordinates
 - [x] Audit location fuzzing across search, map, detail, sitemap, metadata, hydration payloads, and images
-- [x] Add rate limits for reports, messages, listing creation, uploads, and signup abuse paths
+- [x] Add rate limits for reports, messages, listing creation, uploads, signup, and public search abuse paths
 - [ ] Review CORS, security headers, TLS, and production cookie/token settings
 - [ ] Verify ownership and role checks on every mutating endpoint
 - [ ] Verify soft-delete filtering on every read path

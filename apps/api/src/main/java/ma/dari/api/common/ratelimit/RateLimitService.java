@@ -32,13 +32,16 @@ public class RateLimitService {
             @Value("${dari.rate-limits.upload.max:20}") int uploadMax,
             @Value("${dari.rate-limits.upload.window:PT1H}") Duration uploadWindow,
             @Value("${dari.rate-limits.signup.max:5}") int signupMax,
-            @Value("${dari.rate-limits.signup.window:PT1H}") Duration signupWindow) {
+            @Value("${dari.rate-limits.signup.window:PT1H}") Duration signupWindow,
+            @Value("${dari.rate-limits.search.max:120}") int searchMax,
+            @Value("${dari.rate-limits.search.window:PT1M}") Duration searchWindow) {
         policies = new EnumMap<>(RateLimitType.class);
         policies.put(RateLimitType.REPORT, new Policy(reportMax, reportWindow));
         policies.put(RateLimitType.MESSAGE, new Policy(messageMax, messageWindow));
         policies.put(RateLimitType.LISTING, new Policy(listingMax, listingWindow));
         policies.put(RateLimitType.UPLOAD, new Policy(uploadMax, uploadWindow));
         policies.put(RateLimitType.SIGNUP, new Policy(signupMax, signupWindow));
+        policies.put(RateLimitType.SEARCH, new Policy(searchMax, searchWindow));
     }
 
     public Decision tryAcquire(RateLimitType type, String dimension) {

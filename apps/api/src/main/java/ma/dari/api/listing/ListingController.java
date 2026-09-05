@@ -66,6 +66,7 @@ public class ListingController {
      * different origin would shift the ordering and silently drop rows.
      */
     @GetMapping
+    @RateLimited(RateLimitType.SEARCH)
     public CursorPage<PublicListingResponse> search(@RequestParam(required = false) String city,
                                                  @RequestParam(required = false) String neighborhood,
                                                  @RequestParam(required = false) String[] propertyType,
@@ -92,6 +93,7 @@ public class ListingController {
      * paginating.
      */
     @GetMapping("/count")
+    @RateLimited(RateLimitType.SEARCH)
     public SearchCountResponse count(@RequestParam(required = false) String city,
                                      @RequestParam(required = false) String neighborhood,
                                      @RequestParam(required = false) String[] propertyType,
@@ -110,6 +112,7 @@ public class ListingController {
 
     /** Map pins for a city or radius search. Exact coordinates are never returned. */
     @GetMapping("/map")
+    @RateLimited(RateLimitType.SEARCH)
     public java.util.List<MapPinResponse> map(@RequestParam(required = false) String city,
                                             @RequestParam(required = false) String neighborhood,
                                             @RequestParam(required = false) String[] propertyType,
@@ -128,6 +131,7 @@ public class ListingController {
 
     /** Homepage grid (phase 08). Uses a simple published-and-recent ranking until a full recommendation model exists. */
     @GetMapping("/featured")
+    @RateLimited(RateLimitType.SEARCH)
     public java.util.List<PublicListingResponse> featured(@RequestParam(defaultValue = "6") int limit) {
         return listingSearchService.featured(limit);
     }

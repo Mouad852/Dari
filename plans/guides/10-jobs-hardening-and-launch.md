@@ -6,6 +6,11 @@ Implementation guide for [`10-jobs-hardening-and-launch.md`](../10-jobs-hardenin
 
 If the schedule tightens, pull the fuzzing review and rate limits *forward* rather than cutting them.
 
+The rate-limit boundary includes both authenticated write abuse paths and anonymous public search
+traffic. Report creation, conversation/message writes, listing creation, photo/avatar uploads, and
+profile signup use identity and source-address buckets. Search, count, map, and featured reads use
+source-address buckets so one anonymous visitor cannot consume a global anonymous quota.
+
 ---
 
 ## 0. Decisions to settle first

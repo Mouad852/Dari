@@ -5,5 +5,6 @@ public enum RateLimitType {
     MESSAGE,
     LISTING,
     UPLOAD,
-    SIGNUP
+    SIGNUP,
+    SEARCH
 }

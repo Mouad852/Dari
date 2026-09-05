@@ -115,6 +115,9 @@ dari:
     signup:
       max: ${DARI_RATE_LIMIT_SIGNUP_MAX:5}
       window: ${DARI_RATE_LIMIT_SIGNUP_WINDOW:PT1H}
+    search:
+      max: ${DARI_RATE_LIMIT_SEARCH_MAX:120}
+      window: ${DARI_RATE_LIMIT_SEARCH_WINDOW:PT1M}
 
 logging:
   level:
