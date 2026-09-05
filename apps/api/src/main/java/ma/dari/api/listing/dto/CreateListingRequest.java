@@ -82,6 +82,7 @@ public record CreateListingRequest(
         Short minStayMonths,
         @Null(message = "La raison du rejet est réservée à la modération")
         String rejectionReason,
-        Set<String> amenityCodes
+        @Size(max = 20, message = "20 équipements maximum")
+        Set<@Size(max = 64, message = "Code d'équipement trop long") String> amenityCodes
 ) {
 }

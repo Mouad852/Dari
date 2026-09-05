@@ -26,6 +26,8 @@ public class LocalImageStore implements ImageStore {
             "image/webp"
     );
     private static final long MAX_FILE_SIZE_BYTES = 5L * 1024L * 1024L;
+    private static final int MAX_IMAGE_DIMENSION = 10_000;
+    private static final long MAX_IMAGE_PIXELS = 40_000_000L;
 
     private final Path uploadRoot;
 
@@ -57,6 +59,11 @@ public class LocalImageStore implements ImageStore {
             int height = original.getHeight();
             if (width < 200 || height < 200) {
                 throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "La photo doit mesurer au moins 200 px de large et de haut");
+            }
+            if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION
+                    || (long) width * height > MAX_IMAGE_PIXELS) {
+                throw new ApiException(400, ErrorCode.VALIDATION_FAILED,
+                        "La photo ne peut pas dépasser 10000 px ni 40 mégapixels");
             }
 
             String storedMimeType = "image/jpeg";

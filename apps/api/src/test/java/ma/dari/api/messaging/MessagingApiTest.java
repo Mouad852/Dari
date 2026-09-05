@@ -1,6 +1,7 @@
 package ma.dari.api.messaging;
 
 import com.google.firebase.auth.FirebaseToken;
+import jakarta.validation.Validator;
 import ma.dari.api.listing.AvailabilityState;
 import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingRepository;
@@ -8,6 +9,7 @@ import ma.dari.api.listing.ListingStatus;
 import ma.dari.api.support.AbstractIntegrationTest;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
+import ma.dari.api.messaging.dto.CreateConversationRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -32,6 +34,20 @@ class MessagingApiTest extends AbstractIntegrationTest {
 
     @Autowired
     MessageRepository messages;
+
+    @Autowired
+    Validator validator;
+
+    @Test
+    @DisplayName("conversation input enforces a target and the message size limit")
+    void conversationInputIsBounded() {
+        String oversizedBody = "x".repeat(4001);
+
+        assertThat(validator.validate(new CreateConversationRequest(null, null, null)))
+                .anyMatch(violation -> violation.getMessage().contains("inclure"));
+        assertThat(validator.validate(new CreateConversationRequest(null, null, oversizedBody)))
+                .anyMatch(violation -> violation.getPropertyPath().toString().equals("body"));
+    }
 
     private void stubToken(String uid, String email, boolean emailVerified) throws Exception {
         FirebaseToken token = Mockito.mock(FirebaseToken.class);

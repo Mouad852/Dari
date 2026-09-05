@@ -219,7 +219,27 @@ Confirm every read path filters `deleted_at IS NULL`: search, favorites, profile
 
 ---
 
-## 5. Operations
+## 5. Input validation and size limits
+
+Keep limits at both the transport and domain boundaries. The servlet multipart backstop is
+slightly larger than the domain's 5 MB image rule so ordinary upload errors can use the standard
+French validation envelope. Every JSON write DTO must constrain user-controlled strings and
+collections before service code runs.
+
+The current API enforces:
+
+- 4,000 characters for conversation opening messages and individual messages
+- 20 amenity codes per listing, with each code limited to 64 characters
+- non-blank moderation action names and a required conversation target
+- 5 MB per image, 20 active photos per listing, minimum 200 px dimensions, and maximum
+  10,000 px per axis or 40 megapixels overall
+- 6 MB per multipart file and 8 MB per multipart request at the servlet boundary
+
+The 20-photo cap protects storage while image resizing policy remains a product decision. Do not
+silently broaden a limit in a controller: update the request constraint, domain guard, user-facing
+validation message, and focused regression test together.
+
+## 6. Operations
 
 **Backups.** Daily `pg_dump`, offsite, encrypted. Then — and this is the actual task — **restore one into a scratch environment and run the test suite against it.** An untested backup is a belief, not a backup.
 
@@ -241,7 +261,7 @@ Confirm every read path filters `deleted_at IS NULL`: search, favorites, profile
 
 ---
 
-## 6. Launch readiness
+## 7. Launch readiness
 
 **Two end-to-end passes on a production-like environment**, done by hand, not by a test suite:
 
@@ -257,7 +277,7 @@ Confirm every read path filters `deleted_at IS NULL`: search, favorites, profile
 
 ---
 
-## 7. Done checklist
+## 8. Done checklist
 
 - [ ] Listings expire at 60 days, warned at 53; renewal re-enters review
 - [ ] Every notification delivers, in French, following the copy rules

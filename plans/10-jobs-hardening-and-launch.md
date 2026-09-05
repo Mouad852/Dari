@@ -29,7 +29,7 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 - [x] **A dedicated review of location fuzzing across every endpoint**, including map, search, detail and any admin route that might be reachable publicly. One leak makes the whole scheme decorative.
 - [x] Audit every response DTO for private-field leakage — email, phone, exact coordinates, internal status, `firebase_uid`
 - [ ] Confirm soft-delete is honoured everywhere, including the Firestore mirror if it exists
-- [ ] Input validation and size limits across all write paths
+- [x] Input validation and size limits across all write paths
 - [x] CORS, security headers, and production token-setting review: CORS is an explicit
   origin allowlist with `Authorization`/`Content-Type` headers; API responses send
   `nosniff`, `DENY`, referrer, permissions, and HSTS headers; production requires
@@ -138,6 +138,15 @@ the production origin and Firebase credential path explicit instead of falling
 back to local development values.
 
 The next session must update the docs after each change, then commit and push the verified change before moving on.
+
+Input validation and write-size hardening now covers every request DTO: opening messages are
+capped at the same 4,000-character limit as stored messages, conversation targets are required,
+admin action names cannot be blank, and listing amenity collections are capped at 20 entries with
+bounded code lengths. Listing uploads remain capped at 5 MB, are limited to 20 active photos per
+listing, and reject images over 10,000 pixels on either axis or 40 megapixels overall before
+re-encoding. The servlet's 6 MB file and 8 MB request backstops continue to return the standard
+validation envelope. Soft-delete filtering and backup creation/restore remain separate, explicitly
+out-of-scope work.
 
 - **Compression risk.** This is the phase most likely to be cut short, and its contents are the ones that matter most when things go wrong. Consider pulling the fuzzing review and rate limits forward if the schedule tightens.
 - **The expiry window is a range, not a decision.** 60 versus 90 days is a product judgement about listing freshness.

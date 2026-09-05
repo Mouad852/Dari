@@ -8,7 +8,7 @@ Last verified: 2026-09-05
 
 - [x] Spring Boot API builds and runs against PostgreSQL 16 + PostGIS
 - [x] Flyway migrations apply through `V19__notification_delivery_state.sql`
-- [x] Backend suite passes: 106 tests, 0 failures, 0 errors
+- [x] Backend suite passes: 118 tests, 0 failures, 0 errors
 - [x] Next.js frontend typecheck passes
 - [x] Design-token consistency check passes
 - [x] Next.js production build completes
@@ -64,7 +64,7 @@ Last verified: 2026-09-05
 - [ ] Implement house-rules write and read contracts
 - [ ] Add neighborhood reference data and city-membership validation
 - [ ] Add full per-step validation and responsive parity checks at 375px and 1440px
-- [ ] Decide maximum photo count and image resizing policy
+- [x] Cap listing photos at 20 per listing; image resizing policy remains open
 
 ### Search and discovery
 
@@ -124,8 +124,8 @@ Before marking a checkbox complete:
 
 ## Latest verification
 
-- `cd apps/api && ./mvnw test` passed on 2026-09-05: 106 tests, 0 failures, 0 errors; migrations applied through `V19__notification_delivery_state.sql`
-- `git diff --check` passed for the expiry-warning implementation and documentation
+- `cd apps/api && ./mvnw test` passed on 2026-09-05: 118 tests, 0 failures, 0 errors; migrations applied through `V19__notification_delivery_state.sql`
+- `git diff --check` passed for the Phase 10 input-validation hardening and documentation
 - Notification delivery is implemented through the opt-in SMTP worker: rows are claimed with row locks, retried with bounded backoff, marked sent idempotently, and malformed events are quarantined as dead
 - SMTP configuration guide created with provider examples (Gmail, Outlook, Moroccan ISP)
 - Notification delivery README documents transactional outbox architecture, retry behavior, claim-lock semantics, and production monitoring queries

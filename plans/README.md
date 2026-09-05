@@ -8,7 +8,7 @@ The source is a working marketplace slice, not a scaffold. The API and web app b
 the complete backend suite passes against a real PostGIS Testcontainer.
 
 - Backend migrations run through `V19__notification_delivery_state.sql`.
-- All 105 backend tests pass: listing, search optimization, favorites, messaging, moderation,
+- All 118 backend tests pass: listing, search optimization, favorites, messaging, moderation,
   users, and architecture rules.
 - The frontend passes `npm run typecheck`, `npm run tokens:check`, and `npm run build`.
 - The core web marketplace loop is implemented: authentication, search, listings, publishing,

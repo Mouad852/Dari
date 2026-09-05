@@ -24,6 +24,8 @@ import java.util.UUID;
 @Service
 public class ListingService {
 
+    private static final int MAX_PHOTOS_PER_LISTING = 20;
+
     private static final int PAGE_SIZE = 20;
 
     private final ListingRepository listings;
@@ -218,6 +220,10 @@ public class ListingService {
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
 
         List<ListingPhoto> existingPhotos = listingPhotos.findByListingIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAsc(listingId);
+        if (existingPhotos.size() >= MAX_PHOTOS_PER_LISTING) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED,
+                    "20 photos maximum par annonce");
+        }
         ImageStore.StoredImage storedImage = imageStore.store(ImageStore.LISTINGS, listingId, file);
         int nextSortOrder = existingPhotos.isEmpty() ? 0 : existingPhotos.get(existingPhotos.size() - 1).getSortOrder() + 1;
         boolean isCover = existingPhotos.stream().noneMatch(ListingPhoto::isCover);

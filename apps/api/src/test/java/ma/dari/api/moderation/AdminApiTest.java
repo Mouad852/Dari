@@ -1,6 +1,7 @@
 package ma.dari.api.moderation;
 
 import com.google.firebase.auth.FirebaseToken;
+import jakarta.validation.Validator;
 import ma.dari.api.listing.AvailabilityState;
 import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingPhoto;
@@ -43,6 +44,16 @@ class AdminApiTest extends AbstractIntegrationTest {
 
     @Autowired
     UserRepository users;
+
+    @Autowired
+    Validator validator;
+
+    @Test
+    @DisplayName("admin action input rejects blank action names")
+    void adminActionRequiresName() {
+        assertThat(validator.validate(new AdminReportActionRequest(" ", null)))
+                .anyMatch(violation -> violation.getPropertyPath().toString().equals("action"));
+    }
 
     @Autowired
     ListingRepository listings;

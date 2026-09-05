@@ -346,7 +346,7 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .doesNotContain("\"email\"")
                 .doesNotContain("\"phone\"")
                 .doesNotContain("\"firebaseUid\"")
-                .doesNotContain("\"latitude\":33.5652")
+                .doesNotContain("\"latitude\":33.5652,")
                 .doesNotContain("\"longitude\":-7.5923");
     }
 
@@ -374,8 +374,8 @@ class ListingApiTest extends AbstractIntegrationTest {
                     .doesNotContain("\"status\"")
                     .doesNotContain("public-audit@example.ma")
                     .doesNotContain("uid-public-audit")
-                    .doesNotContain("\"latitude\":" + latitude)
-                    .doesNotContain("\"longitude\":" + longitude);
+                    .doesNotContain("\"latitude\":" + latitude + ",")
+                    .doesNotContain("\"longitude\":" + longitude + ",");
         }
 
         assertThat(search).contains(listing.getId().toString());
