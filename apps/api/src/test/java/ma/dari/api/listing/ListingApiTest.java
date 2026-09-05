@@ -317,6 +317,35 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .then()
                 .statusCode(200)
                 .body("findAll { it == 'wifi' }.size()", equalTo(1));
+
+        given()
+                .when()
+                .get("/neighborhoods?city=Rabat")
+                .then()
+                .statusCode(200)
+                .body("findAll { it == 'Agdal' }.size()", equalTo(1))
+                .body("findAll { it == 'Maarif' }.size()", equalTo(0));
+
+        given()
+                .when()
+                .get("/neighborhoods?city=" + java.util.UUID.randomUUID())
+                .then()
+                .statusCode(200)
+                .body("size()", equalTo(0));
+
+        given()
+                .when()
+                .get("/neighborhoods?city=")
+                .then()
+                .statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"));
+
+        given()
+                .when()
+                .get("/neighborhoods")
+                .then()
+                .statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"));
     }
 
     @Test
@@ -1025,6 +1054,7 @@ class ListingApiTest extends AbstractIntegrationTest {
         given().when().get("/listings/featured").then().statusCode(200);
         given().when().get("/amenities").then().statusCode(200);
         given().when().get("/cities").then().statusCode(200);
+        given().when().get("/neighborhoods?city=Rabat").then().statusCode(200);
 
         // A detail read for an unknown id is a 404 from the service, not a 401
         // from the chain -- which is what proves it was let through.

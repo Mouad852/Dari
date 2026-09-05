@@ -103,6 +103,7 @@ public class SecurityConfig {
                                 "/api/v1/listings/**",
                                 "/api/v1/cities/**",
                                 "/api/v1/amenities/**",
+                                "/api/v1/neighborhoods/**",
                                 "/api/v1/users/*").permitAll()
 
                         // First-launch profile creation: a verified Firebase
