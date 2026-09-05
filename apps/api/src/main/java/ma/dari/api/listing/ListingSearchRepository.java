@@ -299,8 +299,15 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
     );
 
     /**
-     * Get all map pins for public search (no pagination).
-     * Includes all filters for consistency with the main search.
+     * Map pins for public search, capped at {@code limit}.
+     *
+     * <p>Was unbounded until a search load test (2026-09-05, 50k seeded
+     * listings, ~12.5k per city) measured p95 1.79s and multi-megabyte
+     * responses on an unfiltered city query -- every published listing in the
+     * city, serialized, on every request. Ordered by recency so a capped
+     * response is at least deterministic rather than an arbitrary physical-order
+     * slice; the design doc's own deferred "neighborhood clustering" remains
+     * the real long-term answer for a city whose true inventory exceeds the cap.
      */
     @Query(value = """
             SELECT l.* FROM listings l
@@ -327,6 +334,8 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
                       :radiusM
                   )
               )
+            ORDER BY l.created_at DESC, l.id DESC
+            LIMIT :limit
             """, nativeQuery = true)
     List<Listing> mapPinsByLocationAndRadius(
             @Param("city") String city,
@@ -341,7 +350,8 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
             @Param("amenityCount") int amenityCount,
             @Param("lat") Double lat,
             @Param("lng") Double lng,
-            @Param("radiusM") Integer radiusM
+            @Param("radiusM") Integer radiusM,
+            @Param("limit") int limit
     );
 
     /**

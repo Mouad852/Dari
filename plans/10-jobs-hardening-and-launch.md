@@ -45,8 +45,8 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 - [x] Metrics on the things that indicate trouble: search latency, moderation queue depth, report volume, notification delivery outcomes, job outcomes
 - [x] Database backup creation and restore validation in a clean PostGIS environment
 - [x] Deployment pipeline, migration strategy, rollback plan documented in `docs/PRODUCTION_OPERATIONS.md`
-- [ ] Load test on the search path, which is the busiest and most complex query in the system
-- [ ] Seed the production amenity lookup and neighborhood lists as real reference data
+- [x] Load test on the search path, which is the busiest and most complex query in the system — see "Search load testing" in `docs/PRODUCTION_OPERATIONS.md` for methodology, the map-endpoint finding and fix, and recorded acceptance thresholds
+- [x] Seed the production amenity lookup and neighborhood lists as real reference data (`V20__neighborhoods.sql`, `GET /neighborhoods?city=`)
 
 **Launch readiness**
 - [ ] End-to-end pass over the whole journey, twice: as a seeker and as an owner
@@ -198,6 +198,29 @@ Firebase-spend rule) extends to by analogy, not something to default into unilat
 Unhandled exceptions were already logged with full context (correlation id via MDC) before
 this change; they are now also counted, which is exactly the signal a real APM agent would
 hook into later without any further code change.
+
+A search load test (2026-09-05) closed the last open Priority-1 item. Seeded
+50,000 published listings across the four launch cities
+(`infra/scripts/seed-load-test-data.sql`) and ran a realistic filter mix
+(plain browse, price range, property/room type, the amenity AND-filter,
+radius search, count, map) at 50 concurrent virtual users for 2m45s
+(`infra/scripts/load-test-search.js`, k6). It found a real, launch-relevant
+problem on the first run: `GET /listings/map` had no result cap, so an
+unfiltered city request against ~12,500 listings serialized all of them —
+p95 1.79s, and the run's total received payload was 2.5 GB, dominated by
+that one endpoint. Capped `mapPinsByLocationAndRadius` at 1,000 rows ordered
+by recency; the identical rerun measured p95 201ms for map, and every other
+endpoint improved substantially too (search 606ms → 177ms, radius 659ms →
+230ms, count 410ms → 122ms; throughput 136 → 355 req/s), since the one
+unbounded endpoint had been consuming a disproportionate share of
+connection-pool and CPU capacity under concurrent load. Error rate was 0%
+throughout both runs — a latency and payload problem, not a correctness one.
+Full methodology, the before/after table, and the recorded acceptance
+thresholds are in `docs/PRODUCTION_OPERATIONS.md`'s "Search load testing"
+section; the thresholds are also encoded in the k6 script's own
+`thresholds` block so a future regression run fails loudly rather than
+needing a human to read a number. Load-test data and the local dev API
+process were fully cleaned up afterward.
 
 The next session must update the docs after each change, then commit and push the verified change before moving on.
 

@@ -79,6 +79,7 @@ The important remaining work is still phase-oriented and should be driven from t
 - any missing path under `/uploads/**` (a deleted avatar or photo) now returns a real 404 instead of a raw 500 — the global exception handler was swallowing Spring's not-found signal for static resources
 - production metrics are exposed at `/actuator/prometheus`: search latency, moderation queue depth, notification outbox depth, report volume, job outcomes, and unhandled-error rate all have real meters. A hosted error-tracking/APM service (Sentry or similar) is deliberately not wired in — that needs the user's own account, and unhandled exceptions are already logged with full context and now counted, which is the signal such a service would consume later
 - real neighborhood reference data exists for the four launch cities: `GET /neighborhoods?city=` returns 8-12 well-known names per city from a new seeded table. Not yet enforced anywhere — a listing's neighborhood field stays free text, since rejecting a name missing from the seed list would risk locking out a real owner over a launch-week gap; that enforcement decision is separate from having the data available
+- the search path has been load tested at 50,000 seeded listings under 50 concurrent users: search, count, radius, and map all hold p95 latency under 250ms. The map endpoint did not until this pass — it had no result cap at all, so an unfiltered city request serialized every published listing in it (p95 1.79s, multi-gigabyte payloads under load); it is now capped at 1,000 rows ordered by recency. Full methodology, findings, and recorded acceptance thresholds are in `docs/PRODUCTION_OPERATIONS.md`
 - messaging has no unread badges or read receipts, and sending isn't optimistic — the core flow works, these are the remaining gaps
 - owners can edit any of their listings: `/account/listings` has a "Modifier" link that opens the wizard on that listing, backed by a new owner-scoped `GET /listings/mine/{id}` which returns **true** coordinates (the public `GET /listings/{id}` fuzzes them even for the owner, so an edit form fed by it would drift the listing's location on every save)
 - **editing a `PUBLISHED` listing returns it to `PENDING_REVIEW`** and removes it from public search until re-approved. This reverses the original design-doc §4 rule, at the product owner's direction; the doc was updated to match
@@ -113,7 +114,7 @@ The important remaining work is still phase-oriented and should be driven from t
 | `docs/` | Design specification, naming rules, and project handoff docs. |
 | `ARCHITECTURE.md` | How the system fits together and why. |
 | `docs/NAMING.md` | English vs French boundary, naming conventions, and glossary. |
-| `docs/PRODUCTION_OPERATIONS.md` | Production backup retention, restore verification, deployment, and rollback runbook. |
+| `docs/PRODUCTION_OPERATIONS.md` | Production backup retention, restore verification, deployment, rollback, and search load-testing runbook. |
 | `docs/MODERATOR_RUNBOOK.md` | Queue triage, action criteria, and escalation guidance for moderators. |
 | `TODO.md` | The source-verified completion checklist; update it every coding session. |
 

@@ -31,6 +31,12 @@ public class ListingSearchService {
 
     private static final int PAGE_SIZE = 20;
 
+    /**
+     * Hard cap on a single {@code /listings/map} response. See the query's own
+     * javadoc in {@code ListingSearchRepository} for why this exists.
+     */
+    private static final int MAP_PIN_LIMIT = 1000;
+
     private final ListingRepository listings;
     private final ListingSearchRepository search;
     private final ListingAmenityRepository listingAmenities;
@@ -325,7 +331,7 @@ public class ListingSearchService {
                 minPrice, maxPrice,
                 normalizedPropertyTypes, normalizedRoomTypes, normalizedFurnishings,
                 availableFrom, normalizedAmenities, amenityCount,
-                lat, lng, radiusM
+                lat, lng, radiusM, MAP_PIN_LIMIT
         );
 
         return listings_.stream()
