@@ -14,6 +14,7 @@ import ma.dari.api.user.dto.UpdateUserRequest;
 import ma.dari.api.user.dto.UserResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -67,6 +68,7 @@ public class UserController {
     }
 
     @PatchMapping("/me")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public UserResponse updateMe(@CurrentUser User user,
                                  @Valid @RequestBody UpdateUserRequest request) {
         return UserResponse.from(userService.update(user, request));
@@ -81,6 +83,7 @@ public class UserController {
     /** Reuses the listing photo pipeline, EXIF stripping included — a profile
      *  photo is as likely to have been taken at home as a listing photo. */
     @PostMapping("/me/avatar")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @RateLimited(RateLimitType.UPLOAD)
     public UserResponse uploadAvatar(@CurrentUser User user,
                                      @RequestParam("file") MultipartFile file) {
@@ -93,6 +96,7 @@ public class UserController {
      * party cannot unilaterally erase the other's history.
      */
     @DeleteMapping("/me")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteMe(@CurrentUser User user) {
         userService.deleteAccount(user);
@@ -100,6 +104,7 @@ public class UserController {
 
     /** Reserved by §7 for fast-follow phone verification. */
     @PostMapping("/me/phone-verification")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public Object startPhoneVerification(@CurrentUser User user) {
         throw new NotImplementedYetException("post-MVP");
     }

@@ -7,6 +7,7 @@ import ma.dari.api.common.ratelimit.RateLimitType;
 import ma.dari.api.user.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -42,6 +43,7 @@ public class ReportController {
      * rate in production.
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @RateLimited(RateLimitType.REPORT)
     public ResponseEntity<ReportResponse> create(@CurrentUser User reporter,
                                                @Valid @RequestBody CreateReportRequest request) {

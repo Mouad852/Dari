@@ -62,6 +62,7 @@ class MessagingApiTest extends AbstractIntegrationTest {
         stubToken("uid-seeker-messaging", "seeker.messaging@example.ma", true);
 
         String conversationId = given().header("Authorization", "Bearer test-token")
+                .header("Authorization", "Bearer " + "uid-c")
                 .contentType("application/json")
                 .body("{\"listingId\":\"" + listing.getId() + "\",\"body\":\"Bonjour, est-il encore disponible ?\"}")
                 .when().post("/conversations")
@@ -123,6 +124,14 @@ class MessagingApiTest extends AbstractIntegrationTest {
 
         given().header("Authorization", "Bearer outsider-token")
                 .when().get("/conversations/" + conversation.getId() + "/messages")
+                .then().statusCode(403)
+                .body("code", equalTo("FORBIDDEN"));
+
+        given().header("Authorization", "Bearer uid-c")
+                .contentType("application/json")
+                .body("{\"body\":\"Intrusion\"}")
+                .header("Authorization", "Bearer " + "uid-c")
+                .when().post("/conversations/" + conversation.getId() + "/messages")
                 .then().statusCode(403)
                 .body("code", equalTo("FORBIDDEN"));
     }

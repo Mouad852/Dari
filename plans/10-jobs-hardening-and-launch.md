@@ -37,7 +37,7 @@ There is a real risk that this phase gets compressed under launch pressure. The 
   ingress and forwarded headers enabled. The web client uses the public HTTPS API
   URL in `NEXT_PUBLIC_API_BASE_URL`, while server components may use `API_BASE_URL`;
   Firebase ID tokens are refreshed by the SDK and sent only as bearer headers.
-- [ ] Verify ownership and role checks on every mutating route, systematically rather than by memory
+- [x] Verify ownership and role checks on every mutating route, systematically rather than by memory
 
 **Operations**
 - [ ] Structured logging with correlation ids; error tracking
@@ -71,6 +71,14 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 ## Risks and open decisions
 
 ### Verified implementation (2026-09-05)
+
+All profile-backed mutating controllers now carry explicit method-security guards for
+`USER` or `ADMIN` roles, while profileless `POST /users` remains the only write allowed
+before profile creation. Listing, favorite, messaging, report, profile, and admin writes
+also enforce ownership or target authorization in their services. HTTP regressions cover
+non-owner listing/photo mutation, user-scoped favorite removal, non-participant message
+sending, profileless listing mutation, and the existing doubled admin-role checks. Soft-delete
+and backup work remain intentionally out of scope for this pass.
 
 Rate limits are enforced by a Spring MVC interceptor before controller invocation. Report creation,
 conversation/message writes, listing creation, listing photo uploads, avatar uploads, profile signup,

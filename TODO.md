@@ -40,7 +40,7 @@ Last verified: 2026-09-05
 - [x] Audit location fuzzing across search, map, detail, sitemap, metadata, hydration payloads, and images
 - [x] Add rate limits for reports, messages, listing creation, uploads, signup, and public search abuse paths
 - [x] Review CORS, security headers, TLS, and production cookie/token settings
-- [ ] Verify ownership and role checks on every mutating endpoint
+- [x] Verify ownership and role checks on every mutating endpoint
 - [ ] Verify soft-delete filtering on every read path
 - [ ] Decide and implement the PII policy for deleted users
 - [ ] Test backup creation and restore into a clean environment

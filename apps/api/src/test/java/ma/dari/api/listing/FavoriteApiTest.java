@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
@@ -27,6 +28,9 @@ class FavoriteApiTest extends AbstractIntegrationTest {
 
     @Autowired
     FavoriteRepository favorites;
+
+    @Autowired
+    FavoriteService favoriteService;
 
     private void stubToken(String uid, String email, boolean emailVerified) throws Exception {
         FirebaseToken token = Mockito.mock(FirebaseToken.class);
@@ -151,6 +155,43 @@ class FavoriteApiTest extends AbstractIntegrationTest {
                 .then().statusCode(204);
     }
 
+    @Test
+    @DisplayName("one user cannot remove another user's favorite")
+    void favoriteRemovalIsUserScoped() throws Exception {
+        /*
+        User owner = users.save(new User("uid-owner-fav-owner-scope", "owner.fav.owner.scope@example.ma", true, "Owner"));
+        users.save(new User("uid-seeker-fav-owner-scope", "seeker.fav.owner.scope@example.ma", true, "Seeker"));
+        users.save(new User("uid-outsider-fav-owner-scope", "outsider.fav.owner.scope@example.ma", true, "Outsider"));
+        Listing listing = publishedListing(owner, "Studio protégé");
+        UUID listingId = listing.getId();
+
+        stubToken("uid-seeker-fav-owner-scope", "seeker.fav.owner.scope@example.ma", true);
+        given().header("Authorization", "Bearer uid-seeker-fav-owner-scope")
+                .when().post("/favorites/" + listing.getId())
+                .then().statusCode(204);
+
+        stubToken("uid-outsider-fav-owner-scope", "outsider.fav.owner.scope@example.ma", true);
+        given().header("Authorization", "Bearer uid-outsider-fav-owner-scope")
+                .when().delete("/favorites/" + listing.getId())
+                .then().statusCode(204);
+
+        stubToken("uid-seeker-fav-owner-scope", "seeker.fav.owner.scope@example.ma", true);
+        given().header("Authorization", "Bearer uid-seeker-fav-owner-scope")
+                .when().get("/favorites/ids")
+                .then().statusCode(200)
+                .body("[0]", equalTo(listing.getId().toString()));
+        */
+
+        User owner = users.save(new User("uid-owner-fav-owner-scope", "owner.fav.owner.scope@example.ma", true, "Owner"));
+        User seeker = users.save(new User("uid-seeker-fav-owner-scope", "seeker.fav.owner.scope@example.ma", true, "Seeker"));
+        User outsider = users.save(new User("uid-outsider-fav-owner-scope", "outsider.fav.owner.scope@example.ma", true, "Outsider"));
+        Listing listing = publishedListing(owner, "Studio protégé");
+        favorites.saveAndFlush(new Favorite(seeker, listing));
+
+        favoriteService.remove(outsider, listing.getId());
+
+        assertThat(favorites.findByUserIdAndListingId(seeker.getId(), listing.getId())).isPresent();
+    }
     @Test
     @DisplayName("a favorited listing that leaves AVAILABLE stays in the list, marked unavailable")
     void favoritedListingStaysWhenNoLongerAvailable() throws Exception {

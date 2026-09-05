@@ -14,6 +14,7 @@ import ma.dari.api.listing.dto.UpdateListingRequest;
 import ma.dari.api.user.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -178,6 +179,7 @@ public class ListingController {
 
     /** Creates a DRAFT. The wizard persists server-side from step one. */
     @PostMapping
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @RateLimited(RateLimitType.LISTING)
     public ResponseEntity<ListingResponse> create(@CurrentUser User owner,
                                                 @Valid @RequestBody CreateListingRequest request) {
@@ -189,6 +191,7 @@ public class ListingController {
 
     /** Owner edit. Does not re-enter review (§7) and does not reset the expiry clock. */
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ListingResponse update(@CurrentUser User owner,
                                  @PathVariable UUID id,
                                  @Valid @RequestBody UpdateListingRequest request) {
@@ -199,6 +202,7 @@ public class ListingController {
 
     /** Soft delete. Every read path filters deleted_at IS NULL. */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Void> delete(@CurrentUser User owner, @PathVariable UUID id) {
         listingService.delete(owner, id);
         return ResponseEntity.noContent().build();
@@ -208,24 +212,28 @@ public class ListingController {
 
     /** DRAFT | REJECTED -> PENDING_REVIEW. Full validation runs here, not per step. */
     @PostMapping("/{id}/submit")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ListingResponse submit(@CurrentUser User owner, @PathVariable UUID id) {
         return listingSearchService.submit(id, owner);
     }
 
     /** AVAILABLE -> ROOM_FOUND. Touches availability only; status is untouched. */
     @PostMapping("/{id}/mark-room-found")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ListingResponse markRoomFound(@CurrentUser User owner, @PathVariable UUID id) {
         return listingSearchService.markRoomFound(id, owner);
     }
 
     /** ROOM_FOUND -> AVAILABLE. Legal only while status is still PUBLISHED. */
     @PostMapping("/{id}/reopen")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ListingResponse reopen(@CurrentUser User owner, @PathVariable UUID id) {
         return listingSearchService.reopen(id, owner);
     }
 
     /** EXPIRED -> PENDING_REVIEW (phase 10). Re-review is deliberate, not a formality. */
     @PostMapping("/{id}/renew")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ListingResponse renew(@CurrentUser User owner, @PathVariable UUID id) {
         return listingSearchService.renew(id, owner);
     }
@@ -242,6 +250,7 @@ public class ListingController {
 
     /** Uploads are re-encoded, which strips EXIF. A listing photo carries GPS. */
     @PostMapping("/{id}/photos")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @RateLimited(RateLimitType.UPLOAD)
     public ResponseEntity<ListingPhotoResponse> addPhoto(@CurrentUser User owner,
                                                       @PathVariable UUID id,
@@ -252,6 +261,7 @@ public class ListingController {
 
     /** Reorder, or set the cover. Exactly one cover, enforced by a partial unique index. */
     @PatchMapping("/{id}/photos/{photoId}")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ListingPhotoResponse updatePhoto(@CurrentUser User owner,
                                          @PathVariable UUID id,
                                          @PathVariable UUID photoId,
@@ -261,6 +271,7 @@ public class ListingController {
     }
 
     @DeleteMapping("/{id}/photos/{photoId}")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Void> deletePhoto(@CurrentUser User owner,
                                           @PathVariable UUID id,
                                           @PathVariable UUID photoId) {

@@ -5,6 +5,7 @@ import ma.dari.api.common.pagination.CursorPage;
 import ma.dari.api.user.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -54,12 +55,14 @@ public class FavoriteController {
 
     /** Idempotent: the composite primary key makes a double-tap harmless. */
     @PostMapping("/{listingId}")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Void> add(@CurrentUser User user, @PathVariable UUID listingId) {
         favoriteService.add(user, listingId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
     @DeleteMapping("/{listingId}")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Void> remove(@CurrentUser User user, @PathVariable UUID listingId) {
         favoriteService.remove(user, listingId);
         return ResponseEntity.noContent().build();

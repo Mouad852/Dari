@@ -12,6 +12,7 @@ import ma.dari.api.messaging.dto.MessageResponse;
 import ma.dari.api.user.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -62,6 +63,7 @@ public class ConversationController {
      * conversation with themselves.
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @RateLimited(RateLimitType.MESSAGE)
     public ResponseEntity<ConversationResponse> create(@CurrentUser User user,
                                                     @Valid @RequestBody CreateConversationRequest request) {
@@ -79,6 +81,7 @@ public class ConversationController {
     }
 
     @PostMapping("/{id}/messages")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     @RateLimited(RateLimitType.MESSAGE)
     public ResponseEntity<MessageResponse> send(@CurrentUser User user,
                                              @PathVariable UUID id,
@@ -89,6 +92,7 @@ public class ConversationController {
 
     /** Marks read up to a point. Per-participant, never a shared flag. */
     @PatchMapping("/{id}/read")
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public void markRead(@CurrentUser User user, @PathVariable UUID id) {
         conversationService.markRead(user, id);
     }

@@ -1388,6 +1388,71 @@ class ListingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("a non-owner cannot mutate another owner's listing or photos")
+    void nonOwnerCannotMutateListing() throws Exception {
+        String ownerUid = "uid-owner-mutation-" + System.nanoTime();
+        String ownerEmail = ownerUid + "@example.ma";
+        stubToken(ownerUid, ownerEmail, true);
+        User owner = users.saveAndFlush(new User(ownerUid, ownerEmail, true, "Mutation Owner"));
+        Listing listing = listings.saveAndFlush(new Listing(owner, "Annonce protégée", "Rabat", "Agdal",
+                33.9716, -6.8498, new BigDecimal("2500.00"), ListingStatus.DRAFT, AvailabilityState.AVAILABLE));
+        ListingPhoto photo = listingPhotos.saveAndFlush(
+                new ListingPhoto(listing, "listings/" + listing.getId() + "/cover.jpg", "image/jpeg",
+                        320, 240, 0, true));
+
+        String outsiderUid = "uid-outsider-mutation-" + System.nanoTime();
+        String outsiderEmail = outsiderUid + "@example.ma";
+        stubToken(outsiderUid, outsiderEmail, true);
+        users.saveAndFlush(new User(outsiderUid, outsiderEmail, true, "Mutation Outsider"));
+
+        given().header("Authorization", "Bearer " + outsiderUid)
+                .contentType("application/json")
+                .body("{\"title\":\"Détournée\"}")
+                .when().patch("/listings/{id}", listing.getId())
+                .then().statusCode(404)
+                .body("code", equalTo("NOT_FOUND"));
+
+        given().header("Authorization", "Bearer " + outsiderUid)
+                .when().delete("/listings/{id}", listing.getId())
+                .then().statusCode(404)
+                .body("code", equalTo("NOT_FOUND"));
+
+        given().header("Authorization", "Bearer " + outsiderUid)
+                .when().post("/listings/{id}/submit", listing.getId())
+                .then().statusCode(404)
+                .body("code", equalTo("NOT_FOUND"));
+
+        given().header("Authorization", "Bearer " + outsiderUid)
+                .queryParam("sortOrder", 2)
+                .when().patch("/listings/{id}/photos/{photoId}", listing.getId(), photo.getId())
+                .then().statusCode(404)
+                .body("code", equalTo("NOT_FOUND"));
+
+        given().header("Authorization", "Bearer " + outsiderUid)
+                .when().delete("/listings/{id}/photos/{photoId}", listing.getId(), photo.getId())
+                .then().statusCode(404)
+                .body("code", equalTo("NOT_FOUND"));
+
+        assertThat(listings.findById(listing.getId()).orElseThrow().getDeletedAt()).isNull();
+        assertThat(listingPhotos.findById(photo.getId()).orElseThrow().getDeletedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("a valid Firebase identity without a profile cannot mutate listings")
+    void profilelessIdentityCannotMutateListings() throws Exception {
+        String uid = "uid-profileless-listing-" + System.nanoTime();
+        stubToken(uid, uid + "@example.ma", true);
+
+        given().header("Authorization", "Bearer " + uid)
+                .contentType("application/json")
+                .body("{\"title\":\"Sans profil\",\"city\":\"Rabat\",\"neighborhood\":\"Agdal\","
+                        + "\"latitude\":33.9716,\"longitude\":-6.8498,\"priceRent\":2500.00}")
+                .when().post("/listings")
+                .then().statusCode(404)
+                .body("code", equalTo("PROFILE_NOT_FOUND"));
+    }
+
+    @Test
     @DisplayName("owner can attach amenities on create and replace them on update")
     void amenitiesRoundTripOnCreateAndUpdate() throws Exception {
         stubToken("uid-amenities-owner", "amenities-owner@example.ma", true);
