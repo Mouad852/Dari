@@ -36,17 +36,19 @@ public class ListingService {
     private final AmenityRepository amenities;
     private final ListingAmenityRepository listingAmenities;
     private final HouseRulesRepository houseRules;
+    private final NeighborhoodRepository neighborhoods;
     private final ListingCovers covers;
 
     public ListingService(ListingRepository listings, ListingPhotoRepository listingPhotos, ImageStore imageStore,
                            AmenityRepository amenities, ListingAmenityRepository listingAmenities,
-                           HouseRulesRepository houseRules, ListingCovers covers) {
+                           HouseRulesRepository houseRules, NeighborhoodRepository neighborhoods, ListingCovers covers) {
         this.listings = listings;
         this.listingPhotos = listingPhotos;
         this.imageStore = imageStore;
         this.amenities = amenities;
         this.listingAmenities = listingAmenities;
         this.houseRules = houseRules;
+        this.neighborhoods = neighborhoods;
         this.covers = covers;
     }
 
@@ -109,6 +111,7 @@ public class ListingService {
 
     @Transactional
     public Listing create(User owner, CreateListingRequest request) {
+        validateCity(request.city());
         validateRoommatesCount(request.currentRoommatesCount(), request.maxRoommates());
         Listing listing = new Listing(
                 owner,
@@ -144,6 +147,7 @@ public class ListingService {
                 request.currentRoommatesCount() != null ? request.currentRoommatesCount() : listing.getCurrentRoommatesCount(),
                 request.maxRoommates() != null ? request.maxRoommates() : listing.getMaxRoommates()
         );
+        validateCity(request.city());
         validateQuietHours(request.houseRules());
         applyUpdate(request, listing);
 
@@ -178,6 +182,22 @@ public class ListingService {
         if (current != null && maximum != null && current > maximum) {
             throw new ApiException(400, ErrorCode.VALIDATION_FAILED,
                     "Le nombre actuel de colocataires ne peut pas dépasser le nombre maximal");
+        }
+    }
+
+        /**
+     * Rejects a city outside the four launch markets the neighborhood
+     * reference data covers.
+     *
+     * <p>Neighborhood itself deliberately stays free text: the seed list is
+     * only 10 names per city, and rejecting a real one missing from it would
+     * lock a real owner out over a launch-week gap in the list, not a
+     * mistake. A wrong city is different — the four launch markets are fixed,
+     * so anything else is a typo or a market this product doesn't serve.
+     */
+    private void validateCity(String city) {
+        if(city != null && !neighborhoods.existsByCity(city)) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Ville non desservie : " + city);
         }
     }
 

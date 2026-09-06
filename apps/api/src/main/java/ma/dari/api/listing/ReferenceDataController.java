@@ -53,10 +53,12 @@ public class ReferenceDataController {
     /**
      * Real neighborhood names for one city, in display order.
      *
-     * <p>Not yet enforced anywhere — a listing's {@code neighborhood} field
-     * stays free text, so a name missing from this list cannot block a real
-     * owner from publishing. This is a lookup for autocomplete/filter UIs, not
-     * a whitelist.
+     * <p>The neighborhood name itself is still never enforced — a listing's
+     * {@code neighborhood} field stays free text, so a name missing from this
+     * list cannot block a real owner from publishing. This is a lookup for
+     * autocomplete/filter UIs, not a whitelist. The city is a different story:
+     * {@code ListingService} now rejects a city with no row in this table at
+     * all (2026-09-06).
      */
     @GetMapping("/neighborhoods")
     public List<String> neighborhoods(@RequestParam(required = false) String city) {

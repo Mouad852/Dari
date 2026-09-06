@@ -18,6 +18,12 @@ import java.util.Objects;
  * text: rejecting a listing whose typed neighborhood isn't in this table is a
  * separate decision (a launch-week gap in the list would lock out a real
  * owner), tracked in the listing-creation and search-filters plans.
+ *
+ * <p>The city half of that decision is made, though: {@code ListingService}
+ * rejects a {@code city} with no row at all in this table (2026-09-06), since
+ * the four launch cities are fixed and anything else is a typo or an
+ * unsupported market. Only the neighborhood name itself keeps the more
+ * forgiving free-text treatment.
  */
 @Entity
 @Table(name = "neighborhoods")

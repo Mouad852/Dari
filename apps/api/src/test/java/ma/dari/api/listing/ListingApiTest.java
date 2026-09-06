@@ -1613,4 +1613,35 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .then().statusCode(400)
                 .body("code", equalTo("VALIDATION_FAILED"));
     }
+
+    @Test
+    @DisplayName("a city outside the four launch markets is refused on create and patch")
+    void unknownCityIsRefused() throws Exception {
+        stubToken("uid-city-owner", "city-owner@example.ma", true);
+        users.save(new User("uid-city-owner", "city-owner@example.ma", true, "City Owner"));
+
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"title\":\"Studio ailleurs\", \"city\":\"Paris\", \"neighborhood\":\"Centre\", \"latitude\":33.9716, \"longitude\":-6.8498, \"priceRent\":2500.00}")
+                .when().post("/listings")
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"));
+
+        String id = given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"title\":\"Studio Rabat\",\"city\":\"Rabat\",\"neighborhood\":\"Agdal\","
+                        + "\"latitude\":33.9716,\"longitude\":-6.8498,\"priceRent\":2500.00}")
+                .when().post("/listings")
+                .then().statusCode(201)
+                .extract().path("id");
+
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"city\":\"Paris\"}")
+                .when().patch("/listings/{id}", id)
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"));
+    }
+
+
 }

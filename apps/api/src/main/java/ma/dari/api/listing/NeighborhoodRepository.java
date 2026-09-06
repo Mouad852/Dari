@@ -7,4 +7,6 @@ import java.util.List;
 public interface NeighborhoodRepository extends JpaRepository<Neighborhood, Neighborhood.NeighborhoodId> {
 
     List<Neighborhood> findByCityOrderBySortOrderAsc(String city);
+
+    boolean existsByCity(String city);
 }
