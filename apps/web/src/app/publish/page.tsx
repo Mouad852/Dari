@@ -10,6 +10,7 @@ import { Icon } from '@/components/ds/Icon';
 import { IconButton } from '@/components/ds/IconButton';
 import { Input } from '@/components/ds/Input';
 import { Select } from '@/components/ds/Select';
+import { Switch } from '@/components/ds/Switch';
 import { Tag } from '@/components/ds/Tag';
 import { Textarea } from '@/components/ds/Textarea';
 import { LocationPicker } from '@/components/LocationPicker';
@@ -17,14 +18,18 @@ import { apiFetch, ApiError, apiOrigin } from '@/lib/api';
 import { CITIES } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
 import { AMENITY_LABELS, PROPERTY_TYPE_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
-import type { ListingPhoto, ListingStatus, PropertyType, RoomType } from '@/types/api';
+import type { HouseRules, ListingPhoto, ListingStatus, PropertyType, RoomType } from '@/types/api';
+
+const HOURS = ['20:00', '21:00', '22:00', '23:00', '00:00', '06:00', '07:00', '08:00', '09:00'];
 
 const STEPS = [
   'Annonce',
   'Chambre',
+  'Règles',
   'Photos',
   'Validation',
 ] as const;
+
 
 type DraftListing = {
   id: string;
@@ -38,6 +43,7 @@ type DraftListing = {
   propertyType: PropertyType | null;
   roomType: RoomType | null;
   amenityCodes: string[];
+  houseRules: HouseRules | null;
   status: ListingStatus;
 };
 
@@ -67,6 +73,12 @@ function PublishWizard() {
   const [description, setDescription] = useState('');
   const [amenityOptions, setAmenityOptions] = useState<string[]>([]);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [smokingAllowed, setSmokingAllowed] = useState(false);
+  const [petsAllowed, setPetsAllowed] = useState(false);
+  const [guestsAllowed, setGuestsAllowed] = useState(false);
+  const [quietHoursStart, setQuietHoursStart] = useState('');
+  const [quietHoursEnd, setQuietHoursEnd] = useState('');
+  const [otherRules, setOtherRules] = useState('');
   const [propertyType, setPropertyType] = useState<PropertyType>('STUDIO');
   const [roomType, setRoomType] = useState<RoomType>('PRIVATE');
   const [latitude, setLatitude] = useState('');
@@ -122,6 +134,12 @@ function PublishWizard() {
         setPropertyType(draft.propertyType ?? 'STUDIO');
         setRoomType(draft.roomType ?? 'PRIVATE');
         setSelectedAmenities(draft.amenityCodes);
+        setSmokingAllowed(draft.houseRules?.smokingAllowed ?? false);
+        setPetsAllowed(draft.houseRules?.petsAllowed ?? false);
+        setGuestsAllowed(draft.houseRules?.guestsAllowed ?? false);
+        setQuietHoursStart(draft.houseRules?.quietHoursStart?.slice(0, 5) ?? '');
+        setQuietHoursEnd(draft.houseRules?.quietHoursEnd?.slice(0, 5) ?? '');
+        setOtherRules(draft.houseRules?.otherRules ?? '');
 
         // A resumed draft may already have photos. Nothing could read them back
         // before GET /listings/{id}/photos existed, so the step always looked
@@ -193,7 +211,16 @@ function PublishWizard() {
     roomType,
     propertyType,
     amenityCodes: selectedAmenities,
+    houseRules: {
+      smokingAllowed,
+      petsAllowed,
+      guestsAllowed,
+      quietHoursStart: quietHoursStart ? `${quietHoursStart}:00` : null,
+      quietHoursEnd: quietHoursEnd ? `${quietHoursEnd}:00` : null,
+      otherRules: otherRules.trim() || null,
+    },
   });
+
 
   /**
    * The six fields `CreateListingRequest` marks @NotBlank/@NotNull, checked so
@@ -673,6 +700,58 @@ function PublishWizard() {
                   })}
                 </div>
               </fieldset>
+            </div>
+          )}
+
+          {step === 'Règles' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-5)' }}>
+              <Switch
+                label="Fumeur accepté"
+                description="À l’intérieur du logement"
+                checked={smokingAllowed}
+                onChange={(event) => setSmokingAllowed(event.target.checked)}
+              />
+              <Switch
+                label="Animaux acceptés"
+                description="Chats et petits chiens"
+                checked={petsAllowed}
+                onChange={(event) => setPetsAllowed(event.target.checked)}
+              />
+              <Switch
+                label="Invités autorisés"
+                description="Une nuit occasionnelle, prévenue à l’avance"
+                checked={guestsAllowed}
+                onChange={(event) => setGuestsAllowed(event.target.checked)}
+              />
+
+              <div>
+                <div style={{ font: 'var(--type-label)', color: 'var(--text-heading)', marginBottom: 'var(--space-2)' }}>
+                  Heures calmes
+                </div>
+                <div className="wizard-pair">
+                  <Select
+                    label="De"
+                    value={quietHoursStart}
+                    onChange={(event) => setQuietHoursStart(event.target.value)}
+                    options={HOURS}
+                  />
+                  <Select
+                    label="À"
+                    value={quietHoursEnd}
+                    onChange={(event) => setQuietHoursEnd(event.target.value)}
+                    options={HOURS}
+                  />
+                </div>
+              </div>
+
+              <Textarea
+                label="Autres règles"
+                value={otherRules}
+                onChange={(event) => setOtherRules(event.target.value)}
+                rows={4}
+                placeholder="Ménage des parties communes à tour de rôle, une semaine chacun."
+                helper="Facultatif. Une règle par phrase."
+              />
             </div>
           )}
 
