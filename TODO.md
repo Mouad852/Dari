@@ -60,11 +60,11 @@ Last verified: 2026-09-05
 
 ### Listing creation
 
-- [ ] Match the eight-step prototype in `flows/listing-creation/`
-- [ ] Replace raw latitude/longitude inputs with a map picker
+- [ ] Match the eight-step prototype in `flows/listing-creation/` — the wizard is now 5 condensed steps (Annonce, Chambre, Règles, Photos, Validation), not the prototype's 8
+- [x] Replace raw latitude/longitude inputs with a map picker — `LocationPicker.tsx` exists and is wired into the Annonce step
 - [ ] Implement repeatable rooms and shared/private room semantics
-- [ ] Implement house-rules write and read contracts
-- [ ] Add neighborhood reference data and city-membership validation
+- [x] Implement house-rules write and read contracts (2026-09-05/06) — entity, repository, read/write API contract, owner-facing response, detail-page render, and the wizard's Règles step are all done
+- [x] Neighborhood reference data exists (`V20`, `/neighborhoods?city=`) and city-membership is now validated on create/update (2026-09-06); neighborhood name itself deliberately stays free text
 - [ ] Add full per-step validation and responsive parity checks at 375px and 1440px
 - [x] Cap listing photos at 20 per listing; image resizing policy remains open
 
