@@ -580,14 +580,14 @@ class ListingApiTest extends AbstractIntegrationTest {
     void monetaryPrecisionIsValidated() throws Exception {
         var invalidCreate = new ma.dari.api.listing.dto.CreateListingRequest(
                 null, null, null, null, null, new BigDecimal("100000000.00"), null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null);
         assertThat(validator.validate(invalidCreate))
                 .anyMatch(error -> error.getPropertyPath().toString().equals("priceRent")
                         && error.getMessage().equals("Le loyer doit comporter au maximum 8 chiffres entiers et 2 décimales"));
 
         var invalidUpdate = new ma.dari.api.listing.dto.UpdateListingRequest(
                 null, null, null, null, null, null, new BigDecimal("2500.001"), null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null);
         assertThat(validator.validate(invalidUpdate))
                 .anyMatch(error -> error.getPropertyPath().toString().equals("priceDeposit")
                         && error.getMessage().equals("La caution doit comporter au maximum 8 chiffres entiers et 2 décimales"));
@@ -598,10 +598,10 @@ class ListingApiTest extends AbstractIntegrationTest {
     void patchValidatesRequiredTextFields() {
         var validPartialPatch = new ma.dari.api.listing.dto.UpdateListingRequest(
                 null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null);
         var invalidPatch = new ma.dari.api.listing.dto.UpdateListingRequest(
                 " ", "", "\t", null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertThat(validator.validate(validPartialPatch))
                 .noneMatch(error -> error.getPropertyPath().toString().equals("title")
@@ -650,10 +650,10 @@ class ListingApiTest extends AbstractIntegrationTest {
     void listingDtosValidateRoommatesCount() {
         var create = new ma.dari.api.listing.dto.CreateListingRequest(
                 null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, (short) 3, (short) 2, null, null, null, null, null);
+                null, null, null, null, null, (short) 3, (short) 2, null, null, null, null, null, null);
         var update = new ma.dari.api.listing.dto.UpdateListingRequest(
                 null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, (short) 3, (short) 2, null, null, null, null, null);
+                null, null, null, null, null, (short) 3, (short) 2, null, null, null, null, null, null);
 
         assertThat(validator.validate(create)).anyMatch(error ->
                 error.getPropertyPath().toString().equals("maxRoommates"));
@@ -662,10 +662,10 @@ class ListingApiTest extends AbstractIntegrationTest {
 
         var validBounds = new ma.dari.api.listing.dto.CreateListingRequest(
                 null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, (short) 0, (short) 20, null, null, null, null, null);
+                null, null, null, null, null, (short) 0, (short) 20, null, null, null, null, null, null);
         var invalidBounds = new ma.dari.api.listing.dto.UpdateListingRequest(
                 null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, (short) -1, (short) 21, null, null, null, null, null);
+                null, null, null, null, null, (short) -1, (short) 21, null, null, null, null, null, null);
 
         assertThat(validator.validate(validBounds))
                 .noneMatch(error -> error.getPropertyPath().toString().equals("currentRoommatesCount")
@@ -676,10 +676,10 @@ class ListingApiTest extends AbstractIntegrationTest {
 
         var validRoomCounts = new ma.dari.api.listing.dto.CreateListingRequest(
                 null, null, null, null, null, null, null, null, null, null, null, null,
-                (short) 0, (short) 20, null, null, null, null, null, null, null, null, null, null);
+                (short) 0, (short) 20, null, null, null, null, null, null, null, null, null, null, null);
         var invalidRoomCounts = new ma.dari.api.listing.dto.UpdateListingRequest(
                 null, null, null, null, null, null, null, null, null, null, null, null,
-                (short) -1, (short) 21, null, null, null, null, null, null, null, null, null, null);
+                (short) -1, (short) 21, null, null, null, null, null, null, null, null, null, null, null);
 
         assertThat(validator.validate(validRoomCounts))
                 .noneMatch(error -> error.getPropertyPath().toString().equals("numBedrooms")
@@ -695,7 +695,7 @@ class ListingApiTest extends AbstractIntegrationTest {
         var request = new ma.dari.api.listing.dto.CreateListingRequest(
                 "Studio", "Rabat", "Agdal", 33.9716, -6.8498, new BigDecimal("2500.00"),
                 null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
 
         assertThat(validator.validate(request))
                 .noneMatch(error -> error.getPropertyPath().toString().equals("propertyType")
@@ -707,10 +707,10 @@ class ListingApiTest extends AbstractIntegrationTest {
     void listingDtosRejectOwnerRejectionReasons() {
         var create = new ma.dari.api.listing.dto.CreateListingRequest(
                 null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, "reason", null, null);
+                null, null, null, null, null, null, null, null, null, "reason", null, null, null);
         var update = new ma.dari.api.listing.dto.UpdateListingRequest(
                 null, null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, "reason", null, null);
+                null, null, null, null, null, null, null, null, null, "reason", null, null, null);
 
         assertThat(validator.validate(create))
                 .anyMatch(error -> error.getPropertyPath().toString().equals("rejectionReason"));
@@ -1695,5 +1695,76 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .when().get("/listings/mine/{id}", withRooms.getId())
                 .then().statusCode(200)
                 .body("rooms.size()", equalTo(2));
+    }
+
+    @Test
+    @DisplayName("rooms round-trip on create and patch, full replace, and a room with no type is refused")
+    void roomsRoundTripOnCreateAndUpdate() throws Exception {
+        stubToken("uid-rooms-write-owner", "rooms-write-owner@example.ma", true);
+        users.save(new User("uid-rooms-write-owner", "rooms-write-owner@example.ma", true, "Rooms Write Owner"));
+
+        String id = given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"title\":\"Appartement avec pièces\",\"city\":\"Rabat\",\"neighborhood\":\"Agdal\","
+                        + "\"latitude\":33.9716,\"longitude\":-6.8498,\"priceRent\":3000.00,"
+                        + "\"rooms\":[{\"roomType\":\"BEDROOM\",\"isRentable\":true,\"isShared\":false,\"description\":\"Chambre 1\"},"
+                        + "{\"roomType\":\"KITCHEN\",\"isRentable\":false,\"isShared\":true,\"description\":\"Cuisine commune\"}]}")
+                .when().post("/listings")
+                .then().statusCode(201)
+                .extract().path("id");
+
+        given().header("Authorization", "Bearer test-token")
+                .when().get("/listings/{id}", id)
+                .then().statusCode(200)
+                .body("rooms.size()", equalTo(2))
+                .body("rooms.roomType", hasItems("BEDROOM", "KITCHEN"));
+
+        // Full replace, not additive: the two rooms above are gone, replaced by
+        // exactly the one sent here.
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"rooms\":[{\"roomType\":\"SALON\",\"isRentable\":true,\"isShared\":true,\"description\":\"Salon-chambre\"}]}")
+                .when().patch("/listings/{id}", id)
+                .then().statusCode(200);
+
+        given().header("Authorization", "Bearer test-token")
+                .when().get("/listings/{id}", id)
+                .then().statusCode(200)
+                .body("rooms.size()", equalTo(1))
+                .body("rooms[0].roomType", equalTo("SALON"))
+                .body("rooms[0].isRentable", equalTo(true))
+                .body("rooms[0].isShared", equalTo(true))
+                .body("rooms[0].description", equalTo("Salon-chambre"));
+
+        // Omitting the field entirely leaves the existing rooms untouched.
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"title\":\"Titre modifié\"}")
+                .when().patch("/listings/{id}", id)
+                .then().statusCode(200);
+
+        given().header("Authorization", "Bearer test-token")
+                .when().get("/listings/{id}", id)
+                .then().statusCode(200)
+                .body("rooms.size()", equalTo(1));
+
+        // An explicit empty array clears every room.
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"rooms\":[]}")
+                .when().patch("/listings/{id}", id)
+                .then().statusCode(200);
+
+        given().header("Authorization", "Bearer test-token")
+                .when().get("/listings/{id}", id)
+                .then().statusCode(200)
+                .body("rooms.size()", equalTo(0));
+
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"rooms\":[{\"isRentable\":true,\"isShared\":false}]}")
+                .when().patch("/listings/{id}", id)
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"));
     }
 }

@@ -8,7 +8,7 @@ Last verified: 2026-09-08
 
 - [x] Spring Boot API builds and runs against PostgreSQL 16 + PostGIS
 - [x] Flyway migrations apply through `V21__listing_rooms.sql`
-- [x] Backend suite: 126 tests, 0 failures, 0 errors — one known flake remains (`distanceSortWorks`, tracked under "Test suite" below), which passes on an isolated rerun
+- [x] Backend suite: 127 tests, 0 failures, 0 errors — one known flake remains (`distanceSortWorks`, tracked under "Test suite" below), which passes on an isolated rerun
 - [x] Next.js frontend typecheck passes
 - [x] Design-token consistency check passes
 - [x] Next.js production build completes
@@ -62,7 +62,7 @@ Last verified: 2026-09-08
 
 - [ ] Match the eight-step prototype in `flows/listing-creation/` — the wizard is now 5 condensed steps (Annonce, Chambre, Règles, Photos, Validation), not the prototype's 8
 - [x] Replace raw latitude/longitude inputs with a map picker — `LocationPicker.tsx` exists and is wired into the Annonce step
-- [ ] Implement repeatable rooms and shared/private room semantics — **in progress.** Step 1 of 4 (structure: `V21`, `ListingRoom`, `ListingRoomRepository`) and step 2 of 4 (read contract) both done 2026-09-08. `rooms: ListingRoomResponse[]` now appears on `PublicListingDetailResponse` (`GET /listings/{id}`) and on the owner-facing `ListingResponse` (`/listings/mine`, `/listings/mine/{id}`, create/update/admin-approve/admin-reject) — empty array when a listing has no rooms, never null, since a room list has no "row missing entirely" ambiguity the way `house_rules` does. The four lifecycle actions (submit/renew/mark-room-found/reopen) pass `null` for rooms, same as they already do for `coverPhotoUrl` and `houseRules` — a lifecycle confirmation, not a card. Remaining: write contract (full-replace, like amenities) and the wizard's "Pièces" step.
+- [ ] Implement repeatable rooms and shared/private room semantics — **in progress, 3 of 4 steps done 2026-09-08.** (1) Structure: `V21`, `ListingRoom`, `ListingRoomRepository`. (2) Read contract: `rooms: ListingRoomResponse[]` on `PublicListingDetailResponse` (`GET /listings/{id}`) and the owner-facing `ListingResponse` (`/listings/mine`, `/listings/mine/{id}`, create/update/admin-approve/admin-reject) — empty array when a listing has no rooms, never null, since a room list has no "row missing entirely" ambiguity the way `house_rules` does. The four lifecycle actions pass `null`, same as `coverPhotoUrl`/`houseRules`. (3) Write contract: `POST /listings` and `PATCH /listings/{id}` accept a `rooms` array (`ListingRoomRequest`: roomType required, isRentable, isShared, description), full replace — omitting the field leaves existing rooms untouched, sending `[]` clears them, sending a new list deletes and reinserts. Same full-replace rule and reasoning as `amenityCodes`/`houseRules`; a room with no `roomType` is rejected with 400. Remaining: the wizard's "Pièces" step.
 - [x] Implement house-rules write and read contracts (2026-09-05/06) — entity, repository, read/write API contract, owner-facing response, detail-page render, and the wizard's Règles step are all done
 - [x] Neighborhood reference data exists (`V20`, `/neighborhoods?city=`) and city-membership is now validated on create/update (2026-09-06); neighborhood name itself deliberately stays free text
 - [ ] Add full per-step validation and responsive parity checks at 375px and 1440px

@@ -8,6 +8,7 @@ import ma.dari.api.listing.dto.CreateListingRequest;
 import ma.dari.api.listing.dto.HouseRulesRequest;
 import ma.dari.api.listing.dto.HouseRulesResponse;
 import ma.dari.api.listing.dto.ListingResponse;
+import ma.dari.api.listing.dto.ListingRoomRequest;
 import ma.dari.api.listing.dto.ListingRoomResponse;
 import ma.dari.api.listing.dto.UpdateListingRequest;
 import ma.dari.api.media.ImageStore;
@@ -139,6 +140,9 @@ public class ListingService {
         if (request.houseRules() != null) {
             replaceHouseRules(listing, request.houseRules());
         }
+        if (request.rooms() != null) {
+            replaceRooms(listing, request.rooms());
+        }
         return listing;
     }
 
@@ -178,6 +182,9 @@ public class ListingService {
         }
         if (request.houseRules() != null) {
             replaceHouseRules(listing, request.houseRules());
+        }
+        if (request.rooms() != null) {
+            replaceRooms(listing, request.rooms());
         }
         return listing;
     }
@@ -279,6 +286,21 @@ public class ListingService {
         rules.setOtherRules(request.otherRules());
 
         houseRules.save(rules);
+    }
+
+    /**
+     * Full replace: same reasoning as {@link #replaceAmenities}, and unlike
+     * {@link #replaceHouseRules} there is no single row to upsert — rooms are
+     * genuinely repeatable, so the simplest correct move on a resubmitted list
+     * is delete-then-reinsert rather than trying to diff old rows against new
+     * ones by some identity the wizard never sends.
+     */
+    private void replaceRooms(Listing listing, List<ListingRoomRequest> requested) {
+        rooms.deleteByListingId(listing.getId());
+        for (ListingRoomRequest request : requested) {
+            rooms.save(new ListingRoom(listing, request.roomType(), request.isRentable(), request.isShared(),
+                    request.description()));
+        }
     }
 
     @Transactional

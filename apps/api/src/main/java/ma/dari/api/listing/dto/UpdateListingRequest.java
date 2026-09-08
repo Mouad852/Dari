@@ -18,6 +18,7 @@ import ma.dari.api.listing.validation.ValidRoommatesCount;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -83,6 +84,10 @@ public record UpdateListingRequest(
         Set<@Size(max = 64, message = "Code d'équipement trop long") String> amenityCodes,
 
         @Valid
-        HouseRulesRequest houseRules
+        HouseRulesRequest houseRules,
+
+        @Valid
+        @Size(max = 20, message = "20 pièces maximum")
+        List<ListingRoomRequest> rooms
 ) {
 }
