@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -214,13 +216,47 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
                 100
         );
 
-        // Verify results are sorted by distance
+        // Verified against ST_Distance itself, not a Java reimplementation of it.
+        //
+        // This used to recompute distance with the haversineMiles helper below,
+        // a spherical-Earth approximation. `location` is a `geography` column, so
+        // the query's own ORDER BY runs PostGIS's ST_Distance, which is geodesic
+        // (WGS84 spheroid) by default -- a different model that can disagree with
+        // a sphere formula by a few metres for two listings nearly equidistant
+        // from the origin. That was enough, at random, to flip which of two
+        // correctly-sorted rows looked closer under the test's own recomputation
+        // and fail the assertion -- not a real ordering bug, just two distance
+        // models compared with zero tolerance. Asking Postgres for the same
+        // ST_Distance the query ordered by removes the discrepancy at the root
+        // instead of tolerating it with a fudge factor.
+        Map<UUID, Double> distances = distancesFromOrigin(results, centerLat, centerLng);
+
         double prevDistance = 0;
         for (Listing l : results) {
-            double distance = haversineMiles(centerLat, centerLng, l.getLatitude(), l.getLongitude()) * 1609.344;
+            double distance = distances.get(l.getId());
             assertThat(distance).isGreaterThanOrEqualTo(prevDistance);
             prevDistance = distance;
         }
+    }
+
+    private Map<UUID, Double> distancesFromOrigin(List<Listing> listingsToMeasure, double lat, double lng) {
+        List<UUID> ids = listingsToMeasure.stream().map(Listing::getId).toList();
+        return jdbc.query(
+                "SELECT id, ST_Distance(location, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography) AS dist "
+                        + "FROM listings WHERE id = ANY(?)",
+                ps -> {
+                    ps.setDouble(1, lng);
+                    ps.setDouble(2, lat);
+                    ps.setArray(3, ps.getConnection().createArrayOf("uuid", ids.toArray()));
+                },
+                rs -> {
+                    Map<UUID, Double> byId = new HashMap<>();
+                    while (rs.next()) {
+                        byId.put(UUID.fromString(rs.getString("id")), rs.getDouble("dist"));
+                    }
+                    return byId;
+                }
+        );
     }
 
     private void seedListingsAroundRabat(int count) {
