@@ -356,31 +356,47 @@ class ListingApiTest extends AbstractIntegrationTest {
     @DisplayName("owner can fetch a published listing by id")
     void publicDetailIsVisibleForPublishedListing() throws Exception {
         User owner = users.save(new User("uid-public-detail", "public-detail@example.ma", true, "Owner Detail"));
+        double storedLatitude = 33.5652;
+        double storedLongitude = -7.5923;
         Listing listing = listings.saveAndFlush(new Listing(
                 owner,
                 "Petit studio central",
                 "Casablanca",
                 "Sidi Belyout",
-                33.5652,
-                -7.5923,
+                storedLatitude,
+                storedLongitude,
                 new BigDecimal("2200.00"),
                 ListingStatus.PUBLISHED,
                 AvailabilityState.AVAILABLE
         ));
 
-        String body = given().when()
+        var response = given().when()
                 .get("/listings/{id}", listing.getId())
                 .then().statusCode(200)
                 .body("id", equalTo(listing.getId().toString()))
-                .extract().asString();
+                .extract();
 
-        assertThat(body)
+        assertThat(response.asString())
                 .doesNotContain("\"status\"")
                 .doesNotContain("\"email\"")
                 .doesNotContain("\"phone\"")
-                .doesNotContain("\"firebaseUid\"")
-                .doesNotContain("\"latitude\":33.5652,")
-                .doesNotContain("\"longitude\":-7.5923");
+                .doesNotContain("\"firebaseUid\"");
+
+        // Compared as numbers, not as substrings of the stored value. The fuzz
+        // offset is derived from the listing's UUID, which is random per run, so
+        // a small offset leaves the fuzzed value still *starting with* the
+        // stored digits -- which made the old `doesNotContain` assertion fail at
+        // random. That the point actually moves is LocationFuzzerTest's job;
+        // what matters here is that this endpoint publishes the fuzzed point
+        // rather than the stored one.
+        //
+        // BIG_DECIMAL because RestAssured otherwise parses JSON numbers as
+        // floats, and float32 carries only ~7 digits -- enough to shift the
+        // eighth by ~1e-6 and fail an exact comparison against a double.
+        double[] fuzzed = LocationFuzzer.fuzz(listing.getId(), storedLatitude, storedLongitude);
+        var coordinates = response.jsonPath(exactNumbers());
+        assertThat(coordinates.getDouble("latitude")).isEqualTo(fuzzed[0]);
+        assertThat(coordinates.getDouble("longitude")).isEqualTo(fuzzed[1]);
     }
 
     @Test

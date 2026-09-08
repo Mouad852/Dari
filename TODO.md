@@ -8,7 +8,7 @@ Last verified: 2026-09-08
 
 - [x] Spring Boot API builds and runs against PostgreSQL 16 + PostGIS
 - [x] Flyway migrations apply through `V21__listing_rooms.sql`
-- [x] Backend suite: 122 tests, 0 errors — the only failures seen are the known flakes tracked under "Test suite" below, each of which passes on an isolated rerun
+- [x] Backend suite: 125 tests, 0 failures, 0 errors — one known flake remains (`distanceSortWorks`, tracked under "Test suite" below), which passes on an isolated rerun
 - [x] Next.js frontend typecheck passes
 - [x] Design-token consistency check passes
 - [x] Next.js production build completes
@@ -90,9 +90,8 @@ Last verified: 2026-09-08
 
 ### Test suite
 
-- [ ] Fix the flaky tests — **now understood to be two separate bugs, not one** (diagnosis sharpened 2026-09-08, when all three failed in a single run and the failure set then shifted between consecutive full runs; every one passes in isolation):
-  - **(a) A bad assertion, cheap to fix.** `ListingApiTest.publicDetailIsVisibleForPublishedListing` and `FavoriteApiTest.addListAndRemoveFavorite` assert the response does *not contain* a substring of the unfuzzed coordinate (e.g. `"longitude":-6.8498`). But `LocationFuzzer` derives its offset from the listing's UUID, which is random per run, so whenever the offset lands small the fuzzed value simply *starts with* the original's digits — `-6.8498` fuzzes to `-6.8498304629046105`, and the substring check trips. This is not a data-isolation problem at all and needs no container work: assert on the parsed numeric value differing by more than some epsilon, not on a string prefix.
-  - **(b) The real shared-container isolation gap.** `ListingSearchOptimizationTest.distanceSortWorks` fails its distance-ordering assertion when other test classes' listings leak into the sorted result set (every class shares one PostGIS container, no per-test namespacing, no rollback between tests). Needs per-test-class unique city/neighborhood namespacing or a rollback-per-test strategy — a deliberate tradeoff against `ARCHITECTURE.md` §7's shared-container speed choice, still not a quick fix.
+- [x] **Fixed 2026-09-08 — the coordinate half of the flakiness.** `ListingApiTest.publicDetailIsVisibleForPublishedListing` and `FavoriteApiTest.addListAndRemoveFavorite` asserted the response did *not contain* a substring of the unfuzzed coordinate (e.g. `"longitude":-6.8498`). But `LocationFuzzer` derives its offset from the listing's UUID, random per run, so whenever the offset landed small the fuzzed value simply *started with* the original's digits (`-6.8498` → `-6.8498304629046105`) and the substring check tripped. Never a data-isolation problem. Both now compare numerically against `LocationFuzzer.fuzz(...)`'s own output, which is deterministic given the id, so offset size cannot affect the result. Two things fell out of the fix: a new `LocationFuzzerTest` covering the fuzzer's own guarantees (determinism, that the point always moves, and that 1,000 sampled offsets all stay inside the 200m radius) — it had **no test at all** before, which is why these API tests were left guessing at digit prefixes; and `AbstractIntegrationTest.exactNumbers()`, because RestAssured parses JSON numbers as **float** by default, which holds ~7 significant digits and silently shifted the eighth by ~1e-6. Verified with 5 consecutive clean runs, not one.
+- [ ] Fix the remaining shared-container test-isolation gap: `ListingSearchOptimizationTest.distanceSortWorks` fails its distance-ordering assertion when other test classes' listings leak into the sorted result set (every class shares one PostGIS container, no per-test namespacing, no rollback between tests). Passes on an isolated rerun. Needs per-test-class unique city/neighborhood namespacing or a rollback-per-test strategy — a deliberate tradeoff against `ARCHITECTURE.md` §7's shared-container speed choice, not a quick fix.
 
 ### Design system and content
 

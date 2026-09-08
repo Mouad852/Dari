@@ -2,6 +2,7 @@ package ma.dari.api.support;
 
 import com.google.firebase.auth.FirebaseAuth;
 import io.restassured.RestAssured;
+import io.restassured.path.json.config.JsonPathConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -60,5 +61,19 @@ public abstract class AbstractIntegrationTest {
     void configureRestAssured() {
         RestAssured.port = port;
         RestAssured.basePath = "/api/v1";
+    }
+
+    /**
+     * Reads JSON numbers as {@link java.math.BigDecimal} instead of float.
+     *
+     * <p>RestAssured's default parses a JSON number into a float, which holds
+     * only about seven significant digits — enough to shift a fuzzed
+     * coordinate's eighth digit by ~1e-6 and break an exact comparison against
+     * the {@code double} the API actually sent. Only matters where a test
+     * compares a full-precision number; use it there rather than loosening the
+     * tolerance until the artifact disappears.
+     */
+    protected static JsonPathConfig exactNumbers() {
+        return JsonPathConfig.jsonPathConfig().numberReturnType(JsonPathConfig.NumberReturnType.BIG_DECIMAL);
     }
 }

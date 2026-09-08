@@ -67,19 +67,24 @@ class FavoriteApiTest extends AbstractIntegrationTest {
                 .when().post("/favorites/" + listing.getId())
                 .then().statusCode(204);
 
-        String favoritesResponse = given().header("Authorization", "Bearer test-token")
+        var favoritesResponse = given().header("Authorization", "Bearer test-token")
                 .when().get("/favorites")
                 .then().statusCode(200)
                 .body("items.size()", equalTo(1))
                 .body("items[0].id", equalTo(listing.getId().toString()))
-                .extract().asString();
+                .extract();
 
-        org.assertj.core.api.Assertions.assertThat(favoritesResponse)
+        assertThat(favoritesResponse.asString())
                 .doesNotContain("\"status\"")
                 .doesNotContain("owner.fav@example.ma")
-                .doesNotContain("uid-owner-fav")
-                .doesNotContain("\"latitude\":33.9716")
-                .doesNotContain("\"longitude\":-6.8498");
+                .doesNotContain("uid-owner-fav");
+
+        // Numeric, not a substring of the stored value -- see the same note in
+        // ListingApiTest.publicDetailIsVisibleForPublishedListing.
+        double[] fuzzed = LocationFuzzer.fuzz(listing.getId(), 33.9716, -6.8498);
+        var coordinates = favoritesResponse.jsonPath(exactNumbers());
+        assertThat(coordinates.getDouble("items[0].latitude")).isEqualTo(fuzzed[0]);
+        assertThat(coordinates.getDouble("items[0].longitude")).isEqualTo(fuzzed[1]);
 
         given().header("Authorization", "Bearer test-token")
                 .when().delete("/favorites/" + listing.getId())
