@@ -11,6 +11,7 @@ import ma.dari.api.user.UserRole;
 import ma.dari.api.listing.dto.HouseRulesResponse;
 import ma.dari.api.listing.dto.ListingPhotoResponse;
 import ma.dari.api.listing.dto.ListingResponse;
+import ma.dari.api.listing.dto.ListingRoomResponse;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Service;
@@ -43,18 +44,20 @@ public class ListingSearchService {
     private final ListingAmenityRepository listingAmenities;
     private final ListingPhotoRepository listingPhotos;
     private final HouseRulesRepository houseRules;
+    private final ListingRoomRepository rooms;
     private final ListingCovers covers;
     private final MeterRegistry meterRegistry;
 
     public ListingSearchService(ListingRepository listings, ListingSearchRepository search,
                                 ListingAmenityRepository listingAmenities, ListingPhotoRepository listingPhotos,
-                                HouseRulesRepository houseRules,
+                                HouseRulesRepository houseRules, ListingRoomRepository rooms,
                                 ListingCovers covers, MeterRegistry meterRegistry) {
         this.listings = listings;
         this.search = search;
         this.listingAmenities = listingAmenities;
         this.listingPhotos = listingPhotos;
         this.houseRules = houseRules;
+        this.rooms = rooms;
         this.covers = covers;
         this.meterRegistry = meterRegistry;
     }
@@ -400,12 +403,17 @@ public class ListingSearchService {
         HouseRulesResponse houseRulesResponse = houseRules.findById(listingId)
                 .map(HouseRulesResponse::from)
                 .orElse(null);
+        List<ListingRoomResponse> roomResponses = rooms.findByListingIdOrderByCreatedAtAsc(listingId)
+                .stream()
+                .map(ListingRoomResponse::from)
+                .toList();
         return PublicListingDetailResponse.from(
                 listing,
                 LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()),
                 new HashSet<>(listingAmenities.findAmenityCodesByListingId(listingId)),
                 photos,
-                houseRulesResponse);
+                houseRulesResponse,
+                roomResponses);
     }
 
     public ListingResponse submit(UUID listingId, User owner) {
@@ -429,11 +437,11 @@ public class ListingSearchService {
 
         listing.setStatus(ListingStatus.PENDING_REVIEW);
         // A lifecycle confirmation, not a card: the client already has the
-        // listing on screen and re-reading its cover or house rules here would
-        // be a query for data nothing renders. Null is the deliberate answer,
-        // not an oversight.
+        // listing on screen and re-reading its cover, house rules, or room list
+        // here would be a query for data nothing renders. Null is the
+        // deliberate answer, not an oversight.
         Listing saved = listings.save(listing);
-        return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null);
+        return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null, null);
     }
 
     public ListingResponse renew(UUID listingId, User owner) {
@@ -446,7 +454,7 @@ public class ListingSearchService {
         listing.setRejectionReason(null);
         listing.setExpiryWarnedAt(null);
         Listing saved = listings.save(listing);
-        return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null);
+        return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null, null);
     }
 
     public ListingResponse markRoomFound(UUID listingId, User owner) {
@@ -454,7 +462,7 @@ public class ListingSearchService {
         if (listing.getStatus() == ListingStatus.PUBLISHED && listing.getAvailabilityState() == AvailabilityState.AVAILABLE) {
             listing.setAvailabilityState(AvailabilityState.ROOM_FOUND);
             Listing saved = listings.save(listing);
-            return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null);
+            return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null, null);
         }
         throw illegalTransition("AVAILABLE -> ROOM_FOUND");
     }
@@ -464,7 +472,7 @@ public class ListingSearchService {
         if (listing.getStatus() == ListingStatus.PUBLISHED && listing.getAvailabilityState() == AvailabilityState.ROOM_FOUND) {
             listing.setAvailabilityState(AvailabilityState.AVAILABLE);
             Listing saved = listings.save(listing);
-            return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null);
+            return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null, null);
         }
         throw illegalTransition("ROOM_FOUND -> AVAILABLE");
     }

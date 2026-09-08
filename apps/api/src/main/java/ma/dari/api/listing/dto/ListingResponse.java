@@ -11,6 +11,7 @@ import ma.dari.api.listing.RoomType;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -63,10 +64,11 @@ public record ListingResponse(
         /** Root-relative, e.g. /uploads/listings/{id}/{photo}.jpg. Null when the listing has no photo. */
         String coverPhotoUrl,
         /** Null when the listing has no house_rules row yet, same as an unset section of the wizard. */
-        HouseRulesResponse houseRules
+        HouseRulesResponse houseRules,
+        List<ListingRoomResponse> rooms
 ) {
     public static ListingResponse from(Listing listing, Set<String> amenityCodes, String coverPhotoUrl,
-                                        HouseRulesResponse houseRules) {
+                                        HouseRulesResponse houseRules, List<ListingRoomResponse> rooms) {
         return new ListingResponse(
                 listing.getId(),
                 listing.getTitle(),
@@ -97,7 +99,8 @@ public record ListingResponse(
                 listing.getRejectionReason(),
                 amenityCodes,
                 coverPhotoUrl,
-                houseRules
+                houseRules,
+                rooms
         );
     }
 }

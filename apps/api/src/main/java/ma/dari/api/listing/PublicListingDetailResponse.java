@@ -2,6 +2,7 @@ package ma.dari.api.listing;
 
 import ma.dari.api.listing.dto.HouseRulesResponse;
 import ma.dari.api.listing.dto.ListingPhotoResponse;
+import ma.dari.api.listing.dto.ListingRoomResponse;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -35,14 +36,16 @@ public record PublicListingDetailResponse(
         Instant createdAt,
         Set<String> amenityCodes,
         List<ListingPhotoResponse> photos,
-        HouseRulesResponse houseRules) {
+        HouseRulesResponse houseRules,
+        List<ListingRoomResponse> rooms) {
 
     public static PublicListingDetailResponse from(
             Listing listing,
             double[] fuzzed,
             Set<String> amenityCodes,
             List<ListingPhotoResponse> photos,
-            HouseRulesResponse houseRules) {
+            HouseRulesResponse houseRules,
+            List<ListingRoomResponse> rooms) {
         return new PublicListingDetailResponse(
                 listing.getId(),
                 listing.getTitle(),
@@ -68,6 +71,7 @@ public record PublicListingDetailResponse(
                 listing.getCreatedAt(),
                 amenityCodes,
                 photos,
-                houseRules);
+                houseRules,
+                rooms);
     }
 }

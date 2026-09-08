@@ -24,6 +24,7 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.nullValue;
 
 class ListingApiTest extends AbstractIntegrationTest {
@@ -48,6 +49,9 @@ class ListingApiTest extends AbstractIntegrationTest {
 
     @Autowired
     HouseRulesRepository houseRules;
+
+    @Autowired
+    ListingRoomRepository rooms;
 
     private void stubToken(String uid, String email, boolean emailVerified) throws Exception {
         FirebaseToken token = Mockito.mock(FirebaseToken.class);
@@ -1659,5 +1663,37 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .body("code", equalTo("VALIDATION_FAILED"));
     }
 
+    @Test
+    @DisplayName("rooms appear on the public detail response and the owner-facing response, empty when none exist")
+    void listingDetailAndOwnerResponseIncludeRooms() throws Exception {
+        stubToken("uid-rooms-owner", "rooms-owner@example.ma", true);
+        User owner = users.save(new User("uid-rooms-owner", "rooms-owner@example.ma", true, "Rooms Owner"));
 
+        Listing withoutRooms = listings.saveAndFlush(new Listing(
+                owner, "Studio sans pièces détaillées", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2400.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+
+        given().when().get("/listings/{id}", withoutRooms.getId())
+                .then().statusCode(200)
+                .body("rooms.size()", equalTo(0));
+
+        Listing withRooms = listings.saveAndFlush(new Listing(
+                owner, "Appartement avec salon convertible", "Rabat", "Hassan", 33.9716, -6.8498,
+                new BigDecimal("3200.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+        rooms.saveAndFlush(new ListingRoom(withRooms, ListingRoomType.BEDROOM, true, false, "Chambre principale"));
+        rooms.saveAndFlush(new ListingRoom(withRooms, ListingRoomType.SALON, true, true, "Salon converti en chambre"));
+
+        given().when().get("/listings/{id}", withRooms.getId())
+                .then().statusCode(200)
+                .body("rooms.size()", equalTo(2))
+                .body("rooms.roomType", hasItems("BEDROOM", "SALON"))
+                .body("rooms.find { it.roomType == 'SALON' }.isRentable", equalTo(true))
+                .body("rooms.find { it.roomType == 'SALON' }.isShared", equalTo(true))
+                .body("rooms.find { it.roomType == 'SALON' }.description", equalTo("Salon converti en chambre"));
+
+        given().header("Authorization", "Bearer test-token")
+                .when().get("/listings/mine/{id}", withRooms.getId())
+                .then().statusCode(200)
+                .body("rooms.size()", equalTo(2));
+    }
 }

@@ -8,6 +8,7 @@ import ma.dari.api.listing.dto.CreateListingRequest;
 import ma.dari.api.listing.dto.HouseRulesRequest;
 import ma.dari.api.listing.dto.HouseRulesResponse;
 import ma.dari.api.listing.dto.ListingResponse;
+import ma.dari.api.listing.dto.ListingRoomResponse;
 import ma.dari.api.listing.dto.UpdateListingRequest;
 import ma.dari.api.media.ImageStore;
 import ma.dari.api.user.User;
@@ -37,11 +38,13 @@ public class ListingService {
     private final ListingAmenityRepository listingAmenities;
     private final HouseRulesRepository houseRules;
     private final NeighborhoodRepository neighborhoods;
+    private final ListingRoomRepository rooms;
     private final ListingCovers covers;
 
     public ListingService(ListingRepository listings, ListingPhotoRepository listingPhotos, ImageStore imageStore,
                            AmenityRepository amenities, ListingAmenityRepository listingAmenities,
-                           HouseRulesRepository houseRules, NeighborhoodRepository neighborhoods, ListingCovers covers) {
+                           HouseRulesRepository houseRules, NeighborhoodRepository neighborhoods,
+                           ListingRoomRepository rooms, ListingCovers covers) {
         this.listings = listings;
         this.listingPhotos = listingPhotos;
         this.imageStore = imageStore;
@@ -49,6 +52,7 @@ public class ListingService {
         this.listingAmenities = listingAmenities;
         this.houseRules = houseRules;
         this.neighborhoods = neighborhoods;
+        this.rooms = rooms;
         this.covers = covers;
     }
 
@@ -71,7 +75,7 @@ public class ListingService {
         java.util.Map<UUID, String> coverUrls = covers.forEach(pageRows);
         List<ListingResponse> items = pageRows.stream()
                 .map(listing -> ListingResponse.from(listing, amenityCodesFor(listing.getId()),
-                        coverUrls.get(listing.getId()), houseRulesFor(listing.getId())))
+                        coverUrls.get(listing.getId()), houseRulesFor(listing.getId()), roomsFor(listing.getId())))
                 .toList();
 
         String nextCursor = null;
@@ -211,6 +215,14 @@ public class ListingService {
     @Transactional(readOnly = true)
     public HouseRulesResponse houseRulesFor(UUID listingId) {
         return houseRules.findById(listingId).map(HouseRulesResponse::from).orElse(null);
+    }
+
+    /** The rooms attached to a listing, for responses, in creation order. */
+    @Transactional(readOnly = true)
+    public List<ListingRoomResponse> roomsFor(UUID listingId) {
+        return rooms.findByListingIdOrderByCreatedAtAsc(listingId).stream()
+                .map(ListingRoomResponse::from)
+                .toList();
     }
 
     /** Full replace: simplest correct semantics for a checkbox-list UI. */
