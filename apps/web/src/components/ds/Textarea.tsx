@@ -86,7 +86,7 @@ export function Textarea({
           width: '100%',
           padding: '12px 14px',
           background: disabled ? 'var(--sable-100)' : 'var(--surface-card)',
-          border: `1px solid ${error ? 'var(--danger)' : focused ? 'var(--border-focus)' : 'var(--border-hairline)'}`,
+          border: `1px solid ${error ? 'var(--danger)' : focused ? 'var(--border-focus)' : 'var(--border-default)'}`,
           borderRadius: 'var(--radius-control)',
           boxShadow: focused ? 'var(--focus-ring)' : 'var(--shadow-xs)',
           font: 'var(--type-body)',

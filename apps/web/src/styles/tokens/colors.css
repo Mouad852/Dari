@@ -40,11 +40,29 @@
   --text-subtle:var(--sable-600);--text-on-brand:#FFFFFF;--text-on-inverse:var(--sable-50);
   --text-link:var(--clay-600);--text-link-hover:var(--clay-700);--text-price:var(--sable-900);
 
-  --border-hairline:var(--sable-200);--border-default:var(--sable-300);--border-strong:var(--sable-400);
-  --border-focus:var(--clay-400);
+  /* --border-hairline (sable-200) is decorative only -- card outlines, list
+     dividers -- and stays soft on purpose; WCAG 1.4.11 doesn't reach a border
+     that isn't identifying an interactive control. --border-default is that
+     control boundary (checkbox, radio, secondary button, and a focusable
+     field's resting state), so it answers to the same 3:1 as --border-focus.
+     It was sable-300, 1.57:1 on a white card -- an unchecked checkbox was
+     nearly invisible. sable-500 is the first step in the ramp that clears 3:1
+     against both a card and the page background. */
+  --border-hairline:var(--sable-200);--border-default:var(--sable-500);--border-strong:var(--sable-400);
+  /* Was clay-400: 3.10:1 against a white card, but 2.91:1 against the page
+     background a focused field can also sit on -- under the 3:1 a focus
+     boundary needs. clay-500 is --brand, already used by --focus-ring below,
+     so this also means a field now draws its focus state in one colour
+     instead of two that were meant to look the same but weren't. */
+  --border-focus:var(--brand);
 
   --success:var(--atlas-500);--success-subtle:var(--atlas-50);--success-border:var(--atlas-100);
-  --warning:var(--saffron-500);--warning-subtle:var(--saffron-50);--warning-border:var(--saffron-100);
+  /* Was saffron-500: 2.71:1 on --warning-subtle, 2.95:1 on a white card --
+     unusable as text either way, so every call site that needed warning-
+     coloured text learned to reach for saffron-700 by hand instead (see
+     Badge.tsx, LocationPicker.tsx before this fix). saffron-700 clears 4.5:1
+     on both; saffron-500 stays in the ramp for non-text fills. */
+  --warning:var(--saffron-700);--warning-subtle:var(--saffron-50);--warning-border:var(--saffron-100);
   --danger:var(--rose-500);--danger-subtle:var(--rose-50);--danger-border:var(--rose-100);
   --info:var(--majorelle-500);--info-subtle:var(--majorelle-50);
 

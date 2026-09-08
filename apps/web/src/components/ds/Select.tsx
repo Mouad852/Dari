@@ -74,7 +74,7 @@ export function Select({
             height: 'var(--control-h-md)',
             padding: '0 40px 0 14px',
             background: disabled ? 'var(--sable-100)' : 'var(--surface-card)',
-            border: '1px solid var(--border-hairline)',
+            border: '1px solid var(--border-default)',
             borderRadius: 'var(--radius-control)',
             boxShadow: 'var(--shadow-xs)',
             font: 'var(--type-body)',

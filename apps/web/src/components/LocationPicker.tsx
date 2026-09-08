@@ -218,10 +218,8 @@ export function LocationPicker({ latitude, longitude, onChange, city }: Location
           : 'Aucun point placé. Cliquez sur la carte pour indiquer où se trouve le logement.'}
       </p>
 
-      {/* --saffron-700, not --warning: the palette's --warning is saffron-500,
-          a fill colour that does not carry text on a white card. */}
       {farFromCity && (
-        <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--saffron-700)' }}>
+        <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--warning)' }}>
           Ce point est loin de {city}. Vérifiez la ville sélectionnée : une annonce placée hors de sa
           ville n’apparaît pas dans les résultats de cette ville.
         </p>

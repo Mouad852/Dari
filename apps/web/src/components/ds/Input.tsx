@@ -84,7 +84,7 @@ export function Input({
           height: h,
           padding: '0 14px',
           background: disabled ? 'var(--sable-100)' : 'var(--surface-card)',
-          border: `1px solid ${error ? 'var(--danger)' : focused ? 'var(--border-focus)' : 'var(--border-hairline)'}`,
+          border: `1px solid ${error ? 'var(--danger)' : focused ? 'var(--border-focus)' : 'var(--border-default)'}`,
           borderRadius: 'var(--radius-control)',
           boxShadow: focused ? 'var(--focus-ring)' : 'var(--shadow-xs)',
           transition: 'var(--transition-control)',
