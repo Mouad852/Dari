@@ -13,7 +13,7 @@ This phase has an unusual advantage: **the wizard already exists as a working pr
 ## Tasks
 
 **Backend**
-- [x] Migrations: `listing_rooms`, `amenities`, `listing_amenities`, `house_rules`, `listing_photos` (`V8`, `V11`, `V12`)
+- [x] Migrations: `amenities`, `listing_amenities`, `house_rules`, `listing_photos` (`V11`, `V12`); `listing_rooms` (`V21`, 2026-09-08). **This line previously claimed `listing_rooms` shipped in `V8` — it never did.** `V8` only widened the `listings` table itself (`ALTER TABLE`, no new tables); the rooms table did not exist in any migration until `V21`, which is why "rooms round-trip" stayed false for so long while this box was ticked.
 - [x] Seed the `amenities` lookup — the wizard's 10 are the starting set (`V12`, read via `AmenityRepository` since 2026-09-02)
 - [x] Expand `listings` to the full §3 column set (`V8`)
 - [x] `POST /listings` creating a `DRAFT`; `PATCH /listings/{id}`; `DELETE /listings/{id}` as soft-delete
@@ -37,7 +37,7 @@ This phase has an unusual advantage: **the wizard already exists as a working pr
 - [ ] Port the wizard from prototype to production React, all 8 steps — **the live wizard has 5 condensed steps** (`Annonce`, `Chambre`, `Règles`, `Photos`, `Validation`), not the prototype's 8. It has never been checked against `flows/listing-creation/Listing Wizard.dc.html` for full parity, though the Règles step (added 2026-09-06) does match the prototype's step 6 fields (smoking/pets/guests switches, quiet-hours range, free-text other rules).
 - [x] Draft persistence — the wizard loads the owner's latest active draft from `GET /listings/draft`, creates it on the first step transition, and updates it with `PATCH /listings/{id}` before later transitions and final submission. Final publication still uses the existing `POST /listings/{id}/submit` lifecycle action.
 - [x] Map pin drop, centred on the chosen city; **coordinates are never typed** (§3) — `LocationPicker.tsx` is wired into the "Annonce" step (not Leaflet/MapLibre as originally scoped, but the raw lat/long inputs are gone; a manual pair remains collapsed inside the picker for keyboard access).
-- [ ] Repeatable room list, with the salon-as-bedroom case working — not built; the wizard has singular `numBedrooms`/`numBathrooms` fields, no per-room list.
+- [ ] Repeatable room list, with the salon-as-bedroom case working — no UI yet; the wizard still has only singular `numBedrooms`/`numBathrooms` fields. The backend structure landed 2026-09-08 (`V21`, `ListingRoom`, `ListingRoomRepository`); read contract, write contract, and the "Pièces" step remain.
 - [x] Photo upload with reorder and cover selection; first photo is the cover — built 2026-09-02. The wizard's "Photos" step was previously a dead button: no file input existed anywhere in the web app, so no listing could satisfy the submit precondition and publishing was impossible end to end. It now uploads through `POST /listings/{id}/photos`, lists via the new `GET /listings/{id}/photos`, and supports cover selection and delete. **Reordering uses explicit move buttons, not drag-and-drop** — a deliberate choice, since hand-rolled drag works with neither a keyboard nor touch, and the resulting order is identical.
 - [x] House rules step (2026-09-06) — a new "Règles" step between "Chambre" and "Photos": three switches (fumeur/animaux/invités, always concrete true/false, never left null once visited), a quiet-hours "De"/"À" pair from a fixed 9-option hour list, and an optional free-text "Autres règles". Round-trips through `draftPayload`/`loadDraft` like every other field; verified against a real published listing.
 - [ ] Per-step validation and the mobile transformations the responsive sheet specifies — not built. Draft resumption is now server-side; 8-step prototype parity and room lists remain out of scope. Map picker, house rules, and city-membership validation are now done.
@@ -83,7 +83,7 @@ Verified true as of 2026-09-06 (source and full test suite checked):
 **Verified false as of 2026-09-06** — do not assume these without re-checking:
 - Full 8-step prototype parity and full per-step validation are not complete
 - Submitting without a photo or with a blank description is refused, with clear French validation messages
-- Rooms round-trip — no UI or endpoint touches `listing_rooms` at all, and the table itself does not exist yet.
+- Rooms round-trip — the `listing_rooms` table and its entity/repository now exist (`V21`, 2026-09-08), but no service, endpoint, or UI touches them yet, so nothing round-trips.
 - The production wizard matches the prototype at 375px and 1440px — the live wizard has 5 steps, not the prototype's 8; never compared side by side
 
 ## Risks and open decisions

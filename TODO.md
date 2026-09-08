@@ -2,13 +2,13 @@
 
 This is the single ongoing completion checklist for the project. Every coding session must update this file when work changes the project status. Check items only after verifying them against source, tests, or a production-like runtime.
 
-Last verified: 2026-09-05
+Last verified: 2026-09-08
 
 ## Current baseline
 
 - [x] Spring Boot API builds and runs against PostgreSQL 16 + PostGIS
-- [x] Flyway migrations apply through `V19__notification_delivery_state.sql`
-- [x] Backend suite passes: 119 tests, 0 failures, 0 errors
+- [x] Flyway migrations apply through `V21__listing_rooms.sql`
+- [x] Backend suite: 122 tests, 0 errors — the only failures seen are the known flakes tracked under "Test suite" below, each of which passes on an isolated rerun
 - [x] Next.js frontend typecheck passes
 - [x] Design-token consistency check passes
 - [x] Next.js production build completes
@@ -62,7 +62,7 @@ Last verified: 2026-09-05
 
 - [ ] Match the eight-step prototype in `flows/listing-creation/` — the wizard is now 5 condensed steps (Annonce, Chambre, Règles, Photos, Validation), not the prototype's 8
 - [x] Replace raw latitude/longitude inputs with a map picker — `LocationPicker.tsx` exists and is wired into the Annonce step
-- [ ] Implement repeatable rooms and shared/private room semantics
+- [ ] Implement repeatable rooms and shared/private room semantics — **in progress.** Step 1 of 4 done 2026-09-08: `V21__listing_rooms.sql` creates the table and its `listing_room_type` enum (BEDROOM/SALON/KITCHEN/BATHROOM/TERRACE/STORAGE), plus the `ListingRoom` entity and `ListingRoomRepository`. Structure only — no service, endpoint, or UI touches it yet. Remaining: read contract, write contract (full-replace, like amenities), and the wizard's "Pièces" step.
 - [x] Implement house-rules write and read contracts (2026-09-05/06) — entity, repository, read/write API contract, owner-facing response, detail-page render, and the wizard's Règles step are all done
 - [x] Neighborhood reference data exists (`V20`, `/neighborhoods?city=`) and city-membership is now validated on create/update (2026-09-06); neighborhood name itself deliberately stays free text
 - [ ] Add full per-step validation and responsive parity checks at 375px and 1440px
@@ -90,7 +90,9 @@ Last verified: 2026-09-05
 
 ### Test suite
 
-- [ ] Fix the shared-Testcontainers test-isolation gap: `ListingSearchOptimizationTest`, `ListingApiTest.publicDetailIsVisibleForPublishedListing`'s coordinate-fuzzing check, and now `FavoriteApiTest.addListAndRemoveFavorite` (2026-09-05) can each fail when run alongside the rest of the suite because every test class shares one PostGIS container with no per-test data isolation (no unique cities/neighborhoods per test, no transactional rollback between tests). All three failures observed so far were confirmed transient by an isolated rerun of the single test — not real regressions — but this erodes trust in a red `mvnw test` run and will keep resurfacing as more tests are added. Needs either per-test-class unique city/neighborhood namespacing or a rollback-per-test strategy; a deliberate tradeoff against `ARCHITECTURE.md` §7's shared-container speed choice, not a quick fix.
+- [ ] Fix the flaky tests — **now understood to be two separate bugs, not one** (diagnosis sharpened 2026-09-08, when all three failed in a single run and the failure set then shifted between consecutive full runs; every one passes in isolation):
+  - **(a) A bad assertion, cheap to fix.** `ListingApiTest.publicDetailIsVisibleForPublishedListing` and `FavoriteApiTest.addListAndRemoveFavorite` assert the response does *not contain* a substring of the unfuzzed coordinate (e.g. `"longitude":-6.8498`). But `LocationFuzzer` derives its offset from the listing's UUID, which is random per run, so whenever the offset lands small the fuzzed value simply *starts with* the original's digits — `-6.8498` fuzzes to `-6.8498304629046105`, and the substring check trips. This is not a data-isolation problem at all and needs no container work: assert on the parsed numeric value differing by more than some epsilon, not on a string prefix.
+  - **(b) The real shared-container isolation gap.** `ListingSearchOptimizationTest.distanceSortWorks` fails its distance-ordering assertion when other test classes' listings leak into the sorted result set (every class shares one PostGIS container, no per-test namespacing, no rollback between tests). Needs per-test-class unique city/neighborhood namespacing or a rollback-per-test strategy — a deliberate tradeoff against `ARCHITECTURE.md` §7's shared-container speed choice, still not a quick fix.
 
 ### Design system and content
 
