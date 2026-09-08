@@ -14,7 +14,7 @@
  * which owns the thin-space thousands, the decimal comma and the date forms.
  */
 
-import type { AvailabilityState, ListingStatus, PropertyType, ReportReason, ReportTargetType, RoomType, UserAccountStatus, VerificationTier } from '@/types/api';
+import type { AvailabilityState, ListingRoomType, ListingStatus, PropertyType, ReportReason, ReportTargetType, RoomType, UserAccountStatus, VerificationTier } from '@/types/api';
 
 export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
   APARTMENT: 'Appartement',
@@ -26,6 +26,16 @@ export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
 export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
   PRIVATE: 'Chambre privée',
   SHARED: 'Chambre partagée',
+};
+
+/** What kind of room, physically — independent of RoomType above (private/shared for the offered room). */
+export const LISTING_ROOM_TYPE_LABELS: Record<ListingRoomType, string> = {
+  BEDROOM: 'Chambre',
+  SALON: 'Salon',
+  KITCHEN: 'Cuisine',
+  BATHROOM: 'Salle de bain',
+  TERRACE: 'Terrasse',
+  STORAGE: 'Rangement',
 };
 
 /** Shown to the owner. Seekers never see a status — they only see what is published. */

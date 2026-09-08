@@ -106,6 +106,17 @@ export interface HouseRules {
   otherRules: string | null;
 }
 
+export type ListingRoomType = 'BEDROOM' | 'SALON' | 'KITCHEN' | 'BATHROOM' | 'TERRACE' | 'STORAGE';
+
+/** Mirrors ListingRoomResponse. One physical room in the listing's apartment (§3). */
+export interface ListingRoom {
+  id: string;
+  roomType: ListingRoomType;
+  isRentable: boolean;
+  isShared: boolean;
+  description: string | null;
+}
+
 export interface PublicListingDetail extends PublicListing {
   priceDeposit: number | null;
   description: string | null;
@@ -123,6 +134,7 @@ export interface PublicListingDetail extends PublicListing {
   amenityCodes: string[];
   photos: ListingPhoto[];
   houseRules: HouseRules | null;
+  rooms: ListingRoom[];
 }
 
 /**
@@ -186,6 +198,7 @@ export interface ListingDetail {
    */
   coverPhotoUrl: string | null;
   houseRules: HouseRules | null;
+  rooms: ListingRoom[];
 }
 
 // --- moderation and admin (design doc §6, admin console gated on role) --------

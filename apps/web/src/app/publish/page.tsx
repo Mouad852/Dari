@@ -17,19 +17,19 @@ import { LocationPicker } from '@/components/LocationPicker';
 import { apiFetch, ApiError, apiOrigin } from '@/lib/api';
 import { CITIES } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
-import { AMENITY_LABELS, PROPERTY_TYPE_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
-import type { HouseRules, ListingPhoto, ListingStatus, PropertyType, RoomType } from '@/types/api';
+import { AMENITY_LABELS, LISTING_ROOM_TYPE_LABELS, PROPERTY_TYPE_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
+import type { HouseRules, ListingPhoto, ListingRoom, ListingRoomType, ListingStatus, PropertyType, RoomType } from '@/types/api';
 
 const HOURS = ['20:00', '21:00', '22:00', '23:00', '00:00', '06:00', '07:00', '08:00', '09:00'];
 
 const STEPS = [
   'Annonce',
+  'Pièces',
   'Chambre',
   'Règles',
   'Photos',
   'Validation',
 ] as const;
-
 
 type DraftListing = {
   id: string;
@@ -44,7 +44,17 @@ type DraftListing = {
   roomType: RoomType | null;
   amenityCodes: string[];
   houseRules: HouseRules | null;
+  rooms: ListingRoom[];
   status: ListingStatus;
+};
+
+/** A room row while it's being edited in the wizard. `key` is client-only, never sent to the API. */
+type WizardRoom = {
+  key: string;
+  roomType: ListingRoomType;
+  isRentable: boolean;
+  isShared: boolean;
+  description: string;
 };
 
 /**
@@ -79,6 +89,7 @@ function PublishWizard() {
   const [quietHoursStart, setQuietHoursStart] = useState('');
   const [quietHoursEnd, setQuietHoursEnd] = useState('');
   const [otherRules, setOtherRules] = useState('');
+  const [rooms, setRooms] = useState<WizardRoom[]>([]);
   const [propertyType, setPropertyType] = useState<PropertyType>('STUDIO');
   const [roomType, setRoomType] = useState<RoomType>('PRIVATE');
   const [latitude, setLatitude] = useState('');
@@ -140,6 +151,13 @@ function PublishWizard() {
         setQuietHoursStart(draft.houseRules?.quietHoursStart?.slice(0, 5) ?? '');
         setQuietHoursEnd(draft.houseRules?.quietHoursEnd?.slice(0, 5) ?? '');
         setOtherRules(draft.houseRules?.otherRules ?? '');
+        setRooms(draft.rooms.map((room) => ({
+          key: room.id,
+          roomType: room.roomType,
+          isRentable: room.isRentable,
+          isShared: room.isShared,
+          description: room.description ?? '',
+        })));
 
         // A resumed draft may already have photos. Nothing could read them back
         // before GET /listings/{id}/photos existed, so the step always looked
@@ -197,6 +215,26 @@ function PublishWizard() {
     );
   };
 
+  const addRoom = (roomType: ListingRoomType) => {
+    setRooms((current) => [
+      ...current,
+      { key: crypto.randomUUID(), roomType, isRentable: false, isShared: false, description: '' },
+    ]);
+  };
+
+  const removeRoom = (index: number) => {
+    setRooms((current) => current.filter((_, i) => i !== index));
+  };
+
+  const updateRoom = (index: number, patch: Partial<WizardRoom>) => {
+    setRooms((current) => current.map((room, i) => (i === index ? { ...room, ...patch } : room)));
+  };
+
+  /** At most one room is "the one offered" — selecting one clears it on every other. */
+  const setOfferedRoom = (index: number) => {
+    setRooms((current) => current.map((room, i) => ({ ...room, isRentable: i === index })));
+  };
+
   const canGoNext = stepIndex < STEPS.length - 1;
   const canGoBack = stepIndex > 0;
 
@@ -219,6 +257,12 @@ function PublishWizard() {
       quietHoursEnd: quietHoursEnd ? `${quietHoursEnd}:00` : null,
       otherRules: otherRules.trim() || null,
     },
+    rooms: rooms.map((room) => ({
+      roomType: room.roomType,
+      isRentable: room.isRentable,
+      isShared: room.isShared,
+      description: room.description.trim() || null,
+    })),
   });
 
 
@@ -235,15 +279,16 @@ function PublishWizard() {
    * has never worked from a fresh start. Found by walking the flow in a browser
    * with a real account, which nothing before this could do.
    *
-   * `through` is the index of the last step whose fields count. Step 0 collects
-   * everything but the rent; step 1 adds it.
+   * `through` is the index of the last step whose fields count. Step 0
+   * (Annonce) and step 1 (Pièces) collect everything but the rent; step 2
+   * (Chambre) adds it.
    */
   const missingThrough = (through: number): string | null => {
     if (!title.trim()) return 'Donnez un titre à votre annonce avant de continuer.';
     if (!city.trim()) return 'Choisissez une ville avant de continuer.';
     if (!district.trim()) return 'Renseignez le quartier avant de continuer.';
     if (!latitude || !longitude) return 'Placez un point sur la carte pour indiquer où se trouve le logement.';
-    if (through >= 1 && !monthlyRent.trim()) return 'Renseignez le loyer mensuel avant de continuer.';
+    if (through >= 2 && !monthlyRent.trim()) return 'Renseignez le loyer mensuel avant de continuer.';
     return null;
   };
 
@@ -648,6 +693,75 @@ function PublishWizard() {
             </div>
           )}
 
+          {step === 'Pièces' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-5)' }}>
+              <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
+                Ajoutez chaque pièce du logement, indiquez celle qui est proposée et ce qui est partagé.
+              </p>
+
+              {rooms.map((room, index) => (
+                <Card key={room.key} padding="var(--space-4)" style={{ display: 'grid', gap: 'var(--space-3)' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-3)' }}>
+                    <Select
+                      label="Type de pièce"
+                      value={room.roomType}
+                      onChange={(event) => updateRoom(index, { roomType: event.target.value as ListingRoomType })}
+                      options={(Object.keys(LISTING_ROOM_TYPE_LABELS) as ListingRoomType[]).map((value) => ({
+                        value,
+                        label: LISTING_ROOM_TYPE_LABELS[value],
+                      }))}
+                      style={{ flex: 1 }}
+                    />
+                    <IconButton
+                      icon="trash-2"
+                      variant="ghost"
+                      label={`Retirer la pièce ${index + 1}`}
+                      onClick={() => removeRoom(index)}
+                      style={{ color: 'var(--danger)' }}
+                    />
+                  </div>
+
+                  <Tag
+                    icon={room.isRentable ? 'check' : 'plus'}
+                    selected={room.isRentable}
+                    onClick={() => setOfferedRoom(index)}
+                  >
+                    C’est la pièce proposée
+                  </Tag>
+
+                  <Switch
+                    label="Espace partagé"
+                    checked={room.isShared}
+                    onChange={(event) => updateRoom(index, { isShared: event.target.checked })}
+                  />
+
+                  <Input
+                    label="Description"
+                    value={room.description}
+                    onChange={(event) => updateRoom(index, { description: event.target.value })}
+                    placeholder="Facultatif"
+                  />
+                </Card>
+              ))}
+
+              <fieldset style={{ border: 'none', margin: 0, padding: 0, minWidth: 0 }}>
+                <legend style={{ padding: 0, font: 'var(--type-label)', color: 'var(--text-heading)' }}>
+                  Ajouter une pièce
+                </legend>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
+                  {(Object.keys(LISTING_ROOM_TYPE_LABELS) as ListingRoomType[]).map((roomType) => (
+                    <Tag key={roomType} icon="plus" onClick={() => addRoom(roomType)}>
+                      {LISTING_ROOM_TYPE_LABELS[roomType]}
+                    </Tag>
+                  ))}
+                </div>
+                <p style={{ margin: 'var(--space-3) 0 0', font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
+                  Un salon peut être la pièce proposée : ajoutez-le puis marquez-le comme non partagé.
+                </p>
+              </fieldset>
+            </div>
+          )}
+
           {step === 'Chambre' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-5)' }}>
               <div className="wizard-pair">
@@ -941,6 +1055,11 @@ function PublishWizard() {
                   label="Équipements"
                   value={selectedAmenities.length > 0 ? `${selectedAmenities.length} sélectionné${selectedAmenities.length > 1 ? 's' : ''}` : undefined}
                   missingLabel="Aucun"
+                />
+                <SummaryRow
+                  label="Pièces"
+                  value={rooms.length > 0 ? `${rooms.length} déclarée${rooms.length > 1 ? 's' : ''}` : undefined}
+                  missingLabel="Aucune"
                 />
                 <SummaryRow
                   required
