@@ -112,14 +112,23 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
    *
    * The thread opened scrolled to the top before, which for a conversation of
    * any length means opening on its first message. `auto` on the first paint so
-   * there is no visible scroll animation on load; the browser respects
-   * prefers-reduced-motion for `smooth` afterwards.
+   * there is no visible scroll animation on load.
+   *
+   * The later `smooth` is checked against prefers-reduced-motion by hand,
+   * because the CSS rule in app.css (`scroll-behavior: auto !important` under
+   * the media query) does not reach it: that property only governs a scroll
+   * that defers to CSS, and an explicit `behavior: 'smooth'` in the API call
+   * is a direct request the browser honours regardless of the stylesheet. A
+   * previous version of this comment assumed the CSS rule was enough — it
+   * is not, for exactly this call.
    */
   const messageCount = messages?.length ?? 0;
   const hasScrolled = useRef(false);
   useEffect(() => {
     if (messageCount === 0) return;
-    endRef.current?.scrollIntoView({ behavior: hasScrolled.current ? 'smooth' : 'auto', block: 'end' });
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const behavior = hasScrolled.current && !reducedMotion ? 'smooth' : 'auto';
+    endRef.current?.scrollIntoView({ behavior, block: 'end' });
     hasScrolled.current = true;
   }, [messageCount]);
 
