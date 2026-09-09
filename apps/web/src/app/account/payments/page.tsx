@@ -1,36 +1,4 @@
-import { ArrowUpRight, Check, ChevronRight, CreditCard, Landmark, ShieldCheck } from 'lucide-react';
-
-type PaymentItem = {
-  id: string;
-  title: string;
-  detail: string;
-  value: string;
-  icon: typeof CreditCard;
-};
-
-const PAYMENT_ITEMS: PaymentItem[] = [
-  {
-    id: 'visa',
-    title: 'Carte bancaire principale',
-    detail: '•••• 4582 • Expire fin 2028',
-    value: 'Par défaut',
-    icon: CreditCard,
-  },
-  {
-    id: 'bank',
-    title: 'Compte bancaire',
-    detail: 'IBAN • MA 76 0000 0000 0000 0000 0000',
-    value: 'Vérifié',
-    icon: Landmark,
-  },
-  {
-    id: 'invoice',
-    title: 'Factures',
-    detail: 'Suivi des versements et d’éventuels remboursements',
-    value: '3 reçues',
-    icon: Check,
-  },
-];
+import { ArrowUpRight, CreditCard, ShieldCheck } from 'lucide-react';
 
 export default function AccountPaymentsPage() {
   return (
@@ -51,19 +19,27 @@ export default function AccountPaymentsPage() {
             <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Paiements</h1>
           </div>
 
+          {/*
+            Disabled, not hidden: the section below already tells the visitor
+            payments aren't live yet, and this button had no onClick at all --
+            a dead control that looked clickable is worse than one that says
+            plainly it isn't ready.
+          */}
           <button
             type="button"
+            disabled
+            title="Cette fonctionnalité arrive bientôt"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.45rem',
-              border: '1px solid var(--border-default)',
+              border: '1px solid var(--border-hairline)',
               borderRadius: 'var(--radius-pill)',
               background: 'var(--surface-card)',
-              color: 'var(--text-heading)',
+              color: 'var(--text-subtle)',
               padding: '0.7rem 1rem',
               font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)',
-              cursor: 'pointer',
+              cursor: 'not-allowed',
             }}
           >
             Ajouter un moyen
@@ -124,62 +100,33 @@ export default function AccountPaymentsPage() {
             border: '1px solid var(--border-hairline)',
             borderRadius: 'var(--radius-card)',
             boxShadow: 'var(--shadow-xs)',
-            padding: 'var(--space-4)',
+            padding: 'var(--space-6)',
             display: 'grid',
+            justifyItems: 'center',
+            textAlign: 'center',
             gap: 'var(--space-3)',
           }}
         >
-          {PAYMENT_ITEMS.map(({ id, title, detail, value, icon: Icon }) => (
-            <div
-              key={id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-3)',
-                border: '1px solid var(--border-hairline)',
-                borderRadius: 'var(--radius-card-inner)',
-                background: 'var(--surface-card)',
-                padding: 'var(--space-3)',
-              }}
-            >
-              <span
-                style={{
-                  width: 42,
-                  height: 42,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 'var(--radius-pill)',
-                  background: 'var(--brand-subtle)',
-                  color: 'var(--clay-700)',
-                }}
-              >
-                <Icon size={18} />
-              </span>
-
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>{title}</div>
-                <div style={{ marginTop: 4, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>{detail}</div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '0.35rem 0.6rem',
-                    borderRadius: 'var(--radius-pill)',
-                    background: 'var(--atlas-50)',
-                    color: 'var(--atlas-700)',
-                    font: 'var(--type-label)',
-                  }}
-                >
-                  {value}
-                </span>
-                <ChevronRight size={18} color="var(--text-subtle)" />
-              </div>
-            </div>
-          ))}
+          <span
+            style={{
+              width: 72,
+              height: 72,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '50%',
+              background: 'var(--brand-subtle)',
+              color: 'var(--clay-700)',
+            }}
+          >
+            <CreditCard size={28} />
+          </span>
+          <div>
+            <h2 style={{ margin: 0, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Aucun moyen de paiement</h2>
+            <p style={{ margin: '0.55rem 0 0', font: 'var(--type-body-sm)', color: 'var(--text-muted)', maxWidth: 360 }}>
+              Les paiements en ligne arrivent bientôt sur Dari.
+            </p>
+          </div>
         </section>
 
         <section
@@ -200,7 +147,7 @@ export default function AccountPaymentsPage() {
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Historique
             </div>
-            <div style={{ marginTop: 4, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>            Historique indisponible</div>
+            <div style={{ marginTop: 4, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Historique indisponible</div>
           </div>
 
           <button
