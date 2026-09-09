@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { IBM_Plex_Mono, Plus_Jakarta_Sans } from 'next/font/google';
-import Link from 'next/link';
 import '@/styles/app.css';
+
+import { SiteFooter } from '@/components/SiteFooter';
 
 const sans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -38,13 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr" className={`${sans.variable} ${mono.variable}`}>
       <body>
         {children}
-        <footer style={{ borderTop: '1px solid var(--border-hairline)', padding: 'var(--space-5) var(--gutter-mobile)', color: 'var(--text-muted)', font: 'var(--type-caption)' }}>
-          <nav aria-label="Informations légales" style={{ maxWidth: 'var(--container-max)', margin: '0 auto', display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-            <Link href="/legal/terms">Conditions d’utilisation</Link>
-            <Link href="/legal/privacy">Confidentialité</Link>
-            <Link href="/legal/location-data">Données de localisation</Link>
-          </nav>
-        </footer>
+        <SiteFooter />
       </body>
     </html>
   );

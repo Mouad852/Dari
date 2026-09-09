@@ -194,50 +194,81 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   return (
     <main
       style={{
-        minHeight: '100vh',
+        // Bounded, not `minHeight`: the three children below are a fixed
+        // header band, a `flex: 1; overflowY: auto` message region, and a
+        // composer meant to stay pinned at the bottom. With only a minimum,
+        // `main` simply grew past the viewport once a thread had enough
+        // messages, and it was the *document* that ended up scrolling instead
+        // of the middle region — which took the composer down with it,
+        // scrolled away behind the page's own footer. A capped height is what
+        // makes the middle child's own scroll region the one that activates.
+        height: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
         color: 'var(--text-heading)',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
-      <header
-        style={{
-          padding: 'var(--space-4) var(--gutter-mobile)',
-          borderBottom: '1px solid var(--border-hairline)',
-          background: 'var(--surface-card)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 1,
-          boxShadow: 'var(--shadow-xs)',
-        }}
-      >
-        <div style={{ ...THREAD_COLUMN, display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-        <Link href="/messages" style={{ display: 'inline-flex', textDecoration: 'none' }}>
-          <IconButton icon="arrow-left" size="sm" variant="secondary" label="Retour aux conversations" />
-        </Link>
-
-        <span
-          aria-hidden="true"
+      {/*
+        The header and the listing-context card stick together as one unit.
+        `main` only sets a `minHeight`, not a bounded `height`, so it grows
+        past the viewport and it is the *document* that scrolls, not the
+        inner `overflowY: auto` region below — a sticky child only stays put
+        against whatever actually scrolls it. Putting `position: sticky` on
+        this shared wrapper, once, keeps both bands correct together instead
+        of computing the header's pixel height to offset a second sticky
+        element (which would silently drift out of sync the next time the
+        header's own padding or content changes).
+      */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--bg-page)' }}>
+        <header
           style={{
-            width: 40,
-            height: 40,
-            borderRadius: 'var(--radius-avatar)',
-            background: 'var(--sand-100)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            font: 'var(--weight-bold) 16px/1 var(--font-ui)',
-            color: 'var(--sand-700)',
+            padding: 'var(--space-4) var(--gutter-mobile)',
+            borderBottom: '1px solid var(--border-hairline)',
+            background: 'var(--surface-card)',
+            boxShadow: 'var(--shadow-xs)',
           }}
         >
-          {conversation.otherUserDisplayName.charAt(0).toUpperCase()}
-        </span>
-        <h1 style={{ margin: 0, flex: 1, minWidth: 0, font: 'var(--type-label)', color: 'var(--text-heading)' }}>
-          {conversation.otherUserDisplayName}
-        </h1>
-        </div>
-      </header>
+          <div style={{ ...THREAD_COLUMN, display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <Link href="/messages" style={{ display: 'inline-flex', textDecoration: 'none' }}>
+            <IconButton icon="arrow-left" size="sm" variant="secondary" label="Retour aux conversations" />
+          </Link>
+
+          <span
+            aria-hidden="true"
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 'var(--radius-avatar)',
+              background: 'var(--sand-100)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              font: 'var(--weight-bold) 16px/1 var(--font-ui)',
+              color: 'var(--sand-700)',
+            }}
+          >
+            {conversation.otherUserDisplayName.charAt(0).toUpperCase()}
+          </span>
+          <h1 style={{ margin: 0, flex: 1, minWidth: 0, font: 'var(--type-label)', color: 'var(--text-heading)' }}>
+            {conversation.otherUserDisplayName}
+          </h1>
+          </div>
+        </header>
+
+        {/*
+          A reader following a long thread should not have to scroll back to
+          the top to re-check whether the room they are discussing is still
+          listed.
+        */}
+        {(context.state === 'ok' || context.state === 'unavailable') && (
+          <div style={{ padding: 'var(--space-5) var(--gutter-mobile) 0' }}>
+            <div style={THREAD_COLUMN}>
+              <ListingContextCard context={context} />
+            </div>
+          </div>
+        )}
+      </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-5) var(--gutter-mobile)' }}>
         <div
@@ -249,8 +280,6 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             alignContent: 'start',
           }}
         >
-        <ListingContextCard context={context} />
-
         <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-3)' }}>
           {messages.map((message, index) => {
             const mine = message.senderId === myId;
