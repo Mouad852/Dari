@@ -134,6 +134,14 @@ export default function MyListingsPage() {
   const totalListings = listings?.length ?? 0;
   const publishedListings = listings?.filter((l) => l.status === 'PUBLISHED').length ?? 0;
   const draftListings = listings?.filter((l) => l.status === 'DRAFT').length ?? 0;
+  // The stat row previously only tracked Publiées/Brouillons, so an owner
+  // whose listings were all mid-review saw "2 au total" sitting above two
+  // zeros that summed to less than the total beside them. PENDING_REVIEW is
+  // the single most common in-between state — every listing passes through
+  // it right after submission — so it's the one worth its own tile; rarer
+  // states (REJECTED, SUSPENDED, EXPIRED) stay visible on each card's own
+  // status badge rather than each claiming a tile of their own.
+  const pendingListings = listings?.filter((l) => l.status === 'PENDING_REVIEW').length ?? 0;
   // Accurate only while every page is loaded — true for the common case (few listings), noted to the user otherwise.
   const statsAreComplete = !nextCursor;
 
@@ -185,10 +193,11 @@ export default function MyListingsPage() {
         ) : (
           <>
             {listings.length > 0 ? (
-              <section style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-3)' }}>
+              <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 'var(--space-3)' }}>
                 {([
                   ['Annonces', `${totalListings}${statsAreComplete ? ' au total' : '+ chargées'}`],
                   ['Publiées', `${publishedListings}`],
+                  ['En vérification', `${pendingListings}`],
                   ['Brouillons', `${draftListings}`],
                 ] as const).map(([label, value]) => (
                   <div
@@ -256,8 +265,8 @@ export default function MyListingsPage() {
                       <ListingThumb coverPhotoUrl={listing.coverPhotoUrl} alt={listing.title} />
 
                       <div style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-4)' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                          <div>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                          <div style={{ minWidth: 0 }}>
                             <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
                               {listing.neighborhood}
                             </div>
