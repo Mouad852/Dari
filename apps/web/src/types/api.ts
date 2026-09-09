@@ -224,6 +224,8 @@ export interface AdminReportQueueItem {
   reporterCount: number;
   firstReportedAt: string;
   reasons: ReportReason[];
+  /** Each report's free-text context, in the order reported. Empty strings are already filtered out server-side. */
+  details: string[];
   autoFlagged: boolean;
   /** Reports these same reporters have had dismissed before. Context, not a verdict. */
   priorDismissedReports: number;

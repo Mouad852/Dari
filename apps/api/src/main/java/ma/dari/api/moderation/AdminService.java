@@ -118,6 +118,9 @@ public class AdminService {
             entry.reportCount++;
             entry.reporterIds.add(report.getReporter().getId());
             entry.reasons.add(report.getReason());
+            if (report.getDetails() != null && !report.getDetails().isBlank()) {
+                entry.details.add(report.getDetails());
+            }
             entry.firstReportedAt = entry.firstReportedAt == null || report.getCreatedAt().isBefore(entry.firstReportedAt)
                     ? report.getCreatedAt()
                     : entry.firstReportedAt;
@@ -131,6 +134,7 @@ public class AdminService {
                         entry.reporterIds.size(),
                         entry.firstReportedAt,
                         entry.reasons.stream().distinct().sorted(Comparator.comparing(Enum::name)).toList(),
+                        List.copyOf(entry.details),
                         isAutoFlagged(entry.targetType, entry.targetId),
                         entry.reporterIds.isEmpty()
                                 ? 0L
@@ -185,6 +189,7 @@ public class AdminService {
         private long reportCount;
         private final Set<UUID> reporterIds = new HashSet<>();
         private final List<ReportReason> reasons = new ArrayList<>();
+        private final List<String> details = new ArrayList<>();
         private Instant firstReportedAt;
 
         private QueueEntry(ReportTarget targetType, UUID targetId) {

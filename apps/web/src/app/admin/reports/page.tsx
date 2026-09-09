@@ -240,6 +240,37 @@ export default function AdminReportsPage() {
                     ))}
                   </div>
 
+                  {/*
+                    The reason chips are a category; this is what the reporter
+                    actually wrote. The backend always sent it (ReportResponse
+                    has had `details` from the start) but the grouped admin
+                    queue silently dropped it, so a moderator judging e.g. a
+                    scam report never saw the one thing most likely to say
+                    what happened. Found 2026-09-09.
+                  */}
+                  {item.details.length > 0 ? (
+                    <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+                      {item.details.map((text, index) => (
+                        <p
+                          key={index}
+                          style={{
+                            margin: 0,
+                            fontStyle: 'italic',
+                            fontWeight: 'var(--weight-regular)',
+                            fontSize: 'var(--text-body-sm)',
+                            fontFamily: 'var(--font-ui)',
+                            lineHeight: 1.5,
+                            color: 'var(--text-body)',
+                            paddingLeft: 'var(--space-3)',
+                            borderLeft: '2px solid var(--border-default)',
+                          }}
+                        >
+                          « {text} »
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
+
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
                     <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
                       Premier signalement {relativeTime(new Date(item.firstReportedAt))}
