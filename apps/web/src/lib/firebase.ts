@@ -9,7 +9,7 @@
  */
 
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, signOut as firebaseSignOut, type Auth } from 'firebase/auth';
+import { getAuth, sendPasswordResetEmail, signOut as firebaseSignOut, type Auth } from 'firebase/auth';
 
 const config = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
@@ -57,4 +57,8 @@ export async function getIdToken(): Promise<string | null> {
 
 export function signOut(): Promise<void> {
   return firebaseSignOut(getFirebaseAuth());
+}
+
+export function sendPasswordReset(email: string): Promise<void> {
+  return sendPasswordResetEmail(getFirebaseAuth(), email);
 }

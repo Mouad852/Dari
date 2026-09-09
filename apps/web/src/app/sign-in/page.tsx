@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { FormEvent, useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
-import { getFirebaseAuth } from '@/lib/firebase';
+import { getFirebaseAuth, sendPasswordReset } from '@/lib/firebase';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -14,6 +14,43 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+
+  /**
+   * There was no password-recovery path anywhere in the app -- not even a
+   * dead link. Found 2026-09-09. Firebase's client SDK owns the whole flow
+   * (it sends the email itself), so this needed no backend work.
+   *
+   * Deliberately reports success even for `auth/user-not-found`: revealing
+   * whether an address has an account is an account-enumeration leak, and
+   * Firebase's own console setting for suppressing that server-side can't be
+   * relied on to be turned on. A genuine client error (bad email format) or
+   * a network failure still surfaces so the user isn't left thinking an
+   * email is coming when nothing was sent.
+   */
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      setError('Entrez votre e-mail ci-dessus pour recevoir un lien de réinitialisation.');
+      return;
+    }
+    setError(null);
+    setResetStatus('sending');
+    try {
+      await sendPasswordReset(email.trim());
+      setResetStatus('sent');
+    } catch (cause) {
+      const code = cause instanceof Error ? cause.message : '';
+      if (code.includes('user-not-found')) {
+        setResetStatus('sent');
+      } else if (code.includes('invalid-email')) {
+        setResetStatus('idle');
+        setError('Adresse e-mail invalide.');
+      } else {
+        setResetStatus('idle');
+        setError('Impossible d’envoyer l’e-mail pour le moment. Réessayez.');
+      }
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,6 +89,26 @@ export default function SignInPage() {
               <button type="button" aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} onClick={() => setShowPassword((value) => !value)} style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', border: 0, background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button>
             </span>
           </label>
+          {/*
+            Deliberately outside the <label> above -- nested there, its text
+            got folded into the password input's accessible name (a screen
+            reader announced the field as "Mot de passe Afficher le mot de
+            passe Mot de passe oublié ?"), which the eye-toggle button was
+            already doing quietly before this existed.
+          */}
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            disabled={resetStatus === 'sending'}
+            style={{ justifySelf: 'end', marginTop: '-0.6rem', border: 0, background: 'transparent', color: 'var(--brand)', padding: 0, font: 'var(--type-body-sm) var(--font-ui)', cursor: resetStatus === 'sending' ? 'wait' : 'pointer' }}
+          >
+            Mot de passe oublié ?
+          </button>
+          {resetStatus === 'sent' ? (
+            <p role="status" style={{ margin: 0, color: 'var(--text-heading)', font: 'var(--type-body-sm)' }}>
+              Si un compte existe pour cette adresse, un e-mail de réinitialisation vient d’être envoyé.
+            </p>
+          ) : null}
           {error ? <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
           <button disabled={submitting} type="submit" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', border: 'none', borderRadius: 'var(--radius-pill)', background: 'var(--brand)', color: 'white', padding: '0.9rem 1.1rem', font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)', cursor: submitting ? 'wait' : 'pointer' }}>
             {submitting ? 'Connexion…' : 'Se connecter'} <ArrowRight size={16} />
