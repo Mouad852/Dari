@@ -56,6 +56,20 @@ export function Dialog({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const openerRef = useRef<HTMLElement | null>(null);
 
+  // Callers pass onClose as an inline arrow function, so its reference
+  // changes on every render of the caller -- including a render triggered by
+  // typing into a field inside this dialog. With onClose in the effect's own
+  // dependency array, that re-ran the effect on every keystroke and
+  // panelRef.current.focus() yanked focus off the input back onto the dialog
+  // panel: the first character of anything typed landed, the rest didn't.
+  // Found 2026-09-09 typing a rejection reason in the admin queue. A ref
+  // keeps the latest onClose available to the Escape handler without making
+  // the focus-management effect below depend on it.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     if (!open) return;
 
@@ -63,7 +77,7 @@ export function Dialog({
     panelRef.current?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose?.();
+      if (event.key === 'Escape') onCloseRef.current?.();
     };
     document.addEventListener('keydown', onKeyDown);
 
@@ -75,7 +89,7 @@ export function Dialog({
       document.body.style.overflow = previousOverflow;
       openerRef.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
