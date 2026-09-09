@@ -318,7 +318,10 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                     color: mine ? 'var(--text-on-brand)' : 'var(--text-body)',
                     border: mine ? '1px solid var(--brand)' : '1px solid var(--border-hairline)',
                     boxShadow: 'var(--shadow-xs)',
-                    font: 'var(--type-body)',
+                    // Longhand, not the `font` shorthand -- see ReportDialog.tsx for why.
+                    fontWeight: 'var(--weight-regular)',
+                    fontSize: 'var(--text-body-md)',
+                    fontFamily: 'var(--font-ui)',
                     lineHeight: 1.5,
                     overflowWrap: 'anywhere',
                   }}

@@ -286,7 +286,8 @@ export default function AccountSecurityPage() {
             <div style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)' }}>Attention</div>
           </div>
 
-          <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+          {/* Longhand, not the `font` shorthand -- see ReportDialog.tsx for why. */}
+          <div style={{ fontWeight: 'var(--weight-regular)', fontSize: 'var(--text-body-sm)', fontFamily: 'var(--font-ui)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
             La gestion des sessions, du mot de passe et des alertes de connexion est assurée dans Firebase. Cette page ne simule pas de données d’appareils.
           </div>
         </section>

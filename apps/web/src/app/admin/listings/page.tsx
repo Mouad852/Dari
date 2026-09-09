@@ -198,9 +198,12 @@ export default function AdminListingsQueuePage() {
                       */}
                       {item.description ? (
                         <p
+                          // Longhand, not the `font` shorthand -- see ReportDialog.tsx for why.
                           style={{
                             margin: 0,
-                            font: 'var(--type-body-sm)',
+                            fontWeight: 'var(--weight-regular)',
+                            fontSize: 'var(--text-body-sm)',
+                            fontFamily: 'var(--font-ui)',
                             color: 'var(--text-body)',
                             lineHeight: 1.6,
                             display: '-webkit-box',

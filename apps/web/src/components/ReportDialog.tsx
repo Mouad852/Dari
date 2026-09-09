@@ -145,14 +145,26 @@ export function ReportDialog({
             <p style={{ margin: 0, lineHeight: 1.6 }}>
               Merci, votre signalement a bien été enregistré. Notre équipe l’examinera.
             </p>
-            <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            {/*
+              Not the `font` shorthand here -- it already carries its own
+              line-height (`--type-body-sm` is `... var(--text-body-sm)/var(--lh-snug) ...`),
+              and mixing that shorthand with a separate `lineHeight` on the
+              same style object is exactly what React's dev-mode warns
+              about: "Removing a style property during rerender when a
+              conflicting property is set can lead to styling bugs." Found
+              2026-09-09 via a real console warning while testing the report
+              flow. Expanded to the shorthand's own longhand parts so the
+              looser 1.6 here doesn't fight the token's snug default.
+            */}
+            <p style={{ margin: 0, fontWeight: 'var(--weight-regular)', fontSize: 'var(--text-body-sm)', fontFamily: 'var(--font-ui)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
               Pour préserver la confidentialité des personnes concernées, nous ne communiquons pas la
               suite donnée à un signalement.
             </p>
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-            <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            {/* Same font-shorthand-vs-lineHeight fix as above. */}
+            <p style={{ margin: 0, fontWeight: 'var(--weight-regular)', fontSize: 'var(--text-body-sm)', fontFamily: 'var(--font-ui)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
               Choisissez le motif qui correspond le mieux. Les signalements sont examinés par notre
               équipe de modération.
             </p>

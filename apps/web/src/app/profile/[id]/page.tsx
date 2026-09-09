@@ -95,7 +95,14 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
               padding: 'var(--space-5)',
             }}
           >
-            <p style={{ margin: 0, font: 'var(--type-body)', color: 'var(--text-heading)', lineHeight: 1.6 }}>{profile.bio}</p>
+            {/*
+              Longhand, not the `font` shorthand: `--type-body` already
+              carries its own line-height, and mixing that shorthand with a
+              separate `lineHeight` in one style object is a real React
+              dev-mode warning ("can lead to styling bugs"), not just noise
+              -- found 2026-09-09 via the console during a live QA pass.
+            */}
+            <p style={{ margin: 0, fontWeight: 'var(--weight-regular)', fontSize: 'var(--text-body-md)', fontFamily: 'var(--font-ui)', color: 'var(--text-heading)', lineHeight: 1.6 }}>{profile.bio}</p>
           </section>
         ) : null}
 

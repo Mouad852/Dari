@@ -352,7 +352,8 @@ export default function AccountProfilePage() {
         }}
       >
         <h2 style={{ margin: 0, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Supprimer le compte</h2>
-        <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+        {/* Longhand, not the `font` shorthand -- see ReportDialog.tsx for why. */}
+        <p style={{ margin: 0, fontWeight: 'var(--weight-regular)', fontSize: 'var(--text-body-sm)', fontFamily: 'var(--font-ui)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
           La suppression est définitive. Vos annonces seront retirées. Vos messages restent visibles
           pour les personnes avec qui vous avez échangé, car une conversation appartient aussi à votre
           interlocuteur.
