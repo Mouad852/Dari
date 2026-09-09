@@ -73,6 +73,7 @@ Last verified: 2026-09-08
 - [ ] Define the product meaning of `recommended` ranking
 - [ ] Define the product meaning of featured listings
 - [x] Fix amenity chip rapid-click URL state loss (2026-09-05; `SearchResults.tsx` now keeps a synchronous latest-selection ref and syncs it from URL state)
+- [x] Fix a fifth fabricated homepage number that survived the "measured, not written" pass (2026-09-09) — `app/page.tsx`'s "Voir les 1 843 annonces" link was a hardcoded literal, sitting one screen below per-city counts that were already wired to `GET /listings/count`. Found by actually loading the homepage rather than reading the component in isolation (dev DB has 29 listings, not 1,843). Fixed with one more real fetch to the same endpoint with no `city` filter, same capped/pluralized rendering the city cards already use. Verified live: now reads "Voir les 29 annonces".
 - [ ] Fix or explicitly remove map deep-link behavior for `?view=map`
 - [ ] Decide whether to port the mobile filter bottom sheet exactly or keep the disclosure design
 - [ ] Add neighborhood landing pages if they are part of the launch SEO scope

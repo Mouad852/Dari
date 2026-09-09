@@ -42,10 +42,16 @@ export const metadata: Metadata = {
  * Every figure here used to be a literal: four invented per-city counts ("412
  * chambres", "938 chambres"), and four entirely fictional featured listings
  * complete with star ratings, on a product that has no reviews system at all.
+ *
+ * A fifth one survived that pass: "Voir les 1 843 annonces" next to the
+ * featured grid, a hardcoded string sitting one screen below city counts that
+ * were already real. Found 2026-09-09 by actually looking at the rendered
+ * page rather than reading the component — the dev database has 29 listings.
  */
 async function getHomeData() {
-  const [featured, ...counts] = await Promise.all([
+  const [featured, total, ...counts] = await Promise.all([
     apiFetch<PublicListing[]>('/listings/featured?limit=4').catch(() => []),
+    apiFetch<{ count: number; capped: boolean }>('/listings/count').catch(() => null),
     ...CITY_NAMES.map((city) =>
       apiFetch<{ count: number; capped: boolean }>(
         `/listings/count?city=${encodeURIComponent(city)}`,
@@ -57,6 +63,7 @@ async function getHomeData() {
 
   return {
     featured,
+    total,
     cities: counts.filter((entry) => entry !== null),
   };
 }
@@ -208,7 +215,7 @@ function FeaturedListingCard({ listing }: { listing: PublicListing }) {
 }
 
 export default async function HomePage() {
-  const { featured, cities } = await getHomeData();
+  const { featured, total, cities } = await getHomeData();
 
   return (
     <main>
@@ -346,7 +353,10 @@ export default async function HomePage() {
               href="/listings"
               style={{ color: 'var(--brand)', textDecoration: 'none', font: 'var(--type-body)' }}
             >
-              Voir les 1 843 annonces <ArrowRight size={16} style={{ verticalAlign: 'middle' }} />
+              {total
+                ? `Voir les ${total.capped ? `${total.count}+` : total.count} annonce${total.count > 1 ? 's' : ''}`
+                : 'Voir les annonces'}{' '}
+              <ArrowRight size={16} style={{ verticalAlign: 'middle' }} />
             </a>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-5)' }}>
