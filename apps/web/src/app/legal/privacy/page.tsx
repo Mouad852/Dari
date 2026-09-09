@@ -3,8 +3,9 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = { title: 'Politique de confidentialité' };
 
 export default function PrivacyPage() {
+  // container-prose, not container-max -- see legal/terms for why.
   return (
-    <main style={{ maxWidth: 'var(--container-max)', margin: '0 auto', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-heading)' }}>
+    <main style={{ maxWidth: 'var(--container-prose)', margin: '0 auto', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-heading)' }}>
       <p style={{ font: 'var(--type-label)', color: 'var(--text-muted)' }}>Dari</p>
       <h1 style={{ font: 'var(--type-h1)' }}>Politique de confidentialité</h1>
       <p style={{ font: 'var(--type-body)', color: 'var(--text-muted)' }}>Version du 5 septembre 2026</p>

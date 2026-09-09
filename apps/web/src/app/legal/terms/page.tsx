@@ -3,8 +3,12 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = { title: 'Conditions d’utilisation' };
 
 export default function TermsPage() {
+  // container-prose (660px), not container-max (1200px) -- this is long-form
+  // reading text, and the page-grid width ran lines well past a comfortable
+  // measure. The token exists in spacing.css for exactly this and nothing
+  // in the app was using it. Found 2026-09-09.
   return (
-    <main style={{ maxWidth: 'var(--container-max)', margin: '0 auto', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-heading)' }}>
+    <main style={{ maxWidth: 'var(--container-prose)', margin: '0 auto', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-heading)' }}>
       <p style={{ font: 'var(--type-label)', color: 'var(--text-muted)' }}>Dari</p>
       <h1 style={{ font: 'var(--type-h1)' }}>Conditions d’utilisation</h1>
       <p style={{ font: 'var(--type-body)', color: 'var(--text-muted)' }}>Version du 5 septembre 2026</p>
