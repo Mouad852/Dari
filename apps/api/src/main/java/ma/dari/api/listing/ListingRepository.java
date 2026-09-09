@@ -46,6 +46,10 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
     /** Backs the moderation-queue-depth gauge; counting avoids loading the queue into memory on every scrape. */
     long countByStatusAndDeletedAtIsNull(ListingStatus status);
 
+    /** Backs the public profile's "Annonces actives" count — same search-visibility invariant as the front end. */
+    long countByOwnerIdAndStatusAndAvailabilityStateAndDeletedAtIsNull(
+            UUID ownerId, ListingStatus status, AvailabilityState availabilityState);
+
     boolean existsByIdAndDeletedAtIsNull(UUID id);
 
     List<Listing> findByOwnerId(UUID ownerId);

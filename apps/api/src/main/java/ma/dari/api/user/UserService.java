@@ -6,6 +6,7 @@ import ma.dari.api.common.auth.AuthenticatedUser;
 import ma.dari.api.common.auth.FirebaseAuthFilter;
 import ma.dari.api.common.error.ApiException;
 import ma.dari.api.common.error.ErrorCode;
+import ma.dari.api.listing.AvailabilityState;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
 import ma.dari.api.media.ImageStore;
@@ -206,8 +207,12 @@ public class UserService {
                 .orElseThrow(() -> ApiException.notFound("Profil introuvable"));
 
         // Counts published + available listings only; a suspended listing is not
-        // public information. Wired in phase 09, once listings exist.
-        long activeListings = 0L;
+        // public information. Stale "wired in phase 09" TODO left this at a
+        // hardcoded 0 well after listings existed -- found 2026-09-09 by
+        // checking a real profile with 2 published listings against the 0
+        // the page showed for it.
+        long activeListings = listings.countByOwnerIdAndStatusAndAvailabilityStateAndDeletedAtIsNull(
+                id, ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE);
 
         return PublicProfileResponse.from(user, activeListings);
     }
