@@ -197,7 +197,18 @@ export default function FavoritesPage() {
           </section>
         ) : (
           <>
-            <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+            {/*
+              A single always-full-width horizontal row wasted most of the
+              row on desktop -- the 116px thumbnail and short price line
+              never came close to filling a 1200px container. Search results
+              solve the same "collection of listings" problem with
+              .results-grid (1/2/3 columns) and vertical cards; reusing it
+              here keeps saved listings visually consistent with every other
+              listing collection in the app instead of inventing a second
+              layout. Found 2026-09-09 by looking at the rendered page at
+              1440px, not by reading the component.
+            */}
+            <div className="results-grid">
               {items.map((listing) => {
                 const reason = unavailableReason(listing);
                 const available = reason === null;
@@ -205,7 +216,6 @@ export default function FavoritesPage() {
                 return (
                   <ListingCard
                     key={listing.id}
-                    layout="horizontal"
                     title={listing.title}
                     district={listing.neighborhood}
                     city={listing.city}
