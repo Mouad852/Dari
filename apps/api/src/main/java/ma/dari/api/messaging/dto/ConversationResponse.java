@@ -19,6 +19,7 @@ public record ConversationResponse(
         String otherUserDisplayName,
         Instant createdAt,
         String lastMessage,
-        Instant lastMessageAt
+        Instant lastMessageAt,
+        long unreadCount
 ) {
 }

@@ -49,4 +49,14 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
             """)
     List<Message> findUnreadForUser(@Param("conversationId") UUID conversationId,
                                     @Param("userId") UUID userId);
+
+    @Query("""
+            select count(m) from Message m
+            where m.deletedAt is null
+              and m.conversation.id = :conversationId
+              and m.sender.id <> :userId
+              and m.readAt is null
+            """)
+    long countUnreadForUser(@Param("conversationId") UUID conversationId,
+                            @Param("userId") UUID userId);
 }

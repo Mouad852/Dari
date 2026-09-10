@@ -185,6 +185,7 @@ public class ConversationService {
         User otherUser = conversation.otherParticipant(currentUser);
         List<Message> latest = messages.findLatestByConversation(conversation.getId(), PageRequest.of(0, 1));
         Message lastMessage = latest.isEmpty() ? null : latest.get(0);
+        long unreadCount = messages.countUnreadForUser(conversation.getId(), currentUser.getId());
         return new ConversationResponse(
                 conversation.getId(),
                 conversation.getListing() == null ? null : conversation.getListing().getId(),
@@ -194,7 +195,8 @@ public class ConversationService {
                 otherUser.getDisplayName(),
                 conversation.getCreatedAt(),
                 lastMessage == null ? null : lastMessage.getBody(),
-                lastMessage == null ? null : lastMessage.getSentAt()
+                lastMessage == null ? null : lastMessage.getSentAt(),
+                unreadCount
         );
     }
 

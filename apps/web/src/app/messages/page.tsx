@@ -150,6 +150,7 @@ export default function InboxPage() {
                 const tone = toneFor(conversation.otherUserId);
                 const preview = conversation.lastMessage ?? 'Aucun message pour le moment';
                 const timestamp = conversation.lastMessageAt ?? conversation.createdAt;
+                const unread = conversation.unreadCount > 0;
 
                 return (
                   <li key={conversation.id} style={{ minWidth: 0 }}>
@@ -188,19 +189,48 @@ export default function InboxPage() {
 
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)', alignItems: 'baseline', marginBottom: 4 }}>
-                          <span style={{ font: 'var(--type-label)', color: 'var(--text-heading)' }}>
+                          <span style={{ font: unread ? 'var(--weight-bold) var(--type-label) var(--font-ui)' : 'var(--type-label)', color: 'var(--text-heading)' }}>
                             {conversation.otherUserDisplayName}
                           </span>
-                          <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                            {relativeTime(new Date(timestamp))}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', flex: '0 0 auto' }}>
+                            <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                              {relativeTime(new Date(timestamp))}
+                            </span>
+                            {/*
+                              Was "deliberately not built" per the messaging plan --
+                              ConversationResponse carried no unreadCount, and
+                              computing one for the inbox meant fetching every
+                              conversation's messages just to render a badge. Now a
+                              real backend aggregate (MessageRepository.countUnreadForUser,
+                              same query shape as the existing markRead lookup).
+                            */}
+                            {unread && (
+                              <span
+                                aria-label={`${conversation.unreadCount} message${conversation.unreadCount > 1 ? 's' : ''} non lu${conversation.unreadCount > 1 ? 's' : ''}`}
+                                style={{
+                                  minWidth: 20,
+                                  height: 20,
+                                  padding: '0 6px',
+                                  borderRadius: 'var(--radius-pill)',
+                                  background: 'var(--brand)',
+                                  color: 'var(--text-on-brand)',
+                                  font: 'var(--weight-bold) var(--type-caption) var(--font-ui)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                {conversation.unreadCount}
+                              </span>
+                            )}
                           </span>
                         </span>
 
                         <span
                           style={{
                             display: 'block',
-                            font: 'var(--type-body-sm)',
-                            color: 'var(--text-body)',
+                            font: unread ? 'var(--weight-semibold) var(--type-body-sm) var(--font-ui)' : 'var(--type-body-sm)',
+                            color: unread ? 'var(--text-heading)' : 'var(--text-body)',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',

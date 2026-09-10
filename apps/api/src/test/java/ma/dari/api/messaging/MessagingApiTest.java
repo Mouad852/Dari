@@ -169,4 +169,32 @@ class MessagingApiTest extends AbstractIntegrationTest {
         assertThat(messages.findById(message.getId())).isPresent();
         assertThat(messages.findById(message.getId()).get().getReadAt()).isNotNull();
     }
+
+    @Test
+    @DisplayName("conversation list reports unread count for the current user, cleared by marking read")
+    void conversationListReportsUnreadCount() throws Exception {
+        User owner = users.save(new User("uid-owner-unread", "owner.unread@example.ma", true, "Owner"));
+        User seeker = users.save(new User("uid-seeker-unread", "seeker.unread@example.ma", true, "Seeker"));
+        Conversation conversation = conversations.save(new Conversation(owner, seeker));
+        // Both from the owner: unreadCount is from the current user's (seeker's)
+        // perspective, so it must count only messages sent by the other party.
+        messages.save(new Message(conversation, owner, "Bonjour"));
+        messages.save(new Message(conversation, owner, "Toujours disponible ?"));
+
+        stubToken("uid-seeker-unread", "seeker.unread@example.ma", true);
+
+        given().header("Authorization", "Bearer seeker-unread-token")
+                .when().get("/conversations")
+                .then().statusCode(200)
+                .body("items[0].unreadCount", equalTo(2));
+
+        given().header("Authorization", "Bearer seeker-unread-token")
+                .when().patch("/conversations/" + conversation.getId() + "/read")
+                .then().statusCode(200);
+
+        given().header("Authorization", "Bearer seeker-unread-token")
+                .when().get("/conversations")
+                .then().statusCode(200)
+                .body("items[0].unreadCount", equalTo(0));
+    }
 }
