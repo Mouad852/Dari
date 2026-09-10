@@ -227,12 +227,12 @@ export default function AccountPage() {
             gap: 'var(--space-2)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <h2 style={{ margin: 0, font: 'var(--type-h3)' }}>Paramètres</h2>
-            <button type="button" style={{ border: 'none', background: 'transparent', color: 'var(--brand)', font: 'var(--type-body-sm)', cursor: 'pointer' }}>
-              Tout voir
-            </button>
-          </div>
+          {/*
+            "Tout voir" had no onClick and nothing to reveal: SECTIONS below
+            is 4 items and every one of them already renders, unsliced --
+            there was never a truncated list behind it.
+          */}
+          <h2 style={{ margin: '0 0 6px', font: 'var(--type-h3)' }}>Paramètres</h2>
 
           {SECTIONS.map(({ label, detail, icon: Icon, href }) => (
             <Link
