@@ -25,6 +25,23 @@ const SECTIONS = [
   { label: 'Paiements', detail: 'Moyens de paiement et factures', icon: CreditCard, href: '/account/payments' },
 ] as const;
 
+/**
+ * What "complete" means here, replacing a hardcoded "85%" that was never
+ * connected to anything. Five fields that make a profile more trustworthy to
+ * a stranger deciding whether to reply -- a photo, a bio, a city, a phone
+ * number, and a confirmed email -- each worth an equal fifth. Not a product
+ * spec handed down elsewhere in the app; a defensible default computed from
+ * fields `/users/me` already returns, same spirit as every other "stop
+ * inventing numbers" fix this session.
+ */
+const PROFILE_COMPLETION_CHECKS: Array<{ label: string; met: (me: Me) => boolean }> = [
+  { label: 'Photo de profil', met: (me) => Boolean(me.avatarUrl) },
+  { label: 'Biographie', met: (me) => Boolean(me.bio && me.bio.trim().length > 0) },
+  { label: 'Ville', met: (me) => Boolean(me.city) },
+  { label: 'Téléphone', met: (me) => Boolean(me.phone) },
+  { label: 'E-mail vérifié', met: (me) => me.emailVerified },
+];
+
 export default function AccountPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Me | null>(null);
@@ -100,6 +117,9 @@ export default function AccountPage() {
   if (!profile) {
     return <main style={{ minHeight: '100vh', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-muted)' }}>Chargement de votre compte…</main>;
   }
+
+  const completionMet = PROFILE_COMPLETION_CHECKS.filter((check) => check.met(profile)).length;
+  const completionPercent = Math.round((completionMet / PROFILE_COMPLETION_CHECKS.length) * 100);
 
   return (
     <main
@@ -278,60 +298,69 @@ export default function AccountPage() {
           ))}
         </section>
 
-        <section
-          style={{
-            background: 'var(--surface-card)',
-            border: '1px solid var(--border-hairline)',
-            borderRadius: 'var(--radius-card)',
-            boxShadow: 'var(--shadow-xs)',
-            padding: 'var(--space-4)',
-            display: 'grid',
-            gap: 'var(--space-3)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-            <div>
-              <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                Mise en avant
+        {/*
+          Hidden once complete rather than showing "100% -- Compléter le
+          profil", which would tell the visitor to do something there is
+          nothing left to do.
+        */}
+        {completionPercent < 100 && (
+          <section
+            style={{
+              background: 'var(--surface-card)',
+              border: '1px solid var(--border-hairline)',
+              borderRadius: 'var(--radius-card)',
+              boxShadow: 'var(--shadow-xs)',
+              padding: 'var(--space-4)',
+              display: 'grid',
+              gap: 'var(--space-3)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+              <div>
+                <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                  Mise en avant
+                </div>
+                <div style={{ marginTop: 4, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Profil complet</div>
               </div>
-              <div style={{ marginTop: 4, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Profil complet</div>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'var(--sand-50)',
+                  color: 'var(--sand-700)',
+                  padding: '0.4rem 0.7rem',
+                  font: 'var(--type-label)',
+                }}
+              >
+                <Sparkles size={12} />
+                {completionPercent}%
+              </span>
             </div>
-            <span
+
+            <Link
+              href="/account/profile"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.35rem',
+                justifyContent: 'center',
+                gap: 8,
+                border: 'none',
+                background: 'var(--brand)',
+                color: '#fff',
                 borderRadius: 'var(--radius-pill)',
-                background: 'var(--sand-50)',
-                color: 'var(--sand-700)',
-                padding: '0.4rem 0.7rem',
-                font: 'var(--type-label)',
+                padding: '0.95rem 1.2rem',
+                font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
+                boxShadow: 'var(--shadow-brand)',
+                textDecoration: 'none',
               }}
             >
-              <Sparkles size={12} />
-              85%
-            </span>
-          </div>
-
-          <button
-            type="button"
-            style={{
-              border: 'none',
-              background: 'var(--brand)',
-              color: '#fff',
-              borderRadius: 'var(--radius-pill)',
-              padding: '0.95rem 1.2rem',
-              font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
-              boxShadow: 'var(--shadow-brand)',
-              cursor: 'pointer',
-            }}
-          >
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <PencilLine size={16} />
               Compléter le profil
-            </span>
-          </button>
-        </section>
+            </Link>
+          </section>
+        )}
 
         <button
           type="button"
