@@ -1,45 +1,71 @@
-import { Bell, Check, ChevronRight, Mail, ShieldCheck, Smartphone } from 'lucide-react';
+'use client';
 
-type ToggleRow = {
-  id: string;
-  title: string;
-  description: string;
-  icon: typeof Bell;
-  enabled: boolean;
-};
+import { useEffect, useState } from 'react';
+import { Bell, Mail, ShieldCheck, Smartphone } from 'lucide-react';
 
-const TOGGLES: ToggleRow[] = [
+import { apiFetch, ApiError } from '@/lib/api';
+import { getIdToken } from '@/lib/firebase';
+import type { Me } from '@/types/api';
+
+/**
+ * Was a fully static mock: a hardcoded `TOGGLES` array with no `onClick` on
+ * any switch, a "Paramètres avancés" button that went nowhere, and a "Canal
+ * préféré" row whose chevron implied a channel picker that didn't exist.
+ * There is no backend concept of notification preferences at all
+ * (`UserService` has no such field, `NotificationDeliveryService` never
+ * checks one) and no SMS sender exists (only `SmtpNotificationSender`), so
+ * the "Notifications SMS: on" toggle was doubly fake. Found 2026-09-09.
+ *
+ * What *is* real: the SMTP outbox worker genuinely emails an owner for
+ * approval, rejection, suspension, reinstatement, expiry warning, expiry,
+ * and report acknowledgment (`NotificationDeliveryService`). That's worth
+ * saying plainly instead of dressing it up as a settings page nothing on it
+ * actually changes. Per-channel/per-type control is real future work — a
+ * migration + endpoint + frontend feature, not a nearby cheap fix — so it's
+ * named as "coming soon" rather than faked, same pattern already used on
+ * /account/payments and /account/security.
+ */
+const NOTIFICATION_KINDS = [
   {
-    id: 'new-message',
-    title: 'Nouveaux messages',
-    description: 'Recevoir une alerte lorsqu’un locataire ou un propriétaire répond.',
     icon: Bell,
-    enabled: true,
+    title: 'Nouveaux messages',
+    description: 'Un locataire ou un propriétaire vous répond.',
   },
   {
-    id: 'listing-update',
-    title: 'Mises à jour de vos annonces',
-    description: 'Recevoir un rappel quand une annonce est vue, validée ou rejetée.',
     icon: Mail,
-    enabled: true,
+    title: 'Mises à jour de vos annonces',
+    description: 'Une annonce est validée, rejetée, suspendue ou arrive à expiration.',
   },
   {
-    id: 'security-alerts',
-    title: 'Alertes de sécurité',
-    description: 'Recevoir un rappel sur les vérifications et la protection du compte.',
     icon: ShieldCheck,
-    enabled: false,
-  },
-  {
-    id: 'sms',
-    title: 'Notifications SMS',
-    description: 'Recevoir des alertes prioritaires sur votre téléphone mobile.',
-    icon: Smartphone,
-    enabled: true,
+    title: 'Modération',
+    description: 'Un signalement que vous avez envoyé est traité.',
   },
 ];
 
 export default function AccountNotificationsPage() {
+  const [email, setEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function load() {
+      const idToken = await getIdToken();
+      if (!idToken) return;
+      try {
+        const me = await apiFetch<Me>('/users/me', { token: idToken });
+        if (isCurrent) setEmail(me.email);
+      } catch (cause) {
+        if (!(cause instanceof ApiError)) throw cause;
+      }
+    }
+
+    void load();
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
   return (
     <main
       style={{
@@ -50,49 +76,21 @@ export default function AccountNotificationsPage() {
       }}
     >
       <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', display: 'grid', gap: 'var(--space-5)' }}>
-        <header
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 'var(--space-3)',
-            flexWrap: 'wrap',
-          }}
-        >
-          <div>
-            <div
-              style={{
-                font: 'var(--type-label)',
-                letterSpacing: 'var(--ls-caps)',
-                textTransform: 'uppercase',
-                color: 'var(--text-muted)',
-              }}
-            >
-              Compte
-            </div>
-            <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>
-              Notifications
-            </h1>
-          </div>
-
-          <button
-            type="button"
+        <div>
+          <div
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.45rem',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-pill)',
-              background: 'var(--surface-card)',
-              color: 'var(--text-heading)',
-              padding: '0.7rem 1rem',
-              font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)',
-              cursor: 'pointer',
+              font: 'var(--type-label)',
+              letterSpacing: 'var(--ls-caps)',
+              textTransform: 'uppercase',
+              color: 'var(--text-muted)',
             }}
           >
-            Paramètres avancés
-          </button>
-        </header>
+            Compte
+          </div>
+          <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>
+            Notifications
+          </h1>
+        </div>
 
         <section
           style={{
@@ -105,9 +103,14 @@ export default function AccountNotificationsPage() {
             gap: 'var(--space-3)',
           }}
         >
-          {TOGGLES.map(({ id, title, description, icon: Icon, enabled }) => (
+          <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            Vous recevez un e-mail à {email ?? 'votre adresse'} pour chacun de ces événements. Il n’existe pas
+            encore de réglage pour les activer ou les désactiver individuellement.
+          </p>
+
+          {NOTIFICATION_KINDS.map(({ icon: Icon, title, description }) => (
             <div
-              key={id}
+              key={title}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -128,6 +131,7 @@ export default function AccountNotificationsPage() {
                   borderRadius: 'var(--radius-pill)',
                   background: 'var(--brand-subtle)',
                   color: 'var(--clay-700)',
+                  flexShrink: 0,
                 }}
               >
                 <Icon size={18} />
@@ -142,40 +146,18 @@ export default function AccountNotificationsPage() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                aria-pressed={enabled}
+              <span
                 style={{
-                  position: 'relative',
-                  width: 52,
-                  height: 30,
-                  borderRadius: '999px',
-                  border: 'none',
-                  background: enabled ? 'var(--brand)' : 'var(--sable-200)',
-                  cursor: 'pointer',
-                  transition: 'background 180ms ease',
-                  padding: 0,
+                  flexShrink: 0,
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'var(--atlas-50)',
+                  color: 'var(--atlas-700)',
+                  padding: '0.35rem 0.7rem',
+                  font: 'var(--type-label)',
                 }}
               >
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: 4,
-                    left: enabled ? 28 : 4,
-                    width: 20,
-                    height: 20,
-                    borderRadius: '50%',
-                    background: 'white',
-                    boxShadow: 'var(--shadow-xs)',
-                    transition: 'left 180ms ease',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {enabled ? <Check size={12} color="var(--brand)" /> : null}
-                </span>
-              </button>
+                Activé
+              </span>
             </div>
           ))}
         </section>
@@ -187,35 +169,33 @@ export default function AccountNotificationsPage() {
             borderRadius: 'var(--radius-card)',
             boxShadow: 'var(--shadow-xs)',
             padding: 'var(--space-4)',
-            display: 'grid',
+            display: 'flex',
+            alignItems: 'center',
             gap: 'var(--space-3)',
           }}
         >
-          <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-            Canal préféré
-          </div>
-
-          <div
+          <span
             style={{
-              display: 'flex',
+              width: 42,
+              height: 42,
+              display: 'inline-flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 'var(--space-3)',
-              padding: 'var(--space-3)',
-              border: '1px solid var(--border-hairline)',
-              borderRadius: 'var(--radius-card-inner)',
+              justifyContent: 'center',
+              borderRadius: 'var(--radius-pill)',
+              background: 'var(--sable-100)',
+              color: 'var(--text-muted)',
+              flexShrink: 0,
             }}
           >
-            <div>
-              <div style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>
-                E-mail principal
-              </div>
-              <div style={{ marginTop: 4, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
-                Adresse gérée par Firebase
-              </div>
+            <Smartphone size={18} />
+          </span>
+          <div>
+            <div style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>
+              Notifications SMS et réglages par canal
             </div>
-
-            <ChevronRight size={18} color="var(--text-subtle)" />
+            <div style={{ marginTop: 4, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
+              Pas encore disponible sur Dari.
+            </div>
           </div>
         </section>
       </div>
