@@ -162,7 +162,16 @@ function SearchResultsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const city = searchParams.get('city') ?? 'Rabat';
+  // '' means no city filter -- a nationwide search across all cities, which
+  // the backend has always supported (`city` is `@RequestParam(required =
+  // false)`). This used to default to 'Rabat', so the homepage's own "Voir
+  // les 29 annonces" link -- which points at bare /listings, no city param,
+  // since it's a nationwide count -- silently showed only Rabat's 8
+  // listings. There is no city picker anywhere on this page; city only ever
+  // arrives via the URL, so '' reaching here means it was never supplied by
+  // whatever linked here, not that the visitor asked for Rabat. Found
+  // 2026-09-10 by testing the bare /listings URL directly.
+  const city = searchParams.get('city') ?? '';
   const currentSort = (searchParams.get('sort') ?? 'recommended') as SortValue;
   const [neighborhood, setNeighborhood] = useState(searchParams.get('neighborhood') ?? '');
   const [propertyType, setPropertyType] = useState(searchParams.get('propertyType') ?? '');
@@ -334,7 +343,7 @@ function SearchResultsPageContent() {
       params.set('radius', nextRadius.trim());
     } else {
       params.delete('radius');
-      params.set('city', city.trim() || 'Rabat');
+      if (city.trim()) params.set('city', city.trim()); else params.delete('city');
       if (currentNeighborhood.trim()) params.set('neighborhood', currentNeighborhood.trim());
       else params.delete('neighborhood');
     }
@@ -373,7 +382,7 @@ function SearchResultsPageContent() {
       params.delete('neighborhood');
       params.set('radius', radius.trim());
     } else {
-      params.set('city', city.trim() || 'Rabat');
+      if (city.trim()) params.set('city', city.trim()); else params.delete('city');
       if (neighborhood.trim()) params.set('neighborhood', neighborhood.trim());
       else params.delete('neighborhood');
     }
@@ -479,7 +488,7 @@ function SearchResultsPageContent() {
         params.delete('lat');
         params.delete('lng');
         params.delete('radiusM');
-        params.set('city', city);
+        if (city) params.set('city', city); else params.delete('city');
         if (neighborhood.trim()) params.set('neighborhood', neighborhood.trim());
         else params.delete('neighborhood');
       }
@@ -545,7 +554,7 @@ function SearchResultsPageContent() {
       params.delete('view');
       params.set('sort', currentSort);
 
-      const cityValue = (searchParams.get('city') ?? city ?? 'Rabat').trim();
+      const cityValue = (searchParams.get('city') ?? city ?? '').trim();
       const neighborhoodValue = (searchParams.get('neighborhood') ?? neighborhood ?? '').trim();
 
       if (hasRadiusMode && Number.isFinite(effectiveRadiusM) && effectiveRadiusM > 0) {
@@ -555,7 +564,7 @@ function SearchResultsPageContent() {
         params.set('lng', String(referencePoint.lng));
         params.set('radiusM', String(effectiveRadiusM));
       } else {
-        params.set('city', cityValue);
+        if (cityValue) params.set('city', cityValue); else params.delete('city');
         if (neighborhoodValue) params.set('neighborhood', neighborhoodValue);
         else params.delete('neighborhood');
         params.delete('lat');
@@ -608,10 +617,11 @@ function SearchResultsPageContent() {
     // Previously this reported listings.length -- the number of rows *loaded* --
     // so a search of 12,500 listings in Rabat announced "20 annonces à Rabat"
     // and grew as you paged. It now reports the real total, capped.
-    if (!resultCount) return `Annonces à ${city}`;
-    if (resultCount.capped) return `Plus de ${resultCount.count} annonces à ${city}`;
+    const suffix = city ? ` à ${city}` : '';
+    if (!resultCount) return `Annonces${suffix}`;
+    if (resultCount.capped) return `Plus de ${resultCount.count} annonces${suffix}`;
     const n = resultCount.count;
-    return `${n} annonce${n > 1 ? 's' : ''} à ${city}`;
+    return `${n} annonce${n > 1 ? 's' : ''}${suffix}`;
   }, [city, resultCount]);
 
   const handleLoadMore = () => {
@@ -628,7 +638,7 @@ function SearchResultsPageContent() {
         params.set('lng', String(referencePoint.lng));
         params.set('radiusM', String(effectiveRadiusM));
       } else {
-        params.set('city', city);
+        if (city) params.set('city', city); else params.delete('city');
         params.delete('lat');
         params.delete('lng');
         params.delete('radiusM');
@@ -658,7 +668,7 @@ function SearchResultsPageContent() {
           <Button variant="ghost" size="sm" iconLeft="chevron-left" onClick={() => router.push('/')}>
             Accueil
           </Button>
-          <span style={{ font: 'var(--type-caption)', color: 'var(--text-subtle)' }}>{city} · Colocation</span>
+          <span style={{ font: 'var(--type-caption)', color: 'var(--text-subtle)' }}>{city ? `${city} · Colocation` : 'Toutes les villes · Colocation'}</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-5)', flexWrap: 'wrap', minWidth: 0 }}>
