@@ -258,6 +258,8 @@ export interface Conversation {
   createdAt: string;
   lastMessage: string | null;
   lastMessageAt: string | null;
+  /** Messages sent by the other participant that the current user hasn't read yet. */
+  unreadCount: number;
 }
 
 export interface Message {
