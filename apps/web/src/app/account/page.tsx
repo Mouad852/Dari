@@ -119,20 +119,23 @@ export default function AccountPage() {
             <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Votre profil</h1>
           </div>
 
-          <button
-            type="button"
+          {/* Had no onClick at all -- editing a profile happens on /account/profile, which every other entry point on this page already links to. */}
+          <Link
+            href="/account/profile"
             style={{
+              display: 'inline-flex',
+              alignItems: 'center',
               border: '1px solid var(--border-default)',
               background: 'var(--surface-card)',
               borderRadius: 'var(--radius-pill)',
               color: 'var(--text-heading)',
               padding: '0.65rem 0.9rem',
               font: 'var(--type-body-sm)',
-              cursor: 'pointer',
+              textDecoration: 'none',
             }}
           >
             Modifier
-          </button>
+          </Link>
         </header>
 
         <section
