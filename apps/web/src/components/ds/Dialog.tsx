@@ -77,7 +77,40 @@ export function Dialog({
     panelRef.current?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCloseRef.current?.();
+      if (event.key === 'Escape') {
+        onCloseRef.current?.();
+        return;
+      }
+
+      // Without this, Tab walks off the end of the panel's focusable elements
+      // and onto whatever the dialog happens to sit before/after in the DOM --
+      // page content that's still visually behind the scrim and, per
+      // aria-modal="true", supposed to be unreachable while the dialog is
+      // open. Found live: opening a report dialog and tabbing six times
+      // landed focus on a footer link the user couldn't see.
+      if (event.key === 'Tab') {
+        const panel = panelRef.current;
+        if (!panel) return;
+        const focusable = Array.from(
+          panel.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0]!;
+        const last = focusable[focusable.length - 1]!;
+        const current = document.activeElement as HTMLElement;
+
+        if (event.shiftKey) {
+          if (current === first || current === panel) {
+            event.preventDefault();
+            last.focus();
+          }
+        } else if (current === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener('keydown', onKeyDown);
 
