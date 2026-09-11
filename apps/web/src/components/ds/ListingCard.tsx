@@ -9,7 +9,10 @@ import { useFocusRing } from './useFocusRing';
 
 /**
  * The product's signature card: photo, price, location, flatmate meta.
- * `vertical` in feeds and grids, `horizontal` in saved and search lists.
+ * `vertical` is the only layout any page renders today — `favorites/page.tsx`
+ * moved off `horizontal` onto the shared `.results-grid` on 2026-09-09, and
+ * nothing else ever passed it. `horizontal` stays supported (untested against
+ * a real page) for a future compact list view rather than removed outright.
  *
  * Ported from `design-system/components/listings/ListingCard.jsx`. Every token,
  * radius, shadow and dimension is as written — this is the object a visitor
