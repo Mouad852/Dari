@@ -71,6 +71,21 @@ export default function PublishWizardPage() {
 
 function PublishWizard() {
   const [stepIndex, setStepIndex] = useState(0);
+  // The step-chip jump (below) moves `stepIndex` from a `<button>` that then
+  // unmounts -- the step it points at stops being "done" the moment it
+  // becomes current, so it re-renders as a plain span. The browser has
+  // nowhere to put focus when the element holding it disappears mid-click and
+  // drops it to <body>, stranding a keyboard user with no sense of where they
+  // landed. `Suivant`/`Retour` do not have this problem: that button stays
+  // mounted across every step, so focus already survives without help.
+  const stepHeadingRef = useRef<HTMLDivElement>(null);
+  const pendingStepHeadingFocus = useRef(false);
+  useEffect(() => {
+    if (pendingStepHeadingFocus.current) {
+      pendingStepHeadingFocus.current = false;
+      stepHeadingRef.current?.focus();
+    }
+  }, [stepIndex]);
   // These start empty on purpose. They previously shipped a fully written
   // sample listing ("Chambre lumineuse", 3 200 MAD, a complete description),
   // so an owner who clicked through without editing published someone else's
@@ -545,7 +560,11 @@ function PublishWizard() {
         </header>
 
         <Card padding="var(--card-pad-lg)" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-4)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+          <div
+            ref={stepHeadingRef}
+            tabIndex={-1}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}
+          >
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Étape {stepIndex + 1} sur {STEPS.length}
             </div>
@@ -614,7 +633,19 @@ function PublishWizard() {
               return (
                 <li key={label} aria-current={current ? 'step' : undefined}>
                   {done ? (
-                    <button type="button" onClick={() => setStepIndex(index)} style={{ ...chip, cursor: 'pointer' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // This button is about to unmount -- it only renders
+                        // while its step is done, and jumping to it makes it
+                        // current instead. Move focus to the step heading
+                        // above so a keyboard user lands somewhere real
+                        // rather than on <body>.
+                        pendingStepHeadingFocus.current = true;
+                        setStepIndex(index);
+                      }}
+                      style={{ ...chip, cursor: 'pointer' }}
+                    >
                       <Icon name="check" size={15} />
                       {label}
                     </button>
