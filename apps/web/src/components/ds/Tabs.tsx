@@ -158,8 +158,6 @@ export function Tabs({
             }}
           >
             {item.label}
-            {/* --text-subtle fails AA at this size. Left as written: the fix
-                belongs in the token, where it repairs every call site at once. */}
             {item.count != null && (
               <span style={{ marginLeft: 6, font: 'var(--type-caption)', color: 'var(--text-subtle)' }}>
                 {item.count}

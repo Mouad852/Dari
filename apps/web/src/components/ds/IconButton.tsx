@@ -26,7 +26,10 @@ const VARIANTS = {
   secondary: {
     bg: 'var(--surface-card)',
     fg: 'var(--text-heading)',
-    bd: 'var(--border-hairline)',
+    // Not --border-hairline: this is the resting-state boundary of a real
+    // control, the same role Input/Select/Textarea's border plays (see
+    // colors.css's note on --border-default vs --border-hairline).
+    bd: 'var(--border-default)',
     sh: 'var(--shadow-sm)',
   },
   glass: {

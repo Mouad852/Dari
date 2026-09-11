@@ -60,7 +60,10 @@ export function Tag({
         padding: '0 14px',
         background: selected ? 'var(--sable-900)' : hovered ? 'var(--sable-100)' : 'var(--surface-card)',
         color: selected ? 'var(--text-on-inverse)' : 'var(--text-body)',
-        border: `1px solid ${selected ? 'var(--sable-900)' : 'var(--border-hairline)'}`,
+        // Unselected border is the chip's whole resting-state boundary (no
+        // shadow, no background difference from its card) -- --border-default,
+        // not the decorative --border-hairline, same reasoning as Input's.
+        border: `1px solid ${selected ? 'var(--sable-900)' : 'var(--border-default)'}`,
         borderRadius: 'var(--radius-chip)',
         font: 'var(--weight-medium) var(--text-body-sm)/1 var(--font-ui)',
         cursor: disabled ? 'not-allowed' : 'pointer',
