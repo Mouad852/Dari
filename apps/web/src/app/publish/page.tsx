@@ -133,6 +133,17 @@ function PublishWizard() {
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Same unmount-on-click focus loss as the step chips and room removal
+  // above: each photo's `<li key={photo.id}>` unmounts on removal, taking
+  // its own "Supprimer" button with it.
+  const photosHeadingRef = useRef<HTMLDivElement>(null);
+  const pendingPhotosHeadingFocus = useRef(false);
+  useEffect(() => {
+    if (pendingPhotosHeadingFocus.current) {
+      pendingPhotosHeadingFocus.current = false;
+      photosHeadingRef.current?.focus();
+    }
+  }, [photos.length]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -944,7 +955,7 @@ function PublishWizard() {
                   <Icon name="upload-cloud" size={26} />
                 </span>
                 <div>
-                  <div style={{ font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Ajouter des photos</div>
+                  <div ref={photosHeadingRef} tabIndex={-1} style={{ font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Ajouter des photos</div>
                   <p style={{ margin: '6px 0 0', font: 'var(--type-body-sm)', color: 'var(--text-body)' }}>
                     La première photo devient la couverture. Formats JPG, PNG ou WebP, 5 Mo maximum.
                     Les métadonnées GPS sont retirées à l’enregistrement.
@@ -1054,7 +1065,10 @@ function PublishWizard() {
                             variant="ghost"
                             label={`Supprimer la photo ${index + 1}`}
                             disabled={photoBusy}
-                            onClick={() => void removePhoto(photo.id)}
+                            onClick={() => {
+                              pendingPhotosHeadingFocus.current = true;
+                              void removePhoto(photo.id);
+                            }}
                             style={{ color: 'var(--danger)' }}
                           />
                         </div>
