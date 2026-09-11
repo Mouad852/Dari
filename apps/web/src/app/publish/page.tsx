@@ -105,6 +105,18 @@ function PublishWizard() {
   const [quietHoursEnd, setQuietHoursEnd] = useState('');
   const [otherRules, setOtherRules] = useState('');
   const [rooms, setRooms] = useState<WizardRoom[]>([]);
+  // Same unmount-on-click focus loss as the step chips above: a room's own
+  // "Retirer la pièce" button removes that room's whole `<Card>` (keyed by
+  // `room.key`, not index, so it truly unmounts rather than a later room
+  // sliding into its DOM slot), taking the focused button with it.
+  const roomsIntroRef = useRef<HTMLParagraphElement>(null);
+  const pendingRoomsIntroFocus = useRef(false);
+  useEffect(() => {
+    if (pendingRoomsIntroFocus.current) {
+      pendingRoomsIntroFocus.current = false;
+      roomsIntroRef.current?.focus();
+    }
+  }, [rooms.length]);
   const [propertyType, setPropertyType] = useState<PropertyType>('STUDIO');
   const [roomType, setRoomType] = useState<RoomType>('PRIVATE');
   const [latitude, setLatitude] = useState('');
@@ -726,7 +738,7 @@ function PublishWizard() {
 
           {step === 'Pièces' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-5)' }}>
-              <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
+              <p ref={roomsIntroRef} tabIndex={-1} style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
                 Ajoutez chaque pièce du logement, indiquez celle qui est proposée et ce qui est partagé.
               </p>
 
@@ -747,7 +759,10 @@ function PublishWizard() {
                       icon="trash-2"
                       variant="ghost"
                       label={`Retirer la pièce ${index + 1}`}
-                      onClick={() => removeRoom(index)}
+                      onClick={() => {
+                        pendingRoomsIntroFocus.current = true;
+                        removeRoom(index);
+                      }}
                       style={{ color: 'var(--danger)' }}
                     />
                   </div>
