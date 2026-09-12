@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
+import { useId, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
 
 /**
  * Multi-line text field.
@@ -53,6 +53,7 @@ export function Textarea({
   style,
 }: TextareaProps) {
   const [focused, setFocused] = useState(false);
+  const helperId = useId();
 
   return (
     <label style={{ display: 'block', ...style }}>
@@ -78,6 +79,7 @@ export function Textarea({
         disabled={disabled}
         required={required}
         aria-invalid={error ? true : undefined}
+        aria-describedby={error || helper ? helperId : undefined}
         onChange={onChange}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
@@ -98,6 +100,7 @@ export function Textarea({
       />
       {(error || helper) && (
         <span
+          id={helperId}
           style={{
             display: 'block',
             marginTop: 'var(--space-2)',

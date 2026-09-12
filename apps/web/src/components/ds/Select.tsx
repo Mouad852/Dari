@@ -1,6 +1,6 @@
 'use client';
 
-import type { ChangeEvent, CSSProperties, ReactNode } from 'react';
+import { useId, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
 
 import { Icon } from './Icon';
 
@@ -46,6 +46,8 @@ export function Select({
   required,
   style,
 }: SelectProps) {
+  const helperId = useId();
+
   return (
     <label style={{ display: 'block', ...style }}>
       {label && (
@@ -68,6 +70,7 @@ export function Select({
           onChange={onChange}
           disabled={disabled}
           required={required}
+          aria-describedby={helper ? helperId : undefined}
           style={{
             appearance: 'none',
             width: '100%',
@@ -106,6 +109,7 @@ export function Select({
       </span>
       {helper && (
         <span
+          id={helperId}
           style={{
             display: 'block',
             marginTop: 'var(--space-2)',

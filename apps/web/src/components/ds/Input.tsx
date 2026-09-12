@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
+import { useId, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
 
 import { Icon } from './Icon';
 
@@ -59,6 +59,7 @@ export function Input({
   ...rest
 }: InputProps) {
   const [focused, setFocused] = useState(false);
+  const helperId = useId();
   const h =
     size === 'lg' ? 'var(--control-h-lg)' : size === 'sm' ? 'var(--control-h-sm)' : 'var(--control-h-md)';
 
@@ -100,6 +101,7 @@ export function Input({
           disabled={disabled}
           required={required}
           aria-invalid={error ? true : undefined}
+          aria-describedby={error || helper ? helperId : undefined}
           onChange={onChange}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
@@ -118,6 +120,7 @@ export function Input({
       </span>
       {(error || helper) && (
         <span
+          id={helperId}
           style={{
             display: 'block',
             marginTop: 'var(--space-2)',
