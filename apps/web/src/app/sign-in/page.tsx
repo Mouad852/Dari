@@ -2,7 +2,7 @@
 
 import { ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
 import { getFirebaseAuth, sendPasswordReset } from '@/lib/firebase';
@@ -15,6 +15,25 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const submitRef = useRef<HTMLButtonElement | null>(null);
+
+  /**
+   * The submit button carries `disabled={submitting}`, and a browser blurs
+   * whatever control it just disabled -- so a keyboard user who tabs to
+   * "Se connecter" and presses Enter loses focus to `<body>` the instant the
+   * request starts. On a failed login the error renders (its `role="alert"`
+   * still announces it), but nothing ever gave focus back, leaving a
+   * keyboard-only user stranded with no sense of where the page put them.
+   * Arming only on an actual submit keeps this from firing on unrelated
+   * `submitting` changes.
+   */
+  const shouldRefocusSubmitRef = useRef(false);
+  useEffect(() => {
+    if (!submitting && shouldRefocusSubmitRef.current) {
+      shouldRefocusSubmitRef.current = false;
+      submitRef.current?.focus();
+    }
+  }, [submitting]);
 
   /**
    * There was no password-recovery path anywhere in the app -- not even a
@@ -54,6 +73,7 @@ export default function SignInPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    shouldRefocusSubmitRef.current = true;
     setSubmitting(true);
     setError(null);
     try {
@@ -110,7 +130,7 @@ export default function SignInPage() {
             </p>
           ) : null}
           {error ? <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
-          <button disabled={submitting} type="submit" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', border: 'none', borderRadius: 'var(--radius-pill)', background: 'var(--brand)', color: 'white', padding: '0.9rem 1.1rem', font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)', cursor: submitting ? 'wait' : 'pointer' }}>
+          <button ref={submitRef} disabled={submitting} type="submit" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', border: 'none', borderRadius: 'var(--radius-pill)', background: 'var(--brand)', color: 'white', padding: '0.9rem 1.1rem', font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)', cursor: submitting ? 'wait' : 'pointer' }}>
             {submitting ? 'Connexion…' : 'Se connecter'} <ArrowRight size={16} />
           </button>
           <div style={{ textAlign: 'center', font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>Pas encore de compte ? <button type="button" onClick={() => router.push('/sign-up')} style={{ border: 0, background: 'transparent', color: 'var(--brand)', padding: 0, font: 'inherit', cursor: 'pointer' }}>Créer un compte</button></div>
