@@ -14,7 +14,7 @@ import {
   Trash2,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 
 import { ListingThumb } from '@/components/ListingThumb';
 import { apiFetch, ApiError, type CursorPage } from '@/lib/api';
@@ -42,6 +42,34 @@ export default function MyListingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const pageHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const loadMoreRef = useRef<HTMLButtonElement | null>(null);
+  const cardTitleRefs = useRef(new Map<string, HTMLHeadingElement>());
+
+  /**
+   * Every card action button shares `disabled={isPending}`, so a browser
+   * blurs whichever one was clicked to `<body>` -- the same pattern fixed
+   * elsewhere in the app. This one has two distinct ways the captured button
+   * can come back unusable, both needing a fallback: `handleDelete`'s
+   * success removes the whole `<article>` (the button, and its card's own
+   * `<h3>`, are both gone), while `handleSubmit`/`handleMarkRoomFound`/
+   * `handleReopen`'s success patches the listing in place and can hide the
+   * very button just clicked (its own eligibility flag, e.g. `canSubmit`,
+   * flips false once the status changes) -- same "unfocusable/gone after a
+   * successful action" shape already found in the publish wizard's photo
+   * buttons, but for a listing that's still there, so the per-card title
+   * (not the page heading) is the more localized, useful fallback.
+   */
+  const lastFocusedBeforeActionRef = useRef<HTMLElement | null>(null);
+  const lastActionListingIdRef = useRef<string | null>(null);
+  const armActionRefocus = (listingId: string) => {
+    const active = document.activeElement;
+    lastFocusedBeforeActionRef.current = active instanceof HTMLElement ? active : null;
+    lastActionListingIdRef.current = listingId;
+  };
+
+  /** Same `disabled={loadingMore}` fix as favorites/page.tsx, including its conditionally-rendered-button wrinkle -- falls back to the page heading once "Voir plus" itself has unmounted (the last page). */
+  const shouldRefocusLoadMoreRef = useRef(false);
 
   useEffect(() => {
     let isCurrent = true;
@@ -71,8 +99,32 @@ export default function MyListingsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!loadingMore && shouldRefocusLoadMoreRef.current) {
+      shouldRefocusLoadMoreRef.current = false;
+      (loadMoreRef.current ?? pageHeadingRef.current)?.focus();
+    }
+  }, [loadingMore]);
+
+  useEffect(() => {
+    if (pendingId === null && lastFocusedBeforeActionRef.current) {
+      const el = lastFocusedBeforeActionRef.current;
+      const listingId = lastActionListingIdRef.current;
+      lastFocusedBeforeActionRef.current = null;
+      lastActionListingIdRef.current = null;
+      const usable = el.isConnected && !(el instanceof HTMLButtonElement && el.disabled);
+      if (usable) {
+        el.focus();
+      } else {
+        const cardTitle = listingId ? cardTitleRefs.current.get(listingId) : undefined;
+        (cardTitle ?? pageHeadingRef.current)?.focus();
+      }
+    }
+  }, [pendingId]);
+
   const handleLoadMore = () => {
     if (!nextCursor || !token || loadingMore) return;
+    shouldRefocusLoadMoreRef.current = true;
     setLoadingMore(true);
     void (async () => {
       try {
@@ -99,6 +151,7 @@ export default function MyListingsPage() {
    */
   const runAction = (listingId: string, path: string, method: 'POST' | 'DELETE', patch: Partial<OwnedListing> | null) => {
     if (pendingId || !token) return;
+    armActionRefocus(listingId);
     setPendingId(listingId);
     setActionError(null);
     void (async () => {
@@ -160,7 +213,7 @@ export default function MyListingsPage() {
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Compte
             </div>
-            <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Mes annonces</h1>
+            <h1 ref={pageHeadingRef} tabIndex={-1} style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Mes annonces</h1>
           </div>
 
           <Link
@@ -270,7 +323,16 @@ export default function MyListingsPage() {
                             <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
                               {listing.neighborhood}
                             </div>
-                            <h3 style={{ margin: '0.3rem 0 0', font: 'var(--type-h3)', color: 'var(--text-heading)' }}>{listing.title}</h3>
+                            <h3
+                              ref={(el) => {
+                                if (el) cardTitleRefs.current.set(listing.id, el);
+                                else cardTitleRefs.current.delete(listing.id);
+                              }}
+                              tabIndex={-1}
+                              style={{ margin: '0.3rem 0 0', font: 'var(--type-h3)', color: 'var(--text-heading)' }}
+                            >
+                              {listing.title}
+                            </h3>
                           </div>
 
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
@@ -404,6 +466,7 @@ export default function MyListingsPage() {
             {nextCursor ? (
               <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <button
+                  ref={loadMoreRef}
                   type="button"
                   onClick={handleLoadMore}
                   disabled={loadingMore}
