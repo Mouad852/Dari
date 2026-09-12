@@ -2,7 +2,7 @@
 
 import { MessageCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
@@ -18,8 +18,19 @@ export function ContactOwnerButton({ listingId }: { listingId: string }) {
   const router = useRouter();
   const [contacting, setContacting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
+  /** See profile/[id]/ContactButton.tsx for why this exists: `disabled={contacting}` blurs the button to `<body>` on a failed attempt, and nothing gave focus back. */
+  const shouldRefocusRef = useRef(false);
+  useEffect(() => {
+    if (!contacting && shouldRefocusRef.current) {
+      shouldRefocusRef.current = false;
+      buttonRef.current?.focus();
+    }
+  }, [contacting]);
 
   const contactOwner = async () => {
+    shouldRefocusRef.current = true;
     setContacting(true);
     setError(null);
     try {
@@ -44,6 +55,7 @@ export function ContactOwnerButton({ listingId }: { listingId: string }) {
     <>
       {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => void contactOwner()}
         disabled={contacting}
