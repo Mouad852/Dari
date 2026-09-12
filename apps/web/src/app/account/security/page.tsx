@@ -177,7 +177,7 @@ export default function AccountSecurityPage() {
                     font: 'var(--type-label)',
                   }}
                 >
-                  <ShieldCheck size={12} />
+                  <ShieldCheck size={12} aria-hidden="true" />
                   Niveau élevé
                 </span>
               </div>
@@ -282,7 +282,7 @@ export default function AccountSecurityPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--saffron-700)' }}>
-            <TriangleAlert size={18} />
+            <TriangleAlert size={18} aria-hidden="true" />
             <div style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)' }}>Attention</div>
           </div>
 

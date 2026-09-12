@@ -236,7 +236,7 @@ export default function FavoritesPage() {
                 color: 'var(--clay-700)',
               }}
             >
-              <Heart size={28} />
+              <Heart size={28} aria-hidden="true" />
             </span>
             <div>
               <h2 style={{ margin: 0, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Aucune annonce sauvegardée</h2>

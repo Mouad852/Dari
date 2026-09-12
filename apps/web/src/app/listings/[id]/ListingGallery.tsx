@@ -115,7 +115,7 @@ export function ListingGallery({
         }}
       >
         <button type="button" aria-label="Retour" onClick={() => router.back()} style={iconButtonStyle}>
-          <ArrowLeft size={18} />
+          <ArrowLeft size={18} aria-hidden="true" />
         </button>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
@@ -124,7 +124,7 @@ export function ListingGallery({
             onClick={() => void navigator.clipboard?.writeText(window.location.href)}
             style={iconButtonStyle}
           >
-            <Share2 size={18} />
+            <Share2 size={18} aria-hidden="true" />
           </button>
           <button
             ref={saveButtonRef}
@@ -138,7 +138,7 @@ export function ListingGallery({
               color: saved ? 'var(--brand)' : '#fff',
             }}
           >
-            <Heart size={18} fill={saved ? 'currentColor' : 'none'} />
+            <Heart size={18} fill={saved ? 'currentColor' : 'none'} aria-hidden="true" />
           </button>
         </div>
       </div>

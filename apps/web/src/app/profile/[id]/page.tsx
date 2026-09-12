@@ -63,7 +63,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             <h1 id="profile-heading" tabIndex={-1} style={{ display: 'block', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>{profile.displayName}</h1>
             {profile.city ? (
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
-                <MapPin size={12} />
+                <MapPin size={12} aria-hidden="true" />
                 {profile.city}
               </span>
             ) : null}
@@ -80,7 +80,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                   font: 'var(--type-label)',
                 }}
               >
-                <ShieldCheck size={12} />
+                <ShieldCheck size={12} aria-hidden="true" />
                 {VERIFICATION_LABELS[profile.verification]}
               </span>
               <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Membre depuis {memberSince}</span>

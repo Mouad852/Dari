@@ -66,7 +66,7 @@ export default function AdminDashboardPage() {
               font: 'var(--type-label)',
             }}
           >
-            <ShieldCheck size={14} />
+            <ShieldCheck size={14} aria-hidden="true" />
             Accès administrateur
           </div>
         </header>
@@ -106,14 +106,14 @@ export default function AdminDashboardPage() {
                     justifyContent: 'center',
                   }}
                 >
-                  <ClipboardList size={20} />
+                  <ClipboardList size={20} aria-hidden="true" />
                 </span>
                 <div>
                   <div style={{ font: 'var(--weight-bold) var(--type-h2) var(--font-ui)', color: 'var(--text-heading)' }}>{counts.pendingReviews}</div>
                   <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>Annonces en attente de validation</div>
                 </div>
               </div>
-              <ArrowRight size={18} color="var(--text-subtle)" />
+              <ArrowRight size={18} color="var(--text-subtle)" aria-hidden="true" />
             </Link>
 
             <Link
@@ -145,14 +145,14 @@ export default function AdminDashboardPage() {
                     justifyContent: 'center',
                   }}
                 >
-                  <AlertTriangle size={20} />
+                  <AlertTriangle size={20} aria-hidden="true" />
                 </span>
                 <div>
                   <div style={{ font: 'var(--weight-bold) var(--type-h2) var(--font-ui)', color: 'var(--text-heading)' }}>{counts.pendingReports}</div>
                   <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>Signalements en attente</div>
                 </div>
               </div>
-              <ArrowRight size={18} color="var(--text-subtle)" />
+              <ArrowRight size={18} color="var(--text-subtle)" aria-hidden="true" />
             </Link>
           </section>
         )}

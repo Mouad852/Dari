@@ -254,7 +254,7 @@ export default async function HomePage() {
                   font: 'var(--type-label)',
                 }}
               >
-                <ShieldCheck size={16} />
+                <ShieldCheck size={16} aria-hidden="true" />
                 Annonces vérifiées une par une
               </span>
             </span>
@@ -359,7 +359,7 @@ export default async function HomePage() {
               {total
                 ? `Voir les ${total.capped ? `${total.count}+` : total.count} annonce${total.count > 1 ? 's' : ''}`
                 : 'Voir les annonces'}{' '}
-              <ArrowRight size={16} style={{ verticalAlign: 'middle' }} />
+              <ArrowRight size={16} style={{ verticalAlign: 'middle' }} aria-hidden="true" />
             </a>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-5)' }}>

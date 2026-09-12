@@ -77,7 +77,7 @@ export default function AccountPaymentsPage() {
                 font: 'var(--type-label)',
               }}
             >
-              <ShieldCheck size={12} />
+              <ShieldCheck size={12} aria-hidden="true" />
               Sécurisé
             </span>
           </div>
@@ -119,7 +119,7 @@ export default function AccountPaymentsPage() {
               color: 'var(--clay-700)',
             }}
           >
-            <CreditCard size={28} />
+            <CreditCard size={28} aria-hidden="true" />
           </span>
           <div>
             <h2 style={{ margin: 0, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Aucun moyen de paiement</h2>
@@ -174,7 +174,7 @@ export default function AccountPaymentsPage() {
             }}
           >
             Le paiement en ligne n’est pas encore disponible
-            <ArrowUpRight size={16} />
+            <ArrowUpRight size={16} aria-hidden="true" />
           </button>
         </section>
       </div>

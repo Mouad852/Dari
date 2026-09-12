@@ -94,7 +94,7 @@ export default function SignInPage() {
       <div style={{ width: '100%', maxWidth: 480 }}>
         <form onSubmit={handleSubmit} style={{ background: 'var(--surface-card)', border: '1px solid var(--border-hairline)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-md)', padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-4)' }}>
           <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
-            <span style={{ display: 'inline-flex', width: 'fit-content', alignItems: 'center', gap: '0.4rem', borderRadius: 'var(--radius-pill)', background: 'var(--brand-subtle)', color: 'var(--clay-700)', padding: '0.45rem 0.7rem', font: 'var(--type-label)' }}><ShieldCheck size={14} /> Connectez-vous</span>
+            <span style={{ display: 'inline-flex', width: 'fit-content', alignItems: 'center', gap: '0.4rem', borderRadius: 'var(--radius-pill)', background: 'var(--brand-subtle)', color: 'var(--clay-700)', padding: '0.45rem 0.7rem', font: 'var(--type-label)' }}><ShieldCheck size={14} aria-hidden="true" /> Connectez-vous</span>
             <h1 style={{ margin: 0, font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Bon retour</h1>
             <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>Accédez à votre compte et continuez votre recherche de colocation.</p>
           </div>
@@ -106,7 +106,7 @@ export default function SignInPage() {
             <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase' }}>Mot de passe</span>
             <span style={{ position: 'relative' }}>
               <input required minLength={6} type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Votre mot de passe" autoComplete="current-password" style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-card)', color: 'var(--text-heading)', padding: '0.82rem 2.9rem 0.82rem 0.9rem', font: 'var(--type-body)' }} />
-              <button type="button" aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} onClick={() => setShowPassword((value) => !value)} style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', border: 0, background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button>
+              <button type="button" aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'} onClick={() => setShowPassword((value) => !value)} style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', border: 0, background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>{showPassword ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}</button>
             </span>
           </label>
           {/*
@@ -131,7 +131,7 @@ export default function SignInPage() {
           ) : null}
           {error ? <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
           <button ref={submitRef} disabled={submitting} type="submit" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', border: 'none', borderRadius: 'var(--radius-pill)', background: 'var(--brand)', color: 'white', padding: '0.9rem 1.1rem', font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)', cursor: submitting ? 'wait' : 'pointer' }}>
-            {submitting ? 'Connexion…' : 'Se connecter'} <ArrowRight size={16} />
+            {submitting ? 'Connexion…' : 'Se connecter'} <ArrowRight size={16} aria-hidden="true" />
           </button>
           <div style={{ textAlign: 'center', font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>Pas encore de compte ? <button type="button" onClick={() => router.push('/sign-up')} style={{ border: 0, background: 'transparent', color: 'var(--brand)', padding: 0, font: 'inherit', cursor: 'pointer' }}>Créer un compte</button></div>
         </form>

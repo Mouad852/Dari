@@ -152,7 +152,7 @@ export default function AdminUsersPage() {
 
           {users ? (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', borderRadius: 'var(--radius-pill)', background: 'var(--brand-subtle)', border: '1px solid var(--brand-border)', color: 'var(--clay-700)', padding: '0.5rem 0.8rem', font: 'var(--type-label)' }}>
-              <UserRound size={14} />
+              <UserRound size={14} aria-hidden="true" />
               {users.length} compte{users.length > 1 ? 's' : ''}
             </div>
           ) : null}
@@ -300,7 +300,7 @@ export default function AdminUsersPage() {
                             cursor: isPending ? 'default' : 'pointer',
                           }}
                         >
-                          <ShieldOff size={14} />
+                          <ShieldOff size={14} aria-hidden="true" />
                           Suspendre
                         </button>
                       ) : null}
@@ -321,7 +321,7 @@ export default function AdminUsersPage() {
                           cursor: isPending ? 'default' : 'pointer',
                         }}
                       >
-                        <Ban size={14} />
+                        <Ban size={14} aria-hidden="true" />
                         Bannir
                       </button>
                     </div>

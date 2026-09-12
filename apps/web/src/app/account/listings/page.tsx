@@ -376,7 +376,7 @@ export default function MyListingsPage() {
 
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
-                            <MapPin size={14} />
+                            <MapPin size={14} aria-hidden="true" />
                             {listing.city}
                           </span>
                           <span style={{ font: 'var(--weight-bold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>
@@ -424,9 +424,9 @@ export default function MyListingsPage() {
                                 textDecoration: 'none',
                               }}
                             >
-                              <Eye size={14} />
+                              <Eye size={14} aria-hidden="true" />
                               Voir
-                              <ArrowUpRight size={14} />
+                              <ArrowUpRight size={14} aria-hidden="true" />
                             </Link>
 
                             {/*

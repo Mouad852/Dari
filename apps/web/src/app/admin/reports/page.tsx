@@ -168,7 +168,7 @@ export default function AdminReportsPage() {
                 font: 'var(--type-label)',
               }}
             >
-              <AlertTriangle size={14} />
+              <AlertTriangle size={14} aria-hidden="true" />
               {queue.length} dossier{queue.length > 1 ? 's' : ''}
             </div>
           ) : null}
@@ -229,7 +229,7 @@ export default function AdminReportsPage() {
                         {title ?? `#${item.targetId.slice(0, 8)}`}
                         {item.targetType === 'LISTING' ? (
                           <Link href={`/listings/${item.targetId}`} aria-label="Voir l’annonce" style={{ color: 'var(--text-subtle)', display: 'inline-flex' }}>
-                            <ExternalLink size={14} />
+                            <ExternalLink size={14} aria-hidden="true" />
                           </Link>
                         ) : null}
                       </h2>
@@ -249,7 +249,7 @@ export default function AdminReportsPage() {
                             font: 'var(--type-label)',
                           }}
                         >
-                          <AlertTriangle size={12} />
+                          <AlertTriangle size={12} aria-hidden="true" />
                           Suspendue automatiquement
                         </span>
                       ) : null}
@@ -333,7 +333,7 @@ export default function AdminReportsPage() {
                         onClick={() => handleAction(item, 'DISMISS')}
                         style={queueActionStyle(isPending)}
                       >
-                        <Check size={14} />
+                        <Check size={14} aria-hidden="true" />
                         Classer sans suite
                       </button>
 
@@ -343,7 +343,7 @@ export default function AdminReportsPage() {
                         onClick={() => handleAction(item, 'SUSPEND')}
                         style={{ ...queueActionStyle(isPending), color: 'var(--danger)', borderColor: 'var(--danger-border)' }}
                       >
-                        <AlertTriangle size={14} />
+                        <AlertTriangle size={14} aria-hidden="true" />
                         {item.targetType === 'LISTING' ? 'Suspendre l’annonce' : 'Suspendre le compte'}
                       </button>
 
@@ -355,7 +355,7 @@ export default function AdminReportsPage() {
                           onClick={() => handleAction(item, 'BAN')}
                           style={{ ...queueActionStyle(isPending), color: 'var(--danger)', borderColor: 'var(--danger-border)' }}
                         >
-                          <Ban size={14} />
+                          <Ban size={14} aria-hidden="true" />
                           Bannir
                         </button>
                       ) : null}

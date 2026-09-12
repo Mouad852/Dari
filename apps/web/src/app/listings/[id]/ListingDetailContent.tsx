@@ -96,7 +96,7 @@ export function ListingDetailContent({ listing }: { listing: PublicListingDetail
         <section style={{ display: 'grid', gap: 'var(--space-3)' }}>
           <h1 id="listing-heading" tabIndex={-1} style={{ margin: 0, font: 'var(--type-h1)' }}>{listing.title}</h1>
           <p style={{ margin: 0, display: 'flex', gap: 6, alignItems: 'center', font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
-            <MapPin size={14} />
+            <MapPin size={14} aria-hidden="true" />
             {listing.neighborhood}, {listing.city}
           </p>
           <strong style={{ font: 'var(--weight-bold) 26px/1.2 var(--font-ui)', color: 'var(--text-price)' }}>

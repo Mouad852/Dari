@@ -229,15 +229,15 @@ export default function AccountProfilePage() {
               opacity: saving ? 0.7 : 1,
             }}
           >
-            <Save size={16} />
+            <Save size={16} aria-hidden="true" />
             {saving ? 'Enregistrement…' : 'Enregistrer'}
           </button>
         </header>
 
         {error ? <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
         {saved ? (
-          <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--brand)', font: 'var(--type-body-sm)' }}>
-            <CheckCircle2 size={14} />
+          <p role="status" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--brand)', font: 'var(--type-body-sm)' }}>
+            <CheckCircle2 size={14} aria-hidden="true" />
             Profil enregistré.
           </p>
         ) : null}
@@ -324,7 +324,7 @@ export default function AccountProfilePage() {
                     font: 'var(--type-label)',
                   }}
                 >
-                  <ShieldCheck size={12} />
+                  <ShieldCheck size={12} aria-hidden="true" />
                   {VERIFICATION_LABELS[profile.verification]}
                 </span>
               </div>
@@ -381,7 +381,7 @@ export default function AccountProfilePage() {
                 style={{ ...inputStyle, width: '100%', padding: '0.82rem 2.7rem 0.82rem 0.9rem', boxSizing: 'border-box' }}
               />
               <span style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
-                <MapPin size={16} />
+                <MapPin size={16} aria-hidden="true" />
               </span>
             </div>
           </label>

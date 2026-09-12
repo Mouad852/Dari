@@ -73,7 +73,7 @@ export function ContactOwnerButton({ listingId }: { listingId: string }) {
           cursor: contacting ? 'wait' : 'pointer',
         }}
       >
-        <MessageCircle size={17} /> {contacting ? 'Ouverture…' : 'Contacter'}
+        <MessageCircle size={17} aria-hidden="true" /> {contacting ? 'Ouverture…' : 'Contacter'}
       </button>
     </>
   );

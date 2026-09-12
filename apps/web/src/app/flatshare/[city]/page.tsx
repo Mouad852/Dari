@@ -127,7 +127,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
         >
           <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 700 }}>
             <span style={{ display: 'inline-flex', width: 'fit-content', alignItems: 'center', gap: '0.5rem', color: 'var(--clay-700)', background: 'var(--brand-subtle)', borderRadius: 'var(--radius-pill)', padding: '0.5rem 0.8rem', font: 'var(--type-label)' }}>
-              <ShieldCheck size={16} />
+              <ShieldCheck size={16} aria-hidden="true" />
               Annonces vérifiées
             </span>
             <h1 style={{ margin: 0, font: 'var(--weight-extra) clamp(32px, 5vw, 48px)/1.08 var(--font-display)', letterSpacing: 'var(--ls-display)' }}>
@@ -153,7 +153,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
                 }}
               >
                 Voir les annonces
-                <ArrowRight size={16} />
+                <ArrowRight size={16} aria-hidden="true" />
               </a>
               {/* Stated only when there are real listings to derive it from. */}
               {priceRange && (
@@ -214,7 +214,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
                     font: 'var(--type-body-sm)',
                   }}
                 >
-                  <MapPin size={15} color="var(--brand)" />
+                  <MapPin size={15} color="var(--brand)" aria-hidden="true" />
                   {name}
                 </a>
               ))}

@@ -187,7 +187,7 @@ export default function AccountNotificationsPage() {
               flexShrink: 0,
             }}
           >
-            <Smartphone size={18} />
+            <Smartphone size={18} aria-hidden="true" />
           </span>
           <div>
             <div style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>

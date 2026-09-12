@@ -211,7 +211,7 @@ export default function AccountPage() {
                     font: 'var(--type-label)',
                   }}
                 >
-                  <ShieldCheck size={12} />
+                  <ShieldCheck size={12} aria-hidden="true" />
                   {VERIFICATION_LABELS[profile.verification]}
                 </span>
               </div>
@@ -359,7 +359,7 @@ export default function AccountPage() {
                   font: 'var(--type-label)',
                 }}
               >
-                <Sparkles size={12} />
+                <Sparkles size={12} aria-hidden="true" />
                 {completionPercent}%
               </span>
             </div>
@@ -381,7 +381,7 @@ export default function AccountPage() {
                 textDecoration: 'none',
               }}
             >
-              <PencilLine size={16} />
+              <PencilLine size={16} aria-hidden="true" />
               Compléter le profil
             </Link>
           </section>
@@ -407,7 +407,7 @@ export default function AccountPage() {
             opacity: signingOut ? 0.7 : 1,
           }}
         >
-          <LogOut size={16} />
+          <LogOut size={16} aria-hidden="true" />
           {signingOut ? 'Déconnexion…' : 'Se déconnecter'}
         </button>
       </div>
