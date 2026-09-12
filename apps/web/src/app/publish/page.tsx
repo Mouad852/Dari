@@ -76,8 +76,9 @@ function PublishWizard() {
   // becomes current, so it re-renders as a plain span. The browser has
   // nowhere to put focus when the element holding it disappears mid-click and
   // drops it to <body>, stranding a keyboard user with no sense of where they
-  // landed. `Suivant`/`Retour` do not have this problem: that button stays
-  // mounted across every step, so focus already survives without help.
+  // landed. `Suivant`/`Retour` never unmount, but `Suivant` has its own,
+  // separate focus-loss bug below (`disabled={<async state>}`) -- fixed
+  // there, not here.
   const stepHeadingRef = useRef<HTMLDivElement>(null);
   const pendingStepHeadingFocus = useRef(false);
   useEffect(() => {
@@ -124,6 +125,35 @@ function PublishWizard() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  /**
+   * The `disabled={<async state>}` focus-loss bug found and fixed elsewhere in
+   * this app (`loading={submitting}` on this same "Suivant"/"Publier
+   * l'annonce" button, via the shared `Button` component). Easy to miss
+   * live-testing this specific button: `saveAndContinue` only calls
+   * `persistDraft` once every required field up through the current step is
+   * filled, so on an early step the whole `submitting` cycle can resolve
+   * within microtasks (no real network round trip), and the browser never
+   * paints an observable disabled frame to blur away from -- it looks fine.
+   * The bug is real from the first step that actually saves a draft onward.
+   * Falls back to the already-existing `stepHeadingRef` once the button
+   * itself is the thing that's gone/disabled -- true on a successful final
+   * publish, where `disabled={saved || ...}` leaves it permanently disabled
+   * as "Annonce envoyée".
+   */
+  const lastFocusedBeforeSubmitRef = useRef<HTMLElement | null>(null);
+  const armSubmitRefocus = () => {
+    const active = document.activeElement;
+    lastFocusedBeforeSubmitRef.current = active instanceof HTMLElement ? active : null;
+  };
+  useEffect(() => {
+    if (!submitting && lastFocusedBeforeSubmitRef.current) {
+      const el = lastFocusedBeforeSubmitRef.current;
+      lastFocusedBeforeSubmitRef.current = null;
+      const usable = el.isConnected && !(el instanceof HTMLButtonElement && el.disabled);
+      (usable ? el : stepHeadingRef.current)?.focus();
+    }
+  }, [submitting]);
   const [draftId, setDraftId] = useState<string | null>(null);
   const searchParams = useSearchParams();
   // Present when the owner arrived from "Modifier" on /account/listings.
@@ -504,6 +534,7 @@ function PublishWizard() {
       return;
     }
 
+    armSubmitRefocus();
     setSubmitting(true);
     setError(null);
     try {
@@ -527,6 +558,7 @@ function PublishWizard() {
   };
 
   const publish = async () => {
+    armSubmitRefocus();
     setSubmitting(true);
     setError(null);
     try {
