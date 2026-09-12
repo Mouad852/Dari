@@ -653,6 +653,15 @@ function SearchResultsPageContent() {
    */
   const lastFocusedBeforeLoadMoreRef = useRef<HTMLElement | null>(null);
   const resultsHeadingRef = useRef<HTMLHeadingElement | null>(null);
+
+  // No route-change announcement exists anywhere in this app for a
+  // client-side transition -- see the same fix on account/listings/page.tsx.
+  // The heading always renders (it falls back to a generic "Annonces" label
+  // until resultCount loads), so a plain mount-only effect is enough.
+  useEffect(() => {
+    resultsHeadingRef.current?.focus();
+  }, []);
+
   useEffect(() => {
     if (!loadingMore && lastFocusedBeforeLoadMoreRef.current) {
       const el = lastFocusedBeforeLoadMoreRef.current;

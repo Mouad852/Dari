@@ -87,6 +87,14 @@ function PublishWizard() {
       stepHeadingRef.current?.focus();
     }
   }, [stepIndex]);
+
+  // No route-change announcement exists anywhere in this app for a
+  // client-side transition -- see the same fix on account/listings/page.tsx.
+  // The wizard's content always renders immediately (no internal loading
+  // gate), so a plain mount-only effect is enough.
+  useEffect(() => {
+    stepHeadingRef.current?.focus();
+  }, []);
   // These start empty on purpose. They previously shipped a fully written
   // sample listing ("Chambre lumineuse", 3 200 MAD, a complete description),
   // so an owner who clicked through without editing published someone else's
