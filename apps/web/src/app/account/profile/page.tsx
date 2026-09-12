@@ -342,6 +342,7 @@ export default function AccountProfilePage() {
               value={firstName}
               onChange={(event) => setFirstName(event.target.value)}
               maxLength={60}
+              autoComplete="given-name"
               style={inputStyle}
             />
           </label>
@@ -354,6 +355,7 @@ export default function AccountProfilePage() {
               minLength={2}
               maxLength={60}
               required
+              autoComplete="nickname"
               style={inputStyle}
             />
           </label>
@@ -365,6 +367,7 @@ export default function AccountProfilePage() {
                 value={city}
                 onChange={(event) => setCity(event.target.value)}
                 maxLength={60}
+                autoComplete="address-level2"
                 style={{ ...inputStyle, width: '100%', padding: '0.82rem 2.7rem 0.82rem 0.9rem', boxSizing: 'border-box' }}
               />
               <span style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
