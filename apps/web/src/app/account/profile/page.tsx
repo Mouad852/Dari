@@ -20,6 +20,24 @@ export default function AccountProfilePage() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const saveButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  /**
+   * Same `disabled={<async state>}` focus-loss fix as sign-in/sign-up: the
+   * save button gets disabled the instant a save starts, a browser blurs
+   * whatever it just disabled, and nothing gave focus back -- so on a failed
+   * save the keyboard user who clicked or Enter'd "Enregistrer" was stranded
+   * on `<body>` with the error announced but no sense of where the page put
+   * them. This form is saved repeatedly across a session, unlike the
+   * one-shot auth forms, so the loss recurs every time a save fails.
+   */
+  const shouldRefocusSaveRef = useRef(false);
+  useEffect(() => {
+    if (!saving && shouldRefocusSaveRef.current) {
+      shouldRefocusSaveRef.current = false;
+      saveButtonRef.current?.focus();
+    }
+  }, [saving]);
 
   const [firstName, setFirstName] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -94,6 +112,7 @@ export default function AccountProfilePage() {
     event.preventDefault();
     if (!token || saving) return;
 
+    shouldRefocusSaveRef.current = true;
     setSaving(true);
     setSaved(false);
     setError(null);
@@ -154,6 +173,7 @@ export default function AccountProfilePage() {
           </div>
 
           <button
+            ref={saveButtonRef}
             type="submit"
             disabled={saving}
             style={{
