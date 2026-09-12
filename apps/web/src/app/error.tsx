@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 /**
  * Root error boundary.
  *
@@ -14,6 +16,18 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // A client-side transition (the default for an internal `next/link`) never
+  // reloads the document, so the browser's own "new page, read from the top"
+  // behaviour never fires here -- unlike a hard navigation straight to a
+  // broken URL, where focus starts at the top of the document regardless.
+  // Without this, a screen reader user mid-navigation gets the whole page
+  // swapped out under them with no cue that anything happened.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
   return (
     <main
       style={{
@@ -23,6 +37,8 @@ export default function GlobalError({
       }}
     >
       <h1
+        ref={headingRef}
+        tabIndex={-1}
         style={{
           fontFamily: 'var(--font-display)',
           fontSize: 'var(--text-h1)',
@@ -63,7 +79,7 @@ export default function GlobalError({
           style={{
             fontFamily: 'var(--font-mono)',
             fontSize: '0.75rem',
-            color: 'var(--sable-400)',
+            color: 'var(--text-muted)',
             marginTop: 'var(--space-6, 1.5rem)',
           }}
         >
