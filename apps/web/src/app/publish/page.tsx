@@ -145,6 +145,41 @@ function PublishWizard() {
     }
   }, [photos.length]);
 
+  /**
+   * A different, more common focus loss than the unmount above: every photo
+   * action (upload, delete, set cover, move) disables *every* photo button
+   * for the duration via the shared `photoBusy` flag, and a browser blurs
+   * whatever it just disabled -- so any of these buttons drops focus to
+   * `<body>` once clicked. Unlike the delete case, most of these buttons
+   * stay mounted throughout, so the better fix is to return focus to the
+   * exact button that was active, not jump to the heading. `armPhotoBusyRefocus`
+   * captures it right before each `setPhotoBusy(true)`; this effect restores
+   * it once `photoBusy` clears.
+   *
+   * Two reasons that capture can come back unusable, both needing the same
+   * heading fallback the delete case already uses: the delete button itself
+   * won't be in the DOM any more, and -- found live, not guessed -- a move
+   * button can land back on a button that is *disabled by its own new
+   * position*. Moving photo 1 right swaps it into the last slot, and "move
+   * right" is disabled for whatever sits last -- so the very button just
+   * clicked is, once the swap lands, structurally unfocusable. A `.focus()`
+   * call on a disabled control is silently a no-op, not an error, which is
+   * why this needs an explicit disabled check rather than just `isConnected`.
+   */
+  const lastFocusedBeforePhotoBusyRef = useRef<HTMLElement | null>(null);
+  const armPhotoBusyRefocus = () => {
+    const active = document.activeElement;
+    lastFocusedBeforePhotoBusyRef.current = active instanceof HTMLElement ? active : null;
+  };
+  useEffect(() => {
+    if (!photoBusy && lastFocusedBeforePhotoBusyRef.current) {
+      const el = lastFocusedBeforePhotoBusyRef.current;
+      lastFocusedBeforePhotoBusyRef.current = null;
+      const usable = el.isConnected && !(el instanceof HTMLButtonElement && el.disabled);
+      (usable ? el : photosHeadingRef.current)?.focus();
+    }
+  }, [photoBusy]);
+
   useEffect(() => {
     let isCurrent = true;
     async function loadDraft() {
@@ -365,6 +400,7 @@ function PublishWizard() {
 
   const uploadFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    armPhotoBusyRefocus();
     setPhotoBusy(true);
     setPhotoError(null);
     try {
@@ -398,6 +434,7 @@ function PublishWizard() {
 
   const removePhoto = async (photoId: string) => {
     if (!draftId) return;
+    armPhotoBusyRefocus();
     setPhotoBusy(true);
     setPhotoError(null);
     try {
@@ -414,6 +451,7 @@ function PublishWizard() {
 
   const makeCover = async (photoId: string) => {
     if (!draftId) return;
+    armPhotoBusyRefocus();
     setPhotoBusy(true);
     setPhotoError(null);
     try {
@@ -441,6 +479,7 @@ function PublishWizard() {
     const a = photos[index];
     const b = photos[target];
     if (!a || !b) return;
+    armPhotoBusyRefocus();
     setPhotoBusy(true);
     setPhotoError(null);
     try {
