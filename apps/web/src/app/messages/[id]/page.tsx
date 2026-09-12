@@ -50,6 +50,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let isCurrent = true;
@@ -151,11 +152,28 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     })();
   };
 
+  /**
+   * Sending disables the composer input and its button (see `disabled={sending}`
+   * / `loading={sending}` below), and a browser blurs whatever control it just
+   * disabled. That dropped focus to `<body>` on every message sent — a keyboard
+   * user typing several messages in a row had to click back into the field each
+   * time. `shouldRefocusRef` is armed only for a submit that actually started
+   * sending, so a load triggered by something else never steals focus.
+   */
+  const shouldRefocusRef = useRef(false);
+  useEffect(() => {
+    if (!sending && shouldRefocusRef.current) {
+      shouldRefocusRef.current = false;
+      composerRef.current?.focus();
+    }
+  }, [sending]);
+
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const value = draft.trim();
     if (!value || !token || sending) return;
 
+    shouldRefocusRef.current = true;
     setSending(true);
     void (async () => {
       try {
@@ -385,6 +403,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
           treatment still come from the same tokens.
         */}
         <input
+          ref={composerRef}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Écrire un message…"
