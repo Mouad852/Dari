@@ -150,17 +150,27 @@ export default function AccountPaymentsPage() {
             <div style={{ marginTop: 4, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Historique indisponible</div>
           </div>
 
+          {/*
+            Same fix as "Ajouter un moyen" above, for the identical reason:
+            this had no `onClick` at all, but was styled and coloured exactly
+            like a live link (brand colour, pointer cursor, a trailing
+            arrow-up-right that visually promises "goes somewhere") -- a dead
+            control indistinguishable from a working one, for keyboard and
+            mouse users alike. `disabled` says plainly it isn't ready instead.
+          */}
           <button
             type="button"
+            disabled
+            title="Cette fonctionnalité arrive bientôt"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '0.45rem',
               border: 'none',
               background: 'transparent',
-              color: 'var(--brand)',
+              color: 'var(--text-subtle)',
               font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)',
-              cursor: 'pointer',
+              cursor: 'not-allowed',
             }}
           >
             Le paiement en ligne n’est pas encore disponible
