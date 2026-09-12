@@ -1,5 +1,6 @@
 import { MapPin } from 'lucide-react';
 
+import { FocusOnMount } from '@/components/FocusOnMount';
 import { ReportDialog } from '@/components/ReportDialog';
 import { amount } from '@/lib/format';
 import { AMENITY_LABELS, PROPERTY_TYPE_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
@@ -89,10 +90,11 @@ export function ListingDetailContent({ listing }: { listing: PublicListingDetail
       />
 
       <ListingGallery listingId={listing.id} title={listing.title} photos={listing.photos} />
+      <FocusOnMount targetId="listing-heading" />
 
       <div style={{ padding: 'var(--space-6) var(--gutter-mobile)', display: 'grid', gap: 'var(--space-6)', maxWidth: 900, margin: '0 auto' }}>
         <section style={{ display: 'grid', gap: 'var(--space-3)' }}>
-          <h1 style={{ margin: 0, font: 'var(--type-h1)' }}>{listing.title}</h1>
+          <h1 id="listing-heading" tabIndex={-1} style={{ margin: 0, font: 'var(--type-h1)' }}>{listing.title}</h1>
           <p style={{ margin: 0, display: 'flex', gap: 6, alignItems: 'center', font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
             <MapPin size={14} />
             {listing.neighborhood}, {listing.city}

@@ -5,6 +5,7 @@ import { apiFetch, ApiError } from '@/lib/api';
 import { VERIFICATION_LABELS } from '@/lib/labels';
 import type { PublicProfile } from '@/types/api';
 
+import { FocusOnMount } from '@/components/FocusOnMount';
 import { ReportDialog } from '@/components/ReportDialog';
 import { ContactButton } from './ContactButton';
 
@@ -37,6 +38,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       }}
     >
       <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', display: 'grid', gap: 'var(--space-6)' }}>
+        <FocusOnMount targetId="profile-heading" />
         <span style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
           Profil public
         </span>
@@ -58,7 +60,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             {profile.displayName.charAt(0).toUpperCase()}
           </span>
           <span style={{ flex: 1, minWidth: 200 }}>
-            <span style={{ display: 'block', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>{profile.displayName}</span>
+            <h1 id="profile-heading" tabIndex={-1} style={{ display: 'block', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>{profile.displayName}</h1>
             {profile.city ? (
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
                 <MapPin size={12} />
