@@ -71,6 +71,20 @@ export default function MyListingsPage() {
   /** Same `disabled={loadingMore}` fix as favorites/page.tsx, including its conditionally-rendered-button wrinkle -- falls back to the page heading once "Voir plus" itself has unmounted (the last page). */
   const shouldRefocusLoadMoreRef = useRef(false);
 
+  // No route-change announcement exists anywhere in this app -- neither a
+  // built-in one (checked live: nothing in the rendered DOM carries
+  // aria-live, role="alert" or role="status" outside the dev-only Next.js
+  // toolbar) nor a page-authored one. A screen reader user who follows a
+  // `next/link` into this page (a client-side transition, the default) gets
+  // no cue anything happened until they explore the page themselves. The
+  // heading is part of the page shell, not the data-dependent branch below
+  // it, so it is already mounted the instant this component is -- focusing
+  // it here announces arrival immediately, before the listings themselves
+  // have even loaded.
+  useEffect(() => {
+    pageHeadingRef.current?.focus();
+  }, []);
+
   useEffect(() => {
     let isCurrent = true;
 
