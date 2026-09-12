@@ -19,7 +19,9 @@ export default function AccountProfilePage() {
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const avatarButtonRef = useRef<HTMLButtonElement | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const deleteButtonRef = useRef<HTMLButtonElement | null>(null);
   const saveButtonRef = useRef<HTMLButtonElement | null>(null);
 
   /**
@@ -38,6 +40,31 @@ export default function AccountProfilePage() {
       saveButtonRef.current?.focus();
     }
   }, [saving]);
+
+  /**
+   * Same fix as the save button above, for the other two `disabled={<async
+   * state>}` controls on this page. The avatar button's own click only opens
+   * the native file picker -- `avatarBusy` flips true later, inside the
+   * hidden file input's `onChange`, once a file is chosen -- but the browser
+   * returns focus to the button that opened the picker once it closes, so by
+   * the time the upload starts this button is exactly what gets disabled and
+   * blurred. "Supprimer définitivement mon compte" only stays on this page on
+   * failure (success navigates away), but the loss is real on that path too.
+   */
+  const shouldRefocusAvatarRef = useRef(false);
+  useEffect(() => {
+    if (!avatarBusy && shouldRefocusAvatarRef.current) {
+      shouldRefocusAvatarRef.current = false;
+      avatarButtonRef.current?.focus();
+    }
+  }, [avatarBusy]);
+  const shouldRefocusDeleteRef = useRef(false);
+  useEffect(() => {
+    if (!deleting && shouldRefocusDeleteRef.current) {
+      shouldRefocusDeleteRef.current = false;
+      deleteButtonRef.current?.focus();
+    }
+  }, [deleting]);
 
   const [firstName, setFirstName] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -75,6 +102,7 @@ export default function AccountProfilePage() {
 
   const uploadAvatar = async (file: File | undefined) => {
     if (!file || !token) return;
+    shouldRefocusAvatarRef.current = true;
     setAvatarBusy(true);
     setAvatarError(null);
     try {
@@ -97,6 +125,7 @@ export default function AccountProfilePage() {
     if (!window.confirm('Supprimer définitivement votre compte ? Vos annonces seront retirées.')) return;
     if (window.prompt('Pour confirmer, tapez SUPPRIMER') !== 'SUPPRIMER') return;
 
+    shouldRefocusDeleteRef.current = true;
     setDeleting(true);
     try {
       await apiFetch('/users/me', { method: 'DELETE', token });
@@ -248,6 +277,7 @@ export default function AccountProfilePage() {
                 style={{ display: 'none' }}
               />
               <button
+                ref={avatarButtonRef}
                 type="button"
                 disabled={avatarBusy}
                 onClick={() => avatarInputRef.current?.click()}
@@ -380,6 +410,7 @@ export default function AccountProfilePage() {
           interlocuteur.
         </p>
         <button
+          ref={deleteButtonRef}
           type="button"
           onClick={() => void deleteAccount()}
           disabled={deleting}
