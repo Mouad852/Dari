@@ -47,6 +47,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
@@ -201,6 +202,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
     shouldRefocusRef.current = true;
     setSending(true);
+    setSendError(null);
     void (async () => {
       try {
         const sent = await apiFetch<Message>(`/conversations/${encodeURIComponent(id)}/messages`, {
@@ -211,7 +213,13 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         setMessages((prev) => [...(prev ?? []), sent]);
         setDraft('');
       } catch (cause) {
-        setError(cause instanceof ApiError ? cause.message : 'Le message n’a pas pu être envoyé.');
+        // A distinct state from the page-level `error` above on purpose: that
+        // one drives the full-page early return a few lines down, so reusing
+        // it here replaced the entire thread -- header, history, composer --
+        // with a bare "Retour aux messages" screen on every failed send,
+        // discarding a still-perfectly-loaded conversation over one message
+        // that didn't go through.
+        setSendError(cause instanceof ApiError ? cause.message : 'Le message n’a pas pu être envoyé.');
       } finally {
         setSending(false);
       }
@@ -421,6 +429,14 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
           borderTop: '1px solid var(--border-hairline)',
         }}
       >
+        {sendError ? (
+          <p
+            role="alert"
+            style={{ ...THREAD_COLUMN, margin: '0 0 var(--space-2)', color: 'var(--danger)', font: 'var(--type-body-sm)' }}
+          >
+            {sendError}
+          </p>
+        ) : null}
         <div style={{ ...THREAD_COLUMN, display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
         {/*
           A bare input rather than the design system's Input: this one is a pill
