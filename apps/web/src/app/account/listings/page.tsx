@@ -323,7 +323,7 @@ export default function MyListingsPage() {
                             <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
                               {listing.neighborhood}
                             </div>
-                            <h3
+                            <h2
                               ref={(el) => {
                                 if (el) cardTitleRefs.current.set(listing.id, el);
                                 else cardTitleRefs.current.delete(listing.id);
@@ -332,7 +332,7 @@ export default function MyListingsPage() {
                               style={{ margin: '0.3rem 0 0', font: 'var(--type-h3)', color: 'var(--text-heading)' }}
                             >
                               {listing.title}
-                            </h3>
+                            </h2>
                           </div>
 
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>

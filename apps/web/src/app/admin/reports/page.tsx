@@ -210,7 +210,7 @@ export default function AdminReportsPage() {
                       <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
                         {REPORT_TARGET_LABELS[item.targetType]}
                       </div>
-                      <h3
+                      <h2
                         ref={(el) => {
                           if (el) rowTitleRefs.current.set(key, el);
                           else rowTitleRefs.current.delete(key);
@@ -224,7 +224,7 @@ export default function AdminReportsPage() {
                             <ExternalLink size={14} />
                           </Link>
                         ) : null}
-                      </h3>
+                      </h2>
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

@@ -805,7 +805,7 @@ function SearchResultsPageContent() {
               padding="var(--card-pad-lg)"
               style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-5)' }}
             >
-              <h3 style={{ margin: 0, font: 'var(--type-h3)' }}>Filtres</h3>
+              <h2 style={{ margin: 0, font: 'var(--type-h3)' }}>Filtres</h2>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-4)' }}>
                 {/*
