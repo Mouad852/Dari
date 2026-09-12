@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Heart } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { ListingCard } from '@/components/ds/ListingCard';
 import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
@@ -30,6 +30,45 @@ export default function FavoritesPage() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const loadMoreRef = useRef<HTMLButtonElement | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+
+  /**
+   * Same `disabled={<async state>}` focus-loss fix used elsewhere in the
+   * app: `disabled={loadingMore}` blurs this button to `<body>` on every
+   * page fetched. There's a second wrinkle specific to this button, though:
+   * it's conditionally rendered on `nextCursor` (`{nextCursor ? <button>…
+   * : null}`), so loading the *last* page unmounts it in the very same
+   * update that clears `loadingMore` -- the button that needs refocusing is
+   * simply gone by the time this effect runs. Falls back to the heading,
+   * the same stable target `handleRemove` below already uses, whenever that
+   * happens.
+   */
+  const shouldRefocusLoadMoreRef = useRef(false);
+  useEffect(() => {
+    if (!loadingMore && shouldRefocusLoadMoreRef.current) {
+      shouldRefocusLoadMoreRef.current = false;
+      (loadMoreRef.current ?? headingRef.current)?.focus();
+    }
+  }, [loadingMore]);
+
+  /**
+   * The unmount-on-click focus loss already fixed three times in the publish
+   * wizard, found here too: `handleRemove` below filters the removed card
+   * straight out of `items` in the same tick as the click, which unmounts
+   * the card's own heart/remove `IconButton` -- exactly the button that had
+   * focus -- and the browser drops focus to `<body>`. Same fix shape: a
+   * stable, always-rendered element (the page heading) with a ref and
+   * `tabIndex={-1}`, armed by a flag set at the point of removal and
+   * consumed once `items` actually changes.
+   */
+  const shouldRefocusHeadingRef = useRef(false);
+  useEffect(() => {
+    if (shouldRefocusHeadingRef.current) {
+      shouldRefocusHeadingRef.current = false;
+      headingRef.current?.focus();
+    }
+  }, [items]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -64,6 +103,7 @@ export default function FavoritesPage() {
 
   const handleLoadMore = () => {
     if (!nextCursor || !token || loadingMore) return;
+    shouldRefocusLoadMoreRef.current = true;
     setLoadingMore(true);
     void (async () => {
       try {
@@ -85,6 +125,7 @@ export default function FavoritesPage() {
     if (!token || removingId) return;
     const previous = items;
     setRemovingId(listingId);
+    shouldRefocusHeadingRef.current = true;
     setItems((current) => (current ?? []).filter((item) => item.id !== listingId));
 
     void (async () => {
@@ -115,7 +156,7 @@ export default function FavoritesPage() {
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Favoris
             </div>
-            <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Mes annonces sauvegardées</h1>
+            <h1 ref={headingRef} tabIndex={-1} style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Mes annonces sauvegardées</h1>
           </div>
 
           {items && items.length > 0 ? (
@@ -238,6 +279,7 @@ export default function FavoritesPage() {
 
             {nextCursor ? (
               <button
+                ref={loadMoreRef}
                 type="button"
                 onClick={handleLoadMore}
                 disabled={loadingMore}
