@@ -211,15 +211,28 @@ export default function AccountPage() {
             </div>
           </div>
 
+          {/*
+            Three plain, unlinked <div>s before this fix -- and, it turns
+            out, the *only* place in the entire app that ever mentions
+            /account/listings or /favorites at all: neither has a single
+            other <Link> pointing at it anywhere, and /messages has just one
+            (a thread's own "back" link, not an entry point from outside the
+            messages section). With no persistent site nav either, these
+            three stat cards were this app's sole intended gateway to a
+            user's own listings, conversations and favourites -- styled and
+            positioned exactly like a set of navigation cards, just missing
+            the one thing that makes them navigate.
+          */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-3)' }}>
             {(stats ? [
-              ['Annonces', `${stats.listings}${stats.listingsHasMore ? '+' : ''} annonce${stats.listings > 1 ? 's' : ''}`],
-              ['Messages', `${stats.conversations}${stats.conversationsHasMore ? '+' : ''} conversation${stats.conversations > 1 ? 's' : ''}`],
-              ['Favoris', `${stats.favorites} sauvegardé${stats.favorites > 1 ? 's' : ''}`],
+              ['Annonces', `${stats.listings}${stats.listingsHasMore ? '+' : ''} annonce${stats.listings > 1 ? 's' : ''}`, '/account/listings'],
+              ['Messages', `${stats.conversations}${stats.conversationsHasMore ? '+' : ''} conversation${stats.conversations > 1 ? 's' : ''}`, '/messages'],
+              ['Favoris', `${stats.favorites} sauvegardé${stats.favorites > 1 ? 's' : ''}`, '/favorites'],
             ] as const : []
-            ).map(([label, value]) => (
-              <div
+            ).map(([label, value, href]) => (
+              <Link
                 key={label}
+                href={href}
                 style={{
                   background: 'var(--sable-50)',
                   border: '1px solid var(--border-hairline)',
@@ -227,11 +240,13 @@ export default function AccountPage() {
                   padding: 'var(--space-3)',
                   display: 'grid',
                   gap: 4,
+                  textDecoration: 'none',
+                  color: 'inherit',
                 }}
               >
                 <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{label}</span>
                 <span style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>{value}</span>
-              </div>
+              </Link>
             ))}
           </div>
         </section>
