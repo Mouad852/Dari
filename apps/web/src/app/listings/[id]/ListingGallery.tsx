@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Heart, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { apiFetch, apiOrigin } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
@@ -32,6 +32,16 @@ export function ListingGallery({
   const [photoIndex, setPhotoIndex] = useState(0);
   const [saved, setSaved] = useState(false);
   const [savePending, setSavePending] = useState(false);
+  const saveButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  /** Same `disabled={<async state>}` focus-loss fix as ContactButton/ContactOwnerButton: `disabled={savePending}` blurs this button to `<body>` on every toggle. */
+  const shouldRefocusSaveRef = useRef(false);
+  useEffect(() => {
+    if (!savePending && shouldRefocusSaveRef.current) {
+      shouldRefocusSaveRef.current = false;
+      saveButtonRef.current?.focus();
+    }
+  }, [savePending]);
 
   useEffect(() => {
     let current = true;
@@ -57,6 +67,7 @@ export function ListingGallery({
     }
     const next = !saved;
     setSaved(next);
+    shouldRefocusSaveRef.current = true;
     setSavePending(true);
     try {
       await apiFetch(`/favorites/${listingId}`, { method: next ? 'POST' : 'DELETE', token });
@@ -116,6 +127,7 @@ export function ListingGallery({
             <Share2 size={18} />
           </button>
           <button
+            ref={saveButtonRef}
             type="button"
             aria-label={saved ? 'Retirer des favoris' : 'Enregistrer'}
             onClick={() => void toggleSaved()}
