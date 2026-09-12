@@ -7,6 +7,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 import { apiFetch, apiOrigin } from '@/lib/api';
 import { amount } from '@/lib/format';
@@ -278,8 +279,8 @@ export default async function HomePage() {
               Trouvez une colocation à Rabat, Casablanca, Marrakech ou Tanger — avec des profils vérifiés et des loyers annoncés charges comprises.
             </p>
             <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
-              <button
-                type="button"
+              <Link
+                href="/listings"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -294,12 +295,13 @@ export default async function HomePage() {
                   font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
                   boxShadow: 'var(--shadow-brand)',
                   cursor: 'pointer',
+                  textDecoration: 'none',
                 }}
               >
                 Voir les chambres
-              </button>
-              <button
-                type="button"
+              </Link>
+              <Link
+                href="/publish"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -313,11 +315,12 @@ export default async function HomePage() {
                   borderRadius: 'var(--radius-pill)',
                   font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
                   cursor: 'pointer',
+                  textDecoration: 'none',
                 }}
               >
                 <Plus size={18} />
                 Publier une annonce
-              </button>
+              </Link>
             </div>
           </div>
 
@@ -504,8 +507,8 @@ export default async function HomePage() {
               Publiez gratuitement, choisissez vos colocataires, encaissez le loyer en ligne.
             </p>
           </div>
-          <button
-            type="button"
+          <Link
+            href="/publish"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -520,10 +523,11 @@ export default async function HomePage() {
               font: 'var(--weight-semibold) var(--type-body) var(--font-ui)',
               boxShadow: 'var(--shadow-sm)',
               cursor: 'pointer',
+              textDecoration: 'none',
             }}
           >
             Publier une annonce
-          </button>
+          </Link>
         </div>
       </section>
     </main>
