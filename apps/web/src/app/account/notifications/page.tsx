@@ -134,7 +134,7 @@ export default function AccountNotificationsPage() {
                   flexShrink: 0,
                 }}
               >
-                <Icon size={18} />
+                <Icon size={18} aria-hidden="true" />
               </span>
 
               <div style={{ flex: 1, minWidth: 0 }}>

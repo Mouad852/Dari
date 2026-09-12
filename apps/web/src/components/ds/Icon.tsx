@@ -110,7 +110,6 @@ export interface IconProps {
   /** Filled variants, used by the favourite heart and rating star. */
   fill?: string;
   style?: CSSProperties;
-  'aria-hidden'?: boolean;
 }
 
 export function Icon({ name = 'home', size = 20, color = 'currentColor', fill, style }: IconProps) {

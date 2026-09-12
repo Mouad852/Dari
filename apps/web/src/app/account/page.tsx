@@ -285,7 +285,7 @@ export default function AccountPage() {
                   color: 'var(--clay-700)',
                 }}
               >
-                <Icon size={18} />
+                <Icon size={18} aria-hidden="true" />
               </span>
 
               <span style={{ flex: 1, minWidth: 0 }}>
@@ -293,7 +293,7 @@ export default function AccountPage() {
                 <span style={{ display: 'block', marginTop: 2, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{detail}</span>
               </span>
 
-              <ChevronRight size={18} color="var(--text-subtle)" />
+              <ChevronRight size={18} color="var(--text-subtle)" aria-hidden="true" />
             </Link>
           ))}
         </section>

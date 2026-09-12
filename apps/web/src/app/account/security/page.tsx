@@ -240,7 +240,7 @@ export default function AccountSecurityPage() {
                       color: 'var(--clay-700)',
                     }}
                   >
-                    <Icon size={18} />
+                    <Icon size={18} aria-hidden="true" />
                   </span>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -262,7 +262,7 @@ export default function AccountSecurityPage() {
                     >
                       {status}
                     </span>
-                    <ChevronRight size={18} color="var(--text-subtle)" />
+                    <ChevronRight size={18} color="var(--text-subtle)" aria-hidden="true" />
                   </div>
                 </div>
               ))}
