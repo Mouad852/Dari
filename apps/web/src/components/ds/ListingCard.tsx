@@ -55,6 +55,15 @@ export interface ListingCardProps {
   flatmates?: string;
   saved?: boolean;
   onSave?: () => void;
+  /**
+   * True while a save/unsave request for this card is in flight. Disables
+   * the button without unmounting it -- a caller that instead passes
+   * `onSave={pending ? undefined : () => …}` to hide the button mid-request
+   * unmounts whatever had focus and drops it to `<body>`, since the button
+   * disappears and a fresh one (with no memory of being focused) takes its
+   * place once the request settles.
+   */
+  savePending?: boolean;
   /** Where the card goes. Omit only for a card that is genuinely not a link. */
   href?: string;
   onClick?: () => void;
@@ -74,6 +83,7 @@ export function ListingCard({
   flatmates,
   saved = false,
   onSave,
+  savePending = false,
   href,
   onClick,
   layout = 'vertical',
@@ -181,6 +191,7 @@ export function ListingCard({
             active={saved}
             fill={saved ? 'currentColor' : undefined}
             label={saved ? 'Retirer des favoris' : 'Enregistrer'}
+            disabled={savePending}
             onClick={(event) => {
               event.stopPropagation();
               onSave();

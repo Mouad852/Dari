@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ds/Button';
 import { Dialog } from '@/components/ds/Dialog';
@@ -52,6 +52,32 @@ export function ReportDialog({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  /**
+   * Same `disabled={<async state>}` focus loss as elsewhere in the app:
+   * "Envoyer le signalement" carries `loading={pending}`, so a browser
+   * blurs it to `<body>` the instant a submit starts. On success, `done`
+   * flips true and the dialog's footer swaps to just "Fermer" -- the
+   * submit button itself unmounts, and it's not this component's own DOM,
+   * so there's no local heading ref to fall back to the way other fixes in
+   * this app use. `Dialog`'s panel (`role="dialog"`, always mounted and
+   * focusable with `tabIndex={-1}` for as long as this dialog stays open)
+   * survives that content swap, so it's what this falls back to.
+   */
+  const lastFocusedBeforeSubmitRef = useRef<HTMLElement | null>(null);
+  const armSubmitRefocus = () => {
+    const active = document.activeElement;
+    lastFocusedBeforeSubmitRef.current = active instanceof HTMLElement ? active : null;
+  };
+  useEffect(() => {
+    if (!pending && lastFocusedBeforeSubmitRef.current) {
+      const el = lastFocusedBeforeSubmitRef.current;
+      lastFocusedBeforeSubmitRef.current = null;
+      const usable = el.isConnected && !(el instanceof HTMLButtonElement && el.disabled);
+      const fallback = document.querySelector<HTMLElement>('[role="dialog"]');
+      (usable ? el : fallback)?.focus();
+    }
+  }, [pending]);
+
   const close = () => {
     setOpen(false);
     if (done) {
@@ -69,6 +95,7 @@ export function ReportDialog({
 
   const submit = async () => {
     if (!reason || pending) return;
+    armSubmitRefocus();
     setPending(true);
     setError(null);
     try {

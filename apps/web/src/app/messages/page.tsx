@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ds/Button';
 import { Card } from '@/components/ds/Card';
@@ -38,6 +38,29 @@ export default function InboxPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+
+  /**
+   * Same `disabled={<async state>}` focus loss used elsewhere in the app:
+   * "Voir plus" carries `loading={loadingMore}` on the shared `Button`,
+   * which doesn't forward refs, so this captures `document.activeElement`
+   * rather than holding a ref to the button itself. Falls back to the
+   * page's own `<h1>` once the button is gone -- true once this load
+   * reaches the last page (`{nextCursor ? <Button>… : null}`).
+   */
+  const lastFocusedBeforeLoadMoreRef = useRef<HTMLElement | null>(null);
+  const armLoadMoreRefocus = () => {
+    const active = document.activeElement;
+    lastFocusedBeforeLoadMoreRef.current = active instanceof HTMLElement ? active : null;
+  };
+  useEffect(() => {
+    if (!loadingMore && lastFocusedBeforeLoadMoreRef.current) {
+      const el = lastFocusedBeforeLoadMoreRef.current;
+      lastFocusedBeforeLoadMoreRef.current = null;
+      const usable = el.isConnected && !(el instanceof HTMLButtonElement && el.disabled);
+      (usable ? el : headingRef.current)?.focus();
+    }
+  }, [loadingMore]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -73,6 +96,7 @@ export default function InboxPage() {
 
   const handleLoadMore = () => {
     if (!nextCursor || !token || loadingMore) return;
+    armLoadMoreRefocus();
     setLoadingMore(true);
     void (async () => {
       try {
@@ -119,7 +143,7 @@ export default function InboxPage() {
           <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
             Messages
           </div>
-          <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Conversations</h1>
+          <h1 ref={headingRef} tabIndex={-1} style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Conversations</h1>
         </header>
 
         {error ? (

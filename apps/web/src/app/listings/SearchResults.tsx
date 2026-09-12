@@ -145,7 +145,8 @@ function SearchListingCard({
       badgeTone={listing.distanceMetres ? 'neutral' : 'brand'}
       href={`/listings/${listing.id}`}
       saved={favorited}
-      onSave={favoritePending ? undefined : () => onToggleFavorite(listing.id)}
+      onSave={() => onToggleFavorite(listing.id)}
+      savePending={favoritePending}
     />
   );
 }
@@ -252,12 +253,30 @@ function SearchResultsPageContent() {
     };
   }, []);
 
+  /**
+   * `ListingCard`'s heart button now stays mounted and just disables while
+   * `favoritePendingId` matches (see `savePending` on `ListingCard`), so --
+   * unlike the fallback-to-a-heading fixes elsewhere in the app -- the same
+   * button can always be refocused directly once the request settles.
+   */
+  const lastFocusedBeforeFavoriteRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!favoritePendingId && lastFocusedBeforeFavoriteRef.current) {
+      const el = lastFocusedBeforeFavoriteRef.current;
+      lastFocusedBeforeFavoriteRef.current = null;
+      if (el.isConnected) el.focus();
+    }
+  }, [favoritePendingId]);
+
   const handleToggleFavorite = (listingId: string) => {
     if (favoritePendingId) return;
     if (!favoriteToken) {
       router.push('/sign-in');
       return;
     }
+
+    const active = document.activeElement;
+    lastFocusedBeforeFavoriteRef.current = active instanceof HTMLElement ? active : null;
 
     const wasFavorited = favoritedIds.has(listingId);
     setFavoritedIds((current) => {
@@ -624,8 +643,29 @@ function SearchResultsPageContent() {
     return `${n} annonce${n > 1 ? 's' : ''}${suffix}`;
   }, [city, resultCount]);
 
+  /**
+   * Same `disabled={<async state>}` focus loss used elsewhere in the app:
+   * "Afficher plus d'annonces" carries `loading={loadingMore}` on the
+   * shared `Button`, which doesn't forward refs, so this captures
+   * `document.activeElement` rather than holding a ref to the button
+   * itself. Falls back to the results heading once the button is gone --
+   * true once this load reaches the last page.
+   */
+  const lastFocusedBeforeLoadMoreRef = useRef<HTMLElement | null>(null);
+  const resultsHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  useEffect(() => {
+    if (!loadingMore && lastFocusedBeforeLoadMoreRef.current) {
+      const el = lastFocusedBeforeLoadMoreRef.current;
+      lastFocusedBeforeLoadMoreRef.current = null;
+      const usable = el.isConnected && !(el instanceof HTMLButtonElement && el.disabled);
+      (usable ? el : resultsHeadingRef.current)?.focus();
+    }
+  }, [loadingMore]);
+
   const handleLoadMore = () => {
     if (!nextCursor || loadingMore) return;
+    const active = document.activeElement;
+    lastFocusedBeforeLoadMoreRef.current = active instanceof HTMLElement ? active : null;
     setLoadingMore(true);
     void (async () => {
       const params = new URLSearchParams(searchParams.toString());
@@ -673,7 +713,7 @@ function SearchResultsPageContent() {
 
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-5)', flexWrap: 'wrap', minWidth: 0 }}>
           <div style={{ minWidth: 0 }}>
-            <h1 style={{ margin: 0, font: 'var(--weight-bold) clamp(24px, 5vw, 32px)/1.2 var(--font-display)' }}>{resultHeading}</h1>
+            <h1 ref={resultsHeadingRef} tabIndex={-1} style={{ margin: 0, font: 'var(--weight-bold) clamp(24px, 5vw, 32px)/1.2 var(--font-display)' }}>{resultHeading}</h1>
             <p style={{ marginTop: 6, font: 'var(--type-body-sm, 13px)', color: 'var(--text-muted)' }}>Mises à jour aujourd'hui · loyers charges comprises</p>
           </div>
 

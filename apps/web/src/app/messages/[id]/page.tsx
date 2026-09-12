@@ -51,6 +51,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   const [sending, setSending] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLInputElement | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
 
   useEffect(() => {
     let isCurrent = true;
@@ -133,8 +134,33 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     hasScrolled.current = true;
   }, [messageCount]);
 
+  /**
+   * Same `disabled={<async state>}` focus loss as the composer below, this
+   * time on "Voir les messages suivants" (`loading={loadingMore}` on the
+   * shared `Button`, which doesn't forward refs -- so this captures
+   * `document.activeElement` instead of holding a ref to the button
+   * itself, same technique as the publish wizard's photo buttons). Falls
+   * back to the thread header's `<h1>` when the captured element is gone
+   * -- true once this load reaches the last page and the button itself
+   * unmounts (`{nextCursor ? <Button>… : null}`).
+   */
+  const lastFocusedBeforeLoadMoreRef = useRef<HTMLElement | null>(null);
+  const armLoadMoreRefocus = () => {
+    const active = document.activeElement;
+    lastFocusedBeforeLoadMoreRef.current = active instanceof HTMLElement ? active : null;
+  };
+  useEffect(() => {
+    if (!loadingMore && lastFocusedBeforeLoadMoreRef.current) {
+      const el = lastFocusedBeforeLoadMoreRef.current;
+      lastFocusedBeforeLoadMoreRef.current = null;
+      const usable = el.isConnected && !(el instanceof HTMLButtonElement && el.disabled);
+      (usable ? el : headingRef.current)?.focus();
+    }
+  }, [loadingMore]);
+
   const handleLoadMore = () => {
     if (!nextCursor || !token || loadingMore) return;
+    armLoadMoreRefocus();
     setLoadingMore(true);
     void (async () => {
       try {
@@ -268,7 +294,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
           >
             {conversation.otherUserDisplayName.charAt(0).toUpperCase()}
           </span>
-          <h1 style={{ margin: 0, flex: 1, minWidth: 0, font: 'var(--type-label)', color: 'var(--text-heading)' }}>
+          <h1 ref={headingRef} tabIndex={-1} style={{ margin: 0, flex: 1, minWidth: 0, font: 'var(--type-label)', color: 'var(--text-heading)' }}>
             {conversation.otherUserDisplayName}
           </h1>
           </div>
