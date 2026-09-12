@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ds/Badge';
 import { Button } from '@/components/ds/Button';
@@ -24,6 +24,45 @@ export default function AdminListingsQueuePage() {
   /** The listing being rejected, while the reason dialog is open. */
   const [rejecting, setRejecting] = useState<ListingDetail | null>(null);
   const [reason, setReason] = useState('');
+  const pageHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const rowTitleRefs = useRef(new Map<string, HTMLHeadingElement>());
+
+  /**
+   * Same `disabled={<async state>}` focus loss as everywhere else in the
+   * app: "Valider" (`loading={isPending}`) and "Rejeter" (`disabled={isPending}`)
+   * both blur to `<body>` the instant a review action starts. Both outcomes
+   * remove the item from `queue` on success, unmounting the whole `<li>` --
+   * including the row's own `<h2>`, hence the page-heading fallback -- but
+   * "Rejeter" has an extra wrinkle: the actual API call fires from
+   * `confirmReject`, inside the reason dialog, whose "Rejeter l'annonce"
+   * button is what's really focused at the moment `setPendingId` runs. That
+   * dialog closes immediately (`setRejecting(null)` right after), so the
+   * captured element is always already gone from the DOM by the time this
+   * effect runs -- correctly falling through to the row's own `<h2>` (still
+   * there on a failure) without any special-casing needed.
+   */
+  const lastFocusedBeforeActionRef = useRef<HTMLElement | null>(null);
+  const lastActionListingIdRef = useRef<string | null>(null);
+  const armActionRefocus = (listingId: string) => {
+    const active = document.activeElement;
+    lastFocusedBeforeActionRef.current = active instanceof HTMLElement ? active : null;
+    lastActionListingIdRef.current = listingId;
+  };
+  useEffect(() => {
+    if (pendingId === null && lastFocusedBeforeActionRef.current) {
+      const el = lastFocusedBeforeActionRef.current;
+      const listingId = lastActionListingIdRef.current;
+      lastFocusedBeforeActionRef.current = null;
+      lastActionListingIdRef.current = null;
+      const usable = el.isConnected && !(el instanceof HTMLButtonElement && el.disabled);
+      if (usable) {
+        el.focus();
+      } else {
+        const rowTitle = listingId ? rowTitleRefs.current.get(listingId) : undefined;
+        (rowTitle ?? pageHeadingRef.current)?.focus();
+      }
+    }
+  }, [pendingId]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -55,6 +94,7 @@ export default function AdminListingsQueuePage() {
 
   const handleApprove = (id: string) => {
     if (pendingId || !token) return;
+    armActionRefocus(id);
     setPendingId(id);
     setError(null);
     void (async () => {
@@ -84,6 +124,7 @@ export default function AdminListingsQueuePage() {
     if (!value || !rejecting || !token) return;
     const id = rejecting.id;
 
+    armActionRefocus(id);
     setPendingId(id);
     setError(null);
     setRejecting(null);
@@ -127,7 +168,7 @@ export default function AdminListingsQueuePage() {
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Modération
             </div>
-            <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>File de modération</h1>
+            <h1 ref={pageHeadingRef} tabIndex={-1} style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>File de modération</h1>
           </div>
 
           {/*
@@ -175,7 +216,16 @@ export default function AdminListingsQueuePage() {
                           <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
                             {item.neighborhood}
                           </div>
-                          <h2 style={{ margin: '0.3rem 0 0', font: 'var(--type-h3)', color: 'var(--text-heading)' }}>{item.title}</h2>
+                          <h2
+                            ref={(el) => {
+                              if (el) rowTitleRefs.current.set(item.id, el);
+                              else rowTitleRefs.current.delete(item.id);
+                            }}
+                            tabIndex={-1}
+                            style={{ margin: '0.3rem 0 0', font: 'var(--type-h3)', color: 'var(--text-heading)' }}
+                          >
+                            {item.title}
+                          </h2>
                         </div>
                         <Badge tone="neutral">{LISTING_STATUS_LABELS[item.status]}</Badge>
                       </div>

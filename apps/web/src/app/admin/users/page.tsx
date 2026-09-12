@@ -1,7 +1,7 @@
 'use client';
 
 import { Ban, ShieldOff, UserRound } from 'lucide-react';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
@@ -20,6 +20,41 @@ export default function AdminUsersPage() {
   const [query, setQuery] = useState('');
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pageHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const rowNameRefs = useRef(new Map<string, HTMLSpanElement>());
+
+  /**
+   * Same `disabled={<async state>}` focus loss as the other admin queues,
+   * but a different aftermath: a user row is never removed from `users` --
+   * suspend/ban both patch `status` in place -- so this is the same
+   * "button hides after its own success" shape as `admin/listings`' submit
+   * (suspending hides "Suspendre"; banning hides the whole action group,
+   * since a banned user gets no actions at all). Falls back to the row's
+   * own display-name `<span>` rather than a heading, since that's the only
+   * always-rendered per-row element here.
+   */
+  const lastFocusedBeforeActionRef = useRef<HTMLElement | null>(null);
+  const lastActionUserIdRef = useRef<string | null>(null);
+  const armActionRefocus = (id: string) => {
+    const active = document.activeElement;
+    lastFocusedBeforeActionRef.current = active instanceof HTMLElement ? active : null;
+    lastActionUserIdRef.current = id;
+  };
+  useEffect(() => {
+    if (pendingId === null && lastFocusedBeforeActionRef.current) {
+      const el = lastFocusedBeforeActionRef.current;
+      const userId = lastActionUserIdRef.current;
+      lastFocusedBeforeActionRef.current = null;
+      lastActionUserIdRef.current = null;
+      const usable = el.isConnected && !(el instanceof HTMLButtonElement && el.disabled);
+      if (usable) {
+        el.focus();
+      } else {
+        const rowName = userId ? rowNameRefs.current.get(userId) : undefined;
+        (rowName ?? pageHeadingRef.current)?.focus();
+      }
+    }
+  }, [pendingId]);
 
   const load = (idToken: string, searchQuery: string) => {
     void (async () => {
@@ -54,6 +89,7 @@ export default function AdminUsersPage() {
 
   const handleSuspend = (id: string) => {
     if (pendingId || !token) return;
+    armActionRefocus(id);
     setPendingId(id);
     setError(null);
     void (async () => {
@@ -73,6 +109,7 @@ export default function AdminUsersPage() {
     if (!window.confirm('Bannir définitivement ce compte ? Ses annonces seront retirées.')) return;
     const reason = window.prompt('Raison du bannissement (facultatif) :') ?? undefined;
 
+    armActionRefocus(id);
     setPendingId(id);
     setError(null);
     void (async () => {
@@ -102,7 +139,7 @@ export default function AdminUsersPage() {
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Administration
             </div>
-            <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Utilisateurs</h1>
+            <h1 ref={pageHeadingRef} tabIndex={-1} style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Utilisateurs</h1>
           </div>
 
           {users ? (
@@ -203,7 +240,16 @@ export default function AdminUsersPage() {
 
                   <div style={{ flex: 1, minWidth: 200 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>{user.displayName}</span>
+                      <span
+                        ref={(el) => {
+                          if (el) rowNameRefs.current.set(user.id, el);
+                          else rowNameRefs.current.delete(user.id);
+                        }}
+                        tabIndex={-1}
+                        style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}
+                      >
+                        {user.displayName}
+                      </span>
                       <span
                         style={{
                           borderRadius: 'var(--radius-pill)',

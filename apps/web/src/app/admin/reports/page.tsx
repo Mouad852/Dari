@@ -2,7 +2,7 @@
 
 import { AlertTriangle, Ban, Check, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
@@ -35,6 +35,40 @@ export default function AdminReportsPage() {
   const [token, setToken] = useState<string | null>(null);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pageHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const rowTitleRefs = useRef(new Map<string, HTMLHeadingElement>());
+
+  /**
+   * Same `disabled={<async state>}` focus loss as the other moderation
+   * queue: every action button shares `isPending`, and a successful action
+   * always removes the row (`setQueue` filters it out), unmounting the
+   * button -- and its row's own `<h3>` -- that had focus. Falls back to
+   * the row title on a failure (row stays, button re-enables but the
+   * capture may already be stale) and the page heading once the row itself
+   * is gone.
+   */
+  const lastFocusedBeforeActionRef = useRef<HTMLElement | null>(null);
+  const lastActionKeyRef = useRef<string | null>(null);
+  const armActionRefocus = (key: string) => {
+    const active = document.activeElement;
+    lastFocusedBeforeActionRef.current = active instanceof HTMLElement ? active : null;
+    lastActionKeyRef.current = key;
+  };
+  useEffect(() => {
+    if (pendingKey === null && lastFocusedBeforeActionRef.current) {
+      const el = lastFocusedBeforeActionRef.current;
+      const key = lastActionKeyRef.current;
+      lastFocusedBeforeActionRef.current = null;
+      lastActionKeyRef.current = null;
+      const usable = el.isConnected && !(el instanceof HTMLButtonElement && el.disabled);
+      if (usable) {
+        el.focus();
+      } else {
+        const rowTitle = key ? rowTitleRefs.current.get(key) : undefined;
+        (rowTitle ?? pageHeadingRef.current)?.focus();
+      }
+    }
+  }, [pendingKey]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -75,6 +109,7 @@ export default function AdminReportsPage() {
 
     const reason = window.prompt(ACTION_REASON_PROMPT[action]) ?? undefined;
 
+    armActionRefocus(key);
     setPendingKey(key);
     setError(null);
     void (async () => {
@@ -108,7 +143,7 @@ export default function AdminReportsPage() {
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Modération
             </div>
-            <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Signalements</h1>
+            <h1 ref={pageHeadingRef} tabIndex={-1} style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Signalements</h1>
           </div>
 
           {queue ? (
@@ -175,7 +210,14 @@ export default function AdminReportsPage() {
                       <div style={{ font: 'var(--type-eyebrow)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-subtle)' }}>
                         {REPORT_TARGET_LABELS[item.targetType]}
                       </div>
-                      <h3 style={{ margin: '0.3rem 0 0', font: 'var(--type-h3)', color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <h3
+                        ref={(el) => {
+                          if (el) rowTitleRefs.current.set(key, el);
+                          else rowTitleRefs.current.delete(key);
+                        }}
+                        tabIndex={-1}
+                        style={{ margin: '0.3rem 0 0', font: 'var(--type-h3)', color: 'var(--text-heading)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                      >
                         {title ?? `#${item.targetId.slice(0, 8)}`}
                         {item.targetType === 'LISTING' ? (
                           <Link href={`/listings/${item.targetId}`} aria-label="Voir l’annonce" style={{ color: 'var(--text-subtle)', display: 'inline-flex' }}>
