@@ -23,6 +23,14 @@ export default function AdminUsersPage() {
   const pageHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const rowNameRefs = useRef(new Map<string, HTMLSpanElement>());
 
+  // No route-change announcement exists anywhere in this app for a
+  // client-side transition -- see the same fix on account/listings/page.tsx.
+  // The heading is part of the always-rendered header, so focusing it on
+  // mount announces arrival immediately, before the queue itself has loaded.
+  useEffect(() => {
+    pageHeadingRef.current?.focus();
+  }, []);
+
   /**
    * Same `disabled={<async state>}` focus loss as the other admin queues,
    * but a different aftermath: a user row is never removed from `users` --

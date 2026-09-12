@@ -70,6 +70,15 @@ export default function FavoritesPage() {
     }
   }, [items]);
 
+  // No route-change announcement exists anywhere in this app for a
+  // client-side transition -- see the same fix on account/listings/page.tsx.
+  // The heading is part of the always-rendered header, so focusing it on
+  // mount announces arrival immediately, before the favourites themselves
+  // have loaded.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
   useEffect(() => {
     let isCurrent = true;
 

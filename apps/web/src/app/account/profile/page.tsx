@@ -23,6 +23,16 @@ export default function AccountProfilePage() {
   const [deleting, setDeleting] = useState(false);
   const deleteButtonRef = useRef<HTMLButtonElement | null>(null);
   const saveButtonRef = useRef<HTMLButtonElement | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+
+  // No route-change announcement exists anywhere in this app for a
+  // client-side transition -- see the same fix on account/listings/page.tsx.
+  // This page's heading only exists once `profile` has loaded (the loading
+  // branch has no heading at all), so the effect is keyed on `profile`
+  // rather than firing once on mount.
+  useEffect(() => {
+    if (profile) headingRef.current?.focus();
+  }, [profile]);
 
   /**
    * Same `disabled={<async state>}` focus-loss fix as sign-in/sign-up: the
@@ -198,7 +208,7 @@ export default function AccountProfilePage() {
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Compte
             </div>
-            <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Profil public</h1>
+            <h1 ref={headingRef} tabIndex={-1} style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Profil public</h1>
           </div>
 
           <button

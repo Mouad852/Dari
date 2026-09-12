@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Bell, ChevronRight, CreditCard, Lock, LogOut, PencilLine, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { apiFetch, ApiError, type CursorPage } from '@/lib/api';
 import { getIdToken, signOut } from '@/lib/firebase';
@@ -48,6 +48,16 @@ export default function AccountPage() {
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+
+  // No route-change announcement exists anywhere in this app for a
+  // client-side transition -- see the same fix on account/listings/page.tsx.
+  // Unlike that page, this one's heading only exists once `profile` has
+  // loaded (the loading branch has no heading at all), so the effect is
+  // keyed on `profile` rather than firing once on mount.
+  useEffect(() => {
+    if (profile) headingRef.current?.focus();
+  }, [profile]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -136,7 +146,7 @@ export default function AccountPage() {
             <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               Compte
             </div>
-            <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Votre profil</h1>
+            <h1 ref={headingRef} tabIndex={-1} style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Votre profil</h1>
           </div>
 
           {/* Had no onClick at all -- editing a profile happens on /account/profile, which every other entry point on this page already links to. */}

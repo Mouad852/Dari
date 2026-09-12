@@ -54,6 +54,15 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   const composerRef = useRef<HTMLInputElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
 
+  // No route-change announcement exists anywhere in this app for a
+  // client-side transition -- see the same fix on account/listings/page.tsx.
+  // This page's heading only exists once the conversation has loaded (the
+  // "Chargement de la conversation…" branch has no heading at all), so the
+  // effect is keyed on `conversation` rather than firing once on mount.
+  useEffect(() => {
+    if (conversation) headingRef.current?.focus();
+  }, [conversation]);
+
   useEffect(() => {
     let isCurrent = true;
 

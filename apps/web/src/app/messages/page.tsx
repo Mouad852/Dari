@@ -40,6 +40,16 @@ export default function InboxPage() {
   const [token, setToken] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
 
+  // No route-change announcement exists anywhere in this app for a
+  // client-side transition (the default for next/link) -- see the same fix
+  // on account/listings/page.tsx. The heading is part of the always-
+  // rendered header, not the data-dependent branch below it, so focusing it
+  // on mount announces arrival immediately, before the conversations
+  // themselves have loaded.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
   /**
    * Same `disabled={<async state>}` focus loss used elsewhere in the app:
    * "Voir plus" carries `loading={loadingMore}` on the shared `Button`,
