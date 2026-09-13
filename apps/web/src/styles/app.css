@@ -38,6 +38,20 @@
   box-shadow: none;
 }
 
+/* SiteNav's desktop header, hidden below the breakpoint where the mobile
+   bottom tab bar takes over instead. `display` lives in a class rather than
+   an inline style for the same reason `.search-filters-toggle` below does:
+   an inline `display` set on the element would beat this media query. */
+.site-nav-desktop {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .site-nav-desktop {
+    display: block;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

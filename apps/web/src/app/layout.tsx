@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import '@/styles/app.css';
 
 import { SiteFooter } from '@/components/SiteFooter';
+import { SiteNav } from '@/components/SiteNav';
 
 const sans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" className={`${sans.variable} ${mono.variable}`}>
       <body>
+        <SiteNav />
         {children}
         <SiteFooter />
       </body>
