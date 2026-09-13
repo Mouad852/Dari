@@ -46,9 +46,36 @@
   display: none;
 }
 
+/* The mobile-only counterparts: shown by default, hidden once the desktop
+   header takes over at the same breakpoint. The bottom bar is `position:
+   fixed`, so it needs a matching bottom-padding reservation on the page --
+   see `body` below -- or it sits on top of the last thing on the page
+   instead of beside it. The top bar is `position: sticky`, so it needs no
+   such reservation: sticky participates in normal flow, page content simply
+   starts below it. */
+.site-nav-mobile-top,
+.site-nav-mobile-bottom {
+  display: flex;
+}
+
+/* `.has-site-nav` is toggled by SiteNav itself, in step with the same route
+   check that decides whether it renders at all -- see the comment there. */
+body.has-site-nav {
+  padding-bottom: var(--tabbar-h);
+}
+
 @media (min-width: 900px) {
   .site-nav-desktop {
     display: block;
+  }
+
+  .site-nav-mobile-top,
+  .site-nav-mobile-bottom {
+    display: none;
+  }
+
+  body.has-site-nav {
+    padding-bottom: 0;
   }
 }
 

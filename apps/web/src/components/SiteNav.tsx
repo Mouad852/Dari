@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { Fragment, useEffect, useState, type CSSProperties } from 'react';
 
 import { Icon } from '@/components/ds/Icon';
 import { getIdToken } from '@/lib/firebase';
@@ -23,16 +23,21 @@ import { FULL_SCREEN_ROUTES } from '@/lib/fullScreenRoutes';
  * structure (sticky, `--nav-h-desktop`, glass background, the `Wordmark`
  * treatment), and `ui_kits/mobile_app/AppShell.jsx`'s `TABS`/`TabBar` for
  * the mobile bottom bar — verbatim down to the icon choices and labels
- * ("Explorer", "Profil"). One deliberate content departure from
- * `SiteHeader`: its own nav is four marketing links (`Chambres`,
+ * ("Explorer", "Profil"). Two deliberate content departures from the
+ * sources: `SiteHeader`'s own nav is four marketing links (`Chambres`,
  * `Colocataires`, `Villes`, `Comment ça marche`) plus a "Se connecter" /
  * "Publier une annonce" pair — none of which are the gap this component
- * exists to close. Replaced with the actual requested set: a working quick
+ * exists to close — replaced with the actual requested set: a working quick
  * search, and links to the three sections that had no way back to them.
- * `AppShell.jsx`'s `TabBar` also carries an unread-message-count badge on
- * the Messages tab (`unread` prop) — not built here, since it needs its own
- * fetch on every single page for something outside what was asked for;
- * flagged in TODO.md as a follow-up rather than added unprompted.
+ * `TabBar` renders each tab as a `<button>` that flips local component
+ * state, the right shape for the source's own single-screen mobile-app
+ * mockup; this is a real multi-page site, so each tab is a real `<Link>`
+ * instead, with `aria-current="page"` marking the active one the same way
+ * the desktop header's links already do. `AppShell.jsx`'s `TabBar` also
+ * carries an unread-message-count badge on the Messages tab (`unread`
+ * prop) — not built here, since it needs its own fetch on every single
+ * page for something outside what was asked for; flagged in TODO.md as a
+ * follow-up rather than added unprompted.
  */
 
 function useSignedIn() {
@@ -68,8 +73,20 @@ function Wordmark() {
 export function SiteNav() {
   const pathname = usePathname();
   const signedIn = useSignedIn();
+  const isFullScreenRoute = FULL_SCREEN_ROUTES.some((pattern) => pattern.test(pathname));
 
-  if (FULL_SCREEN_ROUTES.some((pattern) => pattern.test(pathname))) return null;
+  // The mobile bottom bar is `position: fixed`, so the page needs a matching
+  // bottom-padding reservation -- applied here, not as a blanket CSS rule,
+  // because a full-screen route (see below) renders no nav at all and a
+  // plain `body { padding-bottom }` rule has no way to know that: it would
+  // still reserve the space on `/messages/[id]`, whose `height: 100vh`
+  // layout can't absorb it without the exact sliver-of-scroll problem this
+  // whole exclusion exists to prevent.
+  useEffect(() => {
+    document.body.classList.toggle('has-site-nav', !isFullScreenRoute);
+  }, [isFullScreenRoute]);
+
+  if (isFullScreenRoute) return null;
 
   // null (auth still resolving -- usually one frame, while Firebase restores
   // a persisted session from IndexedDB) defaults to the signed-in
@@ -89,121 +106,190 @@ export function SiteNav() {
     textDecoration: 'none',
   });
 
+  const mobileTabs = [
+    { href: '/listings', icon: 'search', label: 'Explorer', active: pathname.startsWith('/listings') },
+    { href: '/favorites', icon: 'heart', label: 'Favoris', active: pathname === '/favorites' },
+    { href: '/messages', icon: 'message-circle', label: 'Messages', active: pathname.startsWith('/messages') },
+    { href: accountHref, icon: 'user-round', label: 'Profil', active: accountActive },
+  ] as const;
+
   return (
-    <header
-      className="site-nav-desktop"
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-        height: 'var(--nav-h-desktop)',
-        background: 'var(--surface-glass)',
-        backdropFilter: 'var(--blur-glass)',
-        borderBottom: '1px solid var(--border-hairline)',
-      }}
-    >
-      <div
+    <Fragment>
+      <header
+        className="site-nav-mobile-top"
         style={{
-          maxWidth: 'var(--container-max)',
-          height: '100%',
-          margin: '0 auto',
-          padding: '0 var(--gutter-desktop)',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          height: 'var(--nav-h-mobile)',
           display: 'flex',
           alignItems: 'center',
-          gap: 'var(--space-8)',
+          padding: '0 var(--gutter-mobile)',
+          background: 'var(--surface-card)',
+          borderBottom: '1px solid var(--border-hairline)',
         }}
       >
-        <Link href="/" style={{ textDecoration: 'none', flex: '0 0 auto' }}>
+        <Link href="/" style={{ textDecoration: 'none' }}>
           <Wordmark />
         </Link>
+      </header>
 
-        {/*
-          A plain GET form to /listings, same uncontrolled pattern as the
-          homepage's own hero search -- no client state, works with JS
-          disabled, and stays correct if SearchResults.tsx's own param
-          reading ever changes shape (it reads `neighborhood` from the URL
-          directly, not from anything this form tracks).
-        */}
-        <form
-          method="GET"
-          action="/listings"
-          role="search"
-          style={{
-            flex: '1 1 auto',
-            maxWidth: 360,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            height: 40,
-            padding: '0 8px 0 14px',
-            border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-pill)',
-            background: 'var(--surface-card)',
-          }}
-        >
-          <input
-            type="search"
-            name="neighborhood"
-            placeholder="Rechercher un quartier…"
-            aria-label="Rechercher un quartier"
+      <nav
+        aria-label="Navigation principale"
+        className="site-nav-mobile-bottom"
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 10,
+          display: 'flex',
+          height: 'var(--tabbar-h)',
+          background: 'var(--surface-card)',
+          borderTop: '1px solid var(--border-hairline)',
+          paddingBottom: 6,
+        }}
+      >
+        {mobileTabs.map((tab) => (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            aria-current={tab.active ? 'page' : undefined}
             style={{
               flex: 1,
-              minWidth: 0,
-              border: 'none',
-              outline: 'none',
-              background: 'transparent',
-              font: 'var(--type-body-sm)',
-              color: 'var(--text-heading)',
-            }}
-          />
-          <button
-            type="submit"
-            aria-label="Rechercher"
-            style={{
-              display: 'inline-flex',
+              display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              width: 28,
-              height: 28,
-              flex: '0 0 auto',
-              border: 'none',
-              borderRadius: 'var(--radius-pill)',
-              background: 'var(--brand)',
-              color: '#fff',
-              cursor: 'pointer',
+              gap: 4,
+              minHeight: 'var(--tap-min)',
+              color: tab.active ? 'var(--brand)' : 'var(--text-subtle)',
+              textDecoration: 'none',
             }}
           >
-            <Icon name="search" size={14} />
-          </button>
-        </form>
+            <Icon name={tab.icon} size={22} />
+            <span style={{ font: `var(--weight-${tab.active ? 'semibold' : 'medium'}) var(--text-micro)/1 var(--font-ui)` }}>
+              {tab.label}
+            </span>
+          </Link>
+        ))}
+      </nav>
 
-        <nav aria-label="Navigation principale" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-5)', flex: '0 0 auto' }}>
-          <Link
-            href="/messages"
-            aria-current={pathname.startsWith('/messages') ? 'page' : undefined}
-            style={linkStyle(pathname.startsWith('/messages'))}
-          >
-            <Icon name="message-circle" size={18} />
-            Messages
+      <header
+        className="site-nav-desktop"
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          height: 'var(--nav-h-desktop)',
+          background: 'var(--surface-glass)',
+          backdropFilter: 'var(--blur-glass)',
+          borderBottom: '1px solid var(--border-hairline)',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 'var(--container-max)',
+            height: '100%',
+            margin: '0 auto',
+            padding: '0 var(--gutter-desktop)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-8)',
+          }}
+        >
+          <Link href="/" style={{ textDecoration: 'none', flex: '0 0 auto' }}>
+            <Wordmark />
           </Link>
-          <Link
-            href="/favorites"
-            aria-current={pathname === '/favorites' ? 'page' : undefined}
-            style={linkStyle(pathname === '/favorites')}
+
+          {/*
+            A plain GET form to /listings, same uncontrolled pattern as the
+            homepage's own hero search -- no client state, works with JS
+            disabled, and stays correct if SearchResults.tsx's own param
+            reading ever changes shape (it reads `neighborhood` from the URL
+            directly, not from anything this form tracks).
+          */}
+          <form
+            method="GET"
+            action="/listings"
+            role="search"
+            style={{
+              flex: '1 1 auto',
+              maxWidth: 360,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              height: 40,
+              padding: '0 8px 0 14px',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-pill)',
+              background: 'var(--surface-card)',
+            }}
           >
-            <Icon name="heart" size={18} />
-            Favoris
-          </Link>
-          <Link
-            href={accountHref}
-            aria-current={accountActive ? 'page' : undefined}
-            style={linkStyle(accountActive)}
-          >
-            <Icon name="user-round" size={18} />
-            {accountLabel}
-          </Link>
-        </nav>
-      </div>
-    </header>
+            <input
+              type="search"
+              name="neighborhood"
+              placeholder="Rechercher un quartier…"
+              aria-label="Rechercher un quartier"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                font: 'var(--type-body-sm)',
+                color: 'var(--text-heading)',
+              }}
+            />
+            <button
+              type="submit"
+              aria-label="Rechercher"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 28,
+                height: 28,
+                flex: '0 0 auto',
+                border: 'none',
+                borderRadius: 'var(--radius-pill)',
+                background: 'var(--brand)',
+                color: '#fff',
+                cursor: 'pointer',
+              }}
+            >
+              <Icon name="search" size={14} />
+            </button>
+          </form>
+
+          <nav aria-label="Navigation principale" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-5)', flex: '0 0 auto' }}>
+            <Link
+              href="/messages"
+              aria-current={pathname.startsWith('/messages') ? 'page' : undefined}
+              style={linkStyle(pathname.startsWith('/messages'))}
+            >
+              <Icon name="message-circle" size={18} />
+              Messages
+            </Link>
+            <Link
+              href="/favorites"
+              aria-current={pathname === '/favorites' ? 'page' : undefined}
+              style={linkStyle(pathname === '/favorites')}
+            >
+              <Icon name="heart" size={18} />
+              Favoris
+            </Link>
+            <Link
+              href={accountHref}
+              aria-current={accountActive ? 'page' : undefined}
+              style={linkStyle(accountActive)}
+            >
+              <Icon name="user-round" size={18} />
+              {accountLabel}
+            </Link>
+          </nav>
+        </div>
+      </header>
+    </Fragment>
   );
 }
