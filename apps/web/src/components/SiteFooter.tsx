@@ -3,17 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-/**
- * Routes that bound their own layout to exactly the viewport height instead
- * of scrolling as a normal document — a conversation thread's sticky header,
- * internally-scrolling message list, and composer pinned at the bottom.
- * This footer appearing after them added a sliver of page-level scroll that
- * could nudge that whole layout upward, working against the point of
- * pinning the composer in the first place. Grep `height: '100vh'` under
- * `app/` before adding a route here — every other page uses `minHeight`,
- * where the footer at the bottom of a normal scroll is exactly right.
- */
-const FULL_SCREEN_ROUTES = [/^\/messages\/[^/]+$/];
+import { FULL_SCREEN_ROUTES } from '@/lib/fullScreenRoutes';
 
 export function SiteFooter() {
   const pathname = usePathname();
