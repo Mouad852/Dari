@@ -219,7 +219,7 @@ export function LocationPicker({ latitude, longitude, onChange, city }: Location
       </p>
 
       {farFromCity && (
-        <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--warning)' }}>
+        <p role="status" style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--warning)' }}>
           Ce point est loin de {city}. Vérifiez la ville sélectionnée : une annonce placée hors de sa
           ville n’apparaît pas dans les résultats de cette ville.
         </p>
