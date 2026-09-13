@@ -122,7 +122,11 @@ export function SiteNav() {
           top: 0,
           zIndex: 10,
           height: 'var(--nav-h-mobile)',
-          display: 'flex',
+          // `display` lives in the class, not here: an inline `display` beats
+          // the class's own `@media (min-width: 900px) { display: none }`
+          // override, exactly the trap `.search-filters-toggle` already
+          // documents elsewhere in app.css -- found live, the hard way, when
+          // both this bar and the desktop header rendered at once at 1280px.
           alignItems: 'center',
           padding: '0 var(--gutter-mobile)',
           background: 'var(--surface-card)',
@@ -143,7 +147,8 @@ export function SiteNav() {
           left: 0,
           right: 0,
           zIndex: 10,
-          display: 'flex',
+          // Same reasoning as the mobile top bar above -- `display` stays in
+          // the class only.
           height: 'var(--tabbar-h)',
           background: 'var(--surface-card)',
           borderTop: '1px solid var(--border-hairline)',
