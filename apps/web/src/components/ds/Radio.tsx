@@ -1,6 +1,6 @@
 'use client';
 
-import type { ChangeEvent, CSSProperties, ReactNode } from 'react';
+import { useId, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
 
 import { useFocusRing } from './useFocusRing';
 
@@ -35,6 +35,7 @@ export function Radio({
   style,
 }: RadioProps) {
   const { focusVisible, focusProps } = useFocusRing();
+  const descriptionId = useId();
 
   return (
     <label
@@ -57,6 +58,7 @@ export function Radio({
         onChange={onChange}
         readOnly={!onChange}
         disabled={disabled}
+        aria-describedby={description ? descriptionId : undefined}
         style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
         {...focusProps}
       />
@@ -85,7 +87,13 @@ export function Radio({
           {label}
         </span>
         {description && (
+          // aria-hidden + aria-describedby (on the input above), same
+          // reasoning as Switch/Checkbox: without it, this text would fold
+          // straight into the wrapping <label>'s accessible name and then be
+          // announced a second time via aria-describedby.
           <span
+            id={descriptionId}
+            aria-hidden="true"
             style={{
               display: 'block',
               font: 'var(--type-caption)',
