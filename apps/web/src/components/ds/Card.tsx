@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import { useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 
 /**
  * Base surface: white, 18px radius, warm hairline and a soft brown-tinted shadow.
@@ -40,6 +40,23 @@ export function Card({
   return (
     <div
       onClick={onClick}
+      // A plain <div onClick> is mouse-only: no keyboard focus, no Enter/Space
+      // activation, no accessible role. Not currently exercised by any caller
+      // (checked app-wide), but wiring this now means the first real caller
+      // gets a keyboard-usable card for free instead of shipping this exact
+      // bug the moment one passes `onClick`.
+      {...(onClick
+        ? {
+            role: 'button',
+            tabIndex: 0,
+            onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onClick(event as unknown as MouseEvent<HTMLDivElement>);
+              }
+            },
+          }
+        : {})}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
