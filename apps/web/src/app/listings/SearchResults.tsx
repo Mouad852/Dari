@@ -137,6 +137,15 @@ function SearchListingCard({
   return (
     <ListingCard
       title={listing.title || 'Annonce'}
+      // The filter panel's own "Filtres" is an h2, but on mobile it's
+      // collapsed (hidden) by default -- a hidden heading isn't counted at
+      // all in the accessible heading sequence, so the default h3 here
+      // would skip straight from the page's h1, undetectable by reading
+      // this file alone since the panel *is* visible on desktop, where h3
+      // is correctly one level under the visible "Filtres" h2. h2 works in
+      // both states: a valid sibling to "Filtres" when it's shown, still
+      // correctly one level under the page h1 when it's hidden.
+      headingLevel={2}
       district={listing.neighborhood}
       city={listing.city}
       price={amount(listing.priceRent)}

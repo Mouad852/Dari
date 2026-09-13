@@ -267,6 +267,11 @@ export default function FavoritesPage() {
                   <ListingCard
                     key={listing.id}
                     title={listing.title}
+                    // The page's own h1 has no h2 anywhere before this grid
+                    // (the only h2 here is the empty-state heading, a
+                    // mutually-exclusive branch) -- the default h3 would
+                    // skip a level.
+                    headingLevel={2}
                     district={listing.neighborhood}
                     city={listing.city}
                     price={amount(listing.priceRent)}

@@ -68,6 +68,19 @@ export interface ListingCardProps {
   href?: string;
   onClick?: () => void;
   layout?: 'vertical' | 'horizontal';
+  /**
+   * The title's heading level. Default `3` is correct wherever the grid
+   * already sits under a real `h2` (the homepage's "Chambres en vedette",
+   * a city page's own section heading) — one level down from it, as
+   * intended. Callers with nothing at `h2` between the page's `h1` and this
+   * grid (an empty aside/collapsed disclosure with no visible heading of
+   * its own, or no intervening heading at all) need `2` instead, or a
+   * screen reader's heading navigation skips straight from `h1` to `h3`.
+   * Found live via an automated Lighthouse audit, not by reading source —
+   * a per-file heading-sequence read cannot see across into this shared
+   * component to know what actually renders next to it at runtime.
+   */
+  headingLevel?: 2 | 3;
   style?: CSSProperties;
 }
 
@@ -87,8 +100,10 @@ export function ListingCard({
   href,
   onClick,
   layout = 'vertical',
+  headingLevel = 3,
   style,
 }: ListingCardProps) {
+  const Heading = headingLevel === 2 ? 'h2' : 'h3';
   const [hovered, setHovered] = useState(false);
   const { focusVisible, focusProps } = useFocusRing();
   const row = layout === 'horizontal';
@@ -208,7 +223,7 @@ export function ListingCard({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)' }}>
-          <h3
+          <Heading
             style={{
               flex: 1,
               minWidth: 0,
@@ -235,7 +250,7 @@ export function ListingCard({
             ) : (
               title
             )}
-          </h3>
+          </Heading>
         </div>
         <p
           style={{
