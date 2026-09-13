@@ -1,6 +1,6 @@
 'use client';
 
-import type { ChangeEvent, CSSProperties, ReactNode } from 'react';
+import { useId, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
 
 import { useFocusRing } from './useFocusRing';
 
@@ -33,6 +33,7 @@ export function Switch({
   style,
 }: SwitchProps) {
   const { focusVisible, focusProps } = useFocusRing();
+  const descriptionId = useId();
 
   return (
     <label
@@ -53,7 +54,16 @@ export function Switch({
           {label}
         </span>
         {description && (
+          // aria-hidden so this text is excluded from the wrapping <label>'s
+          // implicit accessible-name computation (it would otherwise fold
+          // straight into the name, ahead of aria-describedby below) --
+          // aria-describedby still reads it as a description even though the
+          // element itself is hidden from normal accessible-tree traversal.
+          // Without this, a screen reader announces the description twice:
+          // once merged into the name, once again via aria-describedby.
           <span
+            id={descriptionId}
+            aria-hidden="true"
             style={{
               display: 'block',
               font: 'var(--type-caption)',
@@ -72,6 +82,7 @@ export function Switch({
         onChange={onChange}
         readOnly={!onChange}
         disabled={disabled}
+        aria-describedby={description ? descriptionId : undefined}
         style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
         {...focusProps}
       />
