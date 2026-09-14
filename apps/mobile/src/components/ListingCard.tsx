@@ -1,6 +1,7 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { apiOrigin } from '@/lib/api';
+import { rentPerMonth } from '@/lib/format';
 import { color, font, radius, shadow, type } from '@/theme/tokens';
 import type { PublicListing } from '@/types/api';
 
@@ -29,9 +30,7 @@ export function ListingCard({ listing, onPress }: { listing: PublicListing; onPr
         <Text style={[type.caption, styles.location]} numberOfLines={1}>
           {listing.neighborhood}, {listing.city}
         </Text>
-        <Text style={[type.price, styles.price]}>
-          {Math.round(listing.priceRent).toLocaleString('fr-FR')} MAD/mois
-        </Text>
+        <Text style={[type.price, styles.price]}>{rentPerMonth(listing.priceRent)}</Text>
       </View>
     </Pressable>
   );

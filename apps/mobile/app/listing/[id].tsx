@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { apiFetch, apiOrigin, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
+import { amount } from '@/lib/format';
 import { color, font, layout, radius, shadow, type } from '@/theme/tokens';
 import type { PublicListingDetail } from '@/types/api';
 
@@ -32,10 +34,9 @@ const PROPERTY_TYPE_LABEL: Record<string, string> = {
  * "Colocataires" tab has nothing real behind it (the API has no roommate
  * profile concept at all), so it's not built here; "Le logement" and
  * "Règles" are, since `PublicListingDetail`/`HouseRules` genuinely carry
- * that data. No "Contacter" bar yet either -- that needs a real
- * conversation to open into, which needs the Messages screens this same
- * pass hasn't reached; wiring it to a route that doesn't exist yet would
- * be the same dead-link defect this project has repeatedly fixed on web.
+ * that data. "Contacter" now that the Messages thread screen exists:
+ * POST /conversations with listingId, then navigate into the real thread
+ * -- same flow as the web app's ContactOwnerButton.
  */
 export default function ListingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -44,6 +45,8 @@ export default function ListingDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
+  const [contacting, setContacting] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
 
   useEffect(() => {
     let isCurrent = true;
@@ -91,6 +94,28 @@ export default function ListingDetailScreen() {
       await apiFetch(`/favorites/${encodeURIComponent(id)}`, { method: next ? 'POST' : 'DELETE', token });
     } catch {
       setSaved(!next);
+    }
+  }
+
+  async function contactOwner() {
+    setContacting(true);
+    setContactError(null);
+    try {
+      const token = await getIdToken();
+      if (!token) {
+        router.push('/sign-in');
+        return;
+      }
+      const created = await apiFetch<{ id: string }>('/conversations', {
+        method: 'POST',
+        token,
+        body: { listingId: id },
+      });
+      router.push({ pathname: '/messages/[id]', params: { id: created.id } });
+    } catch (cause) {
+      setContactError(cause instanceof ApiError ? cause.message : 'Impossible de démarrer la conversation.');
+    } finally {
+      setContacting(false);
     }
   }
 
@@ -161,7 +186,7 @@ export default function ListingDetailScreen() {
           </Text>
         </View>
         <Text style={[type.price, { fontSize: 24 }]}>
-          {Math.round(listing.priceRent).toLocaleString('fr-FR')}{' '}
+          {amount(listing.priceRent)}{' '}
           <Text style={[type.caption, { color: color.textMuted }]}>MAD/mois</Text>
         </Text>
 
@@ -223,11 +248,16 @@ export default function ListingDetailScreen() {
           </View>
         )}
 
-        {!signedIn && (
-          <Text style={[type.bodySm, { color: color.textMuted, marginTop: 20 }]}>
-            Connectez-vous pour contacter le propriétaire.
-          </Text>
-        )}
+        <View style={{ marginTop: 24, gap: 8 }}>
+          {contactError && (
+            <Text style={[type.bodySm, { color: color.danger }]} accessibilityLiveRegion="assertive">
+              {contactError}
+            </Text>
+          )}
+          <Button onPress={() => void contactOwner()} loading={contacting}>
+            {signedIn ? 'Contacter' : 'Se connecter pour contacter'}
+          </Button>
+        </View>
       </View>
     </ScrollView>
   );
