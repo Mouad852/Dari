@@ -108,16 +108,37 @@ function useSignedIn() {
   return signedIn;
 }
 
-function Wordmark() {
+/**
+ * The mark (two overlapping house outlines, reading as shared housing) plus
+ * the "dari" wordmark. `showText` drops the word on the mobile top bar,
+ * where the header is short and the mark alone is enough to read as "home";
+ * the desktop header keeps both. `/public/logo-mark.png` is a raster export
+ * (500x500, transparent, already in the brand terracotta) rather than an
+ * SVG -- there is no vector source for it anywhere in the repo -- but at the
+ * size this renders it (28px tall, so at most ~84px on a 3x display) a 500px
+ * source has more than enough resolution to stay crisp.
+ */
+function Logo({ showText }: { showText: boolean }) {
   return (
-    <span
-      style={{
-        font: 'var(--weight-extra) 24px/1 var(--font-display)',
-        letterSpacing: '-0.02em',
-        color: 'var(--clay-600)',
-      }}
-    >
-      dari
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      <img
+        src="/logo-mark.png"
+        alt={showText ? '' : 'dari'}
+        width={28}
+        height={28}
+        style={{ display: 'block', width: 28, height: 28 }}
+      />
+      {showText && (
+        <span
+          style={{
+            font: 'var(--weight-extra) 24px/1 var(--font-display)',
+            letterSpacing: '-0.02em',
+            color: 'var(--clay-600)',
+          }}
+        >
+          dari
+        </span>
+      )}
     </span>
   );
 }
@@ -187,7 +208,7 @@ export function SiteNav() {
         }}
       >
         <Link href="/" style={{ textDecoration: 'none' }}>
-          <Wordmark />
+          <Logo showText={false} />
         </Link>
       </header>
 
@@ -302,7 +323,7 @@ export function SiteNav() {
           }}
         >
           <Link href="/" style={{ textDecoration: 'none', flex: '0 0 auto' }}>
-            <Wordmark />
+            <Logo showText={true} />
           </Link>
 
           {/*
