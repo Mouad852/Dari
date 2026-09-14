@@ -188,14 +188,32 @@ Last verified: 2026-09-08
 
 ### React Native application
 
-- [ ] Decide Expo versus bare React Native
-- [ ] Create the React Native project and shared API/types strategy
-- [ ] Port tokens and rebuild the component layer for native
-- [ ] Implement auth, feed, filters, listing detail, messages, profile, favorites, and app shell
-- [ ] Implement the listing wizard on mobile
-- [ ] Add push notifications, camera/photo-library upload, EXIF protection, maps, and deep links
-- [ ] Add offline and poor-connectivity handling
-- [ ] Prepare app-store assets, privacy declarations, and release process
+Started 2026-09-14. `apps/mobile` is a new, standalone Expo project (own
+`package.json`/`node_modules` — not an npm workspace sharing code with
+`apps/web`; there was no existing workspace tooling to extend, and
+retrofitting one before knowing what mobile actually needs to share felt
+like solving a problem that doesn't exist yet). Everything below was
+verified against the real local API (`http://localhost:8055`), not mocked,
+via `expo start --web` — this dev environment has no iOS/Android
+simulator, so the web target (added as a dev convenience, `react-dom` +
+`react-native-web`) is the strongest check available short of a physical
+device; every native-only concern (camera, push notifications, the RN
+Firebase-persistence path itself) is unverified until one is available.
+
+- [x] **Decide Expo versus bare React Native (2026-09-14)** — Expo. The plan doc flags this as the first, hardest-to-reverse decision, but everything this app needs (camera, push notifications, maps, deep links) is reachable through Expo's config plugins and EAS Build without ejecting, and Expo is the faster path for a solo-maintained project.
+- [x] **Create the React Native project and shared API/types strategy (2026-09-14)** — Expo SDK 57, TypeScript, Expo Router (file-based routes, matching `apps/web`'s own Next.js App Router conventions). Strategy: hand-port, not share — `src/lib/api.ts`, `src/lib/errors.ts`, `src/types/api.ts` are ported near-verbatim from the web app's own copies, kept in sync by hand. Revisit if the two apps' needs diverge enough to justify a real shared package.
+- [x] **Port tokens and rebuild the component layer for native (2026-09-14, ongoing)** — `src/theme/tokens.ts` ported from the web app's actual shipping CSS (`apps/web/src/styles/tokens/`), not `design-system/tokens/` (that source is stale — still has the five WCAG contrast bugs the web app already fixed and never synced back). Brand typefaces (Plus Jakarta Sans, IBM Plex Mono) via `@expo-google-fonts`. Component layer so far: `Icon` (mirrors `ds/Icon.tsx` slug-for-slug on `lucide-react-native`), `TopBar`, `Button`/`TextButton`, `TextField`, `ListingCard` — rebuilt against RN primitives from scratch, per the plan doc's own warning that the 16 DOM components don't port.
+- [x] **Navigation matching the kit's tab bar (2026-09-14)** — Explorer/Favoris/Messages/Profil, ported from `design-system/ui_kits/mobile_app/AppShell.jsx`'s `TABS` array, the same source the web app's own `SiteNav` mobile bottom bar used.
+- [x] **Firebase Auth via the React Native SDK (2026-09-14)** — `Platform.OS` branch: `initializeAuth` + `getReactNativePersistence(AsyncStorage)` on iOS/Android (Expo Go-compatible, no custom dev client needed), plain `getAuth` on web. Found live, not guessed: the RN-only path throws instantly under the web target (`getReactNativePersistence` doesn't exist in `@firebase/auth`'s browser build at all), which is what surfaced the need for the branch in the first place. Also hit and worked around a real gap in `@firebase/auth`'s own `package.json`: its `exports` map lists an unconditioned `"types"` key ahead of its `"react-native"` condition, so `tsc` always resolved the browser declaration file and never saw `getReactNativePersistence`'s type — fixed with a narrow, documented module augmentation (`src/types/firebase-auth-rn.d.ts`) rather than suppressing the error.
+- [~] **Implement auth, feed, listing detail, favorites and app shell (2026-09-14, partial)** — done: sign-in/sign-up screens (ported field-for-field from the web app, including the same account-enumeration-safe forgot-password behaviour), an auth-aware Profile tab (`onAuthChange`, not a one-shot check — the exact staleness bug just fixed on the web `SiteNav` this same session, avoided here from the start), the Explorer feed (real listings, cursor pagination, pull-to-refresh), and a listing detail screen (photo, price, description, facts, charges, house rules) with a working favourite toggle. Verified end to end with a real throwaway account: signed up through the real form, confirmed the Postgres `users` row via direct query, viewed real listings, opened a real detail screen, toggled a favourite (including watching it correctly revert on a real induced failure), signed out (instant, no reload) and back in. **Not done yet: filters, sort, messages, and the profile-completion prompt** — none of the three has anything real to attach to yet (no `FiltersSheet` port, no sort param wiring, no completion-percentage port), and building UI for them now would be exactly the "looks interactive, does nothing" defect this project has repeatedly found and fixed on the web app. No "Contacter" button on the listing detail screen yet either, for the same reason — it needs a real conversation thread screen to open into.
+- [ ] Messages screens (thread list + conversation, `MessagesScreen.jsx`) — next, and what unblocks wiring "Contacter" on the listing detail screen
+- [ ] `FiltersSheet` (native bottom sheet) and wiring the Explorer feed's search/filter/sort UI to it
+- [ ] `ProfileScreen.jsx`'s full settings/account rows (current Profile tab is minimal: name, email, sign out)
+- [ ] Listing creation wizard, from the responsive prototype's 375px specification
+- [ ] Push notifications, camera/photo-library upload with EXIF stripping, native map view, deep links
+- [ ] Offline and poor-connectivity handling
+- [ ] App store assets, review submissions, privacy declarations
+- [ ] Real device / simulator testing — everything above is verified only via `expo start --web` in this environment; the RN-specific Firebase persistence path, camera/push/native-map work, and general on-device feel are all still unverified
 
 ## Verification policy
 
