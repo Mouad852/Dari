@@ -6,7 +6,7 @@ import { Fragment, useEffect, useState, type CSSProperties } from 'react';
 
 import { Icon } from '@/components/ds/Icon';
 import { apiFetch } from '@/lib/api';
-import { getIdToken } from '@/lib/firebase';
+import { getIdToken, onAuthChange } from '@/lib/firebase';
 import { FULL_SCREEN_ROUTES } from '@/lib/fullScreenRoutes';
 
 /**
@@ -94,15 +94,16 @@ function unreadBadgeLabel(count: number): string {
 function useSignedIn() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    let isCurrent = true;
-    void getIdToken().then((token) => {
-      if (isCurrent) setSignedIn(Boolean(token));
-    });
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
+  // A live subscription, not a one-shot `getIdToken()` check on mount: this
+  // component lives in the root layout and never remounts across a
+  // client-side sign-up/sign-in/sign-out (all three navigate with
+  // `router.push`), so a mount-only check went stale the instant any of them
+  // fired -- the header kept showing "Se connecter" to a user who had just
+  // signed in, and the unread-badge poll below (keyed on `signedIn`) never
+  // started until a hard reload. Found live: signed up a throwaway account,
+  // landed on /account already authenticated, and the header still read
+  // "Se connecter" / linked to /sign-in until the page was reloaded by hand.
+  useEffect(() => onAuthChange((user) => setSignedIn(Boolean(user))), []);
 
   return signedIn;
 }
@@ -227,7 +228,16 @@ export function SiteNav() {
             }}
           >
             <Icon name={tab.icon} size={22} />
-            <span style={{ font: `var(--weight-${tab.active ? 'semibold' : 'medium'}) var(--text-micro)/1 var(--font-ui)` }}>
+            {/*
+              Two static `font` values, not one string built from an
+              interpolated custom-property name: `check-tokens.mjs` greps for
+              a literal `var(--token-name)` and can't resolve one assembled
+              at runtime, so the interpolated form silently failed
+              `tokens:check` (exit 1) from the moment this line shipped --
+              both `--weight-semibold`/`--weight-medium` are real tokens, the
+              checker just couldn't see past the template literal.
+            */}
+            <span style={{ font: tab.active ? 'var(--weight-semibold) var(--text-micro)/1 var(--font-ui)' : 'var(--weight-medium) var(--text-micro)/1 var(--font-ui)' }}>
               {tab.label}
             </span>
             {tab.badge > 0 && (

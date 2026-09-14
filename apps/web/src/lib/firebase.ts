@@ -9,7 +9,14 @@
  */
 
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, sendPasswordResetEmail, signOut as firebaseSignOut, type Auth } from 'firebase/auth';
+import {
+  getAuth,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signOut as firebaseSignOut,
+  type Auth,
+  type User as FirebaseUser,
+} from 'firebase/auth';
 
 const config = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
@@ -57,6 +64,23 @@ export async function getIdToken(): Promise<string | null> {
 
 export function signOut(): Promise<void> {
   return firebaseSignOut(getFirebaseAuth());
+}
+
+/**
+ * Live auth-state updates, for anything that needs to react to a sign-in or
+ * sign-out that happens without a page reload.
+ *
+ * Sign-up, sign-in and sign-out all navigate with `router.push`, a
+ * client-side transition -- so a component that only checks `getIdToken()`
+ * once on mount (the persistent root-layout `SiteNav`, before this existed)
+ * goes stale the instant any of those three fire: it keeps showing
+ * "Se connecter" to a user who just signed in, and its unread-message-badge
+ * poll never starts until a hard reload. `onAuthStateChanged` fires
+ * immediately with the current state and again on every subsequent change,
+ * so callers stay correct without polling for it themselves.
+ */
+export function onAuthChange(callback: (user: FirebaseUser | null) => void): () => void {
+  return onAuthStateChanged(getFirebaseAuth(), callback);
 }
 
 export function sendPasswordReset(email: string): Promise<void> {
