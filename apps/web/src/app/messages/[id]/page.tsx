@@ -120,6 +120,50 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   }, [id]);
 
   /**
+   * Read receipts: "Vu" under the current user's own trailing message once
+   * the other participant has read it.
+   *
+   * Nothing in this app pushes state changes to an open tab, so the only way
+   * to learn that a message already on screen was *just* read is to ask
+   * again. Polls the conversation summary -- one small row, not a full
+   * message-list refetch -- since all that's actually needed is one
+   * message's id and readAt. Deliberately narrow: this does not attempt to
+   * deliver new incoming messages live, which is a materially bigger feature
+   * (this app's cursor pagination pages forward from the oldest message, not
+   * backward from the newest, so "catch up a possibly-long gap live" is a
+   * different design question than "recheck one known message's read
+   * state") and was not what was asked for here.
+   */
+  useEffect(() => {
+    if (!token) return;
+    let isCurrent = true;
+    const poll = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const fresh = await apiFetch<Conversation>(`/conversations/${encodeURIComponent(id)}`, { token });
+        if (!isCurrent) return;
+        if (fresh.lastMessageId && fresh.lastMessageReadAt) {
+          setMessages((prev) =>
+            (prev ?? []).map((message) =>
+              message.id === fresh.lastMessageId && message.readAt !== fresh.lastMessageReadAt
+                ? { ...message, readAt: fresh.lastMessageReadAt }
+                : message,
+            ),
+          );
+        }
+      } catch {
+        // A missed refresh cycle isn't worth surfacing an error for; the next
+        // poll a few seconds later tries again.
+      }
+    };
+    const interval = setInterval(poll, 5000);
+    return () => {
+      isCurrent = false;
+      clearInterval(interval);
+    };
+  }, [token, id]);
+
+  /**
    * Land on the newest message, and stay there after sending.
    *
    * The thread opened scrolled to the top before, which for a conversation of
@@ -204,12 +248,37 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     }
   }, [sending]);
 
+  /**
+   * Optimistic sending: the bubble appears the instant `Envoyer` is pressed,
+   * not once the server confirms it. `pendingId` is generated client-side
+   * (`crypto.randomUUID()`, the same pattern the publish wizard already uses
+   * for its own client-only keys) and prefixed so it can never collide with
+   * a real server id; the placeholder message carries it in place of `id`
+   * until the real response swaps it in. A failed send removes the
+   * placeholder and restores the typed text to the composer rather than
+   * discarding it -- the whole point of showing the message immediately is
+   * trust that it went through, so a silent failure that just made the
+   * bubble vanish with no way to recover the text would be worse than the
+   * synchronous send this replaces.
+   */
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const value = draft.trim();
-    if (!value || !token || sending) return;
+    if (!value || !token || sending || !myId) return;
+
+    const pendingId = `pending-${crypto.randomUUID()}`;
+    const optimisticMessage: Message = {
+      id: pendingId,
+      conversationId: id,
+      senderId: myId,
+      body: value,
+      sentAt: new Date().toISOString(),
+      readAt: null,
+    };
 
     shouldRefocusRef.current = true;
+    setMessages((prev) => [...(prev ?? []), optimisticMessage]);
+    setDraft('');
     setSending(true);
     setSendError(null);
     void (async () => {
@@ -219,9 +288,10 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
           token,
           body: { body: value },
         });
-        setMessages((prev) => [...(prev ?? []), sent]);
-        setDraft('');
+        setMessages((prev) => (prev ?? []).map((message) => (message.id === pendingId ? sent : message)));
       } catch (cause) {
+        setMessages((prev) => (prev ?? []).filter((message) => message.id !== pendingId));
+        setDraft(value);
         // A distinct state from the page-level `error` above on purpose: that
         // one drives the full-page early return a few lines down, so reusing
         // it here replaced the entire thread -- header, history, composer --
@@ -349,6 +419,13 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             // A separator whenever the calendar day changes, so a thread read top
             // to bottom shows when the gaps were.
             const newDay = !previous || new Date(previous.sentAt).toDateString() !== sentAt.toDateString();
+            // The optimistic placeholder from `onSubmit` -- never a real
+            // server id, which is always a UUID with no prefix.
+            const pending = message.id.startsWith('pending-');
+            // Only the trailing edge of the thread, the same convention
+            // every messaging app uses: a receipt on an older message the
+            // other participant has since replied past would just be noise.
+            const showReadReceipt = mine && !pending && index === messages.length - 1 && Boolean(message.readAt);
 
             return (
               <li key={message.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-3)' }}>
@@ -385,6 +462,11 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                     fontFamily: 'var(--font-ui)',
                     lineHeight: 1.5,
                     overflowWrap: 'anywhere',
+                    // The one visual cue that a bubble is the optimistic
+                    // placeholder rather than a confirmed send -- gone the
+                    // instant the real response swaps it in, or the whole
+                    // bubble is gone if the send failed.
+                    opacity: pending ? 0.6 : 1,
                   }}
                 >
                   {message.body}
@@ -409,6 +491,18 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
                     {clockTime(sentAt)}
                   </time>
                 </div>
+                {showReadReceipt && (
+                  <span
+                    style={{
+                      justifySelf: 'end',
+                      marginTop: -8,
+                      font: 'var(--type-caption)',
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    Vu
+                  </span>
+                )}
               </li>
             );
           })}

@@ -260,6 +260,9 @@ export interface Conversation {
   lastMessageAt: string | null;
   /** Messages sent by the other participant that the current user hasn't read yet. */
   unreadCount: number;
+  /** The last message's own id and read state, regardless of who sent it -- backs the thread page's read-receipt poll. */
+  lastMessageId: string | null;
+  lastMessageReadAt: string | null;
 }
 
 export interface Message {
