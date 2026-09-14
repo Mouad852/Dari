@@ -20,6 +20,15 @@ public record ConversationResponse(
         Instant createdAt,
         String lastMessage,
         Instant lastMessageAt,
-        long unreadCount
+        long unreadCount,
+        /**
+         * The last message's own id and read state, regardless of who sent it.
+         * A read-receipt poll on the thread page reconciles this against
+         * whichever message it already has locally at that position -- a
+         * single cheap row, not a full message-list refetch, since the poll
+         * only needs to know whether one specific message became read.
+         */
+        UUID lastMessageId,
+        Instant lastMessageReadAt
 ) {
 }

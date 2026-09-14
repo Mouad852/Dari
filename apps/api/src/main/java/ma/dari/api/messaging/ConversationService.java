@@ -106,6 +106,12 @@ public class ConversationService {
         return toConversationResponse(conversation, currentUser);
     }
 
+    /** Total unread across every conversation -- see {@link MessageRepository#countAllUnreadForUser}. */
+    @Transactional(readOnly = true)
+    public long unreadCount(User currentUser) {
+        return messages.countAllUnreadForUser(currentUser.getId());
+    }
+
     @Transactional(readOnly = true)
     public CursorPage<MessageResponse> listMessages(User currentUser, UUID conversationId, String cursor) {
         Conversation conversation = findVisibleConversation(currentUser, conversationId);
@@ -196,7 +202,9 @@ public class ConversationService {
                 conversation.getCreatedAt(),
                 lastMessage == null ? null : lastMessage.getBody(),
                 lastMessage == null ? null : lastMessage.getSentAt(),
-                unreadCount
+                unreadCount,
+                lastMessage == null ? null : lastMessage.getId(),
+                lastMessage == null ? null : lastMessage.getReadAt()
         );
     }
 

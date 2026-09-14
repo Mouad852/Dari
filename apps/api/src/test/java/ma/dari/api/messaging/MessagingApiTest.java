@@ -20,6 +20,8 @@ import java.math.BigDecimal;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 class MessagingApiTest extends AbstractIntegrationTest {
 
@@ -171,6 +173,37 @@ class MessagingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("conversation summary exposes the last message's id and read state, populated once marked read")
+    void conversationSummaryExposesLastMessageReadState() throws Exception {
+        User owner = users.save(new User("uid-owner-receipt", "owner.receipt@example.ma", true, "Owner"));
+        User seeker = users.save(new User("uid-seeker-receipt", "seeker.receipt@example.ma", true, "Seeker"));
+        Conversation conversation = conversations.save(new Conversation(owner, seeker));
+        Message message = messages.save(new Message(conversation, owner, "Toujours disponible ?"));
+
+        stubToken("uid-owner-receipt", "owner.receipt@example.ma", true);
+
+        given().header("Authorization", "Bearer owner-receipt-token")
+                .when().get("/conversations/" + conversation.getId())
+                .then().statusCode(200)
+                .body("lastMessageId", equalTo(message.getId().toString()))
+                .body("lastMessageReadAt", nullValue());
+
+        stubToken("uid-seeker-receipt", "seeker.receipt@example.ma", true);
+
+        given().header("Authorization", "Bearer seeker-receipt-token")
+                .when().patch("/conversations/" + conversation.getId() + "/read")
+                .then().statusCode(200);
+
+        stubToken("uid-owner-receipt", "owner.receipt@example.ma", true);
+
+        given().header("Authorization", "Bearer owner-receipt-token")
+                .when().get("/conversations/" + conversation.getId())
+                .then().statusCode(200)
+                .body("lastMessageId", equalTo(message.getId().toString()))
+                .body("lastMessageReadAt", notNullValue());
+    }
+
+    @Test
     @DisplayName("conversation list reports unread count for the current user, cleared by marking read")
     void conversationListReportsUnreadCount() throws Exception {
         User owner = users.save(new User("uid-owner-unread", "owner.unread@example.ma", true, "Owner"));
@@ -196,5 +229,37 @@ class MessagingApiTest extends AbstractIntegrationTest {
                 .when().get("/conversations")
                 .then().statusCode(200)
                 .body("items[0].unreadCount", equalTo(0));
+    }
+
+    @Test
+    @DisplayName("unread-count sums across every conversation and drops once each is marked read")
+    void unreadCountSumsAcrossConversations() throws Exception {
+        User seeker = users.save(new User("uid-seeker-total", "seeker.total@example.ma", true, "Seeker"));
+        User ownerOne = users.save(new User("uid-owner-total-1", "owner.total1@example.ma", true, "Owner One"));
+        User ownerTwo = users.save(new User("uid-owner-total-2", "owner.total2@example.ma", true, "Owner Two"));
+        Conversation withOwnerOne = conversations.save(new Conversation(ownerOne, seeker));
+        Conversation withOwnerTwo = conversations.save(new Conversation(ownerTwo, seeker));
+        messages.save(new Message(withOwnerOne, ownerOne, "Bonjour"));
+        messages.save(new Message(withOwnerOne, ownerOne, "Toujours disponible ?"));
+        messages.save(new Message(withOwnerTwo, ownerTwo, "Bonjour aussi"));
+        // From the seeker themself, in their own thread -- must not count toward
+        // their own unread total.
+        messages.save(new Message(withOwnerOne, seeker, "Oui, ça m'intéresse"));
+
+        stubToken("uid-seeker-total", "seeker.total@example.ma", true);
+
+        given().header("Authorization", "Bearer seeker-total-token")
+                .when().get("/conversations/unread-count")
+                .then().statusCode(200)
+                .body("unreadCount", equalTo(3));
+
+        given().header("Authorization", "Bearer seeker-total-token")
+                .when().patch("/conversations/" + withOwnerOne.getId() + "/read")
+                .then().statusCode(200);
+
+        given().header("Authorization", "Bearer seeker-total-token")
+                .when().get("/conversations/unread-count")
+                .then().statusCode(200)
+                .body("unreadCount", equalTo(1));
     }
 }
