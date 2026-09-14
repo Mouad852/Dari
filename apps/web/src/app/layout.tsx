@@ -4,6 +4,7 @@ import '@/styles/app.css';
 
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteNav } from '@/components/SiteNav';
+import { SkipLink } from '@/components/SkipLink';
 
 const sans = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" className={`${sans.variable} ${mono.variable}`}>
       <body>
+        <SkipLink />
         <SiteNav />
         {children}
         <SiteFooter />

@@ -38,6 +38,30 @@
   box-shadow: none;
 }
 
+/* SkipLink: WCAG 2.4.1 Bypass Blocks. Off-screen until focused -- a
+   visible "skip" link with nothing to skip past yet would be visual noise
+   for every sighted user on every page. `transform` rather than a fixed
+   `top` offset so it hides fully regardless of the link's actual rendered
+   height (font size, zoom, browser chrome). */
+.skip-link {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-4);
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--brand);
+  color: #fff;
+  font: var(--weight-semibold) var(--type-body-sm) var(--font-ui);
+  text-decoration: none;
+  transform: translateY(-150%);
+  transition: transform var(--dur-med) var(--ease-standard);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 /* SiteNav's desktop header, hidden below the breakpoint where the mobile
    bottom tab bar takes over instead. `display` lives in a class rather than
    an inline style for the same reason `.search-filters-toggle` below does:
