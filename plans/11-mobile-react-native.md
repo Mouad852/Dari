@@ -60,3 +60,5 @@ There is a second reason to keep it here. The mobile UI kit is the **most comple
 - **App store review adds latency to every fix**, which is precisely why the API needs to be stable first.
 - **Missing photography and logo hurt more here.** Store listings need screenshots, and screenshots full of PHOTO placeholders are not shippable. The asset gap in `design-system/assets/README.md` becomes a launch blocker at this phase, not just an inconvenience.
 - **Scope check:** this is a second full client. It is comfortably the largest phase in the plan and could reasonably be its own project.
+
+just a test to trigger push
