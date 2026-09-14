@@ -59,4 +59,20 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
             """)
     long countUnreadForUser(@Param("conversationId") UUID conversationId,
                             @Param("userId") UUID userId);
+
+    /**
+     * Total unread across every conversation the user is part of -- backs the
+     * mobile nav's Messages-tab badge, which needs one cheap number on every
+     * page rather than the per-conversation count above (that one only
+     * answers "how many unread in this one thread").
+     */
+    @Query("""
+            select count(m) from Message m
+            where m.deletedAt is null
+              and m.readAt is null
+              and m.sender.id <> :userId
+              and m.conversation.deletedAt is null
+              and (m.conversation.participantA.id = :userId or m.conversation.participantB.id = :userId)
+            """)
+    long countAllUnreadForUser(@Param("userId") UUID userId);
 }

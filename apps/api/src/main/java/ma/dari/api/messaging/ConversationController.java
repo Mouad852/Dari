@@ -56,6 +56,19 @@ public class ConversationController {
     }
 
     /**
+     * One number, backing the mobile nav's Messages-tab badge. A static path
+     * ahead of `/{id}` above, the same shape `UserController` already uses
+     * for `/me` -- Spring matches the literal segment first.
+     */
+    @GetMapping("/unread-count")
+    public UnreadCountResponse unreadCount(@CurrentUser User user) {
+        return new UnreadCountResponse(conversationService.unreadCount(user));
+    }
+
+    public record UnreadCountResponse(long unreadCount) {
+    }
+
+    /**
      * Starts a conversation about a listing, or returns the existing one.
      *
      * <p>Idempotent by a unique index on (listing, seeker): a second tap on
