@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Fragment, useEffect, useState, type CSSProperties } from 'react';
 
 import { Icon } from '@/components/ds/Icon';
+import { apiFetch } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { FULL_SCREEN_ROUTES } from '@/lib/fullScreenRoutes';
 
@@ -20,25 +21,75 @@ import { FULL_SCREEN_ROUTES } from '@/lib/fullScreenRoutes';
  *
  * Ported from two design-system sources rather than invented from scratch:
  * `ui_kits/website/SiteChrome.jsx`'s `SiteHeader` for the desktop bar's
- * structure (sticky, `--nav-h-desktop`, glass background, the `Wordmark`
- * treatment), and `ui_kits/mobile_app/AppShell.jsx`'s `TABS`/`TabBar` for
- * the mobile bottom bar — verbatim down to the icon choices and labels
- * ("Explorer", "Profil"). Two deliberate content departures from the
- * sources: `SiteHeader`'s own nav is four marketing links (`Chambres`,
- * `Colocataires`, `Villes`, `Comment ça marche`) plus a "Se connecter" /
- * "Publier une annonce" pair — none of which are the gap this component
- * exists to close — replaced with the actual requested set: a working quick
- * search, and links to the three sections that had no way back to them.
- * `TabBar` renders each tab as a `<button>` that flips local component
- * state, the right shape for the source's own single-screen mobile-app
- * mockup; this is a real multi-page site, so each tab is a real `<Link>`
- * instead, with `aria-current="page"` marking the active one the same way
- * the desktop header's links already do. `AppShell.jsx`'s `TabBar` also
- * carries an unread-message-count badge on the Messages tab (`unread`
+ * structure (sticky, `--nav-h-desktop`, the `Wordmark` treatment), and
+ * `ui_kits/mobile_app/AppShell.jsx`'s `TABS`/`TabBar` for the mobile bottom
+ * bar — verbatim down to the icon choices and labels ("Explorer", "Profil").
+ * Three deliberate content departures from the sources: `SiteHeader`'s own
+ * nav is four marketing links (`Chambres`, `Colocataires`, `Villes`,
+ * `Comment ça marche`) plus a "Se connecter" / "Publier une annonce" pair —
+ * none of which are the gap this component exists to close — replaced with
+ * the actual requested set: a working quick search, and links to the three
+ * sections that had no way back to them. `SiteHeader`'s glass background
+ * (translucent + blur) was ported first, then swapped for a solid
+ * `--surface-card` once tested against this app's own real content — see
+ * the header's own style comment below for the contrast failure that
+ * caused it. `TabBar` renders each tab as a `<button>` that flips local
+ * component state, the right shape for the source's own single-screen
+ * mobile-app mockup; this is a real multi-page site, so each tab is a real
+ * `<Link>` instead, with `aria-current="page"` marking the active one the
+ * same way the desktop header's links already do. `AppShell.jsx`'s `TabBar`
+ * also carries an unread-message-count badge on the Messages tab (`unread`
  * prop) — not built here, since it needs its own fetch on every single
  * page for something outside what was asked for; flagged in TODO.md as a
- * follow-up rather than added unprompted.
+ * follow-up rather than added unprompted. Now built: `useUnreadCount`
+ * below fetches `GET /conversations/unread-count` (a new, single-number
+ * endpoint -- the existing per-conversation `unreadCount` on
+ * `ConversationResponse` would mean fetching the whole conversation list
+ * just to sum a badge), polled every 30s while signed in and re-fetched on
+ * every route change (leaving a thread just marked it read server-side via
+ * that page's own `PATCH .../read`, and this component has no way to know
+ * that happened except by asking again). Also added the same badge to the
+ * desktop header's Messages link, which the source has no equivalent for --
+ * a signed-in visitor should see their unread count regardless of
+ * viewport, and `AppShell.jsx` simply has no desktop counterpart to
+ * disagree with that.
  */
+
+function useUnreadCount(signedIn: boolean | null, pathname: string) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!signedIn) {
+      setCount(0);
+      return;
+    }
+
+    let isCurrent = true;
+    const refresh = async () => {
+      try {
+        const token = await getIdToken();
+        if (!token) return;
+        const result = await apiFetch<{ unreadCount: number }>('/conversations/unread-count', { token });
+        if (isCurrent) setCount(result.unreadCount);
+      } catch {
+        // A stale badge count for one cycle isn't worth surfacing an error for.
+      }
+    };
+
+    void refresh();
+    const interval = setInterval(refresh, 30000);
+    return () => {
+      isCurrent = false;
+      clearInterval(interval);
+    };
+  }, [signedIn, pathname]);
+
+  return count;
+}
+
+function unreadBadgeLabel(count: number): string {
+  return count > 99 ? '99+' : String(count);
+}
 
 function useSignedIn() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
@@ -73,6 +124,7 @@ function Wordmark() {
 export function SiteNav() {
   const pathname = usePathname();
   const signedIn = useSignedIn();
+  const unreadCount = useUnreadCount(signedIn, pathname);
   const isFullScreenRoute = FULL_SCREEN_ROUTES.some((pattern) => pattern.test(pathname));
 
   // The mobile bottom bar is `position: fixed`, so the page needs a matching
@@ -107,11 +159,11 @@ export function SiteNav() {
   });
 
   const mobileTabs = [
-    { href: '/listings', icon: 'search', label: 'Explorer', active: pathname.startsWith('/listings') },
-    { href: '/favorites', icon: 'heart', label: 'Favoris', active: pathname === '/favorites' },
-    { href: '/messages', icon: 'message-circle', label: 'Messages', active: pathname.startsWith('/messages') },
-    { href: accountHref, icon: 'user-round', label: 'Profil', active: accountActive },
-  ] as const;
+    { href: '/listings', icon: 'search', label: 'Explorer', active: pathname.startsWith('/listings'), badge: 0 },
+    { href: '/favorites', icon: 'heart', label: 'Favoris', active: pathname === '/favorites', badge: 0 },
+    { href: '/messages', icon: 'message-circle', label: 'Messages', active: pathname.startsWith('/messages'), badge: unreadCount },
+    { href: accountHref, icon: 'user-round', label: 'Profil', active: accountActive, badge: 0 },
+  ];
 
   return (
     <Fragment>
@@ -160,7 +212,9 @@ export function SiteNav() {
             key={tab.href}
             href={tab.href}
             aria-current={tab.active ? 'page' : undefined}
+            aria-label={tab.badge > 0 ? `${tab.label}, ${tab.badge} non lu${tab.badge > 1 ? 's' : ''}` : undefined}
             style={{
+              position: 'relative',
               flex: 1,
               display: 'flex',
               flexDirection: 'column',
@@ -176,6 +230,26 @@ export function SiteNav() {
             <span style={{ font: `var(--weight-${tab.active ? 'semibold' : 'medium'}) var(--text-micro)/1 var(--font-ui)` }}>
               {tab.label}
             </span>
+            {tab.badge > 0 && (
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  top: 6,
+                  right: 'calc(50% - 18px)',
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 'var(--radius-pill)',
+                  background: 'var(--brand)',
+                  color: '#fff',
+                  font: 'var(--weight-bold) 10px/16px var(--font-ui)',
+                  textAlign: 'center',
+                  padding: '0 4px',
+                }}
+              >
+                {unreadBadgeLabel(tab.badge)}
+              </span>
+            )}
           </Link>
         ))}
       </nav>
@@ -187,8 +261,22 @@ export function SiteNav() {
           top: 0,
           zIndex: 10,
           height: 'var(--nav-h-desktop)',
-          background: 'var(--surface-glass)',
-          backdropFilter: 'var(--blur-glass)',
+          // `SiteHeader.jsx`'s own glass treatment (`--surface-glass`,
+          // 72%-opaque white + blur) was ported first, then replaced with a
+          // solid surface after testing it against real scrolled content:
+          // every other `--surface-glass` use in the app sits over an icon
+          // (3:1) or a short badge on a fixed photo, never real body text.
+          // This header's Messages/Favoris/Mon compte links are real text
+          // (4.5:1), and this app's listing photos are uncontrolled,
+          // real-brightness user uploads -- scrolling a dark one beneath a
+          // sticky glass header measurably dropped the link text below AA
+          // (verified live: an injected solid-black backdrop pulled the
+          // composite to a mid-grey the existing text tokens were never
+          // vetted against). A solid surface, already proven at 5.46:1+
+          // everywhere else in the app, removes the dependency on what's
+          // scrolling underneath entirely -- matching the mobile top bar
+          // just above, which was already solid for the same reason.
+          background: 'var(--surface-card)',
           borderBottom: '1px solid var(--border-hairline)',
         }}
       >
@@ -271,10 +359,30 @@ export function SiteNav() {
             <Link
               href="/messages"
               aria-current={pathname.startsWith('/messages') ? 'page' : undefined}
+              aria-label={unreadCount > 0 ? `Messages, ${unreadCount} non lu${unreadCount > 1 ? 's' : ''}` : undefined}
               style={linkStyle(pathname.startsWith('/messages'))}
             >
               <Icon name="message-circle" size={18} />
               Messages
+              {unreadCount > 0 && (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: 16,
+                    height: 16,
+                    borderRadius: 'var(--radius-pill)',
+                    background: 'var(--brand)',
+                    color: '#fff',
+                    font: 'var(--weight-bold) 10px/16px var(--font-ui)',
+                    padding: '0 4px',
+                  }}
+                >
+                  {unreadBadgeLabel(unreadCount)}
+                </span>
+              )}
             </Link>
             <Link
               href="/favorites"
