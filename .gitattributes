@@ -16,3 +16,4 @@ mvnw        text eol=lf
 *.jar binary
 *.woff binary
 *.woff2 binary
+graphify-out/graph.json merge=graphify

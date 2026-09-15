@@ -42,3 +42,5 @@ Thumbs.db
 # --- local data --------------------------------------------------------------
 pgdata/
 uploads/
+
+graphify-out
