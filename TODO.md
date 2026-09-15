@@ -258,4 +258,4 @@ Before marking a checkbox complete:
 - CORS/security review verified on 2026-09-05: CORS remains an explicit configured-origin allowlist; API responses include `nosniff`, `DENY`, referrer, permissions, and HSTS headers; production requires `DARI_WEB_ORIGIN` and `FIREBASE_CREDENTIALS_PATH`; the web client sends refreshed Firebase ID tokens only as bearer headers and never stores them in cookies, local storage, or URLs. Focused integration tests cover the header and preflight contracts.
 - `WARN` moderation actions now enqueue a French owner warning transactionally and resolve the affected reports as `ACTION_TAKEN`
 
-
+the remaining tasks are
