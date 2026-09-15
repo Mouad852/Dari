@@ -10,23 +10,23 @@ There is a second reason to keep it here. The mobile UI kit is the **most comple
 
 ## Tasks
 
-**Foundation**
-- [ ] React Native project; decide Expo versus bare React Native early, since it affects native module access later
-- [ ] Port the design tokens — the CSS custom properties in `design-system/tokens/` need a React Native equivalent, as RN has no CSS variables
-- [ ] Rebuild the 16 components against RN primitives. **These cannot be reused directly**; they are DOM components. The tokens and the visual rules transfer; the implementations do not.
-- [ ] Firebase Auth via the React Native SDK
-- [ ] Share the API client and types with web where the language allows
-- [ ] Navigation matching the kit's tab bar: Explorer / Favoris / Messages / Profil
+**Foundation** — started 2026-09-14, `apps/mobile`; full narrative and verification detail in TODO.md's Priority 3 section, not repeated here.
+- [x] React Native project; decide Expo versus bare React Native early, since it affects native module access later — **Expo** (SDK 57)
+- [x] Port the design tokens — the CSS custom properties in `design-system/tokens/` need a React Native equivalent, as RN has no CSS variables
+- [~] Rebuild the 16 components against RN primitives. **These cannot be reused directly**; they are DOM components. The tokens and the visual rules transfer; the implementations do not. — 5 of 16 rebuilt so far (`Icon`, `TopBar`, `Button`/`TextButton`, `TextField`, `ListingCard`)
+- [x] Firebase Auth via the React Native SDK
+- [x] Share the API client and types with web where the language allows — hand-ported, not a shared package; see TODO.md for the reasoning
+- [x] Navigation matching the kit's tab bar: Explorer / Favoris / Messages / Profil
 
 **Screens, all specified in `ui_kits/mobile_app/`**
-- [ ] `AppShell` — top bar, 64px tab bar with unread badge
-- [ ] `FeedScreen` — search header, filter chip row, profile-completion prompt, listing feed
+- [~] `AppShell` — top bar, 64px tab bar with unread badge (tab bar done; unread badge not yet wired on the tab icon itself, only inside the Messages list)
+- [~] `FeedScreen` — search header, filter chip row, profile-completion prompt, listing feed (feed itself done: real listings, cursor pagination, pull-to-refresh; filter chip row and profile-completion prompt not started)
 - [ ] `FiltersSheet` — native bottom sheet
-- [ ] `ListingScreen` — photo header, price block, tabs, sticky contact bar
-- [ ] `MessagesScreen` — thread list and conversation
-- [ ] `ProfileScreen` — avatar header, settings, account rows
+- [~] `ListingScreen` — photo header, price block, tabs, sticky contact bar (done minus the tabbed layout — no "Colocataires" tab, since nothing real backs it; see TODO.md)
+- [x] `MessagesScreen` — thread list and conversation (real send, real history, real mark-read; read-receipt poll and optimistic-send placeholder not ported yet)
+- [~] `ProfileScreen` — avatar header, settings, account rows (current tab is minimal: name, email, sign out)
 - [ ] Listing creation wizard, from the responsive prototype's 375px specification
-- [ ] Auth screens
+- [x] Auth screens
 
 **Native concerns the web never had**
 - [ ] Push notifications — the natural home for the §6 notification set, and a genuine advantage over web
@@ -55,7 +55,7 @@ There is a second reason to keep it here. The mobile UI kit is the **most comple
 ## Risks and open decisions
 
 - **Components do not port; only the design does.** The 16 existing components are DOM-based. Budget for a genuine rebuild of the component layer, not a copy.
-- **Expo versus bare RN** is the first decision and the hardest to reverse. Expo is faster for a solo developer and constrains native module access; bare is the opposite.
+- **Expo versus bare RN** was the first decision and the hardest to reverse. Decided 2026-09-14: Expo — everything this app needs (camera, push notifications, maps, deep links) is reachable through config plugins and EAS Build without ejecting.
 - **Realtime messaging differs on mobile.** If phase 04 chose Firestore, the RN SDK path is well-trodden. If it chose polling, mobile will want push notifications instead — meaning phase 04's decision reaches all the way here.
 - **App store review adds latency to every fix**, which is precisely why the API needs to be stable first.
 - **Missing photography and logo hurt more here.** Store listings need screenshots, and screenshots full of PHOTO placeholders are not shippable. The asset gap in `design-system/assets/README.md` becomes a launch blocker at this phase, not just an inconvenience.
