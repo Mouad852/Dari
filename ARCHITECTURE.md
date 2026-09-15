@@ -8,6 +8,7 @@ The repo is no longer a clean scaffold. It contains a working Spring Boot API fo
 
 - Backend: `apps/api` — Java 21, Spring Boot monolith
 - Frontend: `apps/web` — Next.js App Router
+- Mobile: `apps/mobile` — Expo/React Native, started 2026-09-14 (Priority 3, in progress)
 - Database: PostgreSQL + PostGIS
 - Identity: Firebase Auth token verification only
 - Product shape: public listing discovery, account flow, publishing, moderation, messages, and admin views
@@ -28,7 +29,7 @@ Two deployables and one database.
                              │  REST, bearer token
                     ┌────────▼─────────┐
   mobile ──────────▶│  dari-api        │  Spring Boot monolith, Java 21
-  (phase 11)        │  business rules  │
+  (apps/mobile)     │  business rules  │
                     └────────┬─────────┘
                              │
                     ┌────────▼─────────┐        ┌──────────────────┐
@@ -55,6 +56,8 @@ URLs stay English. User-facing copy stays French. See `docs/NAMING.md` for the e
 apps/
   api/            Spring Boot API. Owns business logic and the database boundary.
   web/            Next.js App Router frontend.
+  mobile/         Expo/React Native client (Priority 3, in progress). Own project;
+                  hand-ports apps/web's API client and types rather than sharing a package.
 
 design-system/    Visual source of truth: tokens, guidelines, and UI kits.
 docs/             Design docs, naming rules, handoff documents.
