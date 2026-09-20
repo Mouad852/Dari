@@ -325,6 +325,12 @@ public class AdminService {
             throw new ApiException(409, ErrorCode.ILLEGAL_TRANSITION, "L'utilisateur est déjà banni");
         }
         if (user.getStatus() == UserStatus.SUSPENDED) {
+            if (user.isAutoSuspended()) {
+                // A moderator taking ownership of an automatic suspension makes it manual.
+                user.setAutoSuspended(false);
+                users.save(user);
+                adminActions.save(AdminAction.of(admin, "SUSPEND_USER", ReportTarget.USER, userId, null));
+            }
             return;
         }
 

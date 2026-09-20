@@ -200,6 +200,11 @@ repository does not modify the global `%USERPROFILE%\\.testcontainers.properties
 file; that file is user-owned configuration and should be repaired by the
 developer only when its contents are known to be stale.
 
+Suspended accounts are deliberately read-only: authenticated `GET`, `HEAD`, and
+`OPTIONS` requests remain available, while every mutating method returns
+`403 ACCOUNT_SUSPENDED`. This includes `DELETE /users/me`; self-account deletion
+has no exception while the account is suspended.
+
 ## Validation notes
 
 - The frontend is sensitive to stale local dev servers. If a route looks wrong or styles are missing, stop stale Next processes and verify against a clean port.
