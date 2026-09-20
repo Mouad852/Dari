@@ -12,6 +12,7 @@ import ma.dari.api.messaging.dto.CreateMessageRequest;
 import ma.dari.api.messaging.dto.MessageResponse;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,13 +78,13 @@ public class ConversationService {
             throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Conversation invalide");
         }
 
-        User otherUser = resolveOtherUser(currentUser, request);
+        Listing listing = request.listingId() == null ? null : listings.findByIdAndDeletedAtIsNull(request.listingId())
+                .orElseThrow(() -> ApiException.notFound("Annonce introuvable"));
+
+        User otherUser = resolveOtherUser(request, listing);
         if (currentUser.getId().equals(otherUser.getId())) {
             throw ApiException.forbidden("Vous ne pouvez pas démarrer une conversation avec vous-même");
         }
-
-        Listing listing = request.listingId() == null ? null : listings.findByIdAndDeletedAtIsNull(request.listingId())
-                .orElseThrow(() -> ApiException.notFound("Annonce introuvable"));
 
         UUID first = currentUser.getId();
         UUID second = otherUser.getId();
@@ -91,13 +92,37 @@ public class ConversationService {
                 ? conversations.findByParticipantPairWithoutListing(min(first, second), max(first, second))
                 : conversations.findByListingAndParticipantPair(listing.getId(), min(first, second), max(first, second));
 
-        Conversation conversation = existing.orElseGet(() -> conversations.save(new Conversation(listing, currentUser, otherUser)));
+        Conversation conversation;
+        boolean created;
+        if (existing.isPresent()) {
+            conversation = existing.get();
+            created = false;
+        } else {
+            Conversation candidate = new Conversation(listing, currentUser, otherUser);
+            try {
+                int inserted = conversations.insertIfAbsent(
+                        candidate.getId(), listing == null ? null : listing.getId(), min(first, second), max(first, second));
+                conversation = conversations.findById(candidate.getId()).orElseGet(() -> listing == null
+                        ? conversations.findByParticipantPairWithoutListing(min(first, second), max(first, second)).orElse(null)
+                        : conversations.findByListingAndParticipantPair(listing.getId(), min(first, second), max(first, second)).orElse(null));
+                if (conversation == null) {
+                    throw new DataIntegrityViolationException("Conversation insert did not produce a readable row");
+                }
+                created = inserted == 1;
+            } catch (DataIntegrityViolationException lostRace) {
+                conversation = (listing == null
+                        ? conversations.findByParticipantPairWithoutListing(min(first, second), max(first, second))
+                        : conversations.findByListingAndParticipantPair(listing.getId(), min(first, second), max(first, second)))
+                        .orElseThrow(() -> lostRace);
+                created = false;
+            }
+        }
 
         if (request.body() != null && !request.body().isBlank()) {
             sendMessageInternal(conversation, currentUser, request.body());
         }
 
-        return new ConversationCreateResult(toConversationResponse(conversation, currentUser), existing.isEmpty());
+        return new ConversationCreateResult(toConversationResponse(conversation, currentUser), created);
     }
 
     @Transactional(readOnly = true)
@@ -165,14 +190,16 @@ public class ConversationService {
         return messages.save(message);
     }
 
-    private User resolveOtherUser(User currentUser, CreateConversationRequest request) {
+    private User resolveOtherUser(CreateConversationRequest request, Listing listing) {
         if (request.otherUserId() != null) {
-            return users.findByIdAndDeletedAtIsNull(request.otherUserId())
+            User otherUser = users.findByIdAndDeletedAtIsNull(request.otherUserId())
                     .orElseThrow(() -> ApiException.notFound("Utilisateur introuvable"));
+            if (listing != null && !listing.getOwner().getId().equals(otherUser.getId())) {
+                throw ApiException.forbidden("Cette annonce appartient à un autre utilisateur");
+            }
+            return otherUser;
         }
-        if (request.listingId() != null) {
-            Listing listing = listings.findByIdAndDeletedAtIsNull(request.listingId())
-                    .orElseThrow(() -> ApiException.notFound("Annonce introuvable"));
+        if (listing != null) {
             return listing.getOwner();
         }
         throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Une conversation doit inclure un autre utilisateur ou une annonce");
