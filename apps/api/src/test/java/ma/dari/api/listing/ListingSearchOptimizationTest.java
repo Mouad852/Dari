@@ -63,13 +63,14 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
         double rabatLng = -6.8416;
         int radiusM = 5000;
 
-        List<Listing> results = search.searchByRadiusPaginated(
+        List<RadiusListingProjection> radiusRows = search.searchByRadiusPaginated(
                 rabatLat, rabatLng, radiusM,
                 null, null,
                 null, null, null, null, null, null, null, 0,
                 21
         );
 
+        List<Listing> results = hydrate(radiusRows);
         // Verify results are within radius
         assertThat(results).isNotEmpty();
         assertThat(results.size()).isLessThanOrEqualTo(20);
@@ -208,7 +209,7 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
         double centerLng = -6.8416;
 
         // Get distance-sorted results
-        List<Listing> results = search.searchByRadiusPaginated(
+        List<RadiusListingProjection> radiusRows = search.searchByRadiusPaginated(
                 centerLat, centerLng, 10000,  // 10km radius
                 null, null, null, null,
                 null, null, null,
@@ -216,6 +217,7 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
                 100
         );
 
+        List<Listing> results = hydrate(radiusRows);
         // Verified against ST_Distance itself, not a Java reimplementation of it.
         //
         // This used to recompute distance with the haversineMiles helper below,
@@ -257,6 +259,13 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
                     return byId;
                 }
         );
+    }
+
+    private List<Listing> hydrate(List<RadiusListingProjection> rows) {
+        Map<UUID, Listing> byId = new HashMap<>();
+        listings.findAllById(rows.stream().map(RadiusListingProjection::getListingId).toList())
+                .forEach(listing -> byId.put(listing.getId(), listing));
+        return rows.stream().map(row -> byId.get(row.getListingId())).toList();
     }
 
     private void seedListingsAroundRabat(int count) {

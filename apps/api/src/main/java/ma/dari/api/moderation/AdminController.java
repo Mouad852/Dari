@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import ma.dari.api.common.auth.CurrentUser;
 import ma.dari.api.common.error.ApiException;
 import ma.dari.api.common.error.ErrorCode;
+import ma.dari.api.common.pagination.CursorPage;
 import ma.dari.api.listing.ListingStatus;
 import ma.dari.api.listing.dto.ListingResponse;
 import ma.dari.api.user.User;
@@ -126,9 +127,10 @@ public class AdminController {
     }
 
     @GetMapping("/users")
-    public List<AdminUserResponse> users(@RequestParam(required = false) String query,
-                                       @RequestParam(required = false) UserStatus status) {
-        return adminService.searchUsers(query, status);
+    public CursorPage<AdminUserResponse> users(@RequestParam(required = false) String query,
+                                              @RequestParam(required = false) UserStatus status,
+                                              @RequestParam(required = false) String cursor) {
+        return adminService.searchUsers(query, status, cursor);
     }
 
     /** Reversible. Conversation history stays reachable to the other party. */

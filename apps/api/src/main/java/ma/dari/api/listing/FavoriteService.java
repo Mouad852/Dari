@@ -4,8 +4,11 @@ import ma.dari.api.common.error.ApiException;
 import ma.dari.api.common.error.ErrorCode;
 import ma.dari.api.common.pagination.Cursor;
 import ma.dari.api.common.pagination.CursorPage;
+import ma.dari.api.common.pagination.TypedCursors;
 import ma.dari.api.listing.dto.ListingPhotoResponse;
 import ma.dari.api.user.User;
+import ma.dari.api.media.ImageStore;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -23,12 +26,18 @@ public class FavoriteService {
     private final FavoriteRepository favorites;
     private final ListingRepository listings;
     private final ListingPhotoRepository listingPhotos;
+    private final double fuzzRadiusM;
+    private final ImageStore imageStore;
 
     public FavoriteService(FavoriteRepository favorites, ListingRepository listings,
-                           ListingPhotoRepository listingPhotos) {
+                           ListingPhotoRepository listingPhotos,
+                           @Value("${dari.location.fuzz-radius-metres:200}") double fuzzRadiusM,
+                           ImageStore imageStore) {
         this.favorites = favorites;
         this.listings = listings;
         this.listingPhotos = listingPhotos;
+        this.fuzzRadiusM = fuzzRadiusM;
+        this.imageStore = imageStore;
     }
 
     /**
@@ -38,11 +47,9 @@ public class FavoriteService {
      */
     @Transactional(readOnly = true)
     public CursorPage<PublicListingResponse> list(User user, String cursor) {
-        var payload = cursor == null ? null : Cursor.decode(cursor);
-        Instant lastCreatedAt = payload == null || !payload.has("lastCreatedAt") || payload.get("lastCreatedAt").isNull()
-                ? null : Instant.parse(payload.get("lastCreatedAt").asText());
-        UUID lastListingId = payload == null || !payload.has("lastListingId") || payload.get("lastListingId").isNull()
-                ? null : UUID.fromString(payload.get("lastListingId").asText());
+        TypedCursors.FavoriteCursor decoded = cursor == null ? null : TypedCursors.favorite(cursor);
+        Instant lastCreatedAt = decoded == null ? null : decoded.lastCreatedAt();
+        UUID lastListingId = decoded == null ? null : decoded.lastListingId();
 
         List<Favorite> rows = lastCreatedAt == null && lastListingId == null
                 ? favorites.findVisibleByUser(user.getId(), PageRequest.of(0, PAGE_SIZE + 1))
@@ -55,13 +62,13 @@ public class FavoriteService {
         if (!pageRows.isEmpty()) {
             List<UUID> listingIds = pageRows.stream().map(f -> f.getListing().getId()).toList();
             for (ListingPhoto photo : listingPhotos.findByListingIdInAndCoverTrueAndDeletedAtIsNull(listingIds)) {
-                covers.put(photo.getListing().getId(), ListingPhotoResponse.from(photo).url());
+                covers.put(photo.getListing().getId(), imageStore.publicUrl(photo.getStorageKey()));
             }
         }
 
         List<PublicListingResponse> items = pageRows.stream()
                 .map(f -> PublicListingResponse.from(f.getListing(),
-                        LocationFuzzer.fuzz(f.getListing().getId(), f.getListing().getLatitude(), f.getListing().getLongitude()),
+                        LocationFuzzer.fuzz(f.getListing().getId(), f.getListing().getLatitude(), f.getListing().getLongitude(), fuzzRadiusM),
                         covers.get(f.getListing().getId())))
                 .toList();
 
@@ -69,6 +76,7 @@ public class FavoriteService {
         if (hasMore && !pageRows.isEmpty()) {
             Favorite last = pageRows.get(pageRows.size() - 1);
             var payloadOut = Cursor.newPayload();
+            payloadOut.put("mode", "favorites");
             payloadOut.put("lastCreatedAt", last.getCreatedAt().toString());
             payloadOut.put("lastListingId", last.getListing().getId().toString());
             nextCursor = Cursor.encode(payloadOut);

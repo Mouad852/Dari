@@ -37,10 +37,8 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
      * once already.
      */
     @Query(value = """
-            SELECT l.* FROM listings l
-            WHERE l.status = 'PUBLISHED'
-              AND l.availability_state = 'AVAILABLE'
-              AND l.deleted_at IS NULL
+            SELECT l.* FROM published_listings l
+            WHERE 1 = 1
               AND (:city IS NULL OR l.city = :city)
               AND (:neighborhood IS NULL OR l.neighborhood = :neighborhood)
               AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
@@ -99,10 +97,8 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
      * Amenities use a GROUP BY HAVING subquery to enforce AND semantics.
      */
     @Query(value = """
-            SELECT l.* FROM listings l
-            WHERE l.status = 'PUBLISHED'
-              AND l.availability_state = 'AVAILABLE'
-              AND l.deleted_at IS NULL
+            SELECT l.* FROM published_listings l
+            WHERE 1 = 1
               AND (:city IS NULL OR l.city = :city)
               AND (:neighborhood IS NULL OR l.neighborhood = :neighborhood)
               AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
@@ -139,10 +135,10 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
      * Uses the idx_listings_location GIST index for efficient spatial lookups.
      */
     @Query(value = """
-            SELECT l.* FROM listings l
-            WHERE l.status = 'PUBLISHED'
-              AND l.availability_state = 'AVAILABLE'
-              AND l.deleted_at IS NULL
+            SELECT l.id AS listing_id,
+                   ST_Distance(l.location, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography) AS distance_metres
+            FROM published_listings l
+            WHERE 1 = 1
               AND (:city IS NULL OR l.city = :city)
               AND (:neighborhood IS NULL OR l.neighborhood = :neighborhood)
               AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
@@ -168,7 +164,7 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
               l.id DESC
             LIMIT :limit
             """, nativeQuery = true)
-    List<Listing> searchByRadiusPaginated(
+    List<RadiusListingProjection> searchByRadiusPaginated(
             @Param("lat") double lat,
             @Param("lng") double lng,
             @Param("radiusM") int radiusM,
@@ -191,10 +187,10 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
      * Includes all enum-based filters and amenities AND logic.
      */
     @Query(value = """
-            SELECT l.* FROM listings l
-            WHERE l.status = 'PUBLISHED'
-              AND l.availability_state = 'AVAILABLE'
-              AND l.deleted_at IS NULL
+            SELECT l.id AS listing_id,
+                   ST_Distance(l.location, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography) AS distance_metres
+            FROM published_listings l
+            WHERE 1 = 1
               AND (:city IS NULL OR l.city = :city)
               AND (:neighborhood IS NULL OR l.neighborhood = :neighborhood)
               AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
@@ -233,7 +229,7 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
               l.id DESC
             LIMIT :limit
             """, nativeQuery = true)
-    List<Listing> searchByRadiusWithCursor(
+    List<RadiusListingProjection> searchByRadiusWithCursor(
             @Param("lat") double lat,
             @Param("lng") double lng,
             @Param("radiusM") int radiusM,
@@ -258,10 +254,8 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
      * Includes all enum-based filters and amenities AND logic.
      */
     @Query(value = """
-            SELECT l.* FROM listings l
-            WHERE l.status = 'PUBLISHED'
-              AND l.availability_state = 'AVAILABLE'
-              AND l.deleted_at IS NULL
+            SELECT l.* FROM published_listings l
+            WHERE 1 = 1
               AND (:city IS NULL OR l.city = :city)
               AND (:neighborhood IS NULL OR l.neighborhood = :neighborhood)
               AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
@@ -310,10 +304,8 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
      * the real long-term answer for a city whose true inventory exceeds the cap.
      */
     @Query(value = """
-            SELECT l.* FROM listings l
-            WHERE l.status = 'PUBLISHED'
-              AND l.availability_state = 'AVAILABLE'
-              AND l.deleted_at IS NULL
+            SELECT l.* FROM published_listings l
+            WHERE 1 = 1
               AND (:city IS NULL OR l.city = :city)
               AND (:neighborhood IS NULL OR l.neighborhood = :neighborhood)
               AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
@@ -358,10 +350,8 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
      * Featured listings: most recent public listings, no pagination, up to limit.
      */
     @Query(value = """
-            SELECT * FROM listings
-            WHERE status = 'PUBLISHED'
-              AND availability_state = 'AVAILABLE'
-              AND deleted_at IS NULL
+            SELECT * FROM published_listings
+            WHERE 1 = 1
             ORDER BY created_at DESC, id DESC
             LIMIT :limit
             """, nativeQuery = true)

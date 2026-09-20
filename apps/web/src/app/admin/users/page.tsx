@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { USER_ACCOUNT_STATUS_LABELS } from '@/lib/labels';
-import type { AdminUser, UserAccountStatus } from '@/types/api';
+import type { AdminUser, CursorPage, UserAccountStatus } from '@/types/api';
 
 const STATUS_STYLE: Record<UserAccountStatus, { bg: string; color: string }> = {
   ACTIVE: { bg: 'var(--brand-subtle)', color: 'var(--clay-700)' },
@@ -16,6 +16,7 @@ const STATUS_STYLE: Record<UserAccountStatus, { bg: string; color: string }> = {
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[] | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -64,12 +65,16 @@ export default function AdminUsersPage() {
     }
   }, [pendingId]);
 
-  const load = (idToken: string, searchQuery: string) => {
+  const load = (idToken: string, searchQuery: string, cursor?: string, append = false) => {
     void (async () => {
       try {
-        const params = searchQuery.trim() ? `?query=${encodeURIComponent(searchQuery.trim())}` : '';
-        const result = await apiFetch<AdminUser[]>(`/admin/users${params}`, { token: idToken });
-        setUsers(result);
+        const params = new URLSearchParams();
+        if (searchQuery.trim()) params.set('query', searchQuery.trim());
+        if (cursor) params.set('cursor', cursor);
+        const suffix = params.toString() ? `?${params.toString()}` : '';
+        const result = await apiFetch<CursorPage<AdminUser>>(`/admin/users${suffix}`, { token: idToken });
+        setUsers((previous) => append ? [...(previous ?? []), ...result.items] : result.items);
+        setNextCursor(result.nextCursor);
       } catch (cause) {
         setError(cause instanceof ApiError ? cause.message : 'Impossible de charger les utilisateurs.');
       }
@@ -92,7 +97,11 @@ export default function AdminUsersPage() {
 
   const handleSearch = (event: FormEvent) => {
     event.preventDefault();
-    if (token) load(token, query);
+    if (token) {
+      setUsers(null);
+      setNextCursor(null);
+      load(token, query);
+    }
   };
 
   const handleSuspend = (id: string) => {
@@ -368,6 +377,15 @@ export default function AdminUsersPage() {
                 </article>
               );
             })}
+            {nextCursor && token ? (
+              <button
+                type="button"
+                onClick={() => load(token, query, nextCursor, true)}
+                style={{ justifySelf: 'center', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-pill)', background: 'var(--surface-card)', color: 'var(--text-heading)', padding: '0.65rem 1.1rem', font: 'var(--type-body-sm)', cursor: 'pointer' }}
+              >
+                Charger plus
+              </button>
+            ) : null}
           </div>
         )}
       </div>

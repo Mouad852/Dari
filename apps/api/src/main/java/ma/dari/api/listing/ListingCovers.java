@@ -1,6 +1,7 @@
 package ma.dari.api.listing;
 
 import ma.dari.api.listing.dto.ListingPhotoResponse;
+import ma.dari.api.media.ImageStore;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -25,15 +26,17 @@ import java.util.UUID;
 public class ListingCovers {
 
     private final ListingPhotoRepository photos;
+    private final ImageStore imageStore;
 
-    public ListingCovers(ListingPhotoRepository photos) {
+    public ListingCovers(ListingPhotoRepository photos, ImageStore imageStore) {
         this.photos = photos;
+        this.imageStore = imageStore;
     }
 
     /** Root-relative URL, or null when the listing has no cover photo. */
     public String forListing(UUID listingId) {
         return photos.findByListingIdAndCoverTrueAndDeletedAtIsNull(listingId)
-                .map(photo -> ListingPhotoResponse.from(photo).url())
+                .map(photo -> imageStore.publicUrl(photo.getStorageKey()))
                 .orElse(null);
     }
 
@@ -49,7 +52,7 @@ public class ListingCovers {
         List<UUID> ids = rows.stream().map(Listing::getId).toList();
         Map<UUID, String> urls = new HashMap<>();
         for (ListingPhoto photo : photos.findByListingIdInAndCoverTrueAndDeletedAtIsNull(ids)) {
-            urls.put(photo.getListing().getId(), ListingPhotoResponse.from(photo).url());
+            urls.put(photo.getListing().getId(), imageStore.publicUrl(photo.getStorageKey()));
         }
         return urls;
     }

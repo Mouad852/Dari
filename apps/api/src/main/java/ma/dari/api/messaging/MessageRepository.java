@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Collection;
 import java.util.UUID;
 
 public interface MessageRepository extends JpaRepository<Message, UUID> {
@@ -38,6 +39,29 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
             order by m.sentAt desc, m.id desc
             """)
     List<Message> findLatestByConversation(@Param("conversationId") UUID conversationId, Pageable pageable);
+
+    @Query(value = """
+            select distinct on (conversation_id) *
+            from messages
+            where deleted_at is null and conversation_id in (:conversationIds)
+            order by conversation_id, sent_at desc, id desc
+            """, nativeQuery = true)
+    List<Message> findLatestByConversationIdIn(@Param("conversationIds") Collection<UUID> conversationIds);
+
+    @Query(value = """
+            select conversation_id as conversationId, count(*) as unreadCount
+            from messages
+            where deleted_at is null and conversation_id in (:conversationIds)
+              and sender_id <> :userId and read_at is null
+            group by conversation_id
+            """, nativeQuery = true)
+    List<UnreadCount> countUnreadByConversationIdIn(@Param("conversationIds") Collection<UUID> conversationIds,
+                                                    @Param("userId") UUID userId);
+
+    interface UnreadCount {
+        UUID getConversationId();
+        long getUnreadCount();
+    }
 
     @Query("""
             select m from Message m

@@ -6,7 +6,9 @@ import ma.dari.api.common.error.ApiException;
 import ma.dari.api.common.error.ErrorCode;
 import ma.dari.api.common.pagination.Cursor;
 import ma.dari.api.common.pagination.CursorPage;
+import ma.dari.api.common.pagination.TypedCursors;
 import ma.dari.api.user.User;
+import ma.dari.api.media.ImageStore;
 import ma.dari.api.user.UserRole;
 import ma.dari.api.listing.dto.HouseRulesResponse;
 import ma.dari.api.listing.dto.ListingPhotoResponse;
@@ -15,6 +17,7 @@ import ma.dari.api.listing.dto.ListingRoomResponse;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -27,6 +30,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Map;
+import java.util.HashMap;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 @Service
 public class ListingSearchService {
@@ -47,11 +54,15 @@ public class ListingSearchService {
     private final ListingRoomRepository rooms;
     private final ListingCovers covers;
     private final MeterRegistry meterRegistry;
+    private final double fuzzRadiusM;
+    private final ImageStore imageStore;
 
     public ListingSearchService(ListingRepository listings, ListingSearchRepository search,
                                 ListingAmenityRepository listingAmenities, ListingPhotoRepository listingPhotos,
                                 HouseRulesRepository houseRules, ListingRoomRepository rooms,
-                                ListingCovers covers, MeterRegistry meterRegistry) {
+                                ListingCovers covers, MeterRegistry meterRegistry,
+                                @Value("${dari.location.fuzz-radius-metres:200}") double fuzzRadiusM,
+                                ImageStore imageStore) {
         this.listings = listings;
         this.search = search;
         this.listingAmenities = listingAmenities;
@@ -60,6 +71,8 @@ public class ListingSearchService {
         this.rooms = rooms;
         this.covers = covers;
         this.meterRegistry = meterRegistry;
+        this.fuzzRadiusM = fuzzRadiusM;
+        this.imageStore = imageStore;
     }
 
     public CursorPage<PublicListingResponse> search(String city,
@@ -84,11 +97,21 @@ public class ListingSearchService {
             throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Rayon trop large");
         }
 
-        String effectiveSort = sort == null ? "recommended" : sort;
-        boolean radiusMode = lat != null && lng != null && radiusM != null;
+        boolean radiusMode = ListingSearchValidation.validate(city, neighborhood, lat, lng, radiusM, sort,
+                propertyType, roomType, furnishing, amenities, priceMin, priceMax);
+        String effectiveSort = normalizeSort(sort);
+        if (radiusMode && !"closest".equals(effectiveSort)) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED,
+                    "Le tri par distance nécessite une recherche par rayon");
+        }
+        if (!radiusMode && "closest".equals(effectiveSort)) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED,
+                    "Le tri par distance nécessite une recherche par rayon");
+        }
         Timer.Sample searchTimerSample = Timer.start(meterRegistry);
 
         List<Listing> page;
+        List<RadiusListingProjection> radiusRows = null;
         String nextCursor = null;
 
         // Convert price params to BigDecimal for SQL queries
@@ -96,11 +119,14 @@ public class ListingSearchService {
         BigDecimal maxPrice = priceMax == null ? null : BigDecimal.valueOf(priceMax);
 
         // Normalize enum arrays: empty arrays are treated as null (no filter)
-        String[] normalizedPropertyTypes = normalizeValues(propertyType);
-        String[] normalizedRoomTypes = normalizeValues(roomType);
-        String[] normalizedFurnishings = normalizeValues(furnishing);
+        String[] normalizedPropertyTypes = normalizeEnumValues(propertyType);
+        String[] normalizedRoomTypes = normalizeEnumValues(roomType);
+        String[] normalizedFurnishings = normalizeEnumValues(furnishing);
         String[] normalizedAmenities = normalizeValues(amenities);
         int amenityCount = normalizedAmenities != null ? normalizedAmenities.length : 0;
+        String queryKey = searchQueryKey(city, neighborhood, normalizedPropertyTypes, normalizedRoomTypes,
+                normalizedFurnishings, normalizedAmenities, availableFrom, priceMin, priceMax,
+                lat, lng, radiusM, effectiveSort);
 
         try {
         if (lat != null && lng != null && radiusM != null) {
@@ -112,19 +138,15 @@ public class ListingSearchService {
 
             // Distance sort requires a different cursor format: distance + id
             if (cursor != null && !cursor.isBlank()) {
-                ObjectNode payload = Cursor.decode(cursor);
-                String lastIdStr = payload.path("lastId").asText(null);
-                UUID lastId = lastIdStr != null ? UUID.fromString(lastIdStr) : null;
+                TypedCursors.SearchCursor decoded = TypedCursors.search(cursor, queryKey, effectiveSort, true);
+                UUID lastId = decoded.lastId();
 
                 if (lastId != null) {
                     // For cursor pagination in distance mode, we need the actual distance of the last item
                     // Query to get it from the last listing
-                    var lastItem = listings.findByIdAndDeletedAtIsNull(lastId);
-                    double lastDistance = lastItem.map(l ->
-                        haversineMiles(lat, lng, l.getLatitude(), l.getLongitude()) * 1609.344
-                    ).orElse(0.0);
+                    double lastDistance = decoded.lastDistance().doubleValue();
 
-                    page = search.searchByRadiusWithCursor(
+                    radiusRows = search.searchByRadiusWithCursor(
                             lat, lng, radiusM,
                             city, neighborhood,
                             minPrice, maxPrice,
@@ -134,7 +156,7 @@ public class ListingSearchService {
                             PAGE_SIZE + 1
                     );
                 } else {
-                    page = search.searchByRadiusPaginated(
+                    radiusRows = search.searchByRadiusPaginated(
                             lat, lng, radiusM,
                             city, neighborhood,
                             minPrice, maxPrice,
@@ -144,7 +166,7 @@ public class ListingSearchService {
                     );
                 }
             } else {
-                page = search.searchByRadiusPaginated(
+                radiusRows = search.searchByRadiusPaginated(
                         lat, lng, radiusM,
                         city, neighborhood,
                         minPrice, maxPrice,
@@ -154,13 +176,15 @@ public class ListingSearchService {
                 );
             }
 
-            // Build next cursor with distance information
-            if (page.size() > PAGE_SIZE) {
-                Listing lastListing = page.get(PAGE_SIZE - 1);
+            page = hydrateRadiusRows(radiusRows);
+            if (radiusRows.size() > PAGE_SIZE) {
+                RadiusListingProjection last = radiusRows.get(PAGE_SIZE - 1);
                 ObjectNode cursorPayload = JsonNodeFactory.instance.objectNode();
-                cursorPayload.put("lastId", lastListing.getId().toString());
-                // Distance will be recalculated on next query by PostGIS
-                cursorPayload.put("mode", "distance");
+                cursorPayload.put("lastId", last.getListingId().toString());
+                cursorPayload.put("mode", "radius");
+                cursorPayload.put("sort", effectiveSort);
+                cursorPayload.put("queryKey", queryKey);
+                cursorPayload.put("lastDistance", Double.toString(last.getDistanceMetres()));
                 nextCursor = Cursor.encode(cursorPayload);
                 page = page.subList(0, PAGE_SIZE);
             }
@@ -179,27 +203,11 @@ public class ListingSearchService {
             OffsetDateTime lastUpdatedAt = null;
 
             if (cursor != null && !cursor.isBlank()) {
-                ObjectNode payload = Cursor.decode(cursor);
-                String lastIdStr = payload.path("lastId").asText(null);
-                if (lastIdStr != null) {
-                    lastId = UUID.fromString(lastIdStr);
-                    // A cursor is only meaningful for the sort that produced it.
-                    // Resuming a price-sorted page with a date cursor would skip
-                    // or repeat rows silently, so the sort travels in the cursor
-                    // and a mismatch restarts from the first page rather than
-                    // returning a quietly wrong one.
-                    String cursorSort = payload.path("sort").asText(null);
-                    if (cursorSort != null && !cursorSort.equals(activeSort)) {
-                        lastId = null;
-                    } else {
-                        String priceStr = payload.path("lastPrice").asText(null);
-                        String createdStr = payload.path("lastCreatedAt").asText(null);
-                        String updatedStr = payload.path("lastUpdatedAt").asText(null);
-                        lastPrice = priceStr == null ? null : new BigDecimal(priceStr);
-                        lastCreatedAt = createdStr == null ? null : OffsetDateTime.parse(createdStr);
-                        lastUpdatedAt = updatedStr == null ? null : OffsetDateTime.parse(updatedStr);
-                    }
-                }
+                TypedCursors.SearchCursor decoded = TypedCursors.search(cursor, queryKey, activeSort, false);
+                lastId = decoded.lastId();
+                lastPrice = decoded.lastPrice();
+                lastCreatedAt = decoded.lastCreatedAt() == null ? null : decoded.lastCreatedAt().atOffset(java.time.ZoneOffset.UTC);
+                lastUpdatedAt = decoded.lastUpdatedAt() == null ? null : decoded.lastUpdatedAt().atOffset(java.time.ZoneOffset.UTC);
             }
 
             page = search.searchByLocationSorted(
@@ -215,6 +223,8 @@ public class ListingSearchService {
                 Listing lastListing = page.get(PAGE_SIZE - 1);
                 ObjectNode cursorPayload = JsonNodeFactory.instance.objectNode();
                 cursorPayload.put("sort", activeSort);
+                cursorPayload.put("mode", "location");
+                cursorPayload.put("queryKey", queryKey);
                 cursorPayload.put("lastId", lastListing.getId().toString());
                 cursorPayload.put("lastPrice", lastListing.getPriceRent().toPlainString());
                 cursorPayload.put("lastCreatedAt", lastListing.getCreatedAt().toString());
@@ -228,7 +238,7 @@ public class ListingSearchService {
         java.util.Map<UUID, String> coverUrls = covers.forEach(page);
         List<PublicListingResponse> items = page.stream()
                 .map(l -> PublicListingResponse.from(l,
-                        LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude()),
+                        LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude(), fuzzRadiusM),
                         coverUrls.get(l.getId())))
                 .toList();
 
@@ -260,8 +270,10 @@ public class ListingSearchService {
                                      Integer priceMin,
                                      Integer priceMax,
                                      Double lat,
-                                     Double lng,
-                                     Integer radiusM) {
+                                      Double lng,
+                                      Integer radiusM) {
+        ListingSearchValidation.validate(city, neighborhood, lat, lng, radiusM, null,
+                propertyType, roomType, furnishing, amenities, priceMin, priceMax);
         if ((city != null || neighborhood != null) && (lat != null || lng != null || radiusM != null)) {
             throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "La ville, le quartier et le rayon ne peuvent pas être combinés");
         }
@@ -269,9 +281,9 @@ public class ListingSearchService {
             throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Rayon trop large");
         }
 
-        String[] normalizedPropertyTypes = normalizeValues(propertyType);
-        String[] normalizedRoomTypes = normalizeValues(roomType);
-        String[] normalizedFurnishings = normalizeValues(furnishing);
+        String[] normalizedPropertyTypes = normalizeEnumValues(propertyType);
+        String[] normalizedRoomTypes = normalizeEnumValues(roomType);
+        String[] normalizedFurnishings = normalizeEnumValues(furnishing);
         String[] normalizedAmenities = normalizeValues(amenities);
         int amenityCount = normalizedAmenities != null ? normalizedAmenities.length : 0;
         BigDecimal minPrice = priceMin == null ? null : BigDecimal.valueOf(priceMin);
@@ -280,18 +292,18 @@ public class ListingSearchService {
         // One past the cap, so "more than CAP" is distinguishable from "exactly CAP".
         int probe = SearchCountResponse.CAP + 1;
 
-        List<Listing> rows = (lat != null && lng != null && radiusM != null)
+        int matchingRows = (lat != null && lng != null && radiusM != null)
                 ? search.searchByRadiusPaginated(
                         lat, lng, radiusM, city, neighborhood, minPrice, maxPrice,
                         normalizedPropertyTypes, normalizedRoomTypes, normalizedFurnishings,
                         availableFrom, normalizedAmenities, amenityCount, probe)
+                .size()
                 : search.searchByLocationSorted(
                         city, neighborhood, minPrice, maxPrice,
-                        normalizedPropertyTypes, normalizedRoomTypes, normalizedFurnishings,
-                        availableFrom, normalizedAmenities, amenityCount,
-                        "recommended", null, null, null, null, probe);
-
-        return SearchCountResponse.of(rows.size());
+                         normalizedPropertyTypes, normalizedRoomTypes, normalizedFurnishings,
+                         availableFrom, normalizedAmenities, amenityCount,
+                         "recommended", null, null, null, null, probe).size();
+        return SearchCountResponse.of(matchingRows);
     }
 
     /**
@@ -311,8 +323,10 @@ public class ListingSearchService {
                                                  Integer priceMax,
                                                  LocalDate availableFrom,
                                                  Double lat,
-                                                 Double lng,
-                                                 Integer radiusM) {
+                                                  Double lng,
+                                                  Integer radiusM) {
+        ListingSearchValidation.validate(city, neighborhood, lat, lng, radiusM, null,
+                propertyType, roomType, furnishing, amenities, priceMin, priceMax);
         if ((city != null || neighborhood != null) && (lat != null || lng != null || radiusM != null)) {
             throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "La ville, le quartier et le rayon ne peuvent pas être combinés");
         }
@@ -324,9 +338,9 @@ public class ListingSearchService {
         }
 
         // Normalize enums and price params
-        String[] normalizedPropertyTypes = normalizeValues(propertyType);
-        String[] normalizedRoomTypes = normalizeValues(roomType);
-        String[] normalizedFurnishings = normalizeValues(furnishing);
+        String[] normalizedPropertyTypes = normalizeEnumValues(propertyType);
+        String[] normalizedRoomTypes = normalizeEnumValues(roomType);
+        String[] normalizedFurnishings = normalizeEnumValues(furnishing);
         String[] normalizedAmenities = normalizeValues(amenities);
         int amenityCount = normalizedAmenities != null ? normalizedAmenities.length : 0;
         BigDecimal minPrice = priceMin == null ? null : BigDecimal.valueOf(priceMin);
@@ -342,7 +356,7 @@ public class ListingSearchService {
         );
 
         return listings_.stream()
-                .map(l -> MapPinResponse.from(l, LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude())))
+                .map(l -> MapPinResponse.from(l, LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude(), fuzzRadiusM)))
                 .toList();
     }
 
@@ -355,7 +369,7 @@ public class ListingSearchService {
         java.util.Map<UUID, String> featuredCovers = covers.forEach(featured);
         return featured.stream()
                 .map(l -> PublicListingResponse.from(l,
-                        LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude()),
+                        LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude(), fuzzRadiusM),
                         featuredCovers.get(l.getId())))
                 .toList();
     }
@@ -365,19 +379,19 @@ public class ListingSearchService {
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
 
         if (viewer != null && listing.getOwner().getId().equals(viewer.getId())) {
-            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), covers.forListing(listing.getId()));
+            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM), covers.forListing(listing.getId()));
         }
 
         // Moderators review PENDING_REVIEW/SUSPENDED listings that belong to
         // someone else; without this, the admin console's own "view listing"
         // link 404s on exactly the listings it exists to review.
         if (viewer != null && viewer.getRole() == UserRole.ADMIN) {
-            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), covers.forListing(listing.getId()));
+            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM), covers.forListing(listing.getId()));
         }
 
         if (listing.getStatus() == ListingStatus.PUBLISHED
                 && listing.getAvailabilityState() == AvailabilityState.AVAILABLE) {
-            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()), covers.forListing(listing.getId()));
+            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM), covers.forListing(listing.getId()));
         }
 
         throw new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable");
@@ -398,7 +412,7 @@ public class ListingSearchService {
         List<ListingPhotoResponse> photos = listingPhotos
                 .findByListingIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAsc(listingId)
                 .stream()
-                .map(ListingPhotoResponse::from)
+                .map(photo -> ListingPhotoResponse.from(photo, imageStore.publicUrl(photo.getStorageKey())))
                 .toList();
         HouseRulesResponse houseRulesResponse = houseRules.findById(listingId)
                 .map(HouseRulesResponse::from)
@@ -409,7 +423,7 @@ public class ListingSearchService {
                 .toList();
         return PublicListingDetailResponse.from(
                 listing,
-                LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude()),
+                LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM),
                 new HashSet<>(listingAmenities.findAmenityCodesByListingId(listingId)),
                 photos,
                 houseRulesResponse,
@@ -527,6 +541,12 @@ public class ListingSearchService {
         return values.isEmpty() ? null : values.toArray(String[]::new);
     }
 
+    private String[] normalizeEnumValues(String[] rawValues) {
+        String[] values = normalizeValues(rawValues);
+        if (values == null) return null;
+        return java.util.Arrays.stream(values).map(value -> value.toUpperCase(Locale.ROOT)).toArray(String[]::new);
+    }
+
     private String normalizeSort(String sort) {
         if (sort == null || sort.isBlank()) {
             return "recommended";
@@ -542,6 +562,32 @@ public class ListingSearchService {
         };
     }
 
+    private List<Listing> hydrateRadiusRows(List<RadiusListingProjection> rows) {
+        if (rows == null || rows.isEmpty()) return List.of();
+        Map<UUID, Listing> byId = listings.findAllById(rows.stream().map(RadiusListingProjection::getListingId).toList())
+                .stream().collect(java.util.stream.Collectors.toMap(Listing::getId, listing -> listing));
+        return rows.stream().map(row -> byId.get(row.getListingId())).filter(java.util.Objects::nonNull).toList();
+    }
+
+    private String searchQueryKey(String city, String neighborhood, String[] propertyTypes, String[] roomTypes,
+                                  String[] furnishings, String[] amenities, LocalDate availableFrom,
+                                  Integer priceMin, Integer priceMax, Double lat, Double lng, Integer radiusM,
+                                  String sort) {
+        String raw = String.join("|", String.valueOf(city), String.valueOf(neighborhood),
+                java.util.Arrays.toString(propertyTypes), java.util.Arrays.toString(roomTypes),
+                java.util.Arrays.toString(furnishings), java.util.Arrays.toString(amenities),
+                String.valueOf(availableFrom), String.valueOf(priceMin), String.valueOf(priceMax),
+                String.valueOf(lat), String.valueOf(lng), String.valueOf(radiusM), String.valueOf(sort));
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8));
+            StringBuilder result = new StringBuilder(digest.length * 2);
+            for (byte value : digest) result.append(String.format("%02x", value));
+            return result.toString();
+        } catch (java.security.NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
+    }
+
     private String encodeCursor(UUID id, String sort) {
         ObjectNode payload = Cursor.newPayload();
         payload.put("sort", sort);
@@ -549,14 +595,4 @@ public class ListingSearchService {
         return Cursor.encode(payload);
     }
 
-    private double haversineMiles(double lat1, double lon1, double lat2, double lon2) {
-        double earthRadius = 6371.0;
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return earthRadius * c;
-    }
 }

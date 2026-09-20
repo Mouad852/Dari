@@ -289,16 +289,16 @@ class ReportApiTest extends AbstractIntegrationTest {
         // ARCHITECTURE.md §7), so any other class that suspends a user -- as
         // AdminApiTest now does -- would otherwise break this by existing.
         UUID suspendedId = suspendedUser.getId();
-        var byStatus = adminService.searchUsers(null, UserStatus.SUSPENDED);
-        assertThat(byStatus).allMatch(row -> row.status() == UserStatus.SUSPENDED);
-        var suspendedRow = byStatus.stream()
+        var byStatus = adminService.searchUsers(null, UserStatus.SUSPENDED, null);
+        assertThat(byStatus.items()).allMatch(row -> row.status() == UserStatus.SUSPENDED);
+        var suspendedRow = byStatus.items().stream()
                 .filter(row -> row.id().equals(suspendedId))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("suspended user missing from the status filter"));
         assertThat(suspendedRow.reportCount()).isEqualTo(1L);
 
-        var byQuery = adminService.searchUsers("salma", null);
-        assertThat(byQuery).extracting(row -> row.displayName()).contains("Salma Active");
+        var byQuery = adminService.searchUsers("salma", null, null);
+        assertThat(byQuery.items()).extracting(row -> row.displayName()).contains("Salma Active");
 
         assertThat(users.findById(activeUser.getId())).isPresent();
     }

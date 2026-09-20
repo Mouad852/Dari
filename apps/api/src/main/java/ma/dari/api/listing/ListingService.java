@@ -4,6 +4,7 @@ import ma.dari.api.common.error.ApiException;
 import ma.dari.api.common.error.ErrorCode;
 import ma.dari.api.common.pagination.Cursor;
 import ma.dari.api.common.pagination.CursorPage;
+import ma.dari.api.common.pagination.TypedCursors;
 import ma.dari.api.listing.dto.CreateListingRequest;
 import ma.dari.api.listing.dto.HouseRulesRequest;
 import ma.dari.api.listing.dto.HouseRulesResponse;
@@ -12,6 +13,7 @@ import ma.dari.api.listing.dto.ListingRoomRequest;
 import ma.dari.api.listing.dto.ListingRoomResponse;
 import ma.dari.api.listing.dto.UpdateListingRequest;
 import ma.dari.api.media.ImageStore;
+import ma.dari.api.media.MediaCleanupService;
 import ma.dari.api.user.User;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -35,6 +37,7 @@ public class ListingService {
     private final ListingRepository listings;
     private final ListingPhotoRepository listingPhotos;
     private final ImageStore imageStore;
+    private final MediaCleanupService mediaCleanup;
     private final AmenityRepository amenities;
     private final ListingAmenityRepository listingAmenities;
     private final HouseRulesRepository houseRules;
@@ -43,12 +46,14 @@ public class ListingService {
     private final ListingCovers covers;
 
     public ListingService(ListingRepository listings, ListingPhotoRepository listingPhotos, ImageStore imageStore,
+                           MediaCleanupService mediaCleanup,
                            AmenityRepository amenities, ListingAmenityRepository listingAmenities,
                            HouseRulesRepository houseRules, NeighborhoodRepository neighborhoods,
                            ListingRoomRepository rooms, ListingCovers covers) {
         this.listings = listings;
         this.listingPhotos = listingPhotos;
         this.imageStore = imageStore;
+        this.mediaCleanup = mediaCleanup;
         this.amenities = amenities;
         this.listingAmenities = listingAmenities;
         this.houseRules = houseRules;
@@ -60,11 +65,9 @@ public class ListingService {
     /** The owner's dashboard: every status, not just what search would show. */
     @Transactional(readOnly = true)
     public CursorPage<ListingResponse> listMine(User owner, String cursor) {
-        var payload = cursor == null ? null : Cursor.decode(cursor);
-        Instant lastCreatedAt = payload == null || !payload.has("lastCreatedAt") || payload.get("lastCreatedAt").isNull()
-                ? null : Instant.parse(payload.get("lastCreatedAt").asText());
-        UUID lastId = payload == null || !payload.has("lastId") || payload.get("lastId").isNull()
-                ? null : UUID.fromString(payload.get("lastId").asText());
+        TypedCursors.OwnerCursor decoded = cursor == null ? null : TypedCursors.ownerListing(cursor);
+        Instant lastCreatedAt = decoded == null ? null : decoded.lastCreatedAt();
+        UUID lastId = decoded == null ? null : decoded.lastId();
 
         List<Listing> rows = lastCreatedAt == null && lastId == null
                 ? listings.findVisibleByOwner(owner.getId(), PageRequest.of(0, PAGE_SIZE + 1))
@@ -83,6 +86,7 @@ public class ListingService {
         if (hasMore && !pageRows.isEmpty()) {
             Listing last = pageRows.get(pageRows.size() - 1);
             var payloadOut = Cursor.newPayload();
+            payloadOut.put("mode", "owner-listings");
             payloadOut.put("lastCreatedAt", last.getCreatedAt().toString());
             payloadOut.put("lastId", last.getId().toString());
             nextCursor = Cursor.encode(payloadOut);
@@ -308,6 +312,12 @@ public class ListingService {
         Listing listing = listings.findByIdAndOwnerIdAndDeletedAtIsNull(listingId, owner.getId())
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
 
+        listingPhotos.findByListingIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAsc(listingId)
+                .forEach(photo -> {
+                    photo.setDeletedAt(Instant.now());
+                    mediaCleanup.enqueue(photo.getStorageKey());
+                    listingPhotos.save(photo);
+                });
         listing.setDeletedAt(Instant.now());
         listings.save(listing);
     }
@@ -407,7 +417,7 @@ public class ListingService {
 
         photo.setDeletedAt(Instant.now());
         listingPhotos.save(photo);
-        imageStore.delete(photo.getStorageKey());
+        mediaCleanup.enqueue(photo.getStorageKey());
 
         if (photo.isCover()) {
             List<ListingPhoto> remaining = listingPhotos.findByListingIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAsc(listingId)

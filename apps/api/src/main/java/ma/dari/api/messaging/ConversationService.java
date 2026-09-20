@@ -4,6 +4,7 @@ import ma.dari.api.common.error.ApiException;
 import ma.dari.api.common.error.ErrorCode;
 import ma.dari.api.common.pagination.Cursor;
 import ma.dari.api.common.pagination.CursorPage;
+import ma.dari.api.common.pagination.TypedCursors;
 import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.messaging.dto.ConversationResponse;
@@ -44,11 +45,9 @@ public class ConversationService {
 
     @Transactional(readOnly = true)
     public CursorPage<ConversationResponse> list(User currentUser, String cursor) {
-        var payload = cursor == null ? null : Cursor.decode(cursor);
-        Instant lastCreatedAt = payload == null || !payload.has("lastCreatedAt") || payload.get("lastCreatedAt").isNull()
-                ? null : Instant.parse(payload.get("lastCreatedAt").asText());
-        UUID lastId = payload == null || !payload.has("lastId") || payload.get("lastId").isNull()
-                ? null : UUID.fromString(payload.get("lastId").asText());
+        TypedCursors.ConversationCursor decoded = cursor == null ? null : TypedCursors.conversation(cursor);
+        Instant lastCreatedAt = decoded == null ? null : decoded.lastCreatedAt();
+        UUID lastId = decoded == null ? null : decoded.lastId();
 
         List<Conversation> rows = lastCreatedAt == null && lastId == null
                 ? conversations.findVisibleByUser(currentUser.getId(), PageRequest.of(0, PAGE_SIZE + 1))
@@ -56,14 +55,25 @@ public class ConversationService {
 
         boolean hasMore = rows.size() > PAGE_SIZE;
         List<Conversation> pageRows = hasMore ? rows.subList(0, PAGE_SIZE) : rows;
+        List<UUID> conversationIds = pageRows.stream().map(Conversation::getId).toList();
+        java.util.Map<UUID, Message> latestByConversation = new java.util.HashMap<>();
+        java.util.Map<UUID, Long> unreadByConversation = new java.util.HashMap<>();
+        if (!conversationIds.isEmpty()) {
+            latestByConversation.putAll(messages.findLatestByConversationIdIn(conversationIds).stream()
+                    .collect(java.util.stream.Collectors.toMap(m -> m.getConversation().getId(), m -> m)));
+            unreadByConversation.putAll(messages.countUnreadByConversationIdIn(conversationIds, currentUser.getId()).stream()
+                    .collect(java.util.stream.Collectors.toMap(MessageRepository.UnreadCount::getConversationId,
+                            MessageRepository.UnreadCount::getUnreadCount)));
+        }
         List<ConversationResponse> items = pageRows.stream()
-                .map(c -> toConversationResponse(c, currentUser))
+                .map(c -> toConversationResponse(c, currentUser, latestByConversation, unreadByConversation))
                 .toList();
 
         String nextCursor = null;
         if (hasMore && !pageRows.isEmpty()) {
             var last = pageRows.get(pageRows.size() - 1);
             var payloadOut = Cursor.newPayload();
+            payloadOut.put("mode", "conversations");
             payloadOut.put("lastCreatedAt", last.getCreatedAt().toString());
             payloadOut.put("lastId", last.getId().toString());
             nextCursor = Cursor.encode(payloadOut);
@@ -140,11 +150,9 @@ public class ConversationService {
     @Transactional(readOnly = true)
     public CursorPage<MessageResponse> listMessages(User currentUser, UUID conversationId, String cursor) {
         Conversation conversation = findVisibleConversation(currentUser, conversationId);
-        var payload = cursor == null ? null : Cursor.decode(cursor);
-        Instant lastSentAt = payload == null || !payload.has("lastSentAt") || payload.get("lastSentAt").isNull()
-                ? null : Instant.parse(payload.get("lastSentAt").asText());
-        UUID lastId = payload == null || !payload.has("lastId") || payload.get("lastId").isNull()
-                ? null : UUID.fromString(payload.get("lastId").asText());
+        TypedCursors.MessageCursor decoded = cursor == null ? null : TypedCursors.message(cursor, conversationId);
+        Instant lastSentAt = decoded == null ? null : decoded.lastSentAt();
+        UUID lastId = decoded == null ? null : decoded.lastId();
 
         List<Message> rows = lastSentAt == null && lastId == null
                 ? messages.findVisibleByConversation(conversationId, PageRequest.of(0, PAGE_SIZE + 1))
@@ -158,6 +166,8 @@ public class ConversationService {
         if (hasMore && !pageRows.isEmpty()) {
             Message last = pageRows.get(pageRows.size() - 1);
             var payloadOut = Cursor.newPayload();
+            payloadOut.put("mode", "messages");
+            payloadOut.put("conversationId", conversationId.toString());
             payloadOut.put("lastSentAt", last.getSentAt().toString());
             payloadOut.put("lastId", last.getId().toString());
             nextCursor = Cursor.encode(payloadOut);
@@ -219,6 +229,18 @@ public class ConversationService {
         List<Message> latest = messages.findLatestByConversation(conversation.getId(), PageRequest.of(0, 1));
         Message lastMessage = latest.isEmpty() ? null : latest.get(0);
         long unreadCount = messages.countUnreadForUser(conversation.getId(), currentUser.getId());
+        java.util.Map<UUID, Message> latestByConversation = new java.util.HashMap<>();
+        latestByConversation.put(conversation.getId(), lastMessage);
+        java.util.Map<UUID, Long> unreadByConversation = java.util.Map.of(conversation.getId(), unreadCount);
+        return toConversationResponse(conversation, currentUser, latestByConversation, unreadByConversation);
+    }
+
+    private ConversationResponse toConversationResponse(Conversation conversation, User currentUser,
+                                                         java.util.Map<UUID, Message> latestByConversation,
+                                                         java.util.Map<UUID, Long> unreadByConversation) {
+        User otherUser = conversation.otherParticipant(currentUser);
+        Message lastMessage = latestByConversation.get(conversation.getId());
+        long unreadCount = unreadByConversation.getOrDefault(conversation.getId(), 0L);
         return new ConversationResponse(
                 conversation.getId(),
                 conversation.getListing() == null ? null : conversation.getListing().getId(),

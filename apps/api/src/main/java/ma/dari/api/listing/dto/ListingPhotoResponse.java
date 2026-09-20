@@ -16,10 +16,13 @@ public record ListingPhotoResponse(
         Instant createdAt
 ) {
     public static ListingPhotoResponse from(ListingPhoto photo) {
-        String relativeUrl = "/uploads/" + photo.getStorageKey();
+        return from(photo, "/uploads/" + photo.getStorageKey());
+    }
+
+    public static ListingPhotoResponse from(ListingPhoto photo, String url) {
         return new ListingPhotoResponse(
                 photo.getId(),
-                relativeUrl,
+                url,
                 photo.getMimeType(),
                 photo.getWidth(),
                 photo.getHeight(),

@@ -12,6 +12,7 @@ import ma.dari.api.listing.dto.ListingResponse;
 import ma.dari.api.listing.dto.UpdateListingPhotoRequest;
 import ma.dari.api.listing.dto.UpdateListingRequest;
 import ma.dari.api.user.User;
+import ma.dari.api.media.ImageStore;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -47,12 +48,14 @@ public class ListingController {
     private final ListingSearchService listingSearchService;
     private final ListingService listingService;
     private final ListingCovers covers;
+    private final ImageStore imageStore;
 
     public ListingController(ListingSearchService listingSearchService, ListingService listingService,
-                            ListingCovers covers) {
+                            ListingCovers covers, ImageStore imageStore) {
         this.listingSearchService = listingSearchService;
         this.listingService = listingService;
         this.covers = covers;
+        this.imageStore = imageStore;
     }
 
     // --- public read (phase 02, extended 07) ---------------------------------
@@ -248,7 +251,7 @@ public class ListingController {
     @GetMapping("/{id}/photos")
     public java.util.List<ListingPhotoResponse> photos(@CurrentUser User owner, @PathVariable UUID id) {
         return listingService.listPhotos(owner, id).stream()
-                .map(ListingPhotoResponse::from)
+                .map(photo -> ListingPhotoResponse.from(photo, imageStore.publicUrl(photo.getStorageKey())))
                 .toList();
     }
 
@@ -260,7 +263,7 @@ public class ListingController {
                                                       @PathVariable UUID id,
                                                       @RequestParam("file") MultipartFile file) {
         ListingPhoto photo = listingService.addPhoto(owner, id, file);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ListingPhotoResponse.from(photo));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ListingPhotoResponse.from(photo, imageStore.publicUrl(photo.getStorageKey())));
     }
 
     /** Reorder, or set the cover. Exactly one cover, enforced by a partial unique index. */
@@ -270,8 +273,8 @@ public class ListingController {
                                          @PathVariable UUID id,
                                          @PathVariable UUID photoId,
                                          @Valid @ModelAttribute UpdateListingPhotoRequest request) {
-        return ListingPhotoResponse.from(listingService.updatePhoto(
-                owner, id, photoId, request.sortOrder(), request.isCover()));
+        var photo = listingService.updatePhoto(owner, id, photoId, request.sortOrder(), request.isCover());
+        return ListingPhotoResponse.from(photo, imageStore.publicUrl(photo.getStorageKey()));
     }
 
     @DeleteMapping("/{id}/photos/{photoId}")

@@ -86,6 +86,7 @@ export interface PublicListing {
   longitude: number;
   availabilityState: AvailabilityState;
   createdAt: string;
+  updatedAt: string;
   /**
    * Root-relative cover photo URL, or null when the listing has none. Prefix
    * with `apiOrigin` — it is served by the API, not the web app.

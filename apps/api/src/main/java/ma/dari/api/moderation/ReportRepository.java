@@ -33,6 +33,26 @@ public interface ReportRepository extends JpaRepository<Report, UUID> {
 
     long countByTargetTypeAndTargetId(ReportTarget targetType, UUID targetId);
 
+    @Query("select r.targetId as targetId, count(r) as reportCount from Report r "
+            + "where r.targetType = :targetType and r.targetId in :targetIds group by r.targetId")
+    List<TargetCount> countByTargetTypeAndTargetIdIn(@Param("targetType") ReportTarget targetType,
+                                                     @Param("targetIds") Collection<UUID> targetIds);
+
+    @Query("select r.reporter.id as reporterId, count(r) as reportCount from Report r "
+            + "where r.reporter.id in :reporterIds and r.status = :status group by r.reporter.id")
+    List<ReporterCount> countByReporterIdInAndStatusGrouped(@Param("reporterIds") Collection<UUID> reporterIds,
+                                                             @Param("status") ReportStatus status);
+
+    interface TargetCount {
+        UUID getTargetId();
+        long getReportCount();
+    }
+
+    interface ReporterCount {
+        UUID getReporterId();
+        long getReportCount();
+    }
+
     /**
      * How many reports these reporters have had dismissed before.
      *

@@ -48,7 +48,9 @@ async function publishedListings(): Promise<Array<{ id: string; updatedAt: strin
       `/listings?${query.toString()}`,
     );
     for (const item of result.items) {
-      rows.push({ id: item.id, updatedAt: item.createdAt });
+      // `createdAt` is a compatibility fallback while an older API instance
+      // is being rolled out; the current contract supplies `updatedAt`.
+      rows.push({ id: item.id, updatedAt: item.updatedAt ?? item.createdAt });
     }
     if (!result.hasMore || !result.nextCursor) break;
     cursor = result.nextCursor;
@@ -77,11 +79,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticEntries,
-    ...listings.map((listing) => ({
-      url: `${SITE}/listings/${listing.id}`,
-      lastModified: new Date(listing.updatedAt),
-      changeFrequency: 'weekly' as const,
-      priority: 0.6,
-    })),
+    ...listings.flatMap((listing) => {
+      const lastModified = new Date(listing.updatedAt);
+      return Number.isNaN(lastModified.getTime()) ? [] : [{
+        url: `${SITE}/listings/${listing.id}`,
+        lastModified,
+        changeFrequency: 'weekly' as const,
+        priority: 0.6,
+      }];
+    }),
   ];
 }

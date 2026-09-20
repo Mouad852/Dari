@@ -2,6 +2,9 @@ package ma.dari.api.moderation;
 
 import ma.dari.api.common.error.ApiException;
 import ma.dari.api.common.error.ErrorCode;
+import ma.dari.api.common.pagination.Cursor;
+import ma.dari.api.common.pagination.CursorPage;
+import ma.dari.api.common.pagination.TypedCursors;
 import ma.dari.api.listing.HouseRulesRepository;
 import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingAmenityRepository;
@@ -17,6 +20,7 @@ import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
 import ma.dari.api.user.UserStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -96,16 +100,35 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public List<AdminUserResponse> searchUsers(String query, UserStatus status) {
-        String normalizedQuery = query == null ? null : query.trim();
-
-        return users.findAll().stream()
-                .filter(user -> user.getDeletedAt() == null)
-                .filter(user -> status == null || user.getStatus() == status)
-                .filter(user -> normalizedQuery == null || normalizedQuery.isBlank() || matchesQuery(user, normalizedQuery))
-                .sorted(Comparator.comparing(User::getCreatedAt).reversed())
-                .map(user -> AdminUserResponse.from(user, reports.countByTargetTypeAndTargetId(ReportTarget.USER, user.getId())))
+    public CursorPage<AdminUserResponse> searchUsers(String query, UserStatus status, String cursor) {
+        String normalizedQuery = query == null || query.isBlank()
+                ? null : "%" + query.trim().toLowerCase(Locale.ROOT) + "%";
+        String queryKey = String.valueOf(status) + "|" + String.valueOf(normalizedQuery);
+        TypedCursors.AdminCursor decoded = cursor == null ? null : TypedCursors.admin(cursor, queryKey);
+        List<User> rows = decoded == null
+                ? users.searchVisible(status, normalizedQuery, PageRequest.of(0, 21))
+                : users.searchVisibleAfter(status, normalizedQuery, decoded.lastCreatedAt(), decoded.lastId(), PageRequest.of(0, 21));
+        boolean hasMore = rows.size() > 20;
+        List<User> pageRows = hasMore ? rows.subList(0, 20) : rows;
+        List<UUID> userIds = pageRows.stream().map(User::getId).toList();
+        Map<UUID, Long> reportCounts = userIds.isEmpty() ? Map.of()
+                : reports.countByTargetTypeAndTargetIdIn(ReportTarget.USER, userIds).stream()
+                .collect(java.util.stream.Collectors.toMap(ReportRepository.TargetCount::getTargetId,
+                        ReportRepository.TargetCount::getReportCount));
+        List<AdminUserResponse> items = pageRows.stream()
+                .map(user -> AdminUserResponse.from(user, reportCounts.getOrDefault(user.getId(), 0L)))
                 .toList();
+        String nextCursor = null;
+        if (hasMore && !pageRows.isEmpty()) {
+            User last = pageRows.get(pageRows.size() - 1);
+            var payload = Cursor.newPayload();
+            payload.put("mode", "admin-users");
+            payload.put("queryKey", queryKey);
+            payload.put("lastCreatedAt", last.getCreatedAt().toString());
+            payload.put("lastId", last.getId().toString());
+            nextCursor = Cursor.encode(payload);
+        }
+        return CursorPage.of(items, nextCursor);
     }
 
     @Transactional(readOnly = true)
@@ -126,6 +149,26 @@ public class AdminService {
                     : entry.firstReportedAt;
         }
 
+        Set<UUID> listingIds = grouped.values().stream()
+                .filter(entry -> entry.targetType == ReportTarget.LISTING)
+                .map(entry -> entry.targetId)
+                .collect(java.util.stream.Collectors.toSet());
+        Set<UUID> userIds = grouped.values().stream()
+                .filter(entry -> entry.targetType == ReportTarget.USER)
+                .map(entry -> entry.targetId)
+                .collect(java.util.stream.Collectors.toSet());
+        Map<UUID, Listing> listingsById = listings.findAllById(listingIds).stream()
+                .collect(java.util.stream.Collectors.toMap(Listing::getId, listing -> listing));
+        Map<UUID, User> usersById = users.findAllById(userIds).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, user -> user));
+        Set<UUID> reporterIds = grouped.values().stream()
+                .flatMap(entry -> entry.reporterIds.stream())
+                .collect(java.util.stream.Collectors.toSet());
+        Map<UUID, Long> dismissedByReporter = reporterIds.isEmpty() ? Map.of()
+                : reports.countByReporterIdInAndStatusGrouped(reporterIds, ReportStatus.DISMISSED).stream()
+                .collect(java.util.stream.Collectors.toMap(ReportRepository.ReporterCount::getReporterId,
+                        ReportRepository.ReporterCount::getReportCount));
+
         return grouped.values().stream()
                 .map(entry -> new AdminReportQueueItem(
                         entry.targetType,
@@ -135,11 +178,9 @@ public class AdminService {
                         entry.firstReportedAt,
                         entry.reasons.stream().distinct().sorted(Comparator.comparing(Enum::name)).toList(),
                         List.copyOf(entry.details),
-                        isAutoFlagged(entry.targetType, entry.targetId),
-                        entry.reporterIds.isEmpty()
-                                ? 0L
-                                : reports.countByReporterIdInAndStatus(entry.reporterIds, ReportStatus.DISMISSED),
-                        targetLabel(entry.targetType, entry.targetId)
+                        isAutoFlagged(entry.targetType, entry.targetId, listingsById),
+                        entry.reporterIds.stream().mapToLong(id -> dismissedByReporter.getOrDefault(id, 0L)).sum(),
+                        targetLabel(entry.targetType, entry.targetId, listingsById, usersById)
                 ))
                 .sorted(Comparator
                         .comparing((AdminReportQueueItem item) -> !item.autoFlagged())
@@ -157,30 +198,19 @@ public class AdminService {
      * avoids one request per row, and works for soft-deleted targets, which a
      * public read would 404 on.
      */
-    private String targetLabel(ReportTarget targetType, UUID targetId) {
+    private String targetLabel(ReportTarget targetType, UUID targetId,
+                               Map<UUID, Listing> listingsById, Map<UUID, User> usersById) {
         if (targetType == ReportTarget.LISTING) {
-            return listings.findById(targetId).map(Listing::getTitle).orElse(null);
+            return listingsById.containsKey(targetId) ? listingsById.get(targetId).getTitle() : null;
         }
-        return users.findById(targetId).map(User::getDisplayName).orElse(null);
+        return usersById.containsKey(targetId) ? usersById.get(targetId).getDisplayName() : null;
     }
 
-    private boolean isAutoFlagged(ReportTarget targetType, UUID targetId) {
+    private boolean isAutoFlagged(ReportTarget targetType, UUID targetId, Map<UUID, Listing> listingsById) {
         if (targetType == ReportTarget.LISTING) {
-            return listings.findById(targetId).map(Listing::isAutoFlagged).orElse(false);
+            return listingsById.containsKey(targetId) && listingsById.get(targetId).isAutoFlagged();
         }
         return false;
-    }
-
-    private boolean matchesQuery(User user, String query) {
-        String needle = query.toLowerCase(Locale.ROOT);
-        return contains(user.getEmail(), needle)
-                || contains(user.getDisplayName(), needle)
-                || contains(user.getFirstName(), needle)
-                || contains(user.getCity(), needle);
-    }
-
-    private boolean contains(String value, String needle) {
-        return value != null && value.toLowerCase(Locale.ROOT).contains(needle);
     }
 
     private static class QueueEntry {

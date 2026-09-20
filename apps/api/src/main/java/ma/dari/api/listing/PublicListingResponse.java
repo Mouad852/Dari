@@ -14,6 +14,7 @@ public record PublicListingResponse(
         double longitude,
         AvailabilityState availabilityState,
         Instant createdAt,
+        Instant updatedAt,
         /**
          * Root-relative URL of the cover photo, or null when the listing has
          * none. Prefix with the API origin before use — these are served by the
@@ -40,6 +41,7 @@ public record PublicListingResponse(
                 fuzzed[1],
                 listing.getAvailabilityState(),
                 listing.getCreatedAt(),
+                listing.getUpdatedAt(),
                 coverPhotoUrl);
     }
 }
