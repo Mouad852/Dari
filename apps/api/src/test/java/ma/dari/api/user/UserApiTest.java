@@ -103,6 +103,36 @@ class UserApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("unverified Firebase identity cannot create a profile")
+    void unverifiedEmailIsRejectedSafely() throws Exception {
+        stubToken("uid-unverified", "non-verifie@example.ma", false);
+
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"displayName\":\"Salma\"}")
+                .when().post("/users")
+                .then().statusCode(403)
+                .body("code", equalTo("IDENTITY_EMAIL_UNVERIFIED"));
+
+        assertThat(users.existsByFirebaseUid("uid-unverified")).isFalse();
+    }
+
+    @Test
+    @DisplayName("missing Firebase email cannot create a profile and does not become a 500")
+    void missingEmailIsRejectedSafely() throws Exception {
+        stubToken("uid-missing-email", null, true);
+
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"displayName\":\"Salma\"}")
+                .when().post("/users")
+                .then().statusCode(400)
+                .body("code", equalTo("IDENTITY_EMAIL_REQUIRED"));
+
+        assertThat(users.existsByFirebaseUid("uid-missing-email")).isFalse();
+    }
+
+    @Test
     @DisplayName("banned user -> 403")
     void bannedUserRejected() throws Exception {
         stubToken("uid-banned", "banni@example.ma", true);

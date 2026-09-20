@@ -15,6 +15,8 @@ public enum ErrorCode {
     /** Valid Firebase token, no internal profile row. The client must POST /users. */
     PROFILE_NOT_FOUND,
     PROFILE_ALREADY_EXISTS,
+    IDENTITY_EMAIL_REQUIRED,
+    IDENTITY_EMAIL_UNVERIFIED,
 
     // --- authorization -------------------------------------------------------
     FORBIDDEN,

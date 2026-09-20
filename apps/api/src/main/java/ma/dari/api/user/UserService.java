@@ -182,22 +182,35 @@ public class UserService {
      */
     @Transactional
     public User create(AuthenticatedUser principal, CreateUserRequest request) {
+        // Idempotent retries for an existing profile must remain harmless, but
+        // no new internal profile may be created from an incomplete Firebase
+        // identity. This keeps the identity boundary explicit and avoids a
+        // database NOT NULL failure becoming a misleading 500.
+        var existing = users.findByFirebaseUid(principal.firebaseUid());
+        if (existing.isPresent()) return existing.get();
+
+        if (principal.email() == null || principal.email().isBlank()) {
+            throw new ApiException(400, ErrorCode.IDENTITY_EMAIL_REQUIRED,
+                    "Une adresse e-mail Firebase est requise");
+        }
+        if (!principal.emailVerified()) {
+            throw new ApiException(403, ErrorCode.IDENTITY_EMAIL_UNVERIFIED,
+                    "VÃ©rifiez votre adresse e-mail avant de crÃ©er votre profil");
+        }
+
         String email = principal.email();
         if (email != null && bannedIdentities.existsByEmailLower(email.trim().toLowerCase(Locale.ROOT))) {
             throw new ApiException(403, ErrorCode.IDENTITY_BANNED, "Inscription impossible");
         }
 
-        return users.findByFirebaseUid(principal.firebaseUid())
-                .orElseGet(() -> {
-                    var user = new User(
-                            principal.firebaseUid(),
-                            principal.email(),
-                            principal.emailVerified(),
-                            request.displayName());
-                    user.setFirstName(request.firstName());
-                    user.setCity(request.city());
-                    return users.save(user);
-                });
+        var user = new User(
+                principal.firebaseUid(),
+                principal.email().trim(),
+                true,
+                request.displayName());
+        user.setFirstName(request.firstName());
+        user.setCity(request.city());
+        return users.save(user);
     }
 
     @Transactional

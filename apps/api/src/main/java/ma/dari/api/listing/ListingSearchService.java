@@ -374,6 +374,19 @@ public class ListingSearchService {
                 .toList();
     }
 
+    public long sitemapCount() {
+        return search.countSitemapRows();
+    }
+
+    public List<SitemapEntry> sitemapBatch(int limit, int offset) {
+        if (limit < 1 || limit > 50_000 || offset < 0) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Lot de sitemap invalide");
+        }
+        return search.sitemapBatch(limit, offset).stream()
+                .map(row -> new SitemapEntry(row.getId(), row.getUpdatedAt()))
+                .toList();
+    }
+
     public PublicListingResponse getPublicOrOwnerListing(UUID listingId, User viewer) {
         Listing listing = listings.findByIdAndDeletedAtIsNull(listingId)
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));

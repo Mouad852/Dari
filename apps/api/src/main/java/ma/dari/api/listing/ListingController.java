@@ -140,6 +140,20 @@ public class ListingController {
         return listingSearchService.featured(limit);
     }
 
+    /** Public-only source for batched sitemap generation; no listing content or exact location leaves this route. */
+    @GetMapping("/sitemap/count")
+    @RateLimited(RateLimitType.SEARCH)
+    public java.util.Map<String, Long> sitemapCount() {
+        return java.util.Map.of("count", listingSearchService.sitemapCount());
+    }
+
+    @GetMapping("/sitemap")
+    @RateLimited(RateLimitType.SEARCH)
+    public java.util.List<SitemapEntry> sitemapBatch(@RequestParam(defaultValue = "50000") int limit,
+                                                     @RequestParam(defaultValue = "0") int offset) {
+        return listingSearchService.sitemapBatch(limit, offset);
+    }
+
     /**
      * Two responses behind one path: the owner sees their own draft or
      * suspended listing, everyone else gets 404 unless it is published and

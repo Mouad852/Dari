@@ -8,12 +8,24 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.time.Instant;
 
 /**
  * PostGIS-optimized queries for listing search.
  * All queries use native SQL to access spatial indexes and cursor pagination at the database level.
  */
 public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
+
+    interface SitemapRow {
+        UUID getId();
+        Instant getUpdatedAt();
+    }
+
+    @Query(value = "SELECT l.id AS id, l.updated_at AS updatedAt FROM published_listings l ORDER BY l.updated_at DESC, l.id DESC LIMIT :limit OFFSET :offset", nativeQuery = true)
+    List<SitemapRow> sitemapBatch(@Param("limit") int limit, @Param("offset") int offset);
+
+    @Query(value = "SELECT COUNT(*) FROM published_listings", nativeQuery = true)
+    long countSitemapRows();
 
 
     /**

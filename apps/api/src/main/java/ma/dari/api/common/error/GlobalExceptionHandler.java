@@ -5,6 +5,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
@@ -26,9 +28,16 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     private final MeterRegistry meterRegistry;
+    private final ErrorReporter errorReporter;
+
+    @Autowired
+    public GlobalExceptionHandler(MeterRegistry meterRegistry, ErrorReporter errorReporter) {
+        this.meterRegistry = meterRegistry;
+        this.errorReporter = errorReporter;
+    }
 
     public GlobalExceptionHandler(MeterRegistry meterRegistry) {
-        this.meterRegistry = meterRegistry;
+        this(meterRegistry, new NoopErrorReporter());
     }
 
     @ExceptionHandler(ApiException.class)
@@ -144,6 +153,8 @@ public class GlobalExceptionHandler {
     ResponseEntity<ErrorResponse> handleUnexpected(Exception e, HttpServletRequest req) {
         log.error("Unhandled exception on {} {}", req.getMethod(), req.getRequestURI(), e);
         meterRegistry.counter("dari.errors.unhandled", "exception", e.getClass().getSimpleName()).increment();
+        errorReporter.report(e, new ErrorReporter.SafeErrorContext(
+                req.getRequestURI(), MDC.get("correlationId"), "development"));
         return ResponseEntity.status(500)
                 .body(ErrorResponse.of(ErrorCode.INTERNAL_ERROR, "Une erreur est survenue"));
     }
