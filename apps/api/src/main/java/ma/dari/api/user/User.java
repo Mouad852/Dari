@@ -63,6 +63,9 @@ public class User {
     @Column(nullable = false, columnDefinition = "user_status")
     private UserStatus status = UserStatus.ACTIVE;
 
+    @Column(name = "auto_suspended", nullable = false)
+    private boolean autoSuspended = false;
+
     private String city;
 
     @Column(columnDefinition = "text")
@@ -136,6 +139,10 @@ public class User {
     public UserStatus getStatus() { return status; }
 
     public void setStatus(UserStatus status) { this.status = status; }
+
+    public boolean isAutoSuspended() { return autoSuspended; }
+
+    public void setAutoSuspended(boolean autoSuspended) { this.autoSuspended = autoSuspended; }
 
     public String getCity() { return city; }
 

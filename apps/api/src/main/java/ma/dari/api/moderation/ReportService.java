@@ -5,6 +5,7 @@ import ma.dari.api.common.error.ErrorCode;
 import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
+import ma.dari.api.notification.NotificationService;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
 import ma.dari.api.user.UserStatus;
@@ -23,13 +24,15 @@ public class ReportService {
     private final ReportRepository reports;
     private final ListingRepository listings;
     private final UserRepository users;
+    private final NotificationService notifications;
     private final MeterRegistry meterRegistry;
 
     public ReportService(ReportRepository reports, ListingRepository listings, UserRepository users,
-                         MeterRegistry meterRegistry) {
+                         NotificationService notifications, MeterRegistry meterRegistry) {
         this.reports = reports;
         this.listings = listings;
         this.users = users;
+        this.notifications = notifications;
         this.meterRegistry = meterRegistry;
     }
 
@@ -79,7 +82,8 @@ public class ReportService {
      * were unfounded and is the only outcome that restores an auto-suspended
      * target; {@code ACTION_TAKEN} says the moderator acted on them. Collapsing
      * the two would make the queue's own history useless for judging whether
-     * the auto-suspend threshold is calibrated.
+     * the auto-suspend threshold is calibrated. User targets are restored only
+     * when the suspension was caused by the automatic threshold.
      */
     @Transactional
     public void resolvePendingReports(User admin,
@@ -107,6 +111,16 @@ public class ReportService {
                 listing.setPriorStatus(null);
                 listing.setAutoFlagged(false);
                 listings.save(listing);
+            }
+        }
+
+        if (targetType == ReportTarget.USER) {
+            User user = users.findById(targetId)
+                    .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Utilisateur introuvable"));
+            if (user.isAutoSuspended() && user.getStatus() == UserStatus.SUSPENDED) {
+                user.setStatus(UserStatus.ACTIVE);
+                user.setAutoSuspended(false);
+                users.save(user);
             }
         }
     }
@@ -166,6 +180,7 @@ public class ReportService {
             return;
         }
         user.setStatus(UserStatus.SUSPENDED);
+        user.setAutoSuspended(true);
         users.save(user);
     }
 }

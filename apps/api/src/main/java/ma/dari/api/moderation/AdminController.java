@@ -138,6 +138,12 @@ public class AdminController {
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 
+    @PostMapping("/users/{id}/unsuspend")
+    public ResponseEntity<Map<String, String>> unsuspend(@CurrentUser User admin, @PathVariable UUID id) {
+        adminService.reactivateUser(admin, id);
+        return ResponseEntity.ok(Map.of("status", "ok"));
+    }
+
     /**
      * Terminal. Cascades: listings soft-deleted, the identity recorded so the
      * same email cannot re-register, and the auth filter rejects the token

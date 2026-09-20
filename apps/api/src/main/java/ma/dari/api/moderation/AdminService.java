@@ -325,9 +325,29 @@ public class AdminService {
             return;
         }
 
+        // A moderator's suspension is deliberate, so it must never be treated as automatic.
+        user.setAutoSuspended(false);
         user.setStatus(UserStatus.SUSPENDED);
         users.save(user);
         adminActions.save(AdminAction.of(admin, "SUSPEND_USER", ReportTarget.USER, userId, null));
+    }
+
+    @Transactional
+    public void reactivateUser(User admin, UUID userId) {
+        User user = users.findById(userId)
+                .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Utilisateur introuvable"));
+
+        if (user.getStatus() == UserStatus.ACTIVE) {
+            return;
+        }
+        if (user.getStatus() == UserStatus.BANNED) {
+            throw new ApiException(409, ErrorCode.ILLEGAL_TRANSITION, "Un compte banni ne peut pas être réactivé");
+        }
+
+        user.setStatus(UserStatus.ACTIVE);
+        user.setAutoSuspended(false);
+        users.save(user);
+        adminActions.save(AdminAction.of(admin, "REACTIVATE_USER", ReportTarget.USER, userId, null));
     }
 
     @Transactional

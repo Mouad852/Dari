@@ -36,6 +36,8 @@ import java.util.Optional;
  *       Authorization is decided downstream, not here.</li>
  *   <li>A banned account is rejected here, before any controller runs.
  *       Per-endpoint checks eventually miss one.</li>
+ *   <li>A suspended account is authenticated for GET, HEAD, and OPTIONS only.
+ *       All mutating requests are rejected as read-only.</li>
  *   <li>This filter never creates the internal user row. Creating it lazily
  *       would hide a real client bug and perform a write as a side effect of a
  *       GET.</li>
@@ -80,6 +82,18 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
         if (user.isPresent() && user.get().getStatus() == UserStatus.BANNED) {
             writeError(response, 403, ErrorCode.ACCOUNT_BANNED, "Ce compte a été fermé");
             return;
+        }
+
+        if (user.isPresent() && user.get().getStatus() == UserStatus.SUSPENDED) {
+            String method = request.getMethod();
+            boolean readOnly = "GET".equalsIgnoreCase(method)
+                    || "HEAD".equalsIgnoreCase(method)
+                    || "OPTIONS".equalsIgnoreCase(method);
+            if (!readOnly) {
+                writeError(response, 403, ErrorCode.ACCOUNT_SUSPENDED,
+                        "Ce compte est suspendu (lecture seule)");
+                return;
+            }
         }
 
         // A deleted account stops working immediately, not whenever its token
