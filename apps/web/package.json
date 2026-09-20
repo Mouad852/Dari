@@ -2,11 +2,14 @@
   "name": "dari-web",
   "version": "0.1.0",
   "private": true,
+  "overrides": {
+    "postcss": "8.5.28"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "phase3:smoke": "node scripts/phase3-smoke.mjs",
     "tokens:sync": "node scripts/sync-tokens.mjs",
@@ -17,12 +20,14 @@
     "firebase": "12.3.0",
     "leaflet": "^1.9.4",
     "lucide-react": "0.544.0",
-    "next": "15.5.4",
+    "next": "15.5.25",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-leaflet": "^5.0.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.63.0",
     "@types/leaflet": "^1.9.22",
     "@types/node": "24.5.2",
     "@types/react": "19.1.13",

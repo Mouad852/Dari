@@ -28,6 +28,8 @@ target/
 # --- node / next -------------------------------------------------------------
 node_modules/
 .next/
+apps/web/test-results/
+apps/web/playwright-report/
 out/
 next-env.d.ts
 *.tsbuildinfo

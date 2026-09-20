@@ -1,0 +1,85 @@
+name: Client quality
+
+on:
+  push:
+    paths:
+      - 'apps/web/**'
+      - 'apps/mobile/**'
+      - 'design-system/tokens/**'
+      - '.github/workflows/client-quality.yml'
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'apps/mobile/**'
+      - 'design-system/tokens/**'
+      - '.github/workflows/client-quality.yml'
+
+permissions:
+  contents: read
+
+env:
+  # Safe CI-only values. The production gate stays enabled during `next build`;
+  # these are syntactically valid placeholders, not deployable configuration.
+  API_BASE_URL: https://api.ci.example.invalid/api/v1
+  NEXT_PUBLIC_API_BASE_URL: https://api.ci.example.invalid/api/v1
+  NEXT_PUBLIC_SITE_URL: https://web.ci.example.invalid
+  NEXT_PUBLIC_MEDIA_ORIGINS: https://media.ci.example.invalid
+  NEXT_PUBLIC_FIREBASE_API_KEY: ci-public-key
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ci.firebaseapp.com
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: ci-project
+  NEXT_PUBLIC_RELEASE_VERSION: ci
+  DARI_LEGAL_ENTITY_NAME: CI placeholder
+  DARI_LEGAL_ADDRESS: CI placeholder
+  DARI_LEGAL_REGISTRATION: CI placeholder
+  DARI_LEGAL_CONTACT: ci@example.invalid
+  DARI_LEGAL_JURISDICTION: CI placeholder
+  DARI_LEGAL_COMPLAINT_AUTHORITY: CI placeholder
+  DARI_LEGAL_RETENTION: CI placeholder
+  DARI_LEGAL_PROCESSORS: CI placeholder
+  DARI_LEGAL_LAWFUL_BASES: CI placeholder
+  DARI_LEGAL_EFFECTIVE_DATE: 2026-09-20
+  DARI_LEGAL_VERSION: ci
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run tokens:check
+      - name: Run configured lint gate
+        run: npm run lint
+      - run: npm run build
+      - name: Upload Next build diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build-diagnostics
+          path: apps/web/.next/
+          if-no-files-found: warn
+
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck

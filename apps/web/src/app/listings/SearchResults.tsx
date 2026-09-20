@@ -732,7 +732,7 @@ function SearchResultsPageContent() {
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 'var(--space-5)', flexWrap: 'wrap', minWidth: 0 }}>
           <div style={{ minWidth: 0 }}>
             <h1 ref={resultsHeadingRef} tabIndex={-1} style={{ margin: 0, font: 'var(--weight-bold) clamp(24px, 5vw, 32px)/1.2 var(--font-display)' }}>{resultHeading}</h1>
-            <p style={{ marginTop: 6, font: 'var(--type-body-sm, 13px)', color: 'var(--text-muted)' }}>Mises à jour aujourd'hui · loyers charges comprises</p>
+            <p style={{ marginTop: 6, font: 'var(--type-body-sm, 13px)', color: 'var(--text-muted)' }}>Mises à jour aujourd&apos;hui · loyers charges comprises</p>
           </div>
 
           {/*
@@ -1037,7 +1037,7 @@ function SearchResultsPageContent() {
                 <div className="results-grid">
                   {!loading && listings.length === 0 ? (
                     <div style={{ gridColumn: '1 / -1', ...cardStyle, padding: '2rem', color: 'var(--text-muted)' }}>
-                      Aucune annonce n'a été trouvée pour cette recherche.
+                      Aucune annonce n&apos;a été trouvée pour cette recherche.
                     </div>
                   ) : null}
 
@@ -1074,4 +1074,3 @@ function SearchResultsPageContent() {
     </main>
   );
 }
-

@@ -352,7 +352,7 @@ export default async function HomePage() {
         <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', display: 'grid', gap: 'var(--space-6)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
             <h2 style={{ margin: 0, font: 'var(--weight-bold) 32px/1.2 var(--font-display)' }}>Chambres en vedette</h2>
-            <a
+            <Link
               href="/listings"
               style={{ color: 'var(--brand)', textDecoration: 'none', font: 'var(--type-body)' }}
             >
@@ -360,7 +360,7 @@ export default async function HomePage() {
                 ? `Voir les ${total.capped ? `${total.count}+` : total.count} annonce${total.count > 1 ? 's' : ''}`
                 : 'Voir les annonces'}{' '}
               <ArrowRight size={16} style={{ verticalAlign: 'middle' }} aria-hidden="true" />
-            </a>
+            </Link>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-5)' }}>
             {featured.map((listing) => (
