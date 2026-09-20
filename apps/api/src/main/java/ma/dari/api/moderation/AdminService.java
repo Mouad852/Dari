@@ -105,9 +105,17 @@ public class AdminService {
                 ? null : "%" + query.trim().toLowerCase(Locale.ROOT) + "%";
         String queryKey = String.valueOf(status) + "|" + String.valueOf(normalizedQuery);
         TypedCursors.AdminCursor decoded = cursor == null ? null : TypedCursors.admin(cursor, queryKey);
-        List<User> rows = decoded == null
-                ? users.searchVisible(status, normalizedQuery, PageRequest.of(0, 21))
-                : users.searchVisibleAfter(status, normalizedQuery, decoded.lastCreatedAt(), decoded.lastId(), PageRequest.of(0, 21));
+        List<User> rows;
+        if (decoded == null) {
+            rows = status == null
+                    ? users.searchVisible(normalizedQuery, PageRequest.of(0, 21))
+                    : users.searchVisibleByStatus(status, normalizedQuery, PageRequest.of(0, 21));
+        } else {
+            rows = status == null
+                    ? users.searchVisibleAfter(normalizedQuery, decoded.lastCreatedAt(), decoded.lastId(), PageRequest.of(0, 21))
+                    : users.searchVisibleByStatusAfter(status, normalizedQuery,
+                    decoded.lastCreatedAt(), decoded.lastId(), PageRequest.of(0, 21));
+        }
         boolean hasMore = rows.size() > 20;
         List<User> pageRows = hasMore ? rows.subList(0, 20) : rows;
         List<UUID> userIds = pageRows.stream().map(User::getId).toList();

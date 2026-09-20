@@ -21,24 +21,37 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByFirebaseUid(String firebaseUid);
 
+    // Keep the nullable status branch out of JPQL. PostgreSQL cannot infer an
+    // enum parameter's type when it is bound as null solely for `:status is null`.
     @Query("""
             select u from User u
             where u.deletedAt is null
-              and (:status is null or u.status = :status)
               and (:needle is null or lower(u.email) like :needle
                    or lower(u.displayName) like :needle
                    or lower(coalesce(u.firstName, '')) like :needle
                    or lower(coalesce(u.city, '')) like :needle)
             order by u.createdAt desc, u.id desc
             """)
-    List<User> searchVisible(@Param("status") UserStatus status,
-                             @Param("needle") String needle,
+    List<User> searchVisible(@Param("needle") String needle,
                              Pageable pageable);
 
     @Query("""
             select u from User u
             where u.deletedAt is null
-              and (:status is null or u.status = :status)
+              and u.status = :status
+              and (:needle is null or lower(u.email) like :needle
+                   or lower(u.displayName) like :needle
+                   or lower(coalesce(u.firstName, '')) like :needle
+                   or lower(coalesce(u.city, '')) like :needle)
+            order by u.createdAt desc, u.id desc
+            """)
+    List<User> searchVisibleByStatus(@Param("status") UserStatus status,
+                                     @Param("needle") String needle,
+                                     Pageable pageable);
+
+    @Query("""
+            select u from User u
+            where u.deletedAt is null
               and (:needle is null or lower(u.email) like :needle
                    or lower(u.displayName) like :needle
                    or lower(coalesce(u.firstName, '')) like :needle
@@ -46,9 +59,25 @@ public interface UserRepository extends JpaRepository<User, UUID> {
               and (u.createdAt < :lastCreatedAt or (u.createdAt = :lastCreatedAt and u.id < :lastId))
             order by u.createdAt desc, u.id desc
             """)
-    List<User> searchVisibleAfter(@Param("status") UserStatus status,
-                                  @Param("needle") String needle,
+    List<User> searchVisibleAfter(@Param("needle") String needle,
                                   @Param("lastCreatedAt") Instant lastCreatedAt,
                                   @Param("lastId") UUID lastId,
                                   Pageable pageable);
+
+    @Query("""
+            select u from User u
+            where u.deletedAt is null
+              and u.status = :status
+              and (:needle is null or lower(u.email) like :needle
+                   or lower(u.displayName) like :needle
+                   or lower(coalesce(u.firstName, '')) like :needle
+                   or lower(coalesce(u.city, '')) like :needle)
+              and (u.createdAt < :lastCreatedAt or (u.createdAt = :lastCreatedAt and u.id < :lastId))
+            order by u.createdAt desc, u.id desc
+            """)
+    List<User> searchVisibleByStatusAfter(@Param("status") UserStatus status,
+                                          @Param("needle") String needle,
+                                          @Param("lastCreatedAt") Instant lastCreatedAt,
+                                          @Param("lastId") UUID lastId,
+                                          Pageable pageable);
 }

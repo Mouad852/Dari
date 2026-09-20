@@ -123,6 +123,13 @@ public class UserService {
         });
 
         String previousAvatarUrl = user.getAvatarUrl();
+        if (previousAvatarUrl != null && previousAvatarUrl.startsWith("/uploads/")) {
+            // Persist the revocation before making the irreversible Firebase
+            // call. MediaAccessInterceptor denies this key as soon as this
+            // transaction commits, while the scheduled worker keeps retrying
+            // the physical deletion if storage is temporarily unavailable.
+            mediaCleanup.enqueue(previousAvatarUrl.substring("/uploads/".length()));
+        }
         scrubPii(user);
         user.setDeletedAt(now);
         users.save(user);
@@ -139,14 +146,6 @@ public class UserService {
                     "La suppression du compte a échoué. Réessayez.");
         }
 
-        if (previousAvatarUrl != null && previousAvatarUrl.startsWith("/uploads/")) {
-            try {
-                mediaCleanup.enqueue(previousAvatarUrl.substring("/uploads/".length()));
-            } catch (RuntimeException ignored) {
-                // Best-effort, same reasoning as uploadAvatar's replaced-file
-                // cleanup: the row is already correct without this file.
-            }
-        }
     }
 
     /**

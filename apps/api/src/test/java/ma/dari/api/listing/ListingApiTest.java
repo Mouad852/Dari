@@ -1256,17 +1256,14 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .body("hasMore", equalTo(true))
                 .extract().path("nextCursor");
 
-        // Same cursor, different sort. Resuming it against a date ordering would
-        // skip or repeat rows; the sort travels in the cursor so the mismatch
-        // restarts cleanly instead of returning a quietly wrong page.
-        var restarted = given().queryParam("city", city).queryParam("sort", "pricedesc")
+        // Same cursor, different sort. Resuming it against a different ordering
+        // would skip or repeat rows, so it must be rejected as an invalid cursor
+        // instead of silently restarting with a quietly wrong page.
+        given().queryParam("city", city).queryParam("sort", "pricedesc")
                 .queryParam("cursor", cursor)
                 .when().get("/listings")
-                .then().statusCode(200)
-                .extract().jsonPath().getList("items.priceRent", Float.class);
-
-        assertThat(restarted).isNotEmpty();
-        assertThat(restarted.get(0)).isEqualTo(3400f);
+                .then().statusCode(400)
+                .body("code", equalTo("INVALID_CURSOR"));
     }
 
     @Test

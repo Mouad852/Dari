@@ -2,6 +2,7 @@ package ma.dari.api.config;
 
 import ma.dari.api.common.auth.CurrentUserArgumentResolver;
 import ma.dari.api.common.ratelimit.RateLimitInterceptor;
+import ma.dari.api.media.MediaAccessInterceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -17,13 +18,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     private final CurrentUserArgumentResolver currentUserArgumentResolver;
     private final RateLimitInterceptor rateLimitInterceptor;
+    private final MediaAccessInterceptor mediaAccessInterceptor;
     private final String uploadDir;
 
     public WebMvcConfig(CurrentUserArgumentResolver currentUserArgumentResolver,
                         RateLimitInterceptor rateLimitInterceptor,
+                        MediaAccessInterceptor mediaAccessInterceptor,
                         @Value("${dari.upload-dir:./uploads}") String uploadDir) {
         this.currentUserArgumentResolver = currentUserArgumentResolver;
         this.rateLimitInterceptor = rateLimitInterceptor;
+        this.mediaAccessInterceptor = mediaAccessInterceptor;
         this.uploadDir = uploadDir;
     }
 
@@ -35,6 +39,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(rateLimitInterceptor);
+        registry.addInterceptor(mediaAccessInterceptor).addPathPatterns("/uploads/**");
     }
 
     @Override
