@@ -1,5 +1,6 @@
 package ma.dari.api.media;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,10 +12,13 @@ import java.time.Instant;
 public class MediaCleanupService {
     private final MediaCleanupRepository cleanups;
     private final ImageStore imageStore;
+    private final MeterRegistry meterRegistry;
 
-    public MediaCleanupService(MediaCleanupRepository cleanups, ImageStore imageStore) {
+    public MediaCleanupService(MediaCleanupRepository cleanups, ImageStore imageStore,
+                               MeterRegistry meterRegistry) {
         this.cleanups = cleanups;
         this.imageStore = imageStore;
+        this.meterRegistry = meterRegistry;
     }
 
     @Transactional
@@ -32,11 +36,13 @@ public class MediaCleanupService {
                 imageStore.delete(cleanup.getStorageKey());
                 cleanup.setStatus(MediaCleanupStatus.DELETED);
                 cleanup.setUpdatedAt(Instant.now());
+                meterRegistry.counter("dari.media.cleanup", "outcome", "deleted").increment();
             } catch (RuntimeException failure) {
                 cleanup.setAttempts(cleanup.getAttempts() + 1);
                 cleanup.setLastError(failure.getClass().getSimpleName() + ": " + failure.getMessage());
                 cleanup.setNextAttemptAt(Instant.now().plusSeconds(Math.min(3600, 30L << Math.min(cleanup.getAttempts(), 7))));
                 cleanup.setUpdatedAt(Instant.now());
+                meterRegistry.counter("dari.media.cleanup", "outcome", "retry").increment();
             }
             cleanups.save(cleanup);
         }

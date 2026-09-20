@@ -13,5 +13,7 @@ public interface MediaCleanupRepository extends JpaRepository<MediaCleanup, UUID
     @Query("select m from MediaCleanup m where m.status = :status and m.nextAttemptAt <= :now order by m.createdAt asc")
     List<MediaCleanup> findDue(@Param("status") MediaCleanupStatus status,
                                @Param("now") Instant now, Pageable pageable);
+    long countByStatus(MediaCleanupStatus status);
+    long countByStatusAndAttemptsGreaterThan(MediaCleanupStatus status, int attempts);
     boolean existsByStorageKeyAndStatus(String storageKey, MediaCleanupStatus status);
 }

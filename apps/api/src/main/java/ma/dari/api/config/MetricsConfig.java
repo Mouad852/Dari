@@ -5,6 +5,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
+import ma.dari.api.media.MediaCleanupRepository;
+import ma.dari.api.media.MediaCleanupStatus;
 import ma.dari.api.moderation.ReportRepository;
 import ma.dari.api.moderation.ReportStatus;
 import ma.dari.api.notification.NotificationOutboxRepository;
@@ -30,13 +32,16 @@ public class MetricsConfig {
     private final ListingRepository listings;
     private final ReportRepository reports;
     private final NotificationOutboxRepository outbox;
+    private final MediaCleanupRepository mediaCleanups;
 
     public MetricsConfig(MeterRegistry registry, ListingRepository listings,
-                         ReportRepository reports, NotificationOutboxRepository outbox) {
+                         ReportRepository reports, NotificationOutboxRepository outbox,
+                         MediaCleanupRepository mediaCleanups) {
         this.registry = registry;
         this.listings = listings;
         this.reports = reports;
         this.outbox = outbox;
+        this.mediaCleanups = mediaCleanups;
     }
 
     @PostConstruct
@@ -60,5 +65,15 @@ public class MetricsConfig {
                     .tag("status", status.name())
                     .register(registry);
         }
+
+        Gauge.builder("dari.media.cleanup_depth", mediaCleanups,
+                        r -> r.countByStatus(MediaCleanupStatus.PENDING))
+                .description("Media cleanup rows awaiting remote deletion")
+                .tag("status", MediaCleanupStatus.PENDING.name())
+                .register(registry);
+        Gauge.builder("dari.media.cleanup_failures", mediaCleanups,
+                        r -> r.countByStatusAndAttemptsGreaterThan(MediaCleanupStatus.PENDING, 0))
+                .description("Media cleanup rows that have already failed and will be retried")
+                .register(registry);
     }
 }
