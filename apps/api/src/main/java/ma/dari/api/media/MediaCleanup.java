@@ -19,7 +19,7 @@ public class MediaCleanup {
     @Column(name = "storage_key", nullable = false, unique = true)
     private String storageKey;
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "text")
     private MediaCleanupStatus status = MediaCleanupStatus.PENDING;
     @Column(nullable = false)
     private int attempts;
