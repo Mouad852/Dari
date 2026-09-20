@@ -53,7 +53,7 @@ public class OutboxNotificationService implements NotificationService {
     @Override
     @Transactional
     public void userWarned(User user, String reason) {
-        enqueue("USER_WARNED", user, reason);
+        enqueue("USER_WARNED", user, reasonOrDefault(reason, "Nous vous invitons à vérifier votre activité sur Dari"));
     }
 
     @Override
@@ -65,7 +65,7 @@ public class OutboxNotificationService implements NotificationService {
     @Override
     @Transactional
     public void userBanned(User user, String reason) {
-        enqueue("USER_BANNED", user, reason);
+        enqueue("USER_BANNED", user, reasonOrDefault(reason, "Votre compte a été banni de Dari"));
     }
 
     @Override
@@ -82,5 +82,9 @@ public class OutboxNotificationService implements NotificationService {
         } else {
             throw new IllegalArgumentException("Unsupported notification target");
         }
+    }
+
+    private String reasonOrDefault(String reason, String fallback) {
+        return reason == null || reason.isBlank() ? fallback : reason;
     }
 }

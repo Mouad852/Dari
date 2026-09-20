@@ -209,6 +209,7 @@ public class AdminService {
         listing.setPriorStatus(null);
         listing.setRejectionReason(null);
         listings.save(listing);
+        notifications.listingApproved(listing);
         adminActions.save(AdminAction.of(admin, "APPROVE_LISTING", ReportTarget.LISTING, listingId, null));
         return ListingResponse.from(listing, amenityCodesFor(listing.getId()), covers.forListing(listing.getId()),
                 houseRulesFor(listing.getId()), roomsFor(listing.getId()));
@@ -224,6 +225,7 @@ public class AdminService {
         listing.setStatus(ListingStatus.REJECTED);
         listing.setRejectionReason(reason);
         listings.save(listing);
+        notifications.listingRejected(listing, reason);
         adminActions.save(AdminAction.of(admin, "REJECT_LISTING", ReportTarget.LISTING, listingId, reason));
         return ListingResponse.from(listing, amenityCodesFor(listing.getId()), covers.forListing(listing.getId()),
                 houseRulesFor(listing.getId()), roomsFor(listing.getId()));
@@ -304,6 +306,7 @@ public class AdminService {
         listing.setAutoFlagged(false);
         listing.setRejectionReason(reason);
         listings.save(listing);
+        notifications.listingSuspended(listing);
     }
 
     @Transactional(readOnly = true)
@@ -329,6 +332,7 @@ public class AdminService {
         user.setAutoSuspended(false);
         user.setStatus(UserStatus.SUSPENDED);
         users.save(user);
+        notifications.userSuspended(user, "Votre compte a été suspendu par la modération");
         adminActions.save(AdminAction.of(admin, "SUSPEND_USER", ReportTarget.USER, userId, null));
     }
 
@@ -361,6 +365,9 @@ public class AdminService {
 
         user.setStatus(UserStatus.BANNED);
         users.save(user);
+        notifications.userBanned(user, reason == null || reason.isBlank()
+                ? "Votre compte a été banni de Dari"
+                : reason);
 
         listings.findByOwnerId(userId).forEach(listing -> {
             listing.setStatus(ListingStatus.SUSPENDED);

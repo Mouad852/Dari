@@ -47,6 +47,7 @@ public class ReportService {
         }
 
         Report report = reports.save(Report.create(reporter, request));
+        notifications.reportAcknowledged(reporter);
         meterRegistry.counter("dari.reports.created", "targetType", request.targetType().name()).increment();
 
         long distinctReporters = reports.countDistinctReportersSince(
@@ -111,6 +112,7 @@ public class ReportService {
                 listing.setPriorStatus(null);
                 listing.setAutoFlagged(false);
                 listings.save(listing);
+                notifications.listingReinstated(listing);
             }
         }
 
@@ -182,5 +184,6 @@ public class ReportService {
         user.setStatus(UserStatus.SUSPENDED);
         user.setAutoSuspended(true);
         users.save(user);
+        notifications.userSuspended(user, "Votre compte a été suspendu à la suite de plusieurs signalements");
     }
 }
