@@ -1,0 +1,13 @@
+{
+  "name": "Dari — colocation au Maroc",
+  "short_name": "Dari",
+  "description": "Trouvez une colocation à Rabat, Casablanca, Marrakech ou Tanger.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FBF7F2",
+  "theme_color": "#FBF7F2",
+  "icons": [
+    { "src": "/favicon-32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

@@ -1,80 +1,41 @@
 import type { MetadataRoute } from 'next';
 
-import { apiFetch, type CursorPage } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 import { CITIES, citySlug } from '@/lib/cities';
-import type { PublicListing } from '@/types/api';
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+const BATCH_SIZE = 50_000;
 
-/**
- * Pages walked when collecting listings.
- *
- * A sitemap may hold 50,000 URLs, and the search endpoint pages twenty at a
- * time, so this is a deliberate ceiling rather than a hard limit of the format:
- * it bounds how long generating the sitemap can take and how many requests it
- * makes. Raise it when the catalogue justifies it, or split into a sitemap index.
- */
-const MAX_PAGES = 25;
+type SitemapCount = { count: number };
+type SitemapEntry = { id: string; updatedAt: string };
 
-/**
- * Regenerate hourly.
- *
- * Without this Next prerenders the sitemap at build time, which would freeze the
- * listing set at whatever existed when the bundle was built — every listing
- * published afterwards would be invisible to a crawler until the next deploy.
- * Rebuilding per request is the other extreme: it would walk the search endpoint
- * on every crawler hit.
- */
-export const revalidate = 3600;
-
-/**
- * Listing URLs come from the public search endpoint, which reads the
- * `published_listings` view.
- *
- * That matters more than it looks: a sitemap built from the `listings` table
- * would advertise drafts, listings in review and suspended listings to Google,
- * and removing a URL from an index is far slower than adding one. The endpoint
- * enforces the published-and-available invariant for us.
- */
-async function publishedListings(): Promise<Array<{ id: string; updatedAt: string }>> {
-  const rows: Array<{ id: string; updatedAt: string }> = [];
-  let cursor: string | null = null;
-
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const query = new URLSearchParams({ sort: 'updated' });
-    if (cursor) query.set('cursor', cursor);
-
-    const result: CursorPage<PublicListing> = await apiFetch<CursorPage<PublicListing>>(
-      `/listings?${query.toString()}`,
-    );
-    for (const item of result.items) {
-      // `createdAt` is a compatibility fallback while an older API instance
-      // is being rolled out; the current contract supplies `updatedAt`.
-      rows.push({ id: item.id, updatedAt: item.updatedAt ?? item.createdAt });
-    }
-    if (!result.hasMore || !result.nextCursor) break;
-    cursor = result.nextCursor;
+/** Next.js 15.5 generates /sitemap/[id].xml from these stable batch ids. */
+export async function generateSitemaps(): Promise<Array<{ id: number }>> {
+  try {
+    const { count } = await apiFetch<SitemapCount>('/listings/sitemap/count');
+    const batches = Math.max(1, Math.ceil(count / BATCH_SIZE));
+    return Array.from({ length: batches }, (_, id) => ({ id }));
+  } catch {
+    return [{ id: 0 }];
   }
-
-  return rows;
 }
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticEntries: MetadataRoute.Sitemap = [
+/**
+ * The API batch is sourced from published_listings and carries only id and
+ * updatedAt. There is no fixed crawl ceiling; the number of files grows with
+ * the public catalogue and each file remains under Google's 50,000 URL limit.
+ */
+export default async function sitemap({ id }: { id: number }): Promise<MetadataRoute.Sitemap> {
+  const staticEntries: MetadataRoute.Sitemap = id === 0 ? [
     { url: SITE, changeFrequency: 'daily', priority: 1.0 },
-    ...CITIES.map((city) => ({
-      url: `${SITE}/flatshare/${citySlug(city)}`,
-      changeFrequency: 'daily' as const,
-      priority: 0.8,
-    })),
-  ];
+    ...CITIES.map((city) => ({ url: `${SITE}/flatshare/${citySlug(city)}`, changeFrequency: 'daily' as const, priority: 0.8 })),
+  ] : [];
 
-  let listings: Array<{ id: string; updatedAt: string }> = [];
+  let listings: SitemapEntry[] = [];
   try {
-    listings = await publishedListings();
+    listings = await apiFetch<SitemapEntry[]>(`/listings/sitemap?limit=${BATCH_SIZE}&offset=${id * BATCH_SIZE}`);
   } catch {
-    // A sitemap missing its listings is a degraded sitemap; a sitemap that
-    // fails to build is no sitemap at all. The static entries still ship.
+    // Static entries still keep the sitemap valid during a temporary API outage.
   }
 
   return [

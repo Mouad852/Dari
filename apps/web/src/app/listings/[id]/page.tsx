@@ -62,6 +62,13 @@ export async function generateMetadata({
       locale: 'fr_MA',
       images: cover ? [{ url: `${apiOrigin}${cover.url}` }] : undefined,
     },
+    twitter: {
+      card: cover ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      images: cover ? [`${apiOrigin}${cover.url}`] : undefined,
+    },
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large' } },
   };
 }
 

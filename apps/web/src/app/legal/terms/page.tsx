@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { legalRelease } from '@/lib/legal';
 
 export const metadata: Metadata = { title: 'Conditions d’utilisation' };
 
@@ -9,9 +10,10 @@ export default function TermsPage() {
   // in the app was using it. Found 2026-09-09.
   return (
     <main style={{ maxWidth: 'var(--container-prose)', margin: '0 auto', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-heading)' }}>
-      <p style={{ font: 'var(--type-label)', color: 'var(--text-muted)' }}>Dari</p>
+      <p style={{ font: 'var(--type-label)', color: 'var(--text-muted)' }}>{legalRelease.entityName}</p>
+      {!legalRelease.isFinal && <p role="note" style={{ color: 'var(--warning)' }}>Brouillon de lancement — revue juridique requise avant publication.</p>}
       <h1 style={{ font: 'var(--type-h1)' }}>Conditions d’utilisation</h1>
-      <p style={{ font: 'var(--type-body)', color: 'var(--text-muted)' }}>Version du 5 septembre 2026</p>
+      <p style={{ font: 'var(--type-body)', color: 'var(--text-muted)' }}>Version {legalRelease.version} — entrée en vigueur : {legalRelease.effectiveDate}</p>
       <h2 style={{ font: 'var(--type-h3)' }}>Rôle de Dari</h2>
       <p>Dari met en relation des personnes qui cherchent ou proposent une colocation. Dari ne signe pas le bail, ne détient pas les logements et ne garantit pas la conclusion d’une location.</p>
       <h2 style={{ font: 'var(--type-h3)' }}>Utilisation loyale</h2>

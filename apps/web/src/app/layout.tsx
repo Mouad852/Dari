@@ -32,6 +32,14 @@ export const metadata: Metadata = {
     + 'Annonces vérifiées, loyers annoncés charges comprises.',
 };
 
+metadata.icons = {
+  icon: [{ url: '/favicon-32.png', sizes: '32x32', type: 'image/png' }],
+  apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+};
+metadata.manifest = '/manifest.webmanifest';
+metadata.openGraph = { type: 'website', locale: 'fr_MA', siteName: 'Dari', images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Dari — colocation au Maroc' }] };
+metadata.twitter = { card: 'summary_large_image', images: ['/og-image.png'] };
+
 export const viewport: Viewport = {
   themeColor: '#FBF7F2', // --sable-50, the page ground
 };

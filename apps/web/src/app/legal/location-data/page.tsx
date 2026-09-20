@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { legalRelease } from '@/lib/legal';
 
 export const metadata: Metadata = { title: 'Données de localisation' };
 
@@ -6,7 +7,8 @@ export default function LocationDataPage() {
   // container-prose, not container-max -- see legal/terms for why.
   return (
     <main style={{ maxWidth: 'var(--container-prose)', margin: '0 auto', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-heading)' }}>
-      <p style={{ font: 'var(--type-label)', color: 'var(--text-muted)' }}>Dari</p>
+      <p style={{ font: 'var(--type-label)', color: 'var(--text-muted)' }}>{legalRelease.entityName}</p>
+      {!legalRelease.isFinal && <p role="note" style={{ color: 'var(--warning)' }}>Brouillon de lancement — revue juridique requise avant publication.</p>}
       <h1 style={{ font: 'var(--type-h1)' }}>Données de localisation</h1>
       <p>Une annonce peut contenir une adresse ou une position précise afin que son propriétaire la gère et que Dari puisse contrôler sa cohérence. Cette position précise n’est pas renvoyée dans la recherche publique, les cartes publiques, les pages de détail ou les favoris.</p>
       <p>Les visiteurs voient une position volontairement décalée autour du logement. La distance et le rayon de recherche ne doivent donc pas être utilisés pour retrouver une adresse exacte. Les administrateurs autorisés peuvent voir la position nécessaire à la modération.</p>
