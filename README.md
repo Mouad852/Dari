@@ -131,7 +131,10 @@ The important remaining work is still phase-oriented and should be driven from t
 
 ## Getting started
 
-Requirements: Docker, JDK 21, Node 20+.
+Requirements: Docker Desktop with the Linux engine running, JDK 21, Node 20+, and
+Git. The API integration suite starts its own `postgis/postgis:16-3.4`
+Testcontainers instance; it does not use H2 and it does not use the development
+database from `docker compose`.
 
 The backend also needs a Firebase service-account key at `infra/firebase/service-account.json`.
 It is not in the repo and never should be — `infra/firebase/*` is gitignored wholesale, with this
@@ -161,6 +164,33 @@ Useful checks:
 cd apps/web && npm run typecheck
 cd apps/api && ./mvnw test
 ```
+
+### Backend integration tests
+
+Before running `./mvnw test`, verify that Docker is reachable from the shell:
+
+```powershell
+docker version
+docker info
+```
+
+Both commands must show a running Linux Docker daemon. On Docker Desktop for
+Windows, start Docker Desktop and select the Linux container engine if either
+command reports that `dockerDesktopLinuxEngine` is unavailable. Testcontainers
+then pulls and starts `postgis/postgis:16-3.4` automatically, applies every
+Flyway migration, and runs the full API suite against that real Postgres/PostGIS
+database:
+
+```powershell
+cd apps/api
+.\mvnw.cmd test
+```
+
+The same command is run in GitHub Actions by `.github/workflows/api-tests.yml`.
+CI uses the hosted Linux Docker daemon, caches Maven dependencies, and uploads
+Surefire reports when a test job fails. A failed `docker version` is an
+environment failure, not permission to substitute H2 or to call the full suite
+green.
 
 ## Validation notes
 

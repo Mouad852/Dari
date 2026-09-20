@@ -2,7 +2,7 @@
 
 This is the single ongoing completion checklist for the project. Every coding session must update this file when work changes the project status. Check items only after verifying them against source, tests, or a production-like runtime.
 
-Last verified: 2026-09-08
+Last verified: 2026-09-20
 
 ## Current baseline
 
@@ -16,6 +16,15 @@ Last verified: 2026-09-08
 - [x] Public search, filters, map pins, sorting, counts, cursor pagination, and coordinate fuzzing
 - [x] Listing lifecycle, drafts, validation, submission, moderation, photos, amenities, favorites, and editing
 - [x] Listing detail, public profiles, messaging, reporting, admin console, homepage, city pages, sitemap, and robots rules
+
+## Phase 1 audit fixes
+
+- [x] Add the Java 21 GitHub Actions API workflow with Maven caching, real PostGIS Testcontainers, and failure artifacts
+- [x] Enforce read-only access for suspended accounts and preserve the banned-account block
+- [x] Add auto-suspension tracking, report-dismissal reactivation, and idempotent moderator reactivation
+- [x] Add the unlisted direct-conversation unique index and race-safe creation/target authorization
+- [x] Wire the existing transactional notification outbox to Phase 1 lifecycle transitions
+- [ ] Run the full PostGIS/Testcontainers suite locally and record its result — blocked until the Docker Linux daemon is running
 
 ## Priority 1: Launch blockers
 
@@ -257,5 +266,4 @@ Before marking a checkbox complete:
 - Public response audit verified on 2026-09-05: public listing/profile DTOs omit email, phone, Firebase UID, moderation status, and exact coordinates; search, map, detail, featured, and favorites all use fuzzed coordinates. Owner/admin listing responses retain the private status and exact-coordinate fields behind their existing access checks.
 - CORS/security review verified on 2026-09-05: CORS remains an explicit configured-origin allowlist; API responses include `nosniff`, `DENY`, referrer, permissions, and HSTS headers; production requires `DARI_WEB_ORIGIN` and `FIREBASE_CREDENTIALS_PATH`; the web client sends refreshed Firebase ID tokens only as bearer headers and never stores them in cookies, local storage, or URLs. Focused integration tests cover the header and preflight contracts.
 - `WARN` moderation actions now enqueue a French owner warning transactionally and resolve the affected reports as `ACTION_TAKEN`
-
 
