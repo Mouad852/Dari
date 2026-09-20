@@ -1,6 +1,6 @@
 'use client';
 
-import { Ban, ShieldOff, UserRound } from 'lucide-react';
+import { Ban, RotateCcw, ShieldOff, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { apiFetch, ApiError } from '@/lib/api';
@@ -106,6 +106,23 @@ export default function AdminUsersPage() {
         setUsers((prev) => (prev ?? []).map((u) => (u.id === id ? { ...u, status: 'SUSPENDED' } : u)));
       } catch (cause) {
         setError(cause instanceof ApiError ? cause.message : 'Impossible de suspendre ce compte.');
+      } finally {
+        setPendingId(null);
+      }
+    })();
+  };
+
+  const handleReactivate = (id: string) => {
+    if (pendingId || !token) return;
+    armActionRefocus(id);
+    setPendingId(id);
+    setError(null);
+    void (async () => {
+      try {
+        await apiFetch(`/admin/users/${encodeURIComponent(id)}/unsuspend`, { method: 'POST', token });
+        setUsers((prev) => (prev ?? []).map((u) => (u.id === id ? { ...u, status: 'ACTIVE' } : u)));
+      } catch (cause) {
+        setError(cause instanceof ApiError ? cause.message : 'Impossible de réactiver ce compte.');
       } finally {
         setPendingId(null);
       }
@@ -302,6 +319,28 @@ export default function AdminUsersPage() {
                         >
                           <ShieldOff size={14} aria-hidden="true" />
                           Suspendre
+                        </button>
+                      ) : null}
+                      {user.status === 'SUSPENDED' ? (
+                        <button
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => handleReactivate(user.id)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            border: '1px solid var(--brand-border)',
+                            borderRadius: 'var(--radius-pill)',
+                            background: 'var(--brand-subtle)',
+                            color: 'var(--clay-700)',
+                            padding: '0.55rem 0.85rem',
+                            font: 'var(--type-body-sm)',
+                            cursor: isPending ? 'default' : 'pointer',
+                          }}
+                        >
+                          <RotateCcw size={14} aria-hidden="true" />
+                          Réactiver
                         </button>
                       ) : null}
                       <button
