@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "phase3:smoke": "node scripts/phase3-smoke.mjs",
     "tokens:sync": "node scripts/sync-tokens.mjs",
     "tokens:check": "node scripts/check-tokens.mjs"
   },

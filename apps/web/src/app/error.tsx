@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { reportError } from '@/lib/reporting';
 
 /**
  * Root error boundary.
@@ -25,8 +26,9 @@ export default function GlobalError({
   // Without this, a screen reader user mid-navigation gets the whole page
   // swapped out under them with no cue that anything happened.
   useEffect(() => {
+    reportError(error, { digest: error.digest, kind: 'render' });
     headingRef.current?.focus();
-  }, []);
+  }, [error]);
 
   return (
     <main

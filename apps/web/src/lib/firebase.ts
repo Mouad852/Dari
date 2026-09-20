@@ -17,12 +17,9 @@ import {
   type Auth,
   type User as FirebaseUser,
 } from 'firebase/auth';
+import { getWebConfig } from './config';
 
-const config = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-};
+const config = getWebConfig().firebase;
 
 let authInstance: Auth | undefined;
 
@@ -55,11 +52,17 @@ export function getFirebaseAuth(): Auth {
  * could sign in and reload a page. The promise resolves immediately once the
  * first restore has completed, so this costs nothing after the first call.
  */
-export async function getIdToken(): Promise<string | null> {
+export async function getIdToken(forceRefresh = false): Promise<string | null> {
   const auth = getFirebaseAuth();
   await auth.authStateReady();
   const user = auth.currentUser;
-  return user ? user.getIdToken() : null;
+  return user ? user.getIdToken(forceRefresh) : null;
+}
+
+export async function getFirebaseUser(): Promise<FirebaseUser | null> {
+  const auth = getFirebaseAuth();
+  await auth.authStateReady();
+  return auth.currentUser;
 }
 
 export function signOut(): Promise<void> {

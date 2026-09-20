@@ -6,6 +6,8 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 
 import { getFirebaseAuth, sendPasswordReset } from '@/lib/firebase';
+import { ApiError, apiFetch } from '@/lib/api';
+import { ensureProfile } from '@/lib/profile';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -77,8 +79,20 @@ export default function SignInPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await signInWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
-      router.push('/account');
+      const credential = await signInWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
+      if (!credential.user.emailVerified) {
+        router.push('/profile-recovery');
+        return;
+      }
+      try {
+        await apiFetch('/users/me', { token: await credential.user.getIdToken(true) });
+        router.push('/account');
+      } catch (cause) {
+        if (cause instanceof ApiError && cause.isMissingProfile) {
+          try { await ensureProfile(); router.push('/account'); }
+          catch { router.push('/profile-recovery'); }
+        } else throw cause;
+      }
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : '';
       setError(code.includes('invalid-credential') || code.includes('user-not-found')
