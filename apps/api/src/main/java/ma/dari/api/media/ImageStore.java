@@ -24,6 +24,10 @@ public interface ImageStore {
 
     void delete(String storageKey);
 
+    default String publicUrl(String storageKey) {
+        return "/uploads/" + storageKey;
+    }
+
     record StoredImage(String storageKey, String mimeType, int width, int height) {
     }
 }

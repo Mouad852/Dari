@@ -4,6 +4,7 @@ import ma.dari.api.common.error.ApiException;
 import ma.dari.api.common.error.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
@@ -18,12 +19,12 @@ import java.util.Set;
 import java.util.UUID;
 
 @Component
+@ConditionalOnProperty(name = "dari.media.provider", havingValue = "local", matchIfMissing = true)
 public class LocalImageStore implements ImageStore {
 
     private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
             "image/jpeg",
-            "image/png",
-            "image/webp"
+            "image/png"
     );
     private static final long MAX_FILE_SIZE_BYTES = 5L * 1024L * 1024L;
     private static final int MAX_IMAGE_DIMENSION = 10_000;
@@ -100,8 +101,8 @@ public class LocalImageStore implements ImageStore {
         Path file = uploadRoot.resolve(storageKey).normalize();
         try {
             Files.deleteIfExists(file);
-        } catch (IOException ignored) {
-            // Best-effort cleanup; database already handles the row state.
+        } catch (IOException ex) {
+            throw new ApiException(503, ErrorCode.INTERNAL_ERROR, "La suppression de la photo a échoué");
         }
     }
 }

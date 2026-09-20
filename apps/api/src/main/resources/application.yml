@@ -73,6 +73,16 @@ management:
 dari:
   web-origins: ${DARI_WEB_ORIGIN:http://localhost:3000}
   upload-dir: ${DARI_UPLOAD_DIR:./uploads}
+  media:
+    provider: ${DARI_MEDIA_PROVIDER:local}
+    public-base-url: ${DARI_MEDIA_PUBLIC_BASE_URL:/uploads}
+    cleanup-interval-ms: ${DARI_MEDIA_CLEANUP_INTERVAL_MS:60000}
+    s3:
+      endpoint: ${DARI_MEDIA_S3_ENDPOINT:}
+      region: ${DARI_MEDIA_S3_REGION:eu-west-1}
+      access-key: ${DARI_MEDIA_S3_ACCESS_KEY:}
+      secret-key: ${DARI_MEDIA_S3_SECRET_KEY:}
+      bucket: ${DARI_MEDIA_S3_BUCKET:}
   firebase:
     credentials-path: ${FIREBASE_CREDENTIALS_PATH:./infra/firebase/service-account.json}
 

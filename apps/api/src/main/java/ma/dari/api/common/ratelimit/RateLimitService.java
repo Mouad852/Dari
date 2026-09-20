@@ -1,12 +1,14 @@
 package ma.dari.api.common.ratelimit;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.LongSupplier;
 
 /**
  * Fixed-window limiter for the single API instance.
@@ -14,14 +16,18 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>Each write is limited both by authenticated Firebase identity and source
  * address. This protects a real account from a shared-IP burst and makes
  * creating many Firebase identities from one address expensive. A distributed
- * store can replace this service when the API is scaled horizontally.
+ * store can replace this service when the API is scaled horizontally. Expired
+ * windows are swept locally so this process-owned map remains bounded.
  */
 @Service
 public class RateLimitService {
 
     private final Map<RateLimitType, Policy> policies;
     private final ConcurrentHashMap<BucketKey, Window> windows = new ConcurrentHashMap<>();
+    private final LongSupplier monotonicNanos;
+    private final long longestWindowNanos;
 
+    @Autowired
     public RateLimitService(
             @Value("${dari.rate-limits.report.max:5}") int reportMax,
             @Value("${dari.rate-limits.report.window:PT1H}") Duration reportWindow,
@@ -35,6 +41,14 @@ public class RateLimitService {
             @Value("${dari.rate-limits.signup.window:PT1H}") Duration signupWindow,
             @Value("${dari.rate-limits.search.max:120}") int searchMax,
             @Value("${dari.rate-limits.search.window:PT1M}") Duration searchWindow) {
+        this(reportMax, reportWindow, messageMax, messageWindow, listingMax, listingWindow,
+                uploadMax, uploadWindow, signupMax, signupWindow, searchMax, searchWindow, System::nanoTime);
+    }
+
+    RateLimitService(int reportMax, Duration reportWindow, int messageMax, Duration messageWindow,
+                     int listingMax, Duration listingWindow, int uploadMax, Duration uploadWindow,
+                     int signupMax, Duration signupWindow, int searchMax, Duration searchWindow,
+                     LongSupplier monotonicNanos) {
         policies = new EnumMap<>(RateLimitType.class);
         policies.put(RateLimitType.REPORT, new Policy(reportMax, reportWindow));
         policies.put(RateLimitType.MESSAGE, new Policy(messageMax, messageWindow));
@@ -42,6 +56,8 @@ public class RateLimitService {
         policies.put(RateLimitType.UPLOAD, new Policy(uploadMax, uploadWindow));
         policies.put(RateLimitType.SIGNUP, new Policy(signupMax, signupWindow));
         policies.put(RateLimitType.SEARCH, new Policy(searchMax, searchWindow));
+        this.monotonicNanos = monotonicNanos;
+        this.longestWindowNanos = policies.values().stream().mapToLong(policy -> policy.window().toNanos()).max().orElseThrow();
     }
 
     public Decision tryAcquire(RateLimitType type, String dimension) {
@@ -50,7 +66,7 @@ public class RateLimitService {
             throw new IllegalArgumentException("Rate-limit policy and dimension are required");
         }
 
-        long now = System.nanoTime();
+        long now = monotonicNanos.getAsLong();
         Window window = windows.computeIfAbsent(new BucketKey(type, dimension),
                 ignored -> new Window(now));
         synchronized (window) {
@@ -66,6 +82,23 @@ public class RateLimitService {
             window.count++;
             return new Decision(true, 0);
         }
+    }
+
+    /** Removes windows which cannot be active under any configured policy. */
+    public int evictExpired() {
+        long now = monotonicNanos.getAsLong();
+        int removed = 0;
+        for (Map.Entry<BucketKey, Window> entry : windows.entrySet()) {
+            Window window = entry.getValue();
+            if (now - window.startedAtNanos >= longestWindowNanos && windows.remove(entry.getKey(), window)) {
+                removed++;
+            }
+        }
+        return removed;
+    }
+
+    int windowCount() {
+        return windows.size();
     }
 
     public record Decision(boolean allowed, long retryAfterSeconds) {

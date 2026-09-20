@@ -193,6 +193,16 @@ Last verified: 2026-09-20
 - [x] Add legal pages: terms, privacy, and location-data explanation under `/legal/*`; complete operator identity/contact details before public launch
 - [x] Write moderator runbook and queue decision guidance in `docs/MODERATOR_RUNBOOK.md`
 
+## Phase 2 hardening status (2026-09-20)
+
+- [x] Typed endpoint cursor decoding with 400 `INVALID_CURSOR` failures and filter/mode fingerprints.
+- [x] Shared location/filter validation for listing search, count, and map; PostGIS radius cursors carry the database distance.
+- [x] Batch conversation inbox reads, paginated admin users, and batch moderation target/count lookups.
+- [x] Local limiter eviction and monotonic-time seam; Redis and trusted-proxy configuration remain prerequisites for horizontal scaling.
+- [x] Public search queries now read the `published_listings` view; migration V24 adds the durable media cleanup outbox.
+- [x] S3-compatible media adapter, local default, JPEG re-encoding/EXIF stripping, retryable deletion worker, and public media base URL configuration.
+- [ ] Run the full PostGIS/Testcontainers suite and real representative `EXPLAIN` plans in an environment with Docker and a populated database.
+
 ## Priority 3: Future client
 
 ### React Native application
@@ -266,4 +276,3 @@ Before marking a checkbox complete:
 - Public response audit verified on 2026-09-05: public listing/profile DTOs omit email, phone, Firebase UID, moderation status, and exact coordinates; search, map, detail, featured, and favorites all use fuzzed coordinates. Owner/admin listing responses retain the private status and exact-coordinate fields behind their existing access checks.
 - CORS/security review verified on 2026-09-05: CORS remains an explicit configured-origin allowlist; API responses include `nosniff`, `DENY`, referrer, permissions, and HSTS headers; production requires `DARI_WEB_ORIGIN` and `FIREBASE_CREDENTIALS_PATH`; the web client sends refreshed Firebase ID tokens only as bearer headers and never stores them in cookies, local storage, or URLs. Focused integration tests cover the header and preflight contracts.
 - `WARN` moderation actions now enqueue a French owner warning transactionally and resolve the affected reports as `ACTION_TAKEN`
-

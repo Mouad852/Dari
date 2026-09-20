@@ -4,6 +4,25 @@ This runbook covers the production PostgreSQL backup policy and the deployment
 rollback procedure for Dari. It deliberately does not cover a Firestore mirror;
 PostgreSQL remains the authoritative application store.
 
+## Media, rate limits, and proxy boundary
+
+Set `DARI_MEDIA_PROVIDER=s3`, a private bucket, and the S3-compatible endpoint,
+region, access key, secret key, bucket, and public/CDN base URL through the
+deployment secret store. MinIO is suitable for local development; production
+credentials must never be committed. Published media may be delivered through
+the public base URL. Deleted photos, avatars, and soft-deleted listings enqueue
+an idempotent `media_cleanup` row; the worker retries failed remote deletion and
+keeps the failure observable in the row's attempt/error fields.
+
+The CDN must stop future origin access when a listing is deleted. Objects that
+were already cached can remain visible until the configured cache TTL expires;
+choose that TTL explicitly and document it with the CDN configuration.
+
+The rate limiter is intentionally process-local. Redis-backed rate limiting is
+a mandatory prerequisite before horizontal API scaling, as is an explicit
+trusted-proxy boundary and an allowlisted proxy configuration. The API does not
+blindly trust `X-Forwarded-For` or other forwarded headers.
+
 ## Database backups
 
 ### Policy

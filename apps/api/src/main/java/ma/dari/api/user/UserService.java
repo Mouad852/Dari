@@ -10,6 +10,8 @@ import ma.dari.api.listing.AvailabilityState;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
 import ma.dari.api.media.ImageStore;
+import ma.dari.api.media.MediaCleanupService;
+import ma.dari.api.listing.ListingPhotoRepository;
 import ma.dari.api.moderation.BannedIdentityRepository;
 import ma.dari.api.notification.NotificationDeliveryService;
 import ma.dari.api.user.dto.CreateUserRequest;
@@ -32,6 +34,8 @@ public class UserService {
     private final BannedIdentityRepository bannedIdentities;
     private final ListingRepository listings;
     private final ImageStore imageStore;
+    private final MediaCleanupService mediaCleanup;
+    private final ListingPhotoRepository listingPhotos;
     private final FirebaseAuth firebaseAuth;
 
     public UserService(UserRepository users,
@@ -39,12 +43,16 @@ public class UserService {
                        BannedIdentityRepository bannedIdentities,
                        ListingRepository listings,
                        ImageStore imageStore,
+                       MediaCleanupService mediaCleanup,
+                       ListingPhotoRepository listingPhotos,
                        FirebaseAuth firebaseAuth) {
         this.users = users;
         this.firebaseAuthFilter = firebaseAuthFilter;
         this.bannedIdentities = bannedIdentities;
         this.listings = listings;
         this.imageStore = imageStore;
+        this.mediaCleanup = mediaCleanup;
+        this.listingPhotos = listingPhotos;
         this.firebaseAuth = firebaseAuth;
     }
 
@@ -60,7 +68,7 @@ public class UserService {
         ImageStore.StoredImage stored = imageStore.store(ImageStore.AVATARS, user.getId(), file);
 
         String previous = user.getAvatarUrl();
-        user.setAvatarUrl("/uploads/" + stored.storageKey());
+        user.setAvatarUrl(imageStore.publicUrl(stored.storageKey()));
         User saved = users.save(user);
 
         // Best-effort cleanup of the replaced file. A failure here must not fail
@@ -68,7 +76,7 @@ public class UserService {
         // orphaned old file is a housekeeping problem, not a user-facing one.
         if (previous != null && previous.startsWith("/uploads/")) {
             try {
-                imageStore.delete(previous.substring("/uploads/".length()));
+                mediaCleanup.enqueue(previous.substring("/uploads/".length()));
             } catch (RuntimeException ignored) {
                 // deliberately swallowed; see above
             }
@@ -102,6 +110,12 @@ public class UserService {
 
         listings.findByOwnerId(user.getId()).forEach(listing -> {
             if (listing.getDeletedAt() == null) {
+                listingPhotos.findByListingIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAsc(listing.getId())
+                        .forEach(photo -> {
+                            photo.setDeletedAt(now);
+                            mediaCleanup.enqueue(photo.getStorageKey());
+                            listingPhotos.save(photo);
+                        });
                 listing.setStatus(ListingStatus.SUSPENDED);
                 listing.setDeletedAt(now);
                 listings.save(listing);
@@ -127,7 +141,7 @@ public class UserService {
 
         if (previousAvatarUrl != null && previousAvatarUrl.startsWith("/uploads/")) {
             try {
-                imageStore.delete(previousAvatarUrl.substring("/uploads/".length()));
+                mediaCleanup.enqueue(previousAvatarUrl.substring("/uploads/".length()));
             } catch (RuntimeException ignored) {
                 // Best-effort, same reasoning as uploadAvatar's replaced-file
                 // cleanup: the row is already correct without this file.
