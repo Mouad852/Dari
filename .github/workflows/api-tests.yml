@@ -31,6 +31,9 @@ jobs:
           java-version: '21'
           cache: maven
 
+      - name: Verify Docker is available
+        run: docker version
+
       - name: Run the PostGIS-backed test suite
         working-directory: apps/api
         run: ./mvnw test

@@ -192,6 +192,14 @@ Surefire reports when a test job fails. A failed `docker version` is an
 environment failure, not permission to substitute H2 or to call the full suite
 green.
 
+If Testcontainers fails before Docker connection with `InvalidPathException:
+Illegal char <newline>` and a path such as `C:\Windows`, inspect the `PATH`
+visible to the Java process for an entry containing a line break. Start a clean
+PowerShell session after correcting that machine/user environment value. The
+repository does not modify the global `%USERPROFILE%\\.testcontainers.properties`
+file; that file is user-owned configuration and should be repaired by the
+developer only when its contents are known to be stale.
+
 ## Validation notes
 
 - The frontend is sensitive to stale local dev servers. If a route looks wrong or styles are missing, stop stale Next processes and verify against a clean port.
