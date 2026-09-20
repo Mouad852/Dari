@@ -232,6 +232,11 @@ class AdminApiTest extends AbstractIntegrationTest {
                         && "APPROVE_LISTING".equals(a.getAction())
                         && a.getAdmin().getId().equals(admin.getId())))
                 .isTrue();
+        assertThat(notificationOutbox.findAll().stream()
+                .anyMatch(event -> "LISTING_APPROVED".equals(event.getEventType())
+                        && event.getAggregateId().equals(pending.getId())
+                        && event.getRecipientId().equals(owner.getId())))
+                .isTrue();
     }
 
     @Test
@@ -255,6 +260,12 @@ class AdminApiTest extends AbstractIntegrationTest {
         // The owner has to be able to fix what was wrong; a rejection with no
         // reason is why the REJECTED -> PENDING_REVIEW loop would stall.
         assertThat(rejected.getRejectionReason()).isEqualTo("Les photos ne correspondent pas au logement");
+        assertThat(notificationOutbox.findAll().stream()
+                .anyMatch(event -> "LISTING_REJECTED".equals(event.getEventType())
+                        && event.getAggregateId().equals(pending.getId())
+                        && event.getRecipientId().equals(owner.getId())
+                        && event.getPayload().equals("Les photos ne correspondent pas au logement")))
+                .isTrue();
     }
 
     @Test
@@ -265,6 +276,7 @@ class AdminApiTest extends AbstractIntegrationTest {
         Listing draft = listingFor(owner, ListingStatus.DRAFT);
 
         admin("illegal");
+        long notificationsBefore = notificationOutbox.count();
 
         given().header("Authorization", "Bearer admin-token")
                 .when().post("/admin/listings/{id}/approve", draft.getId())
@@ -273,6 +285,7 @@ class AdminApiTest extends AbstractIntegrationTest {
 
         assertThat(listings.findById(draft.getId()).orElseThrow().getStatus())
                 .isEqualTo(ListingStatus.DRAFT);
+        assertThat(notificationOutbox.count()).isEqualTo(notificationsBefore);
     }
 
     // --- reports -------------------------------------------------------------
@@ -336,6 +349,11 @@ class AdminApiTest extends AbstractIntegrationTest {
         // stops a later DISMISS from silently republishing it.
         assertThat(suspended.isAutoFlagged()).isFalse();
         assertThat(suspended.getPriorStatus()).isEqualTo(ListingStatus.PUBLISHED);
+        assertThat(notificationOutbox.findAll().stream()
+                .anyMatch(event -> "LISTING_SUSPENDED".equals(event.getEventType())
+                        && event.getAggregateId().equals(listing.getId())
+                        && event.getRecipientId().equals(owner.getId())))
+                .isTrue();
 
         assertThat(reports.findByTargetTypeAndTargetIdAndStatus(
                 ReportTarget.LISTING, listing.getId(), ReportStatus.PENDING)).isEmpty();
@@ -503,6 +521,10 @@ class AdminApiTest extends AbstractIntegrationTest {
                 .body("status", equalTo("ok"));
 
         assertThat(users.findById(target.getId()).orElseThrow().getStatus()).isEqualTo(UserStatus.BANNED);
+        assertThat(notificationOutbox.findAll().stream()
+                .anyMatch(event -> "USER_BANNED".equals(event.getEventType())
+                        && event.getRecipientId().equals(target.getId())))
+                .isTrue();
         // A banned owner's listings must not stay in public search.
         assertThat(listings.findById(owned.getId()).orElseThrow().getStatus())
                 .isNotEqualTo(ListingStatus.PUBLISHED);
@@ -522,6 +544,22 @@ class AdminApiTest extends AbstractIntegrationTest {
                 .then().statusCode(200);
 
         assertThat(users.findById(target.getId()).orElseThrow().getStatus()).isEqualTo(UserStatus.SUSPENDED);
+
+        given().header("Authorization", "Bearer admin-token")
+                .when().post("/admin/users/{id}/unsuspend", target.getId())
+                .then().statusCode(200)
+                .body("status", equalTo("ok"));
+
+        User reactivated = users.findById(target.getId()).orElseThrow();
+        assertThat(reactivated.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(reactivated.isAutoSuspended()).isFalse();
+
+        // The action is idempotent: a retry does not add a second audit event.
+        long actionsAfterFirstReactivation = adminActions.count();
+        given().header("Authorization", "Bearer admin-token")
+                .when().post("/admin/users/{id}/unsuspend", target.getId())
+                .then().statusCode(200);
+        assertThat(adminActions.count()).isEqualTo(actionsAfterFirstReactivation);
 
         given().header("Authorization", "Bearer admin-token")
                 .when().post("/admin/users/{id}/suspend", UUID.randomUUID())

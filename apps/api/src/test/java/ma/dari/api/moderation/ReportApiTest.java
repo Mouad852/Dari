@@ -5,6 +5,7 @@ import ma.dari.api.listing.AvailabilityState;
 import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
+import ma.dari.api.notification.NotificationOutboxRepository;
 import ma.dari.api.support.AbstractIntegrationTest;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
@@ -36,6 +37,9 @@ class ReportApiTest extends AbstractIntegrationTest {
     @Autowired
     AdminService adminService;
 
+    @Autowired
+    NotificationOutboxRepository notificationOutbox;
+
     private void stubToken(String uid, String email) throws Exception {
         FirebaseToken token = Mockito.mock(FirebaseToken.class);
         Mockito.when(token.getUid()).thenReturn(uid);
@@ -48,7 +52,7 @@ class ReportApiTest extends AbstractIntegrationTest {
     @DisplayName("report creation succeeds and duplicate pending reports are rejected")
     void createReportAndRejectDuplicate() throws Exception {
         stubToken("uid-reporter", "reporter@example.ma");
-        users.save(new User("uid-reporter", "reporter@example.ma", true, "Reporter"));
+        User reporter = users.save(new User("uid-reporter", "reporter@example.ma", true, "Reporter"));
 
         User owner = users.save(new User("uid-listed-owner", "listed-owner@example.ma", true, "Owner"));
         Listing listing = listings.saveAndFlush(new Listing(
@@ -72,6 +76,11 @@ class ReportApiTest extends AbstractIntegrationTest {
                 .then().statusCode(201)
                 .body("targetType", equalTo("LISTING"))
                 .body("status", equalTo("PENDING"));
+
+        assertThat(notificationOutbox.findAll().stream()
+                .anyMatch(event -> "REPORT_ACKNOWLEDGED".equals(event.getEventType())
+                        && reporter.getId().equals(event.getRecipientId())))
+                .isTrue();
 
         given().header("Authorization", "Bearer test-reporter")
                 .contentType("application/json")
@@ -181,6 +190,82 @@ class ReportApiTest extends AbstractIntegrationTest {
         assertThat(updated.getStatus()).isEqualTo(ListingStatus.SUSPENDED);
         assertThat(updated.getPriorStatus()).isEqualTo(ListingStatus.PUBLISHED);
         assertThat(updated.isAutoFlagged()).isTrue();
+
+        User admin = new User("uid-auto-listing-admin-" + System.nanoTime(), "auto-listing-admin@example.ma", true, "Admin");
+        admin.setRole(UserRole.ADMIN);
+        users.saveAndFlush(admin);
+        adminService.dismissReports(admin, ReportTarget.LISTING, listing.getId(), "DISMISS", "Signalements infondés");
+
+        Listing reinstated = listings.findById(listing.getId()).orElseThrow();
+        assertThat(reinstated.getStatus()).isEqualTo(ListingStatus.PUBLISHED);
+        assertThat(reinstated.isAutoFlagged()).isFalse();
+        assertThat(notificationOutbox.findAll().stream()
+                .anyMatch(event -> "LISTING_REINSTATED".equals(event.getEventType())
+                        && event.getAggregateId().equals(listing.getId())))
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("three distinct user reports auto-suspend and dismissing them reactivates the account")
+    void userReportsAutoSuspendAndDismissReactivates() throws Exception {
+        User target = users.saveAndFlush(new User(
+                "uid-auto-user-target-" + System.nanoTime(), "auto-user-target@example.ma", true, "Target"));
+        User admin = new User("uid-auto-user-admin-" + System.nanoTime(), "auto-user-admin@example.ma", true, "Admin");
+        admin.setRole(UserRole.ADMIN);
+        users.saveAndFlush(admin);
+
+        for (int i = 1; i <= 3; i++) {
+            String uid = "uid-user-report-" + i + "-" + System.nanoTime();
+            stubToken(uid, uid + "@example.ma");
+            User reporter = users.saveAndFlush(new User(uid, uid + "@example.ma", true, "Reporter " + i));
+            given().header("Authorization", "Bearer " + uid)
+                    .contentType("application/json")
+                    .body("{\"targetType\":\"USER\",\"targetId\":\"" + target.getId()
+                            + "\",\"reason\":\"OTHER\",\"details\":\"Signalement\"}")
+                    .when().post("/reports")
+                    .then().statusCode(201);
+            assertThat(reporter.getId()).isNotNull();
+        }
+
+        User suspended = users.findById(target.getId()).orElseThrow();
+        assertThat(suspended.getStatus()).isEqualTo(UserStatus.SUSPENDED);
+        assertThat(suspended.isAutoSuspended()).isTrue();
+        assertThat(notificationOutbox.findAll().stream()
+                .anyMatch(event -> "USER_SUSPENDED".equals(event.getEventType())
+                        && event.getRecipientId().equals(target.getId())))
+                .isTrue();
+
+        adminService.dismissReports(admin, ReportTarget.USER, target.getId(), "DISMISS", "Signalements infondés");
+
+        User restored = users.findById(target.getId()).orElseThrow();
+        assertThat(restored.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(restored.isAutoSuspended()).isFalse();
+        assertThat(reports.findByTargetTypeAndTargetIdAndStatus(
+                ReportTarget.USER, target.getId(), ReportStatus.PENDING)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("dismissing reports does not undo a manual user suspension")
+    void dismissDoesNotUndoManualUserSuspension() throws Exception {
+        User target = new User("uid-manual-user-target-" + System.nanoTime(), "manual-user-target@example.ma", true, "Manual target");
+        target.setStatus(UserStatus.SUSPENDED);
+        target = users.saveAndFlush(target);
+        User admin = new User("uid-manual-user-admin-" + System.nanoTime(), "manual-user-admin@example.ma", true, "Admin");
+        admin.setRole(UserRole.ADMIN);
+        users.saveAndFlush(admin);
+
+        for (int i = 1; i <= 3; i++) {
+            String uid = "uid-manual-report-" + i + "-" + System.nanoTime();
+            User reporter = users.saveAndFlush(new User(uid, uid + "@example.ma", true, "Reporter " + i));
+            reports.saveAndFlush(Report.create(reporter, new CreateReportRequest(
+                    ReportTarget.USER, target.getId(), ReportReason.OTHER, "Signalement")));
+        }
+
+        adminService.dismissReports(admin, ReportTarget.USER, target.getId(), "DISMISS", "Signalements infondés");
+
+        User unchanged = users.findById(target.getId()).orElseThrow();
+        assertThat(unchanged.getStatus()).isEqualTo(UserStatus.SUSPENDED);
+        assertThat(unchanged.isAutoSuspended()).isFalse();
     }
 
     @Test
@@ -292,4 +377,3 @@ class ReportApiTest extends AbstractIntegrationTest {
         assertThat(bannedListing.getDeletedAt()).isNotNull();
     }
 }
-

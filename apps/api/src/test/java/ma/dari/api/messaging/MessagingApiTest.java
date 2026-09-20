@@ -16,6 +16,12 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +42,9 @@ class MessagingApiTest extends AbstractIntegrationTest {
 
     @Autowired
     MessageRepository messages;
+
+    @Autowired
+    ConversationService conversationService;
 
     @Autowired
     Validator validator;
@@ -110,6 +119,79 @@ class MessagingApiTest extends AbstractIntegrationTest {
                 .body("id", equalTo(conversationId))
                 .body("listingId", equalTo(listing.getId().toString()))
                 .body("otherUserDisplayName", equalTo("Owner"));
+    }
+
+    @Test
+    @DisplayName("listing contact must target the listing owner")
+    void listingContactRejectsMismatchedUser() throws Exception {
+        User owner = users.saveAndFlush(new User("uid-listing-owner-mismatch", "owner-mismatch@example.ma", true, "Owner"));
+        User seeker = users.saveAndFlush(new User("uid-listing-seeker-mismatch", "seeker-mismatch@example.ma", true, "Seeker"));
+        User unrelated = users.saveAndFlush(new User("uid-listing-unrelated", "unrelated@example.ma", true, "Unrelated"));
+        Listing listing = listings.saveAndFlush(new Listing(
+                owner, "Studio ciblé", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+
+        stubToken("uid-listing-seeker-mismatch", "seeker-mismatch@example.ma", true);
+
+        given().header("Authorization", "Bearer mismatch-token")
+                .contentType("application/json")
+                .body("{\"listingId\":\"" + listing.getId() + "\",\"otherUserId\":\""
+                        + unrelated.getId() + "\"}")
+                .when().post("/conversations")
+                .then().statusCode(403)
+                .body("code", equalTo("FORBIDDEN"));
+
+        assertThat(conversations.findByListingAndParticipantPair(
+                listing.getId(), seeker.getId(), owner.getId())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("self-contact remains forbidden")
+    void selfContactIsRejected() throws Exception {
+        User self = users.saveAndFlush(new User("uid-self-contact", "self-contact@example.ma", true, "Self"));
+        stubToken("uid-self-contact", "self-contact@example.ma", true);
+
+        given().header("Authorization", "Bearer self-contact-token")
+                .contentType("application/json")
+                .body("{\"otherUserId\":\"" + self.getId() + "\"}")
+                .when().post("/conversations")
+                .then().statusCode(403)
+                .body("code", equalTo("FORBIDDEN"));
+    }
+
+    @Test
+    @DisplayName("parallel direct conversation creation leaves one row and reports one creator")
+    void parallelDirectConversationCreationIsUnique() throws Exception {
+        User first = users.saveAndFlush(new User("uid-direct-race-a", "direct-race-a@example.ma", true, "First"));
+        User second = users.saveAndFlush(new User("uid-direct-race-b", "direct-race-b@example.ma", true, "Second"));
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        try {
+            Future<ConversationService.ConversationCreateResult> one = executor.submit(() -> {
+                ready.countDown();
+                start.await(10, TimeUnit.SECONDS);
+                return conversationService.create(first, new CreateConversationRequest(null, second.getId(), null));
+            });
+            Future<ConversationService.ConversationCreateResult> two = executor.submit(() -> {
+                ready.countDown();
+                start.await(10, TimeUnit.SECONDS);
+                return conversationService.create(second, new CreateConversationRequest(null, first.getId(), null));
+            });
+
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            ConversationService.ConversationCreateResult resultOne = one.get(20, TimeUnit.SECONDS);
+            ConversationService.ConversationCreateResult resultTwo = two.get(20, TimeUnit.SECONDS);
+
+            assertThat(List.of(resultOne.created(), resultTwo.created())).containsExactlyInAnyOrder(true, false);
+            assertThat(conversations.findAll().stream()
+                    .filter(c -> c.getListing() == null && c.isParticipant(first) && c.isParticipant(second)))
+                    .hasSize(1);
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test

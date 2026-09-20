@@ -118,6 +118,29 @@ class UserApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("suspended users can read but cannot mutate")
+    void suspendedUserIsReadOnly() throws Exception {
+        stubToken("uid-suspended-read-only", "suspendu@example.ma", true);
+
+        User existing = new User("uid-suspended-read-only", "suspendu@example.ma", true, "Suspendu");
+        existing.setStatus(UserStatus.SUSPENDED);
+        users.saveAndFlush(existing);
+
+        given().header("Authorization", "Bearer test-token")
+                .when().get("/users/me")
+                .then().statusCode(200)
+                .body("displayName", equalTo("Suspendu"));
+
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"displayName\":\"Ne doit pas changer\"}")
+                .when().post("/users")
+                .then().statusCode(403)
+                .body("code", equalTo("ACCOUNT_SUSPENDED"))
+                .body("message", equalTo("Ce compte est suspendu (lecture seule)"));
+    }
+
+    @Test
     @DisplayName("public profile exposes no private field")
     void publicProfileLeaksNothing() throws Exception {
         stubToken("uid-public", "publique@example.ma", true);
