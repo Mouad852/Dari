@@ -1,10 +1,10 @@
 'use client';
 
-import { sendEmailVerification, type User as FirebaseUser } from 'firebase/auth';
+import type { User as FirebaseUser } from 'firebase/auth';
 
 import { apiFetch, ApiError } from './api';
 import { ErrorCode } from './errors';
-import { getFirebaseUser, getIdToken } from './firebase';
+import { getFirebaseUser, getIdToken, reloadFirebaseUser, sendVerificationEmailForUser } from './firebase';
 
 export type PendingProfile = {
   displayName: string;
@@ -36,13 +36,13 @@ export function clearPendingProfile(): void {
 export async function sendVerificationEmail(user?: FirebaseUser | null): Promise<void> {
   const current = user ?? await getFirebaseUser();
   if (!current) throw new Error('NO_FIREBASE_USER');
-  await sendEmailVerification(current);
+  await sendVerificationEmailForUser(current);
 }
 
 export async function refreshVerifiedIdentity(): Promise<FirebaseUser> {
   const user = await getFirebaseUser();
   if (!user) throw new Error('NO_FIREBASE_USER');
-  await user.reload();
+  await reloadFirebaseUser(user);
   if (!user.email?.trim()) throw new ApiError(400, ErrorCode.IDENTITY_EMAIL_REQUIRED, 'Une adresse e-mail Firebase est requise');
   if (!user.emailVerified) throw new ApiError(403, ErrorCode.IDENTITY_EMAIL_UNVERIFIED, 'Vérifiez votre adresse e-mail avant de créer votre profil');
   return user;

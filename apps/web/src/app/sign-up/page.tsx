@@ -3,10 +3,9 @@
 import { ArrowRight, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 
 import { ApiError } from '@/lib/api';
-import { getFirebaseAuth } from '@/lib/firebase';
+import { createFirebaseAccount, getFirebaseAuth, reloadFirebaseUser, sendVerificationEmailForUser } from '@/lib/firebase';
 import { ensureProfile, savePendingProfile } from '@/lib/profile';
 
 export default function SignUpPage() {
@@ -45,9 +44,9 @@ export default function SignUpPage() {
     const profile = { displayName: `${firstName.trim()} ${lastName.trim()}`.trim(), firstName: firstName.trim(), city: city.trim() };
     savePendingProfile(profile);
     try {
-      const credential = await createUserWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
+      const credential = await createFirebaseAccount(email.trim(), password);
       if (!credential.user.emailVerified) {
-        await sendEmailVerification(credential.user);
+        await sendVerificationEmailForUser(credential.user);
         setVerificationSent(true);
         setVerificationPending(true);
         return;
@@ -73,7 +72,7 @@ export default function SignUpPage() {
     try {
       const user = getFirebaseAuth().currentUser;
       if (!user) throw new Error('NO_FIREBASE_USER');
-      await sendEmailVerification(user);
+      await sendVerificationEmailForUser(user);
       setVerificationSent(true);
     } catch {
       setError('Impossible d’envoyer l’e-mail pour le moment. Réessayez.');
@@ -86,7 +85,8 @@ export default function SignUpPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await getFirebaseAuth().currentUser?.reload();
+      const currentUser = getFirebaseAuth().currentUser;
+      if (currentUser) await reloadFirebaseUser(currentUser);
       await ensureProfile({ displayName: `${firstName.trim()} ${lastName.trim()}`.trim(), firstName: firstName.trim(), city: city.trim() });
       router.push('/account');
     } catch (cause) {

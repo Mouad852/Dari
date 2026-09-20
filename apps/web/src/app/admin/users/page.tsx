@@ -160,6 +160,8 @@ export default function AdminUsersPage() {
 
   return (
     <main
+      id="main-content"
+      tabIndex={-1}
       style={{
         minHeight: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',

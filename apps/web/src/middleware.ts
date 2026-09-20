@@ -14,9 +14,14 @@ export function middleware(_request: NextRequest) {
     ? `https://${process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}`
     : 'https://*.firebaseapp.com';
 
+  const developmentE2e = process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true' && process.env.NODE_ENV !== 'production';
+  const scriptSource = developmentE2e
+    ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`
+    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
+
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    scriptSource,
     `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com`,
     "style-src-attr 'unsafe-inline'",
     ["img-src 'self' data: blob:", apiOrigin, ...mediaOrigins, 'https://*.tile.openstreetmap.org'].join(' '),

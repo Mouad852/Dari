@@ -10,18 +10,70 @@
 
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import {
+  createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
+  sendEmailVerification,
   sendPasswordResetEmail,
+  signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   type Auth,
   type User as FirebaseUser,
+  type UserCredential,
 } from 'firebase/auth';
 import { getWebConfig } from './config';
 
 const config = getWebConfig().firebase;
 
 let authInstance: Auth | undefined;
+
+type E2eAuthState = {
+  uid: string;
+  email: string;
+  displayName?: string;
+  emailVerified?: boolean;
+  token: string;
+};
+
+declare global {
+  interface Window {
+    /** Test-only auth seam installed by Playwright before the app loads. */
+    __DARI_E2E_AUTH__?: E2eAuthState;
+  }
+}
+
+function e2eAuthState(): E2eAuthState | null {
+  if (process.env.NEXT_PUBLIC_E2E_TEST_MODE !== 'true' || process.env.NODE_ENV === 'production') return null;
+  if (typeof window === 'undefined') return null;
+  return window.__DARI_E2E_AUTH__ ?? null;
+}
+
+function e2eUser(): FirebaseUser | null {
+  const state = e2eAuthState();
+  if (!state) return null;
+  return {
+    uid: state.uid,
+    email: state.email,
+    displayName: state.displayName ?? null,
+    emailVerified: state.emailVerified ?? true,
+    getIdToken: async () => state.token,
+    reload: async () => undefined,
+  } as FirebaseUser;
+}
+
+function e2eCredential(email: string, password: string): UserCredential | null {
+  if (!e2eAuthState()) return null;
+  if (password.length < 6) throw new Error('auth/password-does-not-meet-requirements');
+  const state: E2eAuthState = {
+    uid: 'e2e-user-1',
+    email,
+    displayName: email.split('@')[0],
+    emailVerified: true,
+    token: 'e2e-firebase-token',
+  };
+  window.__DARI_E2E_AUTH__ = state;
+  return { user: e2eUser()! } as UserCredential;
+}
 
 export function getFirebaseAuth(): Auth {
   if (!authInstance) {
@@ -53,6 +105,8 @@ export function getFirebaseAuth(): Auth {
  * first restore has completed, so this costs nothing after the first call.
  */
 export async function getIdToken(forceRefresh = false): Promise<string | null> {
+  const state = e2eAuthState();
+  if (state) return state.token;
   const auth = getFirebaseAuth();
   await auth.authStateReady();
   const user = auth.currentUser;
@@ -60,12 +114,18 @@ export async function getIdToken(forceRefresh = false): Promise<string | null> {
 }
 
 export async function getFirebaseUser(): Promise<FirebaseUser | null> {
+  const testUser = e2eUser();
+  if (testUser) return testUser;
   const auth = getFirebaseAuth();
   await auth.authStateReady();
   return auth.currentUser;
 }
 
 export function signOut(): Promise<void> {
+  if (e2eAuthState()) {
+    delete window.__DARI_E2E_AUTH__;
+    return Promise.resolve();
+  }
   return firebaseSignOut(getFirebaseAuth());
 }
 
@@ -83,9 +143,35 @@ export function signOut(): Promise<void> {
  * so callers stay correct without polling for it themselves.
  */
 export function onAuthChange(callback: (user: FirebaseUser | null) => void): () => void {
+  if (process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true' && process.env.NODE_ENV !== 'production') {
+    callback(e2eUser());
+    return () => undefined;
+  }
   return onAuthStateChanged(getFirebaseAuth(), callback);
 }
 
 export function sendPasswordReset(email: string): Promise<void> {
+  if (e2eAuthState()) return Promise.resolve();
   return sendPasswordResetEmail(getFirebaseAuth(), email);
+}
+
+/** Firebase actions with a browser-only E2E seam; production always uses the SDK. */
+export function createFirebaseAccount(email: string, password: string): Promise<UserCredential> {
+  const credential = e2eCredential(email, password);
+  return credential ? Promise.resolve(credential) : createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
+}
+
+export function signInFirebase(email: string, password: string): Promise<UserCredential> {
+  const credential = e2eCredential(email, password);
+  return credential ? Promise.resolve(credential) : signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+}
+
+export function sendVerificationEmailForUser(user: FirebaseUser): Promise<void> {
+  if (e2eAuthState()) return Promise.resolve();
+  return sendEmailVerification(user);
+}
+
+export function reloadFirebaseUser(user: FirebaseUser): Promise<void> {
+  if (e2eAuthState()) return Promise.resolve();
+  return user.reload();
 }

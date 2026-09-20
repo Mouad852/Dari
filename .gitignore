@@ -30,6 +30,8 @@ node_modules/
 .next/
 apps/web/test-results/
 apps/web/playwright-report/
+apps/web/e2e/test-results/
+apps/web/e2e/playwright-report/
 out/
 next-env.d.ts
 *.tsbuildinfo

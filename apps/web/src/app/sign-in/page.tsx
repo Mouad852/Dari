@@ -3,9 +3,8 @@
 import { ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 
-import { getFirebaseAuth, sendPasswordReset } from '@/lib/firebase';
+import { sendPasswordReset, signInFirebase } from '@/lib/firebase';
 import { ApiError, apiFetch } from '@/lib/api';
 import { ensureProfile } from '@/lib/profile';
 
@@ -79,7 +78,7 @@ export default function SignInPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const credential = await signInWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
+      const credential = await signInFirebase(email.trim(), password);
       if (!credential.user.emailVerified) {
         router.push('/profile-recovery');
         return;
