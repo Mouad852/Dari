@@ -5,6 +5,14 @@ server:
   forward-headers-strategy: framework
 
 spring:
+  # No defaults. application.yml falls back to localhost and the dari_local
+  # development password; in production a missing variable must stop startup,
+  # not quietly connect with a development credential.
+  datasource:
+    url: ${DB_URL}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+
   # SMTP for notification delivery. These are the variable names the runbooks
   # and validation scripts use; without this block Spring would only read
   # SPRING_MAIL_*, and the documented names would silently do nothing.
