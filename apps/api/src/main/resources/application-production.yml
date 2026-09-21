@@ -4,6 +4,29 @@
 server:
   forward-headers-strategy: framework
 
+spring:
+  # SMTP for notification delivery. These are the variable names the runbooks
+  # and validation scripts use; without this block Spring would only read
+  # SPRING_MAIL_*, and the documented names would silently do nothing.
+  mail:
+    host: ${SMTP_HOST}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true      # never fall back to plaintext credentials
+          # Milliseconds. JavaMail's defaults are infinite: a provider that
+          # accepts the connection and then stalls would hold the delivery
+          # thread, and with it every other scheduled job, indefinitely.
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
+
 dari:
   web-origins: ${DARI_WEB_ORIGIN}
   firebase:
