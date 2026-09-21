@@ -54,8 +54,21 @@ spring:
       max-file-size: 6MB
       max-request-size: 8MB
 
+  # On SIGTERM: stop accepting requests, let in-flight ones finish, and let a
+  # running expiry, outbox or media-cleanup batch complete rather than cutting
+  # it off mid-transaction. Each phase gets 30s; the platform's kill grace
+  # period must be longer than the two combined (see PRODUCTION_OPERATIONS.md).
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  task:
+    scheduling:
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
+
 server:
   port: ${API_PORT:8080}
+  shutdown: graceful
   error:
     include-stacktrace: never     # errors leave through the envelope or not at all
   compression:
