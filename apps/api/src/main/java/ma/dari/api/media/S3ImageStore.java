@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -24,6 +26,7 @@ import java.util.UUID;
 @Component
 @ConditionalOnProperty(name = "dari.media.provider", havingValue = "s3")
 public class S3ImageStore implements ImageStore {
+    private static final Logger log = LoggerFactory.getLogger(S3ImageStore.class);
     private static final DateTimeFormatter AMZ_TIME = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC);
     private static final DateTimeFormatter AMZ_DATE = DateTimeFormatter.ofPattern("yyyyMMdd").withZone(ZoneOffset.UTC);
     private final HttpClient client = HttpClient.newHttpClient();
@@ -54,9 +57,10 @@ public class S3ImageStore implements ImageStore {
         String key = folder + "/" + ownerId + "/" + UUID.randomUUID() + ".jpg";
         try {
             HttpResponse<String> response = request("PUT", key, encoded.bytes(), encoded.mimeType());
-            if (response.statusCode() >= 400) throw new IllegalStateException(response.body());
+            if (response.statusCode() >= 400) throw new IllegalStateException("S3 returned HTTP " + response.statusCode());
             return new StoredImage(key, encoded.mimeType(), encoded.width(), encoded.height());
         } catch (Exception failure) {
+            log.warn("S3 image upload failed ({})", failure.getMessage());
             throw new ApiException(503, ErrorCode.INTERNAL_ERROR, "L'enregistrement de la photo a échoué");
         }
     }
@@ -66,8 +70,9 @@ public class S3ImageStore implements ImageStore {
         if (storageKey == null || storageKey.isBlank()) return;
         try {
             HttpResponse<String> response = request("DELETE", storageKey, new byte[0], null);
-            if (response.statusCode() >= 400 && response.statusCode() != 404) throw new IllegalStateException(response.body());
+            if (response.statusCode() >= 400 && response.statusCode() != 404) throw new IllegalStateException("S3 returned HTTP " + response.statusCode());
         } catch (Exception failure) {
+            log.warn("S3 image deletion failed ({})", failure.getMessage());
             throw new ApiException(503, ErrorCode.INTERNAL_ERROR, "La suppression de la photo a échoué");
         }
     }
@@ -86,16 +91,15 @@ public class S3ImageStore implements ImageStore {
         String host = endpoint.getAuthority();
         String payloadHash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(payload));
         String canonicalHeaders = "host:" + host + "\n" +
-                (contentType == null ? "" : "content-type:" + contentType + "\n") +
                 "x-amz-content-sha256:" + payloadHash + "\n" + "x-amz-date:" + amzTime + "\n";
-        String signedHeaders = contentType == null ? "host;x-amz-content-sha256;x-amz-date" : "content-type;host;x-amz-content-sha256;x-amz-date";
+        String signedHeaders = "host;x-amz-content-sha256;x-amz-date";
         String canonicalRequest = method + "\n" + canonicalUri + "\n\n" + canonicalHeaders + "\n" + signedHeaders + "\n" + payloadHash;
         String scope = amzDate + "/" + region + "/s3/aws4_request";
         String stringToSign = "AWS4-HMAC-SHA256\n" + amzTime + "\n" + scope + "\n" + sha256(canonicalRequest);
         String signature = HexFormat.of().formatHex(hmac(signingKey(amzDate), stringToSign));
         HttpRequest.Builder request = HttpRequest.newBuilder(endpoint.resolve(canonicalUri))
                 .method(method, HttpRequest.BodyPublishers.ofByteArray(payload))
-                .header("Host", host).header("x-amz-date", amzTime)
+                .header("x-amz-date", amzTime)
                 .header("x-amz-content-sha256", payloadHash)
                 .header("Authorization", "AWS4-HMAC-SHA256 Credential=" + accessKey + "/" + scope
                         + ", SignedHeaders=" + signedHeaders + ", Signature=" + signature);
