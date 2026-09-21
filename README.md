@@ -206,6 +206,14 @@ Suspended accounts are deliberately read-only: authenticated `GET`, `HEAD`, and
 `403 ACCOUNT_SUSPENDED`. This includes `DELETE /users/me`; self-account deletion
 has no exception while the account is suspended.
 
+## Production deployment
+
+The selected deployment target is AWS managed services (ECS Fargate, ALB,
+RDS PostgreSQL/PostGIS, S3 with CloudFront, SES SMTP, and Firebase). See
+[the production deployment procedure](docs/PRODUCTION_OPERATIONS.md#production-deployment-aws-managed-services)
+for the required configuration, immutable ECR image releases, deployment and
+rollback steps, costs, and local production smoke check.
+
 ## Validation notes
 
 - The frontend is sensitive to stale local dev servers. If a route looks wrong or styles are missing, stop stale Next processes and verify against a clean port.

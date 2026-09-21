@@ -241,3 +241,115 @@ These are floors observed on one machine with one dataset shape, not a
 formal SLA — re-run the script after any change to the search/map query path,
 a schema change touching the indexes in `V15__search_sort_indexes.sql`, or a
 significant jump in expected production listing volume.
+
+## Production deployment (AWS, managed services)
+
+This is the selected **AWS Option A** deployment shape. It is a small
+production baseline, not a free-tier-only configuration: Fargate, an ALB, and
+public IPv4 addresses incur charges. Budget roughly **USD 40–60/month** as an
+estimate, then confirm the actual region and traffic assumptions with the AWS
+Pricing Calculator. Create a budget alert before provisioning. Choose a region
+with the business's data-residency obligations in mind (for example,
+`eu-west-3` or `eu-south-2`).
+
+### Target architecture
+
+- ACM terminates TLS at an internet-facing ALB. Its target group checks
+  `/actuator/health/readiness` with a 6-second timeout and a 45-second
+  deregistration delay.
+- The ECS Fargate service runs one task (0.5 vCPU, 1 GB) in a public subnet
+  with `assignPublicIp` enabled and no NAT gateway. Its security group accepts
+  port 8080 only from the ALB security group.
+- The API container has an ECS health check on
+  `/actuator/health/liveness` (the image contains `curl`), a 120-second
+  `startPeriod`, a 75-second `stopTimeout`, and the service has a 120-second
+  health-check grace period. Deploy with minimum healthy percent 100, maximum
+  percent 200, and the ECS deployment circuit breaker with rollback enabled.
+- Run PostgreSQL 16 with PostGIS on private RDS (`db.t4g.micro`). Before the
+  first app start, the RDS master user creates role `dari`, database `dari`,
+  and enables `postgis` and `pgcrypto` there. Migration V1 needs
+  `rds_superuser` for those extensions; the application must subsequently
+  connect only as `dari`.
+- Store originals in a private S3 bucket and serve them through CloudFront
+  using Origin Access Control. Set `DARI_MEDIA_PUBLIC_BASE_URL` to the
+  CloudFront HTTPS origin.
+- SES SMTP is `email-smtp.<region>.amazonaws.com:587` with STARTTLS. Configure
+  the sending domain's DKIM, SPF, and DMARC, request production access to leave
+  the SES sandbox, and use SES SMTP credentials (they are not IAM access keys).
+
+`S3ImageStore` currently requires a dedicated `dari-media` IAM user with
+static access keys limited to `s3:PutObject` and `s3:DeleteObject` on this
+bucket. It does not send `x-amz-security-token`, so an ECS task role cannot
+substitute for these credentials. It also uses path-style S3 URLs; verify the
+first real upload and its public URL before accepting the release.
+
+### Configuration and secrets
+
+Put non-secret configuration in the ECS task definition environment and secret
+values in SSM Parameter Store `SecureString`, referenced by the task
+definition. Do not put values in image layers, source control, or command
+history.
+
+| Task-definition environment | SSM `SecureString` |
+| --- | --- |
+| `SPRING_PROFILES_ACTIVE=production`, `DB_URL`, `DARI_WEB_ORIGIN`, `DARI_MEDIA_PROVIDER=s3`, `DARI_MEDIA_PUBLIC_BASE_URL`, `DARI_MEDIA_S3_ENDPOINT`, `DARI_MEDIA_S3_REGION`, `DARI_MEDIA_S3_BUCKET`, `SMTP_HOST`, `SMTP_PORT=587` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DARI_MEDIA_S3_ACCESS_KEY`, `DARI_MEDIA_S3_SECRET_KEY`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `DARI_NOTIFICATIONS_FROM`, Firebase service-account JSON |
+
+Set `FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase/service-account.json` in
+the API container. Add a non-essential BusyBox init container that reads the
+Firebase JSON SecureString, writes it to a task-scoped shared volume, then
+sets owner `10001` and mode `0400`. The API container mounts that volume
+read-only and uses `dependsOn` with condition `SUCCESS`; do not copy this key
+into the image or an environment variable.
+
+### Build and first deployment
+
+Authenticate Docker to ECR using an AWS CLI profile that the operator has
+already configured, then build and push an immutable image tag derived from
+the checked-out commit. Never retag an already released SHA.
+
+```bash
+git_sha="$(git rev-parse --verify HEAD)"
+aws ecr get-login-password --region "$AWS_REGION" | \
+  docker login --username AWS --password-stdin "$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com"
+docker build -t "$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/dari-api:$git_sha" apps/api
+docker push "$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/dari-api:$git_sha"
+```
+
+Provision the network, ACM certificate, ALB, RDS, S3/CloudFront, ECR,
+Parameter Store entries, IAM permissions, ECS cluster, task definition, and
+service using reviewed infrastructure configuration. Register the image SHA in
+a new task-definition revision and deploy the service. The API applies Flyway
+migrations on startup; take a verified backup first and allow the new task to
+become ready before draining the old task. Never run `flyway clean` in any
+environment holding production data.
+
+### Routine deploy and rollback
+
+For each release, build and push a new SHA tag, register a new task-definition
+revision with that exact image, update the ECS service, and wait for its
+deployment to stabilize. Check the ALB readiness target, liveness endpoint,
+application logs, and a real media upload before declaring the release good.
+
+If the release fails, select the previous known-good ECS task-definition
+revision and update the service back to it. Confirm target health and user
+flows after rollback. Database migrations are forward-only: do not use
+`flyway clean`, and do not roll back schema by deleting migration history.
+Prepare a compensating migration only when a rollback cannot safely run
+against the migrated schema.
+
+### Production smoke stack
+
+Run this local, throwaway production-profile check before a release. It is not
+a deployment and uses only smoke credentials:
+
+```bash
+docker compose -f infra/prod-smoke/docker-compose.yml up -d --build --wait
+curl -fsS http://localhost:18080/actuator/health/liveness
+curl -fsS http://localhost:18080/actuator/health/readiness
+./infra/prod-smoke/fail-fast-matrix.sh
+docker compose -f infra/prod-smoke/docker-compose.yml down -v
+```
+
+On PowerShell, invoke the matrix with `bash ./infra/prod-smoke/fail-fast-matrix.sh`.
+Always run `down -v` when finished; it removes only this smoke project's
+throwaway volumes.
