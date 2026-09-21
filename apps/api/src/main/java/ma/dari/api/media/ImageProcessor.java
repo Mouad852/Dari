@@ -5,12 +5,15 @@ import ma.dari.api.common.error.ErrorCode;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Iterator;
 import java.util.Set;
 
 /** Shared byte validation and JPEG re-encoding for every ImageStore adapter. */
@@ -18,7 +21,8 @@ public final class ImageProcessor {
     private static final Set<String> ALLOWED_MIME_TYPES = Set.of("image/jpeg", "image/png");
     private static final long MAX_FILE_SIZE_BYTES = 5L * 1024L * 1024L;
     private static final int MAX_IMAGE_DIMENSION = 10_000;
-    private static final long MAX_IMAGE_PIXELS = 40_000_000L;
+    // 25 MP accommodates modern phone photos while capping one upload's decoded RGB buffer at ~100 MB.
+    private static final long MAX_IMAGE_PIXELS = 25_000_000L;
 
     private ImageProcessor() {
     }
@@ -29,28 +33,51 @@ public final class ImageProcessor {
         if (file.getContentType() == null || !ALLOWED_MIME_TYPES.contains(file.getContentType())) {
             throw invalid("Type de fichier non pris en charge");
         }
-        try (InputStream in = file.getInputStream()) {
-            BufferedImage original = ImageIO.read(in);
-            if (original == null) throw invalid("Le fichier n'est pas une image valide");
-            int width = original.getWidth();
-            int height = original.getHeight();
-            if (width < 200 || height < 200) throw invalid("La photo doit mesurer au moins 200 px de large et de haut");
-            if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION || (long) width * height > MAX_IMAGE_PIXELS) {
-                throw invalid("La photo ne peut pas dépasser 10000 px ni 40 mégapixels");
-            }
-            BufferedImage safeImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-            Graphics2D graphics = safeImage.createGraphics();
+        try (InputStream in = file.getInputStream();
+             ImageInputStream imageInput = ImageIO.createImageInputStream(in)) {
+            if (imageInput == null) throw invalid("Le fichier n'est pas une image valide");
+
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(imageInput);
+            if (!readers.hasNext()) throw invalid("Le fichier n'est pas une image valide");
+
+            ImageReader reader = readers.next();
             try {
-                graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                graphics.drawImage(original, 0, 0, width, height, null);
+                reader.setInput(imageInput, true, true);
+                // The reader exposes dimensions from the header. Validate them before read() can allocate pixels.
+                validateDimensions(reader.getWidth(0), reader.getHeight(0));
+
+                BufferedImage original = reader.read(0);
+                if (original == null) throw invalid("Le fichier n'est pas une image valide");
+                int width = original.getWidth();
+                int height = original.getHeight();
+                validateDimensions(width, height);
+
+                BufferedImage safeImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+                Graphics2D graphics = safeImage.createGraphics();
+                try {
+                    graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    graphics.drawImage(original, 0, 0, width, height, null);
+                } finally {
+                    graphics.dispose();
+                }
+                ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                if (!ImageIO.write(safeImage, "jpg", bytes)) throw new IOException("JPEG writer unavailable");
+                return new EncodedImage(bytes.toByteArray(), "image/jpeg", width, height);
             } finally {
-                graphics.dispose();
+                reader.dispose();
             }
-            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-            if (!ImageIO.write(safeImage, "jpg", bytes)) throw new IOException("JPEG writer unavailable");
-            return new EncodedImage(bytes.toByteArray(), "image/jpeg", width, height);
         } catch (IOException ex) {
             throw new ApiException(500, ErrorCode.INTERNAL_ERROR, "L'enregistrement de la photo a échoué");
+        }
+    }
+
+    private static void validateDimensions(int width, int height) {
+        if (width < 200 || height < 200) {
+            throw invalid("La photo doit mesurer au moins 200 px de large et de haut");
+        }
+        if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION
+                || (long) width * height > MAX_IMAGE_PIXELS) {
+            throw invalid("La photo ne peut pas dépasser 10000 px ni 25 mégapixels");
         }
     }
 
