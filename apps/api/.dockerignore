@@ -1,0 +1,32 @@
+# Allowlist: the image is built from the Maven wrapper, the POM and main sources
+# only. Anything not re-included below never reaches the build context, which
+# is the guarantee that keys, .env files, local uploads and build output stay
+# out of the image.
+*
+
+!.mvn/wrapper/maven-wrapper.properties
+!mvnw
+!pom.xml
+!src/main/**
+
+# Belt and braces inside the allowed paths: nothing credential-shaped, even if
+# someone drops one into src/main by mistake.
+**/*serviceAccount*.json
+**/service-account*.json
+**/firebase-admin*.json
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.jks
+**/*.pfx
+
+# Build output and editor state, should they ever appear under src/main.
+**/target/
+**/.git/
+**/node_modules/
+**/.idea/
+**/.vscode/
+**/*.iml
+**/*.log
