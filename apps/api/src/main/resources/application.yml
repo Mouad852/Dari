@@ -82,6 +82,16 @@ management:
   endpoint:
     health:
       show-details: never
+      # /actuator/health/liveness and /readiness. Liveness is the process only:
+      # a database outage must take the instance out of rotation, never get it
+      # restarted, because a restart cannot fix the database and every replica
+      # would restart at once. Readiness adds the database so the platform stops
+      # routing traffic an instance cannot serve, and resumes when it recovers.
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
 
 dari:
   web-origins: ${DARI_WEB_ORIGIN:http://localhost:3000}
