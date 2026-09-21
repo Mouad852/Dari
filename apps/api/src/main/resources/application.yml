@@ -38,6 +38,17 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    # Migrations run WITHOUT the statement timeout above: a future CREATE INDEX
+    # on a large table must not be killed at 30s halfway through a deploy.
+    # Setting url/user/password makes Boot give Flyway its own unpooled
+    # connections, which never see the pool's driver options. A SET on a pooled
+    # connection would not do: Hikari does not reset session settings, so the
+    # exemption would leak back into the application's pool. init-sqls then
+    # also overrides any timeout configured on the role or database itself.
+    url: ${spring.datasource.url}
+    user: ${spring.datasource.username}
+    password: ${spring.datasource.password}
+    init-sqls: SET statement_timeout = 0
     # Migrations stay backward-compatible for one release so a rollback does not
     # strand the schema: expand, backfill, switch reads, contract later.
 
