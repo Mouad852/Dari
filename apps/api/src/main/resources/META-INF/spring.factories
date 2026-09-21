@@ -1,0 +1,3 @@
+# Runs before the context refreshes; a no-op unless the production profile is active.
+org.springframework.context.ApplicationContextInitializer=\
+  ma.dari.api.config.ProductionConfigValidator

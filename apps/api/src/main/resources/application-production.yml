@@ -39,6 +39,17 @@ dari:
   web-origins: ${DARI_WEB_ORIGIN}
   firebase:
     credentials-path: ${FIREBASE_CREDENTIALS_PATH}
+  # No defaults. application.yml falls back to local disk and empty S3
+  # credentials, which boots fine and then fails every upload with a 503.
+  media:
+    provider: ${DARI_MEDIA_PROVIDER}
+    public-base-url: ${DARI_MEDIA_PUBLIC_BASE_URL}
+    s3:
+      endpoint: ${DARI_MEDIA_S3_ENDPOINT}
+      region: ${DARI_MEDIA_S3_REGION}
+      access-key: ${DARI_MEDIA_S3_ACCESS_KEY}
+      secret-key: ${DARI_MEDIA_S3_SECRET_KEY}
+      bucket: ${DARI_MEDIA_S3_BUCKET}
   notifications:
     # Opt-out in production, opt-in in development. Moderation outcomes and
     # expiry warnings are the only channel Dari has to its users; a deploy that
