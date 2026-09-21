@@ -32,6 +32,9 @@ class FavoriteApiTest extends AbstractIntegrationTest {
     @Autowired
     FavoriteService favoriteService;
 
+    @Autowired
+    LocationFuzzer locationFuzzer;
+
     private void stubToken(String uid, String email, boolean emailVerified) throws Exception {
         FirebaseToken token = Mockito.mock(FirebaseToken.class);
         Mockito.when(token.getUid()).thenReturn(uid);
@@ -81,7 +84,7 @@ class FavoriteApiTest extends AbstractIntegrationTest {
 
         // Numeric, not a substring of the stored value -- see the same note in
         // ListingApiTest.publicDetailIsVisibleForPublishedListing.
-        double[] fuzzed = LocationFuzzer.fuzz(listing.getId(), 33.9716, -6.8498);
+        double[] fuzzed = locationFuzzer.fuzz(listing.getId(), 33.9716, -6.8498, 200.0);
         var coordinates = favoritesResponse.jsonPath(exactNumbers());
         assertThat(coordinates.getDouble("items[0].latitude")).isEqualTo(fuzzed[0]);
         assertThat(coordinates.getDouble("items[0].longitude")).isEqualTo(fuzzed[1]);

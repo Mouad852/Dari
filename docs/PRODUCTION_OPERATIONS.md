@@ -292,7 +292,7 @@ history.
 
 | Task-definition environment | SSM `SecureString` |
 | --- | --- |
-| `SPRING_PROFILES_ACTIVE=production`, `DB_URL`, `DARI_WEB_ORIGIN`, `DARI_MEDIA_PROVIDER=s3`, `DARI_MEDIA_PUBLIC_BASE_URL`, `DARI_MEDIA_S3_ENDPOINT`, `DARI_MEDIA_S3_REGION`, `DARI_MEDIA_S3_BUCKET`, `SMTP_HOST`, `SMTP_PORT=587` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DARI_MEDIA_S3_ACCESS_KEY`, `DARI_MEDIA_S3_SECRET_KEY`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `DARI_NOTIFICATIONS_FROM`, Firebase service-account JSON |
+| `SPRING_PROFILES_ACTIVE=production`, `DB_URL`, `DARI_WEB_ORIGIN`, `DARI_MEDIA_PROVIDER=s3`, `DARI_MEDIA_PUBLIC_BASE_URL`, `DARI_MEDIA_S3_ENDPOINT`, `DARI_MEDIA_S3_REGION`, `DARI_MEDIA_S3_BUCKET`, `SMTP_HOST`, `SMTP_PORT=587` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DARI_LOCATION_FUZZ_SECRET`, `DARI_MEDIA_S3_ACCESS_KEY`, `DARI_MEDIA_S3_SECRET_KEY`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `DARI_NOTIFICATIONS_FROM`, Firebase service-account JSON |
 
 Set `FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase/service-account.json` in
 the API container. Add a non-essential BusyBox init container that reads the
@@ -300,6 +300,11 @@ Firebase JSON SecureString, writes it to a task-scoped shared volume, then
 sets owner `10001` and mode `0400`. The API container mounts that volume
 read-only and uses `dependsOn` with condition `SUCCESS`; do not copy this key
 into the image or an environment variable.
+
+Store `DARI_LOCATION_FUZZ_SECRET` as a Parameter Store `SecureString` with at
+least 32 characters. It keys the deterministic public listing-pin offsets;
+rotating it deliberately moves every public pin and should be coordinated with
+product support rather than treated as an invisible credential rotation.
 
 ### Build and first deployment
 

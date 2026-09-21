@@ -98,6 +98,10 @@ if require FIREBASE_CREDENTIALS_PATH; then
     fi
 fi
 
+if require DARI_LOCATION_FUZZ_SECRET; then
+    [ "${#value}" -ge 32 ] || add_problem 'DARI_LOCATION_FUZZ_SECRET must be at least 32 characters long'
+fi
+
 if require DARI_MEDIA_PROVIDER; then
     [ "$(lower "$value")" = 's3' ] || add_problem 'DARI_MEDIA_PROVIDER must be s3 in production'
 fi

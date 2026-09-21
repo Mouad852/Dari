@@ -50,6 +50,7 @@ class ProductionConfigValidatorTest {
         properties.put("spring.datasource.password", DB_PASSWORD);
         properties.put("dari.web-origins", "https://dari.ma,https://www.dari.ma");
         properties.put("dari.firebase.credentials-path", credentials.toString());
+        properties.put("dari.location.fuzz-secret", "test-only-fuzz-secret-with-at-least-thirty-two-characters");
         properties.put("dari.media.provider", "s3");
         properties.put("dari.media.public-base-url", "https://media.dari.ma");
         properties.put("dari.media.s3.endpoint", "https://s3.eu-west-3.amazonaws.com");
@@ -90,6 +91,7 @@ class ProductionConfigValidatorTest {
             "POSTGRES_PASSWORD, spring.datasource.password",
             "DARI_WEB_ORIGIN, dari.web-origins",
             "FIREBASE_CREDENTIALS_PATH, dari.firebase.credentials-path",
+            "DARI_LOCATION_FUZZ_SECRET, dari.location.fuzz-secret",
             "DARI_MEDIA_PROVIDER, dari.media.provider",
             "DARI_MEDIA_PUBLIC_BASE_URL, dari.media.public-base-url",
             "DARI_MEDIA_S3_ENDPOINT, dari.media.s3.endpoint",
@@ -135,6 +137,7 @@ class ProductionConfigValidatorTest {
             "DB_URL                     | spring.datasource.url        | jdbc:mysql://db/dari",
             "DB_URL                     | spring.datasource.url        | jdbc:postgresql://",
             "DARI_NOTIFICATIONS_FROM    | dari.notifications.from      | no-reply",
+            "DARI_LOCATION_FUZZ_SECRET  | dari.location.fuzz-secret    | too-short",
             "SMTP_PORT                  | spring.mail.port             | smtp",
             "SMTP_PORT                  | spring.mail.port             | 70000",
             "FIREBASE_CREDENTIALS_PATH  | dari.firebase.credentials-path | /run/secrets/does-not-exist.json"
@@ -163,11 +166,13 @@ class ProductionConfigValidatorTest {
     void problemsAreAggregated() {
         var properties = valid();
         properties.put("spring.datasource.url", "${DB_URL}");
+        properties.put("dari.location.fuzz-secret", "too-short");
         properties.put("dari.media.provider", "local");
         properties.put("spring.mail.host", "${SMTP_HOST}");
 
         assertThat(problems(properties)).containsExactly(
                 "DB_URL is not set (spring.datasource.url)",
+                "DARI_LOCATION_FUZZ_SECRET must be at least 32 characters long",
                 "DARI_MEDIA_PROVIDER must be s3 in production",
                 "SMTP_HOST is not set (spring.mail.host)");
     }

@@ -18,6 +18,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
+import java.util.Random;
 import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
@@ -43,6 +44,9 @@ class ListingApiTest extends AbstractIntegrationTest {
 
     @Autowired
     ListingSearchService listingSearchService;
+
+    @Autowired
+    LocationFuzzer locationFuzzer;
 
     @Autowired
     Validator validator;
@@ -387,7 +391,7 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .doesNotContain("\"firebaseUid\"");
 
         // Compared as numbers, not as substrings of the stored value. The fuzz
-        // offset is derived from the listing's UUID, which is random per run, so
+        // offset is derived from the listing's UUID and the server-held secret, so
         // a small offset leaves the fuzzed value still *starting with* the
         // stored digits -- which made the old `doesNotContain` assertion fail at
         // random. That the point actually moves is LocationFuzzerTest's job;
@@ -397,10 +401,28 @@ class ListingApiTest extends AbstractIntegrationTest {
         // BIG_DECIMAL because RestAssured otherwise parses JSON numbers as
         // floats, and float32 carries only ~7 digits -- enough to shift the
         // eighth by ~1e-6 and fail an exact comparison against a double.
-        double[] fuzzed = LocationFuzzer.fuzz(listing.getId(), storedLatitude, storedLongitude);
+        double[] fuzzed = locationFuzzer.fuzz(listing.getId(), storedLatitude, storedLongitude, 200.0);
         var coordinates = response.jsonPath(exactNumbers());
         assertThat(coordinates.getDouble("latitude")).isEqualTo(fuzzed[0]);
         assertThat(coordinates.getDouble("longitude")).isEqualTo(fuzzed[1]);
+
+        // This is the former public-id-only recovery formula. Applying it to
+        // the public response must no longer reconstruct the stored point.
+        double[] oldFormulaRecovery = oldUnkeyedRecovery(
+                listing.getId(), coordinates.getDouble("latitude"), coordinates.getDouble("longitude"));
+        assertThat(oldFormulaRecovery[0]).isNotEqualTo(storedLatitude);
+        assertThat(oldFormulaRecovery[1]).isNotEqualTo(storedLongitude);
+    }
+
+    private static double[] oldUnkeyedRecovery(UUID listingId, double publicLatitude, double publicLongitude) {
+        long seed = listingId.getMostSignificantBits() ^ listingId.getLeastSignificantBits();
+        Random random = new Random(seed);
+        double angle = random.nextDouble() * 2.0 * Math.PI;
+        double distance = Math.sqrt(random.nextDouble()) * 200.0;
+        double latitudeOffset = (distance * Math.cos(angle)) / 111_320.0;
+        double longitudeOffset = (distance * Math.sin(angle))
+                / (111_320.0 * Math.cos(Math.toRadians(publicLatitude)));
+        return new double[] { publicLatitude - latitudeOffset, publicLongitude - longitudeOffset };
     }
 
     @Test

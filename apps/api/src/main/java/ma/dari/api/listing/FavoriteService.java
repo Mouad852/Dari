@@ -27,16 +27,19 @@ public class FavoriteService {
     private final ListingRepository listings;
     private final ListingPhotoRepository listingPhotos;
     private final double fuzzRadiusM;
+    private final LocationFuzzer locationFuzzer;
     private final ImageStore imageStore;
 
     public FavoriteService(FavoriteRepository favorites, ListingRepository listings,
                            ListingPhotoRepository listingPhotos,
                            @Value("${dari.location.fuzz-radius-metres:200}") double fuzzRadiusM,
+                           LocationFuzzer locationFuzzer,
                            ImageStore imageStore) {
         this.favorites = favorites;
         this.listings = listings;
         this.listingPhotos = listingPhotos;
         this.fuzzRadiusM = fuzzRadiusM;
+        this.locationFuzzer = locationFuzzer;
         this.imageStore = imageStore;
     }
 
@@ -68,7 +71,7 @@ public class FavoriteService {
 
         List<PublicListingResponse> items = pageRows.stream()
                 .map(f -> PublicListingResponse.from(f.getListing(),
-                        LocationFuzzer.fuzz(f.getListing().getId(), f.getListing().getLatitude(), f.getListing().getLongitude(), fuzzRadiusM),
+                        locationFuzzer.fuzz(f.getListing().getId(), f.getListing().getLatitude(), f.getListing().getLongitude(), fuzzRadiusM),
                         covers.get(f.getListing().getId())))
                 .toList();
 

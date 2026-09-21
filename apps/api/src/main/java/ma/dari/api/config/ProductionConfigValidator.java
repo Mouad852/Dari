@@ -66,6 +66,11 @@ public class ProductionConfigValidator
             check.invalid("FIREBASE_CREDENTIALS_PATH", "must point to a readable file");
         }
 
+        String fuzzSecret = check.required("DARI_LOCATION_FUZZ_SECRET", "dari.location.fuzz-secret");
+        if (fuzzSecret != null && fuzzSecret.trim().length() < 32) {
+            check.invalid("DARI_LOCATION_FUZZ_SECRET", "must be at least 32 characters long");
+        }
+
         String provider = check.required("DARI_MEDIA_PROVIDER", "dari.media.provider");
         if (provider != null && !provider.trim().equalsIgnoreCase("s3")) {
             check.invalid("DARI_MEDIA_PROVIDER", "must be s3 in production");

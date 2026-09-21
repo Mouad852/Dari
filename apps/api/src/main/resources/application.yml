@@ -139,6 +139,8 @@ dari:
   # value is auditable rather than buried as a literal in a service.
   location:
     fuzz-radius-metres: 200
+    # Development/test only. Production overrides this with a required secret.
+    fuzz-secret: ${DARI_LOCATION_FUZZ_SECRET:development-only-location-fuzz-secret-change-before-production}
 
   # Listing expiry (phase 10). Sixty days keeps the marketplace credible;
   # stale listings are the exact failure Dari exists to replace.

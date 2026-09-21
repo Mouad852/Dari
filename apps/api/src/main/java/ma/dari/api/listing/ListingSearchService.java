@@ -55,6 +55,7 @@ public class ListingSearchService {
     private final ListingCovers covers;
     private final MeterRegistry meterRegistry;
     private final double fuzzRadiusM;
+    private final LocationFuzzer locationFuzzer;
     private final ImageStore imageStore;
 
     public ListingSearchService(ListingRepository listings, ListingSearchRepository search,
@@ -62,6 +63,7 @@ public class ListingSearchService {
                                 HouseRulesRepository houseRules, ListingRoomRepository rooms,
                                 ListingCovers covers, MeterRegistry meterRegistry,
                                 @Value("${dari.location.fuzz-radius-metres:200}") double fuzzRadiusM,
+                                LocationFuzzer locationFuzzer,
                                 ImageStore imageStore) {
         this.listings = listings;
         this.search = search;
@@ -72,6 +74,7 @@ public class ListingSearchService {
         this.covers = covers;
         this.meterRegistry = meterRegistry;
         this.fuzzRadiusM = fuzzRadiusM;
+        this.locationFuzzer = locationFuzzer;
         this.imageStore = imageStore;
     }
 
@@ -238,7 +241,7 @@ public class ListingSearchService {
         java.util.Map<UUID, String> coverUrls = covers.forEach(page);
         List<PublicListingResponse> items = page.stream()
                 .map(l -> PublicListingResponse.from(l,
-                        LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude(), fuzzRadiusM),
+                        locationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude(), fuzzRadiusM),
                         coverUrls.get(l.getId())))
                 .toList();
 
@@ -356,7 +359,7 @@ public class ListingSearchService {
         );
 
         return listings_.stream()
-                .map(l -> MapPinResponse.from(l, LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude(), fuzzRadiusM)))
+                .map(l -> MapPinResponse.from(l, locationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude(), fuzzRadiusM)))
                 .toList();
     }
 
@@ -369,7 +372,7 @@ public class ListingSearchService {
         java.util.Map<UUID, String> featuredCovers = covers.forEach(featured);
         return featured.stream()
                 .map(l -> PublicListingResponse.from(l,
-                        LocationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude(), fuzzRadiusM),
+                        locationFuzzer.fuzz(l.getId(), l.getLatitude(), l.getLongitude(), fuzzRadiusM),
                         featuredCovers.get(l.getId())))
                 .toList();
     }
@@ -392,19 +395,19 @@ public class ListingSearchService {
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
 
         if (viewer != null && listing.getOwner().getId().equals(viewer.getId())) {
-            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM), covers.forListing(listing.getId()));
+            return PublicListingResponse.from(listing, locationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM), covers.forListing(listing.getId()));
         }
 
         // Moderators review PENDING_REVIEW/SUSPENDED listings that belong to
         // someone else; without this, the admin console's own "view listing"
         // link 404s on exactly the listings it exists to review.
         if (viewer != null && viewer.getRole() == UserRole.ADMIN) {
-            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM), covers.forListing(listing.getId()));
+            return PublicListingResponse.from(listing, locationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM), covers.forListing(listing.getId()));
         }
 
         if (listing.getStatus() == ListingStatus.PUBLISHED
                 && listing.getAvailabilityState() == AvailabilityState.AVAILABLE) {
-            return PublicListingResponse.from(listing, LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM), covers.forListing(listing.getId()));
+            return PublicListingResponse.from(listing, locationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM), covers.forListing(listing.getId()));
         }
 
         throw new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable");
@@ -436,7 +439,7 @@ public class ListingSearchService {
                 .toList();
         return PublicListingDetailResponse.from(
                 listing,
-                LocationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM),
+                locationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM),
                 new HashSet<>(listingAmenities.findAmenityCodesByListingId(listingId)),
                 photos,
                 houseRulesResponse,

@@ -30,7 +30,7 @@ mounts=(-v "$(host_path "$key"):/run/secrets/firebase-service-account.json:ro"
         -v "$(host_path "$root/infra/scripts"):/opt/dari-scripts:ro")
 
 secrets=()
-for name in POSTGRES_PASSWORD DARI_MEDIA_S3_ACCESS_KEY DARI_MEDIA_S3_SECRET_KEY SMTP_PASSWORD; do
+for name in POSTGRES_PASSWORD DARI_LOCATION_FUZZ_SECRET DARI_MEDIA_S3_ACCESS_KEY DARI_MEDIA_S3_SECRET_KEY SMTP_PASSWORD; do
     secrets+=("$(grep -E "^$name=" "$here/smoke.env" | cut -d= -f2-)")
 done
 
@@ -41,6 +41,7 @@ cases=(
     "missing POSTGRES_PASSWORD|POSTGRES_PASSWORD|/^POSTGRES_PASSWORD=/d"
     "missing DARI_WEB_ORIGIN|DARI_WEB_ORIGIN|/^DARI_WEB_ORIGIN=/d"
     "missing FIREBASE_CREDENTIALS_PATH|FIREBASE_CREDENTIALS_PATH|/^FIREBASE_CREDENTIALS_PATH=/d"
+    "missing DARI_LOCATION_FUZZ_SECRET|DARI_LOCATION_FUZZ_SECRET|/^DARI_LOCATION_FUZZ_SECRET=/d"
     "missing DARI_MEDIA_PROVIDER|DARI_MEDIA_PROVIDER|/^DARI_MEDIA_PROVIDER=/d"
     "missing DARI_MEDIA_PUBLIC_BASE_URL|DARI_MEDIA_PUBLIC_BASE_URL|/^DARI_MEDIA_PUBLIC_BASE_URL=/d"
     "missing DARI_MEDIA_S3_ENDPOINT|DARI_MEDIA_S3_ENDPOINT|/^DARI_MEDIA_S3_ENDPOINT=/d"
@@ -61,6 +62,7 @@ cases=(
     "non-PostgreSQL DB_URL|DB_URL|s|^DB_URL=.*|DB_URL=jdbc:mysql://db:3306/dari|"
     "SMTP_PORT not a number|SMTP_PORT|s/^SMTP_PORT=.*/SMTP_PORT=smtp/"
     "sender not an address|DARI_NOTIFICATIONS_FROM|s/^DARI_NOTIFICATIONS_FROM=.*/DARI_NOTIFICATIONS_FROM=no-reply/"
+    "location fuzz secret too short|DARI_LOCATION_FUZZ_SECRET|s/^DARI_LOCATION_FUZZ_SECRET=.*/DARI_LOCATION_FUZZ_SECRET=too-short/"
 )
 
 leaks() {
