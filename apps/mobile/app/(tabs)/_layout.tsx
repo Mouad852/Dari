@@ -1,6 +1,9 @@
 import { Tabs } from 'expo-router';
+import { useEffect, useState } from 'react';
 
 import { Icon } from '@/components/Icon';
+import { apiFetch } from '@/lib/api';
+import { getIdToken, onAuthChange } from '@/lib/firebase';
 import { color, font, layout } from '@/theme/tokens';
 
 /**
@@ -13,6 +16,18 @@ import { color, font, layout } from '@/theme/tokens';
  * reserve it by hand.
  */
 export default function TabsLayout() {
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const refresh = async () => { const token = await getIdToken(); if (!token) return; try { const result = await apiFetch<{ unreadCount: number }>('/conversations/unread-count', { token }); setUnread(result.unreadCount); } catch { /* badge is best effort */ } };
+    const unsubscribe = onAuthChange((user) => {
+      if (interval) clearInterval(interval);
+      if (!user) { setUnread(0); return; }
+      void refresh();
+      interval = setInterval(() => void refresh(), 15000);
+    });
+    return () => { unsubscribe(); if (interval) clearInterval(interval); };
+  }, []);
   return (
     <Tabs
       screenOptions={{
@@ -47,9 +62,7 @@ export default function TabsLayout() {
         options={{
           title: 'Messages',
           tabBarIcon: ({ color: tint, size }) => <Icon name="message-circle" size={size} color={tint as string} />,
-          // Wired to the real unread count once the API client and auth land
-          // -- see TODO.md's React Native entry.
-          tabBarBadge: undefined,
+          tabBarBadge: unread > 0 ? (unread > 9 ? '9+' : unread) : undefined,
         }}
       />
       <Tabs.Screen
