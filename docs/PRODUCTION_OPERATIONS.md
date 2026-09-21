@@ -18,10 +18,28 @@ The CDN must stop future origin access when a listing is deleted. Objects that
 were already cached can remain visible until the configured cache TTL expires;
 choose that TTL explicitly and document it with the CDN configuration.
 
-The rate limiter is intentionally process-local. Redis-backed rate limiting is
-a mandatory prerequisite before horizontal API scaling, as is an explicit
-trusted-proxy boundary and an allowlisted proxy configuration. The API does not
-blindly trust `X-Forwarded-For` or other forwarded headers.
+The rate limiter is intentionally process-local and has a configurable
+`DARI_RATE_LIMIT_MAX_TRACKED_KEYS` limit (100,000 by default). At the limit it
+first purges expired keys, then applies new callers to a fixed shared overflow
+bucket instead of allocating another key or allowing the request. The cap-hit
+counter is retained for operational diagnosis. Redis-backed rate limiting is a
+mandatory prerequisite before horizontal API scaling.
+
+Production uses Tomcat's native `RemoteIpValve`, not Spring's framework
+forwarded-header transformer. `DARI_TRUSTED_PROXY_IPS` is required and must be
+a Java regular expression matching only the target-facing private addresses of
+the ALB nodes (normally the specific ALB subnet ranges), never a client or a
+broad private range. The ECS security group must likewise admit port 8080 only
+from the ALB security group. For a TCP peer matching that expression, Tomcat
+walks `X-Forwarded-For` from right to left and uses the first non-proxy address.
+It also consumes `X-Forwarded-Proto`, so TLS termination still makes the
+request secure and keeps API HSTS active.
+
+Keep ALB attribute `routing.http.xff_header_processing.mode=append` (the AWS
+default). Append retains a caller-supplied chain but adds the source address
+the ALB observed at its right edge; therefore a forged leftmost value cannot
+choose the limiter bucket. Do not use `preserve`. AWS documents this behaviour
+in [HTTP headers and Application Load Balancers](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/x-forwarded-headers.html).
 
 ## Database backups
 
@@ -292,7 +310,7 @@ history.
 
 | Task-definition environment | SSM `SecureString` |
 | --- | --- |
-| `SPRING_PROFILES_ACTIVE=production`, `DB_URL`, `DARI_WEB_ORIGIN`, `DARI_MEDIA_PROVIDER=s3`, `DARI_MEDIA_PUBLIC_BASE_URL`, `DARI_MEDIA_S3_ENDPOINT`, `DARI_MEDIA_S3_REGION`, `DARI_MEDIA_S3_BUCKET`, `SMTP_HOST`, `SMTP_PORT=587` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DARI_LOCATION_FUZZ_SECRET`, `DARI_MEDIA_S3_ACCESS_KEY`, `DARI_MEDIA_S3_SECRET_KEY`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `DARI_NOTIFICATIONS_FROM`, Firebase service-account JSON |
+| `SPRING_PROFILES_ACTIVE=production`, `DB_URL`, `DARI_WEB_ORIGIN`, `DARI_TRUSTED_PROXY_IPS`, `DARI_MEDIA_PROVIDER=s3`, `DARI_MEDIA_PUBLIC_BASE_URL`, `DARI_MEDIA_S3_ENDPOINT`, `DARI_MEDIA_S3_REGION`, `DARI_MEDIA_S3_BUCKET`, `SMTP_HOST`, `SMTP_PORT=587` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DARI_LOCATION_FUZZ_SECRET`, `DARI_MEDIA_S3_ACCESS_KEY`, `DARI_MEDIA_S3_SECRET_KEY`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `DARI_NOTIFICATIONS_FROM`, Firebase service-account JSON |
 
 Set `FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase/service-account.json` in
 the API container. Add a non-essential BusyBox init container that reads the
@@ -352,6 +370,7 @@ docker compose -f infra/prod-smoke/docker-compose.yml up -d --build --wait
 curl -fsS http://localhost:18080/actuator/health/liveness
 curl -fsS http://localhost:18080/actuator/health/readiness
 ./infra/prod-smoke/fail-fast-matrix.sh
+./infra/prod-smoke/verify-rate-limit.sh
 docker compose -f infra/prod-smoke/docker-compose.yml down -v
 ```
 

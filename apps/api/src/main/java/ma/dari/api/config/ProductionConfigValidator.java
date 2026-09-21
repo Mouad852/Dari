@@ -71,6 +71,8 @@ public class ProductionConfigValidator
             check.invalid("DARI_LOCATION_FUZZ_SECRET", "must be at least 32 characters long");
         }
 
+        check.required("DARI_TRUSTED_PROXY_IPS", "server.tomcat.remoteip.internal-proxies");
+
         String provider = check.required("DARI_MEDIA_PROVIDER", "dari.media.provider");
         if (provider != null && !provider.trim().equalsIgnoreCase("s3")) {
             check.invalid("DARI_MEDIA_PROVIDER", "must be s3 in production");

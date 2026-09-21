@@ -37,7 +37,6 @@ services:
       DARI_NOTIFICATIONS_RETRY_DELAY_SECONDS: ${SMOKE_RETRY_DELAY_SECONDS:-60}
     volumes:
       - ${FIREBASE_SERVICE_ACCOUNT_FILE:-../firebase/service-account.json}:/run/secrets/firebase-service-account.json:ro
-    ports: ["127.0.0.1:18080:8080"]
     depends_on:
       db: { condition: service_healthy }
       minio-init: { condition: service_completed_successfully }
@@ -51,6 +50,19 @@ services:
       timeout: 3s
       retries: 3
       start_period: 90s
+
+  # Mirrors the relevant ALB behaviour. proxy_add_x_forwarded_for preserves a
+  # caller-supplied XFF chain and appends the source address seen by the proxy.
+  ingress:
+    image: nginx:1.27-alpine
+    ports: ["127.0.0.1:18080:80"]
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      default:
+        ipv4_address: 172.30.0.10
+    depends_on:
+      api: { condition: service_healthy }
 
   db:
     image: postgis/postgis:16-3.4
@@ -98,3 +110,9 @@ services:
 volumes:
   smoke_pgdata:
   smoke_minio:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

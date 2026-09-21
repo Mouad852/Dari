@@ -51,6 +51,7 @@ class ProductionConfigValidatorTest {
         properties.put("dari.web-origins", "https://dari.ma,https://www.dari.ma");
         properties.put("dari.firebase.credentials-path", credentials.toString());
         properties.put("dari.location.fuzz-secret", "test-only-fuzz-secret-with-at-least-thirty-two-characters");
+        properties.put("server.tomcat.remoteip.internal-proxies", "^10\\.0\\.10\\.\\d{1,3}$");
         properties.put("dari.media.provider", "s3");
         properties.put("dari.media.public-base-url", "https://media.dari.ma");
         properties.put("dari.media.s3.endpoint", "https://s3.eu-west-3.amazonaws.com");
@@ -92,6 +93,7 @@ class ProductionConfigValidatorTest {
             "DARI_WEB_ORIGIN, dari.web-origins",
             "FIREBASE_CREDENTIALS_PATH, dari.firebase.credentials-path",
             "DARI_LOCATION_FUZZ_SECRET, dari.location.fuzz-secret",
+            "DARI_TRUSTED_PROXY_IPS, server.tomcat.remoteip.internal-proxies",
             "DARI_MEDIA_PROVIDER, dari.media.provider",
             "DARI_MEDIA_PUBLIC_BASE_URL, dari.media.public-base-url",
             "DARI_MEDIA_S3_ENDPOINT, dari.media.s3.endpoint",

@@ -13,6 +13,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 class RateLimitInterceptorTest {
 
@@ -68,6 +69,40 @@ class RateLimitInterceptorTest {
         }
 
         assertThatThrownBy(() -> interceptor.preHandle(request, new MockHttpServletResponse(), handler))
+                .isInstanceOf(RateLimitExceededException.class);
+    }
+
+    @Test
+    void groupsIpv6PrivacyAddressesIntoOneSlash64Bucket() throws Exception {
+        RateLimitService service = new RateLimitService(
+                5, Duration.ofHours(1), 30, Duration.ofMinutes(1), 5, Duration.ofHours(1),
+                20, Duration.ofHours(1), 1, Duration.ofHours(1), 120, Duration.ofMinutes(1));
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service);
+        HandlerMethod handler = new HandlerMethod(new SignupEndpoint(), SignupEndpoint.class.getMethod("signup"));
+        MockHttpServletRequest first = new MockHttpServletRequest();
+        first.setRemoteAddr("2001:db8:1234:5678::1");
+        MockHttpServletRequest second = new MockHttpServletRequest();
+        second.setRemoteAddr("[2001:db8:1234:5678::2]:41001");
+
+        assertThatCode(() -> interceptor.preHandle(first, new MockHttpServletResponse(), handler)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> interceptor.preHandle(second, new MockHttpServletResponse(), handler))
+                .isInstanceOf(RateLimitExceededException.class);
+    }
+
+    @Test
+    void ignoresAlbAppendedClientPortsWhenBuildingAddressBuckets() throws Exception {
+        RateLimitService service = new RateLimitService(
+                5, Duration.ofHours(1), 30, Duration.ofMinutes(1), 5, Duration.ofHours(1),
+                20, Duration.ofHours(1), 1, Duration.ofHours(1), 120, Duration.ofMinutes(1));
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service);
+        HandlerMethod handler = new HandlerMethod(new SignupEndpoint(), SignupEndpoint.class.getMethod("signup"));
+        MockHttpServletRequest first = new MockHttpServletRequest();
+        first.setRemoteAddr("203.0.113.7:41000");
+        MockHttpServletRequest second = new MockHttpServletRequest();
+        second.setRemoteAddr("203.0.113.7:41001");
+
+        interceptor.preHandle(first, new MockHttpServletResponse(), handler);
+        assertThatThrownBy(() -> interceptor.preHandle(second, new MockHttpServletResponse(), handler))
                 .isInstanceOf(RateLimitExceededException.class);
     }
 

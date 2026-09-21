@@ -2,7 +2,16 @@
 # ingress/load balancer; forwarded headers keep Spring's security behavior
 # aligned with the original HTTPS request.
 server:
-  forward-headers-strategy: framework
+  # Let Tomcat's RemoteIpValve process headers only when the TCP peer matches
+  # the target-facing ALB range. It walks X-Forwarded-For from the right, so
+  # the ALB-appended last-hop address wins over any caller-supplied entries.
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: ${DARI_TRUSTED_PROXY_IPS}
+      remote-ip-header: X-Forwarded-For
+      protocol-header: X-Forwarded-Proto
+      protocol-header-https-value: https
 
 spring:
   # No defaults. application.yml falls back to localhost and the dari_local

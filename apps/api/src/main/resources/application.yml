@@ -161,6 +161,10 @@ dari:
   # Process-local abuse protection. Each policy applies independently to the
   # authenticated Firebase identity and source address.
   rate-limits:
+    # This bounds the per-client keys held by this single-process limiter.
+    # At capacity, new clients share a fixed overflow bucket rather than
+    # allocating more memory or bypassing enforcement.
+    max-tracked-keys: ${DARI_RATE_LIMIT_MAX_TRACKED_KEYS:100000}
     report:
       max: ${DARI_RATE_LIMIT_REPORT_MAX:5}
       window: ${DARI_RATE_LIMIT_REPORT_WINDOW:PT1H}

@@ -74,6 +74,7 @@ $fuzzSecret = Require-Setting 'DARI_LOCATION_FUZZ_SECRET'
 if ($null -ne $fuzzSecret -and $fuzzSecret.Length -lt 32) {
     $problems.Add('DARI_LOCATION_FUZZ_SECRET must be at least 32 characters long')
 }
+$null = Require-Setting 'DARI_TRUSTED_PROXY_IPS'
 
 $provider = Require-Setting 'DARI_MEDIA_PROVIDER'
 if ($null -ne $provider -and $provider.ToLowerInvariant() -ne 's3') {

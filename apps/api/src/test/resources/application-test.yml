@@ -15,6 +15,7 @@ dari:
   # Integration tests exercise endpoint behavior, not production quotas. The
   # limiter itself is covered with deliberately small windows in unit tests.
   rate-limits:
+    max-tracked-keys: 100000
     report: { max: 10000, window: PT1H }
     message: { max: 10000, window: PT1H }
     listing: { max: 10000, window: PT1H }
