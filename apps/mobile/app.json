@@ -10,7 +10,12 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ma.dari.app"
+      "bundleIdentifier": "ma.dari.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Dari utilise votre caméra pour ajouter des photos à vos annonces.",
+        "NSPhotoLibraryUsageDescription": "Dari utilise votre photothèque pour ajouter des photos à vos annonces.",
+        "NSUserNotificationUsageDescription": "Dari peut vous informer de l’activité de vos conversations."
+      }
     },
     "android": {
       "package": "ma.dari.app",
@@ -27,7 +32,9 @@
     },
     "plugins": [
       "expo-router",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-notifications",
+      "expo-image-picker"
     ],
     "experiments": {
       "typedRoutes": true
