@@ -31,3 +31,11 @@ dari:
   web-origins: ${DARI_WEB_ORIGIN}
   firebase:
     credentials-path: ${FIREBASE_CREDENTIALS_PATH}
+  notifications:
+    # Opt-out in production, opt-in in development. Moderation outcomes and
+    # expiry warnings are the only channel Dari has to its users; a deploy that
+    # forgot the flag used to queue them in the outbox forever without a word.
+    enabled: ${DARI_NOTIFICATIONS_ENABLED:true}
+    # No default: the sender must be an address the SMTP provider has verified
+    # for this domain, which a built-in fallback cannot know.
+    from: ${DARI_NOTIFICATIONS_FROM}
