@@ -17,7 +17,7 @@ import type { CursorPage } from '@/types/api';
 // device needs the host's LAN IP. Set EXPO_PUBLIC_API_BASE_URL in .env
 // accordingly per platform; there is no single default that works on all
 // four (iOS sim / Android emulator / physical device / web).
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api/v1';
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL?.trim() || 'http://localhost:8080/api/v1';
 
 export interface ApiErrorBody {
   code: string;
@@ -95,6 +95,40 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   }
 
   return payload as T;
+}
+
+/**
+ * Multipart upload through the same API boundary. Fetch does not expose upload
+ * progress in React Native, so photo flows use XHR here rather than reaching
+ * around the API client in a screen.
+ */
+export function apiUpload<T>(
+  path: string,
+  file: { uri: string; name: string; type: string },
+  options: { token: string; onProgress?: (progress: number) => void },
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('POST', `${BASE_URL}${path}`);
+    request.setRequestHeader('Authorization', `Bearer ${options.token}`);
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable) options.onProgress?.(event.loaded / event.total);
+    };
+    request.onerror = () => reject(new Error('NETWORK_ERROR'));
+    request.onload = () => {
+      let payload: unknown = null;
+      try { payload = request.responseText ? JSON.parse(request.responseText) : null; } catch { payload = null; }
+      if (request.status >= 200 && request.status < 300) {
+        resolve(payload as T);
+        return;
+      }
+      const error = (payload ?? {}) as Partial<ApiErrorBody>;
+      reject(new ApiError(request.status, error.code ?? 'INTERNAL_ERROR', error.message ?? 'Une erreur est survenue', error.fields));
+    };
+    const form = new FormData();
+    form.append('file', file as unknown as Blob);
+    request.send(form);
+  });
 }
 
 export type { CursorPage };

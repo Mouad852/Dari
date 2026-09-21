@@ -173,9 +173,14 @@ export interface ListingDetail {
   city: string;
   neighborhood: string;
   priceRent: number;
+  latitude: number;
+  longitude: number;
+  priceDeposit: number | null;
   description: string | null;
   status: ListingStatus;
   availabilityState: AvailabilityState;
+  availableFrom: string | null;
+  minStayMonths: number | null;
   createdAt: string;
   updatedAt: string;
   rejectionReason: string | null;
@@ -183,6 +188,33 @@ export interface ListingDetail {
   coverPhotoUrl: string | null;
   houseRules: HouseRules | null;
   rooms: ListingRoom[];
+}
+
+export interface CreateListingRequest {
+  title: string;
+  city: string;
+  neighborhood: string;
+  latitude: number;
+  longitude: number;
+  priceRent: number;
+  priceDeposit?: number | null;
+  description?: string | null;
+  wifiIncluded?: 'INCLUDED' | 'NOT_INCLUDED' | 'NA';
+  electricityIncluded?: 'INCLUDED' | 'NOT_INCLUDED' | 'NA';
+  waterIncluded?: 'INCLUDED' | 'NOT_INCLUDED' | 'NA';
+  propertyType?: PropertyType | null;
+  numBedrooms?: number | null;
+  numBathrooms?: number | null;
+  roomType?: RoomType | null;
+  roomFurnishing?: 'FULLY_FURNISHED' | 'PARTIALLY_FURNISHED' | 'UNFURNISHED' | null;
+  commonAreasFurnished?: boolean | null;
+  currentRoommatesCount?: number | null;
+  maxRoommates?: number | null;
+  availableFrom?: string | null;
+  minStayMonths?: number | null;
+  amenityCodes?: string[];
+  houseRules?: HouseRules | null;
+  rooms?: ListingRoom[];
 }
 
 // --- moderation and admin (design doc §6, admin console gated on role) --------
