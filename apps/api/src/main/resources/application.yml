@@ -9,6 +9,21 @@ spring:
     hikari:
       maximum-pool-size: 10
       pool-name: dari-pool
+      # Fail a request quickly when no connection can be had, instead of
+      # queueing behind a pool that a hung database has already exhausted. Also
+      # bounds how long a readiness probe waits before reporting DOWN.
+      connection-timeout: 5000     # ms
+      validation-timeout: 3000     # ms, must stay below connection-timeout
+      # Passed to the PostgreSQL driver for pool connections only (Flyway gets
+      # its own connections below).
+      data-source-properties:
+        connectTimeout: 5          # s, TCP connect
+        # s, a read that never returns. Kept above the statement timeout so the
+        # server cancels a slow query cleanly before the socket gives up on it.
+        socketTimeout: 45
+        # A pathological radius search dies with an error instead of pinning one
+        # of ten connections until the pool is gone.
+        options: -c statement_timeout=${DARI_DB_STATEMENT_TIMEOUT:30s}
 
   jpa:
     open-in-view: false           # a lazy load inside a view render is a bug, not a convenience
