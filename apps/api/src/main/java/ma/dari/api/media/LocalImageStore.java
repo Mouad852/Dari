@@ -46,6 +46,9 @@ public class LocalImageStore implements ImageStore {
             return;
         }
         Path file = uploadRoot.resolve(storageKey).normalize();
+        if (!file.startsWith(uploadRoot)) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Clé de stockage invalide");
+        }
         try {
             Files.deleteIfExists(file);
         } catch (IOException ex) {

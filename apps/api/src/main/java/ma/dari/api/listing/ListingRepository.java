@@ -61,6 +61,9 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
 
     Optional<Listing> findByIdAndDeletedAtIsNull(UUID id);
 
+    Optional<Listing> findByIdAndStatusAndAvailabilityStateAndDeletedAtIsNull(
+            UUID id, ListingStatus status, AvailabilityState availabilityState);
+
     /** The owner's own dashboard: every status, oldest hidden behind the cursor. */
     @Query("select l from Listing l where l.owner.id = :ownerId and l.deletedAt is null order by l.createdAt desc, l.id desc")
     List<Listing> findVisibleByOwner(@Param("ownerId") UUID ownerId, Pageable pageable);

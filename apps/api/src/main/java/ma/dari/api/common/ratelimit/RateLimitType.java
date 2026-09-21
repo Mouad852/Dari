@@ -6,5 +6,11 @@ public enum RateLimitType {
     LISTING,
     UPLOAD,
     SIGNUP,
-    SEARCH
+    SEARCH,
+    /**
+     * Generous shared ceiling for reads reached from Next.js Server Components.
+     * The web runtime cannot forward a trustworthy visitor address, so applying
+     * a per-IP browser quota here would throttle the whole rendered site.
+     */
+    SSR_READ
 }

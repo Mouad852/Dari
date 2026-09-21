@@ -25,6 +25,20 @@ bucket instead of allocating another key or allowing the request. The cap-hit
 counter is retained for operational diagnosis. Redis-backed rate limiting is a
 mandatory prerequisite before horizontal API scaling.
 
+Public listing detail and reference-data reads use the separate, generous
+`DARI_RATE_LIMIT_SSR_READ_MAX` / `DARI_RATE_LIMIT_SSR_READ_WINDOW` shared
+ceiling (10,000/minute by default). Caller analysis found that Next.js Server
+Components call listing detail (`/listings/[id]`) and public profiles
+(`/profile/[id]`) from the web runtime, without a trustworthy visitor-address
+header; cities, amenities, and neighborhoods remain browser-reference routes,
+while the mobile client calls listing detail directly. Applying the normal
+per-address `SEARCH` quota would therefore throttle all SSR users together.
+`SSR_READ` deliberately has one site-wide ceiling and retains a second
+per-Firebase-user dimension for authenticated callers; anonymous reads have no
+identity dimension. Per-visitor fairness for anonymous SSR traffic requires a
+trusted edge-to-API identity design and remains a follow-up. Do not add a
+client-settable SSR header: it would create a rate-limit bypass.
+
 Production uses Tomcat's native `RemoteIpValve`, not Spring's framework
 forwarded-header transformer. `DARI_TRUSTED_PROXY_IPS` is required and must be
 a Java regular expression matching only the target-facing private addresses of

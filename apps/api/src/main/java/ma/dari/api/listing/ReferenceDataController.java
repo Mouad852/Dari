@@ -7,10 +7,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import ma.dari.api.common.ratelimit.RateLimited;
+import ma.dari.api.common.ratelimit.RateLimitType;
 
 /**
  * Public reference data for homepage tiles and filter UIs.
@@ -19,33 +18,29 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1")
 public class ReferenceDataController {
 
-    private final ListingRepository listings;
+    private final ListingSearchRepository listingSearch;
     private final AmenityRepository amenities;
     private final NeighborhoodRepository neighborhoods;
 
-    public ReferenceDataController(ListingRepository listings, AmenityRepository amenities,
+    public ReferenceDataController(ListingSearchRepository listingSearch, AmenityRepository amenities,
                                    NeighborhoodRepository neighborhoods) {
-        this.listings = listings;
+        this.listingSearch = listingSearch;
         this.amenities = amenities;
         this.neighborhoods = neighborhoods;
     }
 
     /** Cities with live published counts, for the homepage tiles. */
     @GetMapping("/cities")
+    @RateLimited(RateLimitType.SSR_READ)
     public List<CitySummary> cities() {
-        return listings.findByStatusAndAvailabilityStateAndDeletedAtIsNull(ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE)
-                .stream()
-                .collect(Collectors.groupingBy(Listing::getCity, Collectors.counting()))
-                .entrySet()
-                .stream()
-                .map(entry -> new CitySummary(entry.getKey(), entry.getValue()))
-                .sorted(Comparator.comparing(CitySummary::count, Comparator.reverseOrder())
-                        .thenComparing(CitySummary::city))
+        return listingSearch.cityCounts().stream()
+                .map(entry -> new CitySummary(entry.getCity(), entry.getCount()))
                 .toList();
     }
 
     /** The reference codes a listing can be tagged with, in display order. */
     @GetMapping("/amenities")
+    @RateLimited(RateLimitType.SSR_READ)
     public List<String> amenities() {
         return this.amenities.findAllByOrderBySortOrderAsc().stream().map(Amenity::getCode).toList();
     }
@@ -61,6 +56,7 @@ public class ReferenceDataController {
      * all (2026-09-06).
      */
     @GetMapping("/neighborhoods")
+    @RateLimited(RateLimitType.SSR_READ)
     public List<String> neighborhoods(@RequestParam(required = false) String city) {
         if (city == null || city.isBlank()) {
             throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Ville requise");

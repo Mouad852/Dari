@@ -183,6 +183,11 @@ dari:
     search:
       max: ${DARI_RATE_LIMIT_SEARCH_MAX:120}
       window: ${DARI_RATE_LIMIT_SEARCH_WINDOW:PT1M}
+    # Next.js Server Components share the web runtime's source IP. This is a
+    # deliberate site-wide protective ceiling, not per-visitor fairness.
+    ssr-read:
+      max: ${DARI_RATE_LIMIT_SSR_READ_MAX:10000}
+      window: ${DARI_RATE_LIMIT_SSR_READ_WINDOW:PT1M}
 
 logging:
   level:

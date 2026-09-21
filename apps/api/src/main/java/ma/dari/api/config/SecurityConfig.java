@@ -72,6 +72,11 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/actuator/health/liveness",
                                 "/actuator/health/readiness", "/actuator/info").permitAll()
 
+                        // Management data contains operational detail (including
+                        // queue depth and request metrics). Platform probes above
+                        // are the only unauthenticated actuator surface.
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
+
                         // Stored listing photos and avatars, served by
                         // WebMvcConfig's resource handler. These are <img src>
                         // targets: a browser sends no Authorization header for

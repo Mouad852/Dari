@@ -150,6 +150,22 @@ class FavoriteApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("a listing must be public before a stranger can favorite it")
+    void cannotAddFavoriteToNonPublicListing() throws Exception {
+        User owner = users.save(new User("uid-owner-hidden-fav", "owner.hidden.fav@example.ma", true, "Owner"));
+        users.save(new User("uid-seeker-hidden-fav", "seeker.hidden.fav@example.ma", true, "Seeker"));
+        Listing draft = listings.saveAndFlush(new Listing(owner, "Brouillon priv\u00e9", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2600.00"), ListingStatus.DRAFT, AvailabilityState.AVAILABLE));
+
+        stubToken("uid-seeker-hidden-fav", "seeker.hidden.fav@example.ma", true);
+
+        given().header("Authorization", "Bearer test-token")
+                .when().post("/favorites/" + draft.getId())
+                .then().statusCode(404)
+                .body("code", equalTo("NOT_FOUND"));
+    }
+
+    @Test
     @DisplayName("removing a favorite that was never added is a no-op, not a 404")
     void removingUnfavoritedListingIsNoop() throws Exception {
         User owner = users.save(new User("uid-owner-fav3", "owner.fav3@example.ma", true, "Owner"));

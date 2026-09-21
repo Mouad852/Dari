@@ -52,10 +52,13 @@ public class RateLimitService {
             @Value("${dari.rate-limits.signup.window:PT1H}") Duration signupWindow,
             @Value("${dari.rate-limits.search.max:120}") int searchMax,
             @Value("${dari.rate-limits.search.window:PT1M}") Duration searchWindow,
+            @Value("${dari.rate-limits.ssr-read.max:10000}") int ssrReadMax,
+            @Value("${dari.rate-limits.ssr-read.window:PT1M}") Duration ssrReadWindow,
             @Value("${dari.rate-limits.max-tracked-keys:100000}") int maxTrackedKeys,
             MeterRegistry meterRegistry) {
         this(reportMax, reportWindow, messageMax, messageWindow, listingMax, listingWindow,
                 uploadMax, uploadWindow, signupMax, signupWindow, searchMax, searchWindow,
+                ssrReadMax, ssrReadWindow,
                 maxTrackedKeys, System::nanoTime);
         FunctionCounter.builder("dari.rate_limits.tracked_key_cap_hits", trackedKeyCapHits, LongAdder::sum)
                 .description("Rate-limit requests assigned to the shared overflow bucket")
@@ -65,6 +68,7 @@ public class RateLimitService {
     RateLimitService(int reportMax, Duration reportWindow, int messageMax, Duration messageWindow,
                      int listingMax, Duration listingWindow, int uploadMax, Duration uploadWindow,
                      int signupMax, Duration signupWindow, int searchMax, Duration searchWindow,
+                     int ssrReadMax, Duration ssrReadWindow,
                      int maxTrackedKeys, LongSupplier monotonicNanos) {
         policies = new EnumMap<>(RateLimitType.class);
         policies.put(RateLimitType.REPORT, new Policy(reportMax, reportWindow));
@@ -73,6 +77,7 @@ public class RateLimitService {
         policies.put(RateLimitType.UPLOAD, new Policy(uploadMax, uploadWindow));
         policies.put(RateLimitType.SIGNUP, new Policy(signupMax, signupWindow));
         policies.put(RateLimitType.SEARCH, new Policy(searchMax, searchWindow));
+        policies.put(RateLimitType.SSR_READ, new Policy(ssrReadMax, ssrReadWindow));
         this.monotonicNanos = monotonicNanos;
         if (maxTrackedKeys < 1) {
             throw new IllegalArgumentException("Rate-limit max tracked keys must be positive");
@@ -83,9 +88,19 @@ public class RateLimitService {
     RateLimitService(int reportMax, Duration reportWindow, int messageMax, Duration messageWindow,
                      int listingMax, Duration listingWindow, int uploadMax, Duration uploadWindow,
                      int signupMax, Duration signupWindow, int searchMax, Duration searchWindow,
+                     int maxTrackedKeys, LongSupplier monotonicNanos) {
+        this(reportMax, reportWindow, messageMax, messageWindow, listingMax, listingWindow,
+                uploadMax, uploadWindow, signupMax, signupWindow, searchMax, searchWindow,
+                10_000, Duration.ofMinutes(1), maxTrackedKeys, monotonicNanos);
+    }
+
+    RateLimitService(int reportMax, Duration reportWindow, int messageMax, Duration messageWindow,
+                     int listingMax, Duration listingWindow, int uploadMax, Duration uploadWindow,
+                     int signupMax, Duration signupWindow, int searchMax, Duration searchWindow,
                      LongSupplier monotonicNanos) {
         this(reportMax, reportWindow, messageMax, messageWindow, listingMax, listingWindow,
                 uploadMax, uploadWindow, signupMax, signupWindow, searchMax, searchWindow,
+                10_000, Duration.ofMinutes(1),
                 100_000, monotonicNanos);
     }
 
@@ -94,6 +109,7 @@ public class RateLimitService {
                      int signupMax, Duration signupWindow, int searchMax, Duration searchWindow) {
         this(reportMax, reportWindow, messageMax, messageWindow, listingMax, listingWindow,
                 uploadMax, uploadWindow, signupMax, signupWindow, searchMax, searchWindow,
+                10_000, Duration.ofMinutes(1),
                 100_000, System::nanoTime);
     }
 

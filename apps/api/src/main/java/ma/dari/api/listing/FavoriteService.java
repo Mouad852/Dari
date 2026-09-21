@@ -101,12 +101,16 @@ public class FavoriteService {
      */
     @Transactional
     public void add(User user, UUID listingId) {
+        // Adding is a public-discovery action. An already-created favorite may
+        // remain readable after a listing leaves the marketplace, but a caller
+        // must never use this endpoint to discover a draft or moderated listing.
+        Listing listing = listings.findByIdAndStatusAndAvailabilityStateAndDeletedAtIsNull(
+                        listingId, ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE)
+                .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
+
         if (favorites.findByUserIdAndListingId(user.getId(), listingId).isPresent()) {
             return;
         }
-
-        Listing listing = listings.findByIdAndDeletedAtIsNull(listingId)
-                .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
 
         try {
             favorites.save(new Favorite(user, listing));

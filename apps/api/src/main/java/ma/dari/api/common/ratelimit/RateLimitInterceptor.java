@@ -35,6 +35,22 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return true;
         }
 
+        if (annotation.value() == RateLimitType.SSR_READ) {
+            // Next.js Server Components all originate from the web runtime's
+            // address and do not carry a trustworthy visitor address. This is
+            // intentionally a site-wide protective ceiling, not a fairness
+            // quota; a client-controlled marker would be an abuse bypass.
+            check(annotation.value(), "shared:ssr-read");
+            String identity = identity();
+            // A signed-in visitor still has a stable Firebase identity even
+            // when the Next.js server hides its source address. Retain that
+            // independent limit; anonymous reads intentionally have none.
+            if (identity != null) {
+                check(annotation.value(), "user:" + identity);
+            }
+            return true;
+        }
+
         String identity = identity();
         if (identity != null) {
             check(annotation.value(), "user:" + identity);

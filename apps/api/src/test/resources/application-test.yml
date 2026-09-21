@@ -22,6 +22,7 @@ dari:
     upload: { max: 10000, window: PT1H }
     signup: { max: 10000, window: PT1H }
     search: { max: 10000, window: PT1M }
+    ssr-read: { max: 10000, window: PT1M }
 
 logging:
   level:

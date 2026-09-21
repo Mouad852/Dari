@@ -161,6 +161,7 @@ public class ListingController {
      * staying indexed.
      */
     @GetMapping("/{id}")
+    @RateLimited(RateLimitType.SSR_READ)
     public PublicListingDetailResponse get(@PathVariable UUID id, Authentication authentication) {
        User viewer = null;
        if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUser principal && principal.hasProfile()) {

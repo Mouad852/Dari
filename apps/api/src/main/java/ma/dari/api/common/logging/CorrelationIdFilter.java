@@ -11,8 +11,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * Stamps every request with a correlation id, in MDC for log correlation and
@@ -30,13 +30,15 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
 
     private static final String HEADER = "X-Correlation-Id";
     private static final String MDC_KEY = "correlationId";
+    private static final Pattern SAFE_CORRELATION_ID = Pattern.compile("[A-Za-z0-9._-]{1,128}");
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
-        String id = Optional.ofNullable(request.getHeader(HEADER))
-                .filter(h -> !h.isBlank())
-                .orElseGet(() -> UUID.randomUUID().toString());
+        String supplied = request.getHeader(HEADER);
+        String id = supplied != null && SAFE_CORRELATION_ID.matcher(supplied).matches()
+                ? supplied
+                : UUID.randomUUID().toString();
 
         MDC.put(MDC_KEY, id);
         response.setHeader(HEADER, id);

@@ -3,7 +3,12 @@ package ma.dari.api.media;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 
 /**
  * Hides files that have been revoked and are waiting for physical deletion.
@@ -33,7 +38,20 @@ public class MediaAccessInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        String storageKey = path.substring(UPLOADS_PREFIX.length());
+        String storageKey;
+        try {
+            // Decode exactly once. A generated storage key never needs percent
+            // escapes, so reject anything that would be ambiguous to the static
+            // resource handler or could turn into traversal on a second decode.
+            storageKey = UriUtils.decode(path.substring(UPLOADS_PREFIX.length()), StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException invalidEncoding) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return false;
+        }
+        if (!isSafeStorageKey(storageKey)) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return false;
+        }
         if (!storageKey.isBlank()
                 && cleanups.existsByStorageKeyAndStatus(storageKey, MediaCleanupStatus.PENDING)) {
             // Do not reveal whether this was a formerly accessible key. This
@@ -45,5 +63,20 @@ public class MediaAccessInterceptor implements HandlerInterceptor {
             return false;
         }
         return true;
+    }
+
+    private boolean isSafeStorageKey(String storageKey) {
+        if (storageKey.isBlank() || storageKey.indexOf('\\') >= 0 || storageKey.indexOf('%') >= 0) {
+            return false;
+        }
+        try {
+            Path path = Path.of(storageKey);
+            return !path.isAbsolute() && path.normalize().equals(path)
+                    && storageKey.split("/").length >= 3;
+        } catch (InvalidPathException invalidPath) {
+            // A malformed URI (notably %00) must look exactly like a missing
+            // public object, never escape this interceptor as a server error.
+            return false;
+        }
     }
 }

@@ -76,6 +76,7 @@ public class UserController {
 
     /** Public, unauthenticated. Deliberately a different shape from /me. */
     @GetMapping("/{id}")
+    @RateLimited(RateLimitType.SSR_READ)
     public PublicProfileResponse publicProfile(@PathVariable UUID id) {
         return userService.publicProfile(id);
     }

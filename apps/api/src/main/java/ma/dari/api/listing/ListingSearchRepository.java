@@ -16,6 +16,12 @@ import java.time.Instant;
  */
 public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
 
+    /** Compact database projection for homepage/filter reference data. */
+    interface CityCount {
+        String getCity();
+        long getCount();
+    }
+
     interface SitemapRow {
         UUID getId();
         Instant getUpdatedAt();
@@ -26,6 +32,14 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
 
     @Query(value = "SELECT COUNT(*) FROM published_listings", nativeQuery = true)
     long countSitemapRows();
+
+    /**
+     * The view, rather than the entity table, owns public visibility. Keeping
+     * this aggregation in Postgres avoids hydrating the full live catalogue.
+     */
+    @Query(value = "SELECT city AS city, COUNT(*) AS count FROM published_listings GROUP BY city "
+            + "ORDER BY COUNT(*) DESC, city ASC", nativeQuery = true)
+    List<CityCount> cityCounts();
 
 
     /**
