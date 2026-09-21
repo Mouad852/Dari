@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { apiFetch, apiOrigin, ApiError } from '@/lib/api';
+import { hasNetwork } from '@/lib/network';
 import { getIdToken } from '@/lib/firebase';
 import { amount } from '@/lib/format';
 import { color, font, layout, radius, shadow, type } from '@/theme/tokens';
@@ -47,6 +48,7 @@ export default function ListingDetailScreen() {
   const [signedIn, setSignedIn] = useState(false);
   const [contacting, setContacting] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
+  const [favoriteError, setFavoriteError] = useState<string | null>(null);
 
   useEffect(() => {
     let isCurrent = true;
@@ -88,12 +90,15 @@ export default function ListingDetailScreen() {
       router.push('/sign-in');
       return;
     }
+    if (!(await hasNetwork())) { setFavoriteError('Vous êtes hors connexion. Réessayez quand le réseau sera disponible.'); return; }
     const next = !saved;
     setSaved(next);
+    setFavoriteError(null);
     try {
       await apiFetch(`/favorites/${encodeURIComponent(id)}`, { method: next ? 'POST' : 'DELETE', token });
-    } catch {
+    } catch (cause) {
       setSaved(!next);
+      setFavoriteError(cause instanceof ApiError ? cause.message : 'La mise à jour du favori a échoué.');
     }
   }
 
@@ -249,14 +254,16 @@ export default function ListingDetailScreen() {
         )}
 
         <View style={{ marginTop: 24, gap: 8 }}>
-          {contactError && (
+        {contactError && (
             <Text style={[type.bodySm, { color: color.danger }]} accessibilityLiveRegion="assertive">
               {contactError}
             </Text>
-          )}
+        )}
+          {favoriteError && <Text style={[type.bodySm, { color: color.danger }]} accessibilityLiveRegion="assertive">{favoriteError}</Text>}
           <Button onPress={() => void contactOwner()} loading={contacting}>
             {signedIn ? 'Contacter' : 'Se connecter pour contacter'}
           </Button>
+          <Button variant="secondary" onPress={() => router.push({ pathname: '/report' as never, params: { targetType: 'LISTING', targetId: id, label: listing.title } })}>Signaler cette annonce</Button>
         </View>
       </View>
     </ScrollView>
