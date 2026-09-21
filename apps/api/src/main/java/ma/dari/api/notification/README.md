@@ -6,10 +6,13 @@ The Dari notification delivery system is a **transactional outbox worker** that 
 
 - **Durability** — Notifications enqueued with transactional events are persisted and survive crashes
 - **Idempotency** — Pessimistic locks prevent duplicate delivery across instances
-- **Resilience** — Bounded retries with exponential backoff handle temporary transport failures
-- **Visibility** — State tracking and error logs enable production monitoring
+- **Resilience** — Bounded retries with linearly increasing delays handle temporary transport failures
+- **Visibility** — Per-row state, the last error, and delivery counters enable production monitoring
 
-Delivery is **opt-in** and disabled by default. See [SMTP_CONFIGURATION.md](../SMTP_CONFIGURATION.md) for production setup.
+Delivery is **opt-in in development** (`DARI_NOTIFICATIONS_ENABLED` defaults to `false` in
+`application.yml`) and **opt-out in production** (`application-production.yml` defaults it to `true`,
+and the production startup check refuses to start with it set to `false`). See
+[SMTP_CONFIGURATION.md](../../../../../../../../../SMTP_CONFIGURATION.md) for production setup.
 
 ## Architecture
 
@@ -44,7 +47,7 @@ notification_outbox {
   created_at timestamptz not null,
   status varchar(16),                 -- PENDING, SENDING, SENT, DEAD
   attempts integer,                   -- Retry counter
-  next_attempt_at timestamptz,        -- When to retry (exponentially backed off)
+  next_attempt_at timestamptz,        -- When to retry (linear backoff, see Retry Behavior)
   locked_at timestamptz,              -- Claim timestamp (stale-claim recovery)
   sent_at timestamptz,                -- When delivery succeeded
   last_error text                     -- Most recent transport error or validation failure
@@ -97,18 +100,23 @@ Example scenario:
 
 ### Retry Behavior
 
-Failures retry with **exponential backoff**:
+Failures retry with **linear backoff**: the delay is `retry-delay-seconds × attempts`
+(`NotificationDeliveryService`, `retryDelay.multipliedBy(event.getAttempts())`). With the defaults
+(60 s, 5 attempts):
 
 ```
-Attempt 1: +60 seconds
-Attempt 2: +120 seconds (60 * 2)
-Attempt 3: +180 seconds (60 * 3)
-Attempt 4: +240 seconds (60 * 4)
-Attempt 5: +300 seconds (60 * 5) [max attempt]
-After attempt 5: marked DEAD
+Attempt 1 fails: retry in  60 s (60 × 1)
+Attempt 2 fails: retry in 120 s (60 × 2)
+Attempt 3 fails: retry in 180 s (60 × 3)
+Attempt 4 fails: retry in 240 s (60 × 4)
+Attempt 5 fails: marked DEAD, no further retry
 ```
 
-Transient failures (network timeout, SMTP service unavailable) retry indefinitely until the limit is reached. Invalid recipient emails (no email on the User record) mark DEAD immediately to avoid cycles.
+A row therefore goes DEAD roughly 10 minutes after its first failure, plus up to one delivery
+interval per attempt. Transient failures (network timeout, SMTP service unavailable) retry until
+`max-attempts` is reached. A missing recipient email, an unsupported event type or an empty payload
+marks the row DEAD immediately, without a retry. The failure reason is stored in `last_error`, not
+logged.
 
 ## Notification Events
 
@@ -134,35 +142,25 @@ Implementations (currently `OutboxNotificationService`) persist to the outbox ta
 
 ## Configuration
 
-All behavior is environment-driven:
+All behavior is environment-driven. `application.yml` holds the development defaults:
 
 ```yaml
 dari:
   notifications:
-    enabled: false                                  # false = entire system disabled
-    from: no-reply@dari.ma                         # Sender email address
+    enabled: ${DARI_NOTIFICATIONS_ENABLED:false}   # production profile: default true
+    from: ${DARI_NOTIFICATIONS_FROM:no-reply@dari.ma}   # production profile: no default
     batch-size: 50                                  # Rows to claim per cycle
     max-attempts: 5                                 # Before marking DEAD
-    retry-delay-seconds: 60                        # Base delay for exponential backoff
-    stale-after-minutes: 15                        # Claim timeout duration
-    delivery-interval-ms: 30000                    # Schedule frequency (milliseconds)
-
-spring:
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: notifications@example.com
-    password: ${SMTP_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
+    retry-delay-seconds: 60                         # Linear backoff step (delay = step × attempts)
+    stale-after-minutes: 15                         # Claim timeout duration
+    delivery-interval-ms: 30000                     # Schedule frequency (milliseconds)
 ```
 
-See [SMTP_CONFIGURATION.md](../SMTP_CONFIGURATION.md) for provider-specific examples.
+SMTP settings live in `application-production.yml`, which maps `SMTP_HOST`, `SMTP_PORT` (default
+587), `SMTP_USERNAME` and `SMTP_PASSWORD` onto `spring.mail.*`, requires STARTTLS, and bounds the
+connection, read and write timeouts to 10 s each.
+
+See [SMTP_CONFIGURATION.md](../../../../../../../../../SMTP_CONFIGURATION.md) for provider-specific examples.
 
 ## Copy and Content
 
@@ -186,7 +184,7 @@ Examples:
 `NotificationDeliveryServiceTest` validates:
 
 - Happy path: notification claimed, recipient email fetched, sent via SMTP, marked SENT
-- Transient failure: retry scheduled with exponential backoff, error logged
+- Transient failure: retry scheduled after `retry-delay-seconds × attempts`, error stored in `last_error`
 - Malformed event: unsupported type or empty payload marked DEAD without sending
 - Missing recipient email: marked DEAD without sending
 
@@ -294,7 +292,10 @@ dari:
     enabled: false  # Service bean not created; no scheduled task runs
 ```
 
-The outbox table remains populated for future re-enabling, but no delivery occurs.
+The outbox table remains populated for future re-enabling, but no delivery occurs. This works in
+development only: under the `production` profile, `DARI_NOTIFICATIONS_ENABLED=false` stops the
+application at startup, because silently queued moderation and expiry emails are the failure this
+check exists to prevent.
 
 ## Future Work
 
