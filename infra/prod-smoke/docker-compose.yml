@@ -1,0 +1,100 @@
+# ============================================================================
+#  PRODUCTION-LIKE LOCAL SMOKE STACK. NOT PRODUCTION. NOT DEVELOPMENT.
+# ============================================================================
+# Runs the real API image with SPRING_PROFILES_ACTIVE=production against
+# throwaway stand-ins, to prove a release end to end before it ships:
+#   db       PostGIS 16, empty on first start; Flyway builds the whole schema
+#   minio    stands in for the S3-compatible bucket (bucket created by minio-init)
+#   mailpit  stands in for the SMTP provider: STARTTLS required, accepts any
+#            login, delivers nothing; read mail at http://localhost:18025
+#
+# Every credential here is a smoke-only placeholder that protects nothing; the
+# real values live in the deployment's secret store. The only real secret is the
+# Firebase service-account file, mounted read-only from outside the repo's
+# tracked files and never copied into the image.
+#
+# Separate from the root docker-compose.yml (dev dependencies only): its own
+# project name, containers, network and volumes, and no host port that clashes
+# with the dev stack. Run from the repository root:
+#
+#   docker compose -f infra/prod-smoke/docker-compose.yml up -d --build --wait
+#   curl -fsS http://localhost:18080/actuator/health/readiness
+#   docker compose -f infra/prod-smoke/docker-compose.yml down -v
+#
+# See docs/PRODUCTION_OPERATIONS.md, "Production smoke stack".
+name: dari-prod-smoke
+
+services:
+  api:
+    build: ../../apps/api
+    image: dari-api:smoke
+    env_file: smoke.env
+    environment:
+      # Smoke-only knobs for exercising the outbox quickly. Production uses the
+      # application defaults.
+      DARI_NOTIFICATIONS_DELIVERY_INTERVAL_MS: ${SMOKE_DELIVERY_INTERVAL_MS:-5000}
+      DARI_NOTIFICATIONS_MAX_ATTEMPTS: ${SMOKE_MAX_ATTEMPTS:-5}
+      DARI_NOTIFICATIONS_RETRY_DELAY_SECONDS: ${SMOKE_RETRY_DELAY_SECONDS:-60}
+    volumes:
+      - ${FIREBASE_SERVICE_ACCOUNT_FILE:-../firebase/service-account.json}:/run/secrets/firebase-service-account.json:ro
+    ports: ["127.0.0.1:18080:8080"]
+    depends_on:
+      db: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+      mailpit: { condition: service_started }
+    # Longer than the web drain plus the scheduler drain (30s each), so Docker
+    # never SIGKILLs a graceful shutdown in progress.
+    stop_grace_period: 75s
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 90s
+
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: dari
+      POSTGRES_USER: dari                                   # = smoke.env
+      POSTGRES_PASSWORD: smoke-db-password-not-a-secret     # = smoke.env
+    volumes: ["smoke_pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dari -d dari"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-08T15-41-24Z
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: smoke-access-key                     # = smoke.env
+      MINIO_ROOT_PASSWORD: smoke-secret-key-not-a-secret    # = smoke.env
+    volumes: ["smoke_minio:/data"]
+
+  # One-shot: creates the bucket and makes it publicly readable, the way a CDN
+  # in front of the production bucket would serve photos.
+  minio-init:
+    image: minio/minio:RELEASE.2025-04-08T15-41-24Z
+    depends_on: [minio]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        until mc alias set smoke http://minio:9000 smoke-access-key smoke-secret-key-not-a-secret >/dev/null 2>&1;
+        do sleep 1; done &&
+        mc mb --ignore-existing smoke/dari-media &&
+        mc anonymous set download smoke/dari-media
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    environment:
+      MP_SMTP_TLS_CERT: sans:mailpit      # throwaway self-signed certificate
+      MP_SMTP_TLS_KEY: sans:mailpit
+      MP_SMTP_REQUIRE_STARTTLS: "true"    # same rule the production profile enforces
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+    ports: ["127.0.0.1:18025:8025"]
+
+volumes:
+  smoke_pgdata:
+  smoke_minio:
