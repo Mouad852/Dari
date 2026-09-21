@@ -66,7 +66,11 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        // Exact paths, not /actuator/health/**: the platform's
+                        // probes carry no token, but individual component
+                        // endpoints (/actuator/health/db) stay closed.
+                        .requestMatchers("/actuator/health", "/actuator/health/liveness",
+                                "/actuator/health/readiness", "/actuator/info").permitAll()
 
                         // Stored listing photos and avatars, served by
                         // WebMvcConfig's resource handler. These are <img src>
