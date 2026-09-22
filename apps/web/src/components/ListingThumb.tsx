@@ -1,4 +1,4 @@
-import { apiOrigin } from '@/lib/api';
+import { resolveMediaUrl } from '@/lib/api';
 
 /**
  * A listing's cover photo, on the two dashboards that are not yet built on the
@@ -37,7 +37,7 @@ export function ListingThumb({
       // instead would leave a gap under it the moment the text grew past 180px.
       <div style={{ minHeight, height: '100%', background: 'var(--sable-100)' }}>
         <img
-          src={`${apiOrigin}${coverPhotoUrl}`}
+          src={resolveMediaUrl(coverPhotoUrl)}
           alt={alt}
           loading="lazy"
           decoding="async"

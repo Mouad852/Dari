@@ -14,7 +14,7 @@ import { Switch } from '@/components/ds/Switch';
 import { Tag } from '@/components/ds/Tag';
 import { Textarea } from '@/components/ds/Textarea';
 import { LocationPicker } from '@/components/LocationPicker';
-import { apiFetch, ApiError, apiOrigin } from '@/lib/api';
+import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
 import { CITIES } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
 import { AMENITY_LABELS, LISTING_ROOM_TYPE_LABELS, PROPERTY_TYPE_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
@@ -1095,7 +1095,7 @@ function PublishWizard() {
                     >
                       <div style={{ position: 'relative', aspectRatio: '4 / 3', background: 'var(--sable-200)' }}>
                         <img
-                          src={`${apiOrigin}${photo.url}`}
+                          src={resolveMediaUrl(photo.url)}
                           alt={`Photo ${index + 1} de l’annonce`}
                           loading="lazy"
                           decoding="async"

@@ -4,7 +4,7 @@ import { FocusOnMount } from '@/components/FocusOnMount';
 import { ReportDialog } from '@/components/ReportDialog';
 import { amount } from '@/lib/format';
 import { AMENITY_LABELS, PROPERTY_TYPE_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
-import { apiOrigin } from '@/lib/api';
+import { resolveMediaUrl } from '@/lib/api';
 import type { PublicListingDetail } from '@/types/api';
 
 import { ContactOwnerButton } from './ContactOwnerButton';
@@ -73,7 +73,7 @@ export function ListingDetailContent({ listing }: { listing: PublicListingDetail
       name: AMENITY_LABELS[code] ?? code,
       value: true,
     })),
-    image: cover ? `${apiOrigin}${cover.url}` : undefined,
+    image: cover ? resolveMediaUrl(cover.url) : undefined,
     offers: {
       '@type': 'Offer',
       price: listing.priceRent,

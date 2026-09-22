@@ -36,6 +36,12 @@ export default defineConfig({
     video: 'retain-on-failure',
     ...devices['Desktop Chrome'],
   },
+  projects: [
+    {
+      name: 'dev',
+      metadata: { mediaOrigin: safeCiEnv.NEXT_PUBLIC_MEDIA_ORIGINS, cdnOrigin: 'http://127.0.0.1:4110' },
+    },
+  ],
   webServer: [
     {
       command: 'node e2e/mock-api.mjs',

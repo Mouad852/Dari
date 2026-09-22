@@ -3,6 +3,7 @@ function validateProductionConfiguration() {
 
   const required = [
     'NEXT_PUBLIC_API_BASE_URL',
+    'API_BASE_URL',
     'NEXT_PUBLIC_SITE_URL',
     'NEXT_PUBLIC_FIREBASE_API_KEY',
     'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
@@ -23,10 +24,13 @@ function validateProductionConfiguration() {
   const missing = required.filter((name) => !process.env[name]?.trim());
   if (missing.length) throw new Error(`Configuration de production manquante : ${missing.join(', ')}`);
 
-  for (const name of ['NEXT_PUBLIC_API_BASE_URL', 'NEXT_PUBLIC_SITE_URL']) {
+  for (const name of ['NEXT_PUBLIC_API_BASE_URL', 'API_BASE_URL', 'NEXT_PUBLIC_SITE_URL']) {
     let parsed;
     try { parsed = new URL(process.env[name]); } catch { throw new Error(`URL de production invalide : ${name}`); }
     if (parsed.protocol !== 'https:') throw new Error(`URL de production non HTTPS : ${name}`);
+    if (name !== 'NEXT_PUBLIC_SITE_URL' && !parsed.pathname.endsWith('/api/v1')) {
+      throw new Error(`URL de production invalide : ${name}`);
+    }
   }
   for (const origin of process.env.NEXT_PUBLIC_MEDIA_ORIGINS.split(',')) {
     let parsed;

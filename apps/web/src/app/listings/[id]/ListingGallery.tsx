@@ -4,7 +4,7 @@ import { ArrowLeft, Heart, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-import { apiFetch, apiOrigin } from '@/lib/api';
+import { apiFetch, resolveMediaUrl } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import type { ListingPhoto } from '@/types/api';
 
@@ -84,7 +84,7 @@ export function ListingGallery({
     <div style={{ position: 'relative', height: 360, background: 'var(--sable-200)' }}>
       {activePhoto ? (
         <img
-          src={`${apiOrigin}${activePhoto.url}`}
+          src={resolveMediaUrl(activePhoto.url)}
           alt={title}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />

@@ -88,8 +88,8 @@ export interface PublicListing {
   createdAt: string;
   updatedAt: string;
   /**
-   * Root-relative cover photo URL, or null when the listing has none. Prefix
-   * with `apiOrigin` — it is served by the API, not the web app.
+   * A public media URL. It may be root-relative in local storage or absolute
+   * when served by the production CDN; pass it through `resolveMediaUrl`.
    */
   coverPhotoUrl: string | null;
   /** Present only on proximity searches. */
@@ -141,8 +141,8 @@ export interface PublicListingDetail extends PublicListing {
 /**
  * A stored listing photo. Mirrors ListingPhotoResponse on the server.
  *
- * `url` is root-relative (/uploads/...) and served by the API, not the web app —
- * prefix it with `apiOrigin` from lib/api before putting it in a src.
+ * `url` can be root-relative (`/uploads/...`) or an absolute CDN URL; pass it
+ * through `resolveMediaUrl` before putting it in a src.
  */
 export interface ListingPhoto {
   id: string;
@@ -190,8 +190,8 @@ export interface ListingDetail {
   rejectionReason: string | null;
   amenityCodes: string[];
   /**
-   * Root-relative cover photo URL, or null when the listing has none. Prefix
-   * with `apiOrigin` — it is served by the API, not the web app.
+   * A public media URL. It may be root-relative or absolute; pass it through
+   * `resolveMediaUrl` before putting it in a src.
    *
    * Added late: only PublicListing carried a cover, so the owner's list and the
    * moderation queue both drew the design system's placeholder for listings that

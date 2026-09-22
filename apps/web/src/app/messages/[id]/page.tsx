@@ -6,7 +6,7 @@ import { use, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ds/Button';
 import { Icon } from '@/components/ds/Icon';
 import { IconButton } from '@/components/ds/IconButton';
-import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
+import { apiFetch, ApiError, resolveMediaUrl, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { clockTime, dayLabel, rentPerMonth } from '@/lib/format';
 import type { Conversation, Me, Message, PublicListing } from '@/types/api';
@@ -645,7 +645,7 @@ function ListingContextCard({ context }: { context: ListingContext }) {
       >
         {listing.coverPhotoUrl ? (
           <img
-            src={`${apiOrigin}${listing.coverPhotoUrl}`}
+            src={resolveMediaUrl(listing.coverPhotoUrl)}
             alt=""
             loading="lazy"
             decoding="async"

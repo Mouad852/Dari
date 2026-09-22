@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { ListingCard } from '@/components/ds/ListingCard';
 import { amount } from '@/lib/format';
-import { apiFetch, apiOrigin, type CursorPage } from '@/lib/api';
+import { apiFetch, resolveMediaUrl, type CursorPage } from '@/lib/api';
 import type { PublicListing } from '@/types/api';
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
@@ -239,7 +239,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
                   district={listing.neighborhood}
                   city={listing.city}
                   price={money(listing.priceRent)}
-                  image={listing.coverPhotoUrl ? `${apiOrigin}${listing.coverPhotoUrl}` : undefined}
+                  image={listing.coverPhotoUrl ? resolveMediaUrl(listing.coverPhotoUrl) : undefined}
                   href={`/listings/${listing.id}`}
                 />
               ))}

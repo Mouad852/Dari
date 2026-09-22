@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { apiFetch, ApiError, apiOrigin } from '@/lib/api';
+import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
 import { amount } from '@/lib/format';
 import type { PublicListingDetail } from '@/types/api';
 
@@ -60,13 +60,13 @@ export async function generateMetadata({
       type: 'website',
       url: `${SITE}/listings/${listing.id}`,
       locale: 'fr_MA',
-      images: cover ? [{ url: `${apiOrigin}${cover.url}` }] : undefined,
+      images: cover ? [{ url: resolveMediaUrl(cover.url) }] : undefined,
     },
     twitter: {
       card: cover ? 'summary_large_image' : 'summary',
       title,
       description,
-      images: cover ? [`${apiOrigin}${cover.url}`] : undefined,
+      images: cover ? [resolveMediaUrl(cover.url)] : undefined,
     },
     robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large' } },
   };

@@ -5,7 +5,7 @@ import { Heart } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { ListingCard } from '@/components/ds/ListingCard';
-import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
+import { apiFetch, ApiError, resolveMediaUrl, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { amount } from '@/lib/format';
 import { UNAVAILABLE_REASON_LABELS } from '@/lib/labels';
@@ -275,7 +275,7 @@ export default function FavoritesPage() {
                     district={listing.neighborhood}
                     city={listing.city}
                     price={amount(listing.priceRent)}
-                    image={listing.coverPhotoUrl ? `${apiOrigin}${listing.coverPhotoUrl}` : undefined}
+                    image={listing.coverPhotoUrl ? resolveMediaUrl(listing.coverPhotoUrl) : undefined}
                     /*
                       Why a saved listing is no longer reachable is the whole
                       point of this page -- a room that is gone should say so

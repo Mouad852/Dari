@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { CheckCircle2, MapPin, Save, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
-import { apiFetch, ApiError, apiOrigin } from '@/lib/api';
+import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
 import { getIdToken, signOut } from '@/lib/firebase';
 import { VERIFICATION_LABELS } from '@/lib/labels';
 import type { Me } from '@/types/api';
@@ -269,7 +269,7 @@ export default function AccountProfilePage() {
               >
                 {profile.avatarUrl ? (
                   <img
-                    src={`${apiOrigin}${profile.avatarUrl}`}
+                    src={resolveMediaUrl(profile.avatarUrl)}
                     alt=""
                     decoding="async"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}

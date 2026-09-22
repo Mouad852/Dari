@@ -10,6 +10,8 @@ import { ErrorCode } from './errors';
 import { getWebConfig } from './config';
 import { reportError } from './reporting';
 
+export { resolveMediaUrl } from './config';
+
 const WEB_CONFIG = getWebConfig();
 const BASE_URL = WEB_CONFIG.apiBaseUrl;
 
@@ -75,16 +77,6 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   /** Deadline for this request. Writes are never retried automatically. */
   timeoutMs?: number;
 }
-
-/**
- * Origin serving the API's static files.
- *
- * Photo URLs come back from the API as root-relative paths (/uploads/...), and
- * the API is on a different origin than the web app, so a bare src would resolve
- * against the Next server and 404. Derived from the same env var as BASE_URL so
- * the two can never point at different backends.
- */
-export const apiOrigin = WEB_CONFIG.apiOrigin;
 
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, token, headers, timeoutMs = 15000, signal, ...rest } = options;

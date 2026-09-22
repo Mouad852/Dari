@@ -1,10 +1,66 @@
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import http from 'node:http';
+import https from 'node:https';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { URL } from 'node:url';
+import zlib from 'node:zlib';
 
-const PORT = 4110;
+/*
+ * Two modes, one fixture set:
+ *   default   plain HTTP on 4110, for the `next dev` project
+ *   HTTPS     E2E_MOCK_HTTPS=true on E2E_MOCK_PORT, for the production-build
+ *             project. The production gate refuses non-HTTPS API and media
+ *             URLs, so this mode generates a throwaway self-signed certificate
+ *             at start-up (openssl, deleted again immediately) and trusts
+ *             nothing else. Clients accept it only in test configuration.
+ */
+const HTTPS_MODE = process.env.E2E_MOCK_HTTPS === 'true';
+const PORT = Number(process.env.E2E_MOCK_PORT ?? 4110);
+// Absolute photo URLs stand in for S3/CloudFront objects: the web app must
+// pass them through untouched, while root-relative /uploads paths are
+// resolved against the first NEXT_PUBLIC_MEDIA_ORIGINS entry.
+const CDN_ORIGIN = process.env.E2E_MOCK_CDN_ORIGIN ?? `http://127.0.0.1:${PORT}`;
 const now = '2026-09-20T10:00:00Z';
 
-const listing = (id, title, priceRent = 3200) => ({
+const RELATIVE_COVER = '/uploads/listings/e2e-owner/e2e-relative-cover.png';
+const ABSOLUTE_COVER = `${CDN_ORIGIN}/cdn/listings/e2e-owner/e2e-absolute-cover.png`;
+const PNG = solidPng(40, 30, [0xc8, 0x6b, 0x3c]);
+
+/** A real, decodable PNG, so browsers report naturalWidth > 0 for each photo. */
+function solidPng(width, height, [red, green, blue]) {
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc32 = (bytes) => {
+    let c = 0xffffffff;
+    for (const byte of bytes) c = crcTable[(c ^ byte) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const chunk = (type, data) => {
+    const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(body));
+    return Buffer.concat([length, body, crc]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header.set([8, 2, 0, 0, 0], 8); // 8-bit RGB, no interlace
+  const row = Buffer.concat([Buffer.from([0]), Buffer.from(Array.from({ length: width }, () => [red, green, blue]).flat())]);
+  const pixels = zlib.deflateSync(Buffer.concat(Array.from({ length: height }, () => row)));
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header), chunk('IDAT', pixels), chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+const listing = (id, title, priceRent = 3200, coverPhotoUrl = null) => ({
   id,
   title,
   city: 'Rabat',
@@ -15,7 +71,11 @@ const listing = (id, title, priceRent = 3200) => ({
   availabilityState: 'AVAILABLE',
   createdAt: now,
   updatedAt: now,
-  coverPhotoUrl: null,
+  coverPhotoUrl,
+});
+
+const photo = (id, url, sortOrder) => ({
+  id, url, mimeType: 'image/jpeg', width: 1200, height: 900, sortOrder, isCover: sortOrder === 0, createdAt: now,
 });
 
 const detail = (id = 'listing-1', status = 'PENDING_REVIEW') => ({
@@ -52,10 +112,25 @@ function reset() {
 const me = () => ({
   id: 'e2e-user-1', email: 'e2e.user@example.invalid', emailVerified: true, phone: null,
   phoneVerified: false, firstName: 'Utilisateur', displayName: 'Utilisateur E2E', city: 'Rabat',
-  bio: 'Profil de test', avatarUrl: null, role: 'ADMIN', verification: 'EMAIL', createdAt: now,
+  bio: 'Profil de test', avatarUrl: '/uploads/avatars/e2e-user-1.png', role: 'ADMIN', verification: 'EMAIL', createdAt: now,
 });
 
-const publicListings = [listing('listing-1', 'Chambre lumineuse à Agdal'), listing('listing-2', 'Studio calme près du tramway', 2800)];
+const publicListings = [
+  listing('listing-1', 'Chambre lumineuse à Agdal', 3200, RELATIVE_COVER),
+  listing('listing-2', 'Studio calme près du tramway', 2800, ABSOLUTE_COVER),
+];
+const listingOneDetail = () => ({
+  ...publicListings[0],
+  ...detail(),
+  status: 'PUBLISHED',
+  coverPhotoUrl: RELATIVE_COVER,
+  photos: [photo('photo-relative', RELATIVE_COVER, 0), photo('photo-absolute', ABSOLUTE_COVER, 1)],
+});
+
+function sendPng(response) {
+  response.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'no-store' });
+  response.end(PNG);
+}
 
 function sendJson(response, status, body) {
   response.writeHead(status, {
@@ -93,6 +168,7 @@ async function handle(request, response) {
   if (url.pathname === '/health') return sendJson(response, 200, { status: 'UP' });
   if (request.method === 'OPTIONS') return sendNoContent(response);
   if (url.pathname === '/__reset' && request.method === 'POST') { reset(); return sendNoContent(response); }
+  if (request.method === 'GET' && /^\/(uploads|cdn)\/.+\.png$/.test(url.pathname)) return sendPng(response);
 
   const prefix = '/api/v1';
   if (!url.pathname.startsWith(prefix)) return error(response, 404, 'NOT_FOUND', 'Route inconnue');
@@ -108,6 +184,9 @@ async function handle(request, response) {
   if (path.startsWith('/neighborhoods') && method === 'GET') return sendJson(response, 200, ['Agdal', 'Hassan']);
 
   if (path === '/listings/count' && method === 'GET') return sendJson(response, 200, { count: 2, capped: false });
+  if (path === '/listings/featured' && method === 'GET') return sendJson(response, 200, publicListings);
+  if (path === '/listings/sitemap/count' && method === 'GET') return sendJson(response, 200, { count: publicListings.length });
+  if (path === '/listings/sitemap' && method === 'GET') return sendJson(response, 200, publicListings.map(({ id, updatedAt }) => ({ id, updatedAt })));
   if (path === '/listings/map' && method === 'GET') return sendJson(response, 200, publicListings.map(({ id, title, city, neighborhood, latitude, longitude }) => ({ id, title, city, neighborhood, latitude, longitude })));
   if (path === '/listings' && method === 'GET') {
     const cursor = url.searchParams.get('cursor');
@@ -136,7 +215,8 @@ async function handle(request, response) {
     state.draft = { ...(state.draft ?? detail('listing-new', 'DRAFT')), photos: [photo] };
     return sendJson(response, 201, photo);
   }
-  if (path === '/listings/listing-1' && method === 'GET') return sendJson(response, 200, { ...publicListings[0], ...detail() });
+  if (path === '/listings/listing-1' && method === 'GET') return sendJson(response, 200, listingOneDetail());
+  if (path === '/users/other-user' && method === 'GET') return sendJson(response, 200, { id: 'other-user', displayName: 'Amina', city: 'Rabat', bio: null, avatarUrl: null, verification: 'EMAIL', memberSince: now, activeListingCount: 1 });
 
   if (path === '/favorites/ids' && method === 'GET') return sendJson(response, 200, [...state.favorites]);
   if (path === '/favorites' && method === 'GET') return sendJson(response, 200, { items: publicListings.filter((item) => state.favorites.has(item.id)), nextCursor: null, hasMore: false });
@@ -170,8 +250,25 @@ async function handle(request, response) {
   return error(response, 404, 'NOT_FOUND', 'Route inconnue');
 }
 
-const server = http.createServer((request, response) => {
-  void handle(request, response).catch((cause) => error(response, 500, 'INTERNAL_ERROR', cause instanceof Error ? cause.message : 'Erreur interne'));
-});
+function selfSignedCertificate() {
+  const directory = mkdtempSync(join(tmpdir(), 'dari-e2e-tls-'));
+  try {
+    const key = join(directory, 'key.pem');
+    const cert = join(directory, 'cert.pem');
+    execFileSync('openssl', [
+      'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
+      '-keyout', key, '-out', cert, '-subj', '/CN=dari-e2e-mock',
+      '-addext', 'subjectAltName=DNS:*.example.invalid,DNS:localhost,IP:127.0.0.1',
+    ], { stdio: 'ignore' });
+    return { key: readFileSync(key), cert: readFileSync(cert) };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
 
-server.listen(PORT, '127.0.0.1', () => console.log(`E2E mock API listening on ${PORT}`));
+const listener = (request, response) => {
+  void handle(request, response).catch((cause) => error(response, 500, 'INTERNAL_ERROR', cause instanceof Error ? cause.message : 'Erreur interne'));
+};
+const server = HTTPS_MODE ? https.createServer(selfSignedCertificate(), listener) : http.createServer(listener);
+
+server.listen(PORT, '127.0.0.1', () => console.log(`E2E mock API listening on ${HTTPS_MODE ? 'https' : 'http'}://127.0.0.1:${PORT}`));

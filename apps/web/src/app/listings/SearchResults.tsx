@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
-import { apiFetch, ApiError, apiOrigin, type CursorPage } from '@/lib/api';
+import { apiFetch, ApiError, resolveMediaUrl, type CursorPage } from '@/lib/api';
 import { centerFor } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
 import { Badge } from '@/components/ds/Badge';
@@ -149,7 +149,7 @@ function SearchListingCard({
       district={listing.neighborhood}
       city={listing.city}
       price={amount(listing.priceRent)}
-      image={listing.coverPhotoUrl ? `${apiOrigin}${listing.coverPhotoUrl}` : undefined}
+      image={listing.coverPhotoUrl ? resolveMediaUrl(listing.coverPhotoUrl) : undefined}
       badge={badge}
       badgeTone={listing.distanceMetres ? 'neutral' : 'brand'}
       href={`/listings/${listing.id}`}

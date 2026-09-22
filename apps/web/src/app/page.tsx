@@ -9,7 +9,7 @@ import {
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { apiFetch, apiOrigin } from '@/lib/api';
+import { apiFetch, resolveMediaUrl } from '@/lib/api';
 import { amount } from '@/lib/format';
 import { CITIES as CITY_NAMES, citySlug } from '@/lib/cities';
 import { PROPERTY_TYPE_LABELS } from '@/lib/labels';
@@ -209,7 +209,7 @@ function FeaturedListingCard({ listing }: { listing: PublicListing }) {
       district={listing.neighborhood}
       city={listing.city}
       price={amount(listing.priceRent)}
-      image={listing.coverPhotoUrl ? `${apiOrigin}${listing.coverPhotoUrl}` : undefined}
+      image={listing.coverPhotoUrl ? resolveMediaUrl(listing.coverPhotoUrl) : undefined}
       href={`/listings/${listing.id}`}
     />
   );
