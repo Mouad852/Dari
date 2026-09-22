@@ -4,7 +4,7 @@ const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
 const config = [
   ...compat.extends('next/core-web-vitals'),
   {
-    ignores: ['.next/**', 'node_modules/**', 'public/**', 'test-results/**', 'playwright-report/**'],
+    ignores: ['.next/**', '.next-production-e2e/**', 'node_modules/**', 'public/**', 'test-results/**', 'playwright-report/**'],
   },
   {
     files: ['e2e/**/*.ts'],

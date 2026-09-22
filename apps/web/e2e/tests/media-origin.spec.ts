@@ -43,6 +43,7 @@ test('listing detail gallery and social metadata use the public media origin', a
 });
 
 test('the account avatar resolves on the media origin', async ({ authenticatedPage: page }) => {
+  test.skip(test.info().project.name === 'production', 'needs the dev-only authentication seam');
   const { media } = origins();
   await page.goto('/account/profile');
 

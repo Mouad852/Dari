@@ -1,3 +1,5 @@
+import { publicOrigins } from './public-origins.mjs';
+
 export type WebConfig = {
   apiBaseUrl: string;
   siteUrl: string;
@@ -37,28 +39,17 @@ function parseOrigin(name: string, value: string, allowPath: boolean): string {
   return parsed.toString().replace(/\/$/, '');
 }
 
-function parseApiUrl(name: string, value: string): { baseUrl: string; origin: string } {
+function parseApiUrl(name: string, value: string): { baseUrl: string } {
   const parsed = parseOrigin(name, value, true);
-  const url = new URL(parsed);
-  if (!url.pathname.endsWith('/api/v1')) {
+  if (!new URL(parsed).pathname.endsWith('/api/v1')) {
     throw new Error(`Configuration web invalide : ${name} doit finir par /api/v1`);
   }
-  return { baseUrl: parsed.replace(/\/$/, ''), origin: `${url.origin}` };
-}
-
-function configuredMediaOrigins(publicApiOrigin: string): string[] {
-  const raw = process.env.NEXT_PUBLIC_MEDIA_ORIGINS;
-  if (!raw?.trim()) {
-    if (isProduction) {
-      throw new Error('Configuration web manquante : NEXT_PUBLIC_MEDIA_ORIGINS');
-    }
-    return [publicApiOrigin];
-  }
-  return raw.split(',').map((value) => parseOrigin('NEXT_PUBLIC_MEDIA_ORIGINS', value.trim(), false));
+  return { baseUrl: parsed.replace(/\/$/, '') };
 }
 
 export function getWebConfig(): WebConfig {
-  const publicApi = parseApiUrl(
+  // Validates the public API URL's /api/v1 path in the browser and on the server.
+  parseApiUrl(
     'NEXT_PUBLIC_API_BASE_URL',
     required('NEXT_PUBLIC_API_BASE_URL', process.env.NEXT_PUBLIC_API_BASE_URL) || 'http://localhost:8080/api/v1',
   );
@@ -90,7 +81,8 @@ export function getWebConfig(): WebConfig {
     siteUrl,
     // Media is always a public browser URL. In particular, it must never fall
     // back to API_BASE_URL, which may name an internal service on SSR hosts.
-    mediaOrigins: configuredMediaOrigins(publicApi.origin),
+    // The CSP's img-src is built from the same call (next.config.mjs).
+    mediaOrigins: publicOrigins().media,
     firebase: { apiKey: firebaseApiKey, authDomain: firebaseAuthDomain, projectId: firebaseProjectId },
     releaseVersion: process.env.NEXT_PUBLIC_RELEASE_VERSION?.trim() || 'development',
   };

@@ -385,6 +385,45 @@ web app needs it at `next build` and at runtime, as a server-only variable
 (never a `NEXT_PUBLIC_` name). Rotate it on both services in one deploy, as
 described under "Media, rate limits, and proxy boundary".
 
+### Web service configuration and headers
+
+`apps/web/next.config.mjs` is the single production gate: `next build` and
+`next start` refuse to run without every variable below (HTTPS enforced, API
+URLs must end in `/api/v1`, `DARI_SSR_SHARED_SECRET` at least 32 characters)
+plus the eleven `DARI_LEGAL_*` values. `apps/web/.env.production.example`
+lists them with placeholders.
+
+| Variable | Exposure | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_BASE_URL` | public, inlined into browser JS | browser → API |
+| `API_BASE_URL` | server only; may be an internal address | Next.js server → API; never used for anything rendered |
+| `NEXT_PUBLIC_MEDIA_ORIGINS` | public | comma-separated HTTPS media origins; the first prefixes root-relative `/uploads/...` paths, absolute S3/CloudFront URLs pass through and their origin must be listed; feeds the CSP `img-src` |
+| `NEXT_PUBLIC_SITE_URL` | public | canonicals, Open Graph, sitemap, robots |
+| `NEXT_PUBLIC_FIREBASE_*` | public by design | Firebase web config; the auth domain feeds CSP `connect-src`/`frame-src` |
+| `DARI_SSR_SHARED_SECRET` | server only, secret (SSM `SecureString`) | same value as the API's; needed at build and runtime |
+
+Every response carries one static policy, prerendered or not:
+`Content-Security-Policy` (`script-src 'self' 'unsafe-inline'`, `style-src
+'self' 'unsafe-inline'`, `font-src 'self'`, `img-src`/`connect-src` from the
+media and public API origins, `object-src 'none'`, `base-uri 'self'`,
+`form-action 'self'`, `frame-ancestors 'none'`, `upgrade-insecure-requests`),
+`Strict-Transport-Security: max-age=31536000; includeSubDomains`,
+`Permissions-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options:
+nosniff` and `Referrer-Policy`. There is no middleware and no nonce: cached HTML
+cannot carry a per-request nonce, which previously stopped every prerendered
+page from hydrating (`docs/PHASE1_CSP_REPRODUCTION.md`). `'unsafe-inline'` in
+`script-src` is required by the App Router's inline flight-data scripts; a
+stricter policy would mean rendering every route per request with a nonce.
+HSTS deliberately omits `preload`; submitting the domain to browser preload
+lists is a separate decision for the domain owner and hard to undo. Fonts are
+self-hosted by `next/font`; no font host is allowed or contacted.
+
+`.next/cache/fetch-cache` (Next's server-side data cache) stores the upstream
+URL of each server fetch, so it contains the internal `API_BASE_URL` host. It is
+never served over HTTP; do not publish the `.next` directory as static files.
+Nothing served to browsers (HTML, RSC payloads, sitemap, robots,
+`.next/static`) contains that host; the production-build e2e project checks it.
+
 ### Build and first deployment
 
 Authenticate Docker to ECR using an AWS CLI profile that the operator has

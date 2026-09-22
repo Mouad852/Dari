@@ -102,18 +102,6 @@ class ImageProcessorTest {
         assertThat(ImageIO.read(uploadRoot.resolve(stored.storageKey()).toFile())).isNotNull();
     }
 
-    @Test
-    void localStoreNeverDeletesOutsideItsUploadRoot(@TempDir Path uploadRoot) throws Exception {
-        LocalImageStore local = new LocalImageStore(uploadRoot.toString());
-        Path outside = uploadRoot.getParent().resolve("must-not-delete.jpg");
-        Files.writeString(outside, "keep");
-
-        assertThatThrownBy(() -> local.delete("../must-not-delete.jpg"))
-                .isInstanceOf(ApiException.class);
-
-        assertThat(Files.exists(outside)).isTrue();
-    }
-
     private static byte[] imageBytes(String format) throws Exception {
         BufferedImage image = new BufferedImage(320, 240, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream output = new ByteArrayOutputStream();

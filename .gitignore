@@ -28,6 +28,7 @@ target/
 # --- node / next -------------------------------------------------------------
 node_modules/
 .next/
+.next-production-e2e/
 apps/web/test-results/
 apps/web/playwright-report/
 apps/web/e2e/test-results/

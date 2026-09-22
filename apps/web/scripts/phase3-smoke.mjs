@@ -11,17 +11,15 @@ const signUp = await fetch(`${baseUrl}/sign-up`);
 assert.equal(signUp.status, 200, 'sign-up should render');
 const csp = signUp.headers.get('content-security-policy') ?? '';
 assert.match(csp, /default-src 'self'/);
-assert.match(csp, /script-src 'self' 'nonce-[^']+' 'strict-dynamic'/);
+// Static policy: a nonce cannot reach cached (prerendered) HTML.
+assert.match(csp, /script-src 'self' 'unsafe-inline'(;| 'unsafe-eval';)/);
+assert.doesNotMatch(csp, /nonce-|strict-dynamic/);
 assert.match(csp, /style-src-attr 'unsafe-inline'/);
 assert.match(csp, /frame-ancestors 'none'/);
 assert.match(csp, /tile\.openstreetmap\.org/);
 assert.equal(signUp.headers.get('permissions-policy'), 'geolocation=(self), camera=(), microphone=(), payment=()');
+assert.equal(signUp.headers.get('strict-transport-security'), 'max-age=31536000; includeSubDomains');
 assert.equal(signUp.headers.get('x-frame-options'), 'DENY');
-
-const html = await signUp.text();
-const nonce = csp.match(/'nonce-([^']+)'/)?.[1];
-assert.ok(nonce, 'CSP should contain a nonce');
-assert.match(html, new RegExp(`nonce="${nonce}"`), 'Next scripts should receive the request nonce');
 
 const robots = await fetch(`${baseUrl}/robots.txt`);
 assert.equal(robots.status, 200, 'robots.txt should render');
