@@ -86,7 +86,8 @@ export function ListingDetailContent({ listing }: { listing: PublicListingDetail
     <main style={{ minHeight: '100vh', background: 'var(--bg-page)', color: 'var(--text-heading)' }}>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        // Owner text must not be able to close this element: escape every "<".
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }}
       />
 
       <ListingGallery listingId={listing.id} title={listing.title} photos={listing.photos} />

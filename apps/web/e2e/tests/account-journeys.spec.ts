@@ -43,6 +43,9 @@ test('listing publication covers the wizard, photo upload, and moderation handof
 });
 
 test('favorites, messaging, reporting, moderation, and account deletion remain application-owned', async ({ authenticatedPage: page }) => {
+  // Six routes, each compiled on first visit under `next dev`: a cold run
+  // measured 29-33s against the default 30s budget, while warm runs take ~16s.
+  test.slow();
   await page.goto('/listings?city=Rabat');
   await page.getByRole('button', { name: 'Enregistrer' }).first().click();
   await page.goto('/favorites');
