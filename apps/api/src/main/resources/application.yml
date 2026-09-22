@@ -132,8 +132,20 @@ dari:
       access-key: ${DARI_MEDIA_S3_ACCESS_KEY:}
       secret-key: ${DARI_MEDIA_S3_SECRET_KEY:}
       bucket: ${DARI_MEDIA_S3_BUCKET:}
+      # Bounds on every S3 call; one retry on a timeout, I/O error or 5xx.
+      # Worst case per call: 2 x (connect + request) + 200 ms = 24.2 s.
+      connect-timeout-ms: ${DARI_MEDIA_S3_CONNECT_TIMEOUT_MS:2000}
+      request-timeout-ms: ${DARI_MEDIA_S3_REQUEST_TIMEOUT_MS:10000}
+      # Sent on upload and served with the object by S3/CloudFront. max-age is
+      # how long a deleted photo can stay in a CDN or browser cache after the
+      # object itself is gone; see PRODUCTION_OPERATIONS.md before raising it.
+      cache-control: ${DARI_MEDIA_S3_CACHE_CONTROL:public, max-age=3600}
   firebase:
     credentials-path: ${FIREBASE_CREDENTIALS_PATH:./infra/firebase/service-account.json}
+    # The SDK's own default is 0: no timeout at all. deleteUser runs inside the
+    # account-deletion transaction, so a hung call would hold its row locks.
+    connect-timeout-ms: ${DARI_FIREBASE_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${DARI_FIREBASE_READ_TIMEOUT_MS:10000}
 
   # Location privacy. Read by the fuzzer in phase 02; centralized here so the
   # value is auditable rather than buried as a literal in a service.

@@ -78,7 +78,8 @@ class ImageProcessorTest {
         MockMultipartFile bomb = new MockMultipartFile(
                 "file", "bomb.png", "image/png", pngHeader(5_001, 5_000));
         LocalImageStore local = new LocalImageStore(uploadRoot.toString());
-        S3ImageStore s3 = new S3ImageStore("http://127.0.0.1:1", "eu-west-1", "access", "secret", "bucket", "/uploads");
+        S3ImageStore s3 = new S3ImageStore("http://127.0.0.1:1", "eu-west-1", "access", "secret", "bucket", "/uploads",
+                2000, 10000, "public, max-age=3600");
 
         for (ImageStore store : new ImageStore[]{local, s3}) {
             assertThatThrownBy(() -> store.store(ImageStore.LISTINGS, UUID.randomUUID(), bomb))

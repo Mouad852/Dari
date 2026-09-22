@@ -18,6 +18,82 @@ The CDN must stop future origin access when a listing is deleted. Objects that
 were already cached can remain visible until the configured cache TTL expires;
 choose that TTL explicitly and document it with the CDN configuration.
 
+### Storage keys, erasure and cache lifetime
+
+The database stores storage keys (`listing_photos.storage_key`,
+`users.avatar_storage_key`), never rendered URLs. Each response renders the
+key for the running configuration: `DARI_MEDIA_PUBLIC_BASE_URL/<key>` in S3
+mode, `/uploads/<key>` in local mode. The JSON field names (`url`,
+`avatarUrl`) and shapes are unchanged, and moving the CDN origin needs no data
+migration.
+
+Deleting a photo, replacing an avatar and deleting an account each enqueue the
+affected keys in `media_cleanup`, in the same transaction as the change. In
+local mode the API stops serving an enqueued key immediately. In **S3 mode the
+object stays readable from the bucket and CDN until the worker deletes it**:
+those requests never reach the API. Erasure in S3 mode is therefore complete
+only after both of these have passed:
+
+1. **Cleanup delay.** The worker runs every `DARI_MEDIA_CLEANUP_INTERVAL_MS`
+   (60 s by default), so a healthy bucket is cleaned within about a minute.
+   While S3 fails, retries back off up to an hour between attempts.
+2. **Cache lifetime.** Uploads carry `Cache-Control: public, max-age=3600`
+   (`DARI_MEDIA_S3_CACHE_CONTROL`), so a CDN edge or browser that already
+   fetched a photo may keep showing it for up to **one hour** after the object
+   is gone. Keys never change content (a new upload gets a new key), so a
+   longer lifetime costs nothing in correctness, only in erasure lag, and a
+   shorter one costs origin requests. One hour is the chosen balance; raising
+   it is a privacy decision. CloudFront honours the origin header only within
+   the cache policy's TTL range: set the policy's **maximum TTL to 3600 s or
+   less**, or a longer policy TTL silently overrides this. Removing a photo
+   from the edge immediately would need a CloudFront invalidation per
+   deletion, which is not built.
+
+Before V26, `users.avatar_url` held the rendered URL, and in S3 mode neither
+avatar replacement nor account deletion enqueued the old object, which stayed
+public indefinitely. V26 backfills `avatar_storage_key` from both URL shapes
+and is expand-only:
+
+- This release never reads `avatar_url` and no longer writes it on upload; it
+  only clears it when an account is scrubbed, because it may still point at the
+  person's photo.
+- While the previous release can still run (a rolling deploy, or a rollback),
+  it keeps writing only `avatar_url`. The trigger `users_sync_avatar_storage_key`
+  keeps the key in step with those writes, so a later roll-forward does not
+  read a stale key.
+- **Rollback caveat:** the previous release reads `avatar_url`. After a
+  rollback, someone who changed their avatar under this release is shown their
+  older avatar URL, whose object has already been deleted, and account deletion
+  under that release in S3 mode enqueues nothing (the original defect). Roll
+  forward promptly.
+- **Contract step, in a later release** once no pre-V26 release can be
+  deployed: drop the trigger `users_sync_avatar_storage_key`, the functions
+  `users_sync_avatar_storage_key()` and `avatar_storage_key_from_url(text, uuid)`,
+  then the column `users.avatar_url`.
+
+### Bounds on external calls
+
+Every S3 call has a connect timeout (`DARI_MEDIA_S3_CONNECT_TIMEOUT_MS`, 2000
+ms) and a request timeout (`DARI_MEDIA_S3_REQUEST_TIMEOUT_MS`, 10000 ms). An
+I/O error, a timeout or a 5xx is retried once after 200 ms with a fresh
+signature; a 3xx or 4xx is not retried. Both PUT and DELETE are safe to repeat:
+every key is a new random UUID, and deleting an absent key succeeds. The worst
+case for one call is 2 x (2 + 10) s + 0.2 s = 24.2 s, after which an upload
+returns the French 503. Any non-2xx upload response is a failure; a wrong-region
+`301 PermanentRedirect` used to be counted as a stored photo. S3 error bodies
+are never read or logged.
+
+The Firebase Admin SDK defaults to no timeout at all. It now uses
+`DARI_FIREBASE_CONNECT_TIMEOUT_MS` (5000 ms) and `DARI_FIREBASE_READ_TIMEOUT_MS`
+(10000 ms). `deleteUser` runs inside the account-deletion transaction, so these
+bound how long that transaction holds its row locks: at most 15 s when Google
+does not answer (the SDK does not retry I/O errors), and up to about 82 s if
+Google keeps answering HTTP 503, which the SDK retries four times with a
+0.5/1/2/4 s backoff. Any failure returns 502 and rolls the whole deletion back.
+
+All five are optional, with the defaults above; none is a required production
+variable.
+
 The rate limiter is intentionally process-local and has a configurable
 `DARI_RATE_LIMIT_MAX_TRACKED_KEYS` limit (100,000 by default). At the limit it
 first purges expired keys, then applies new callers to a fixed shared overflow
@@ -354,7 +430,10 @@ with the business's data-residency obligations in mind (for example,
 static access keys limited to `s3:PutObject` and `s3:DeleteObject` on this
 bucket. It does not send `x-amz-security-token`, so an ECS task role cannot
 substitute for these credentials. It also uses path-style S3 URLs; verify the
-first real upload and its public URL before accepting the release.
+first real upload and its public URL before accepting the release. The
+repository tests sign against MinIO, which checks SigV4 the way S3 does, but
+path-style signing against `s3.<region>.amazonaws.com` has not been exercised
+from here.
 
 ### Configuration and secrets
 

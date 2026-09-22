@@ -12,6 +12,17 @@ public class ApiException extends RuntimeException {
         this.code = code;
     }
 
+    /**
+     * Keeps the technical reason for logs and operator-facing records. The
+     * response still carries only {@code message}; the cause never reaches a
+     * client.
+     */
+    public ApiException(int status, ErrorCode code, String message, Throwable cause) {
+        super(message, cause);
+        this.status = status;
+        this.code = code;
+    }
+
     public static ApiException notFound(String message) {
         return new ApiException(404, ErrorCode.NOT_FOUND, message);
     }
