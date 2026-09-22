@@ -11,8 +11,9 @@ region, access key, secret key, bucket, and public/CDN base URL through the
 deployment secret store. MinIO is suitable for local development; production
 credentials must never be committed. Published media may be delivered through
 the public base URL. Deleted photos, avatars, and soft-deleted listings enqueue
-an idempotent `media_cleanup` row; the worker retries failed remote deletion and
-keeps the failure observable in the row's attempt/error fields.
+an idempotent `media_cleanup` row; the worker retries failed remote deletion,
+keeps the failure observable in the row's attempt/error fields, and gives up in
+a `DEAD` state that needs an operator (see "Dead media cleanup rows" below).
 
 The CDN must stop future origin access when a listing is deleted. Objects that
 were already cached can remain visible until the configured cache TTL expires;
@@ -93,6 +94,70 @@ Google keeps answering HTTP 503, which the SDK retries four times with a
 
 All five are optional, with the defaults above; none is a required production
 variable.
+
+### Dead media cleanup rows
+
+The worker runs every `DARI_MEDIA_CLEANUP_INTERVAL_MS` (60 s) on one instance
+at a time (ShedLock lock `mediaCleanup`), takes at most 50 due rows per run,
+and saves each row's outcome on its own. A failed deletion is retried after 60
+s, 2, 4, 8, 16 and 32 min, then hourly. After `DARI_MEDIA_CLEANUP_MAX_ATTEMPTS`
+failures (10 by default, about 4 h after the first) the row becomes `DEAD`:
+the worker stops trying, and the object **may still exist**. The key stays
+revoked, so the API keeps refusing to serve it in local mode, but in S3 mode
+the object stays readable from the bucket and CDN until someone acts.
+
+Signals: the gauge `dari.media.cleanup_depth{status="DEAD"}` is above zero, the
+counter `dari.media.cleanup{outcome="dead"}` has increased, and the log line
+`Media cleanup row <id> is DEAD after <n> attempts (<reason>)`. Any DEAD row
+needs a person. (`outcome="error"` counts rows whose result could not be saved;
+they stay PENDING and are retried on the next run.)
+
+Run these through the operator's database access, never from an application
+host:
+
+```sql
+-- 1. Inspect.
+SELECT id, storage_key, attempts, last_error, updated_at
+FROM media_cleanup
+WHERE status = 'DEAD'
+ORDER BY updated_at;
+```
+
+`last_error` ends with the technical cause in parentheses:
+
+| Cause | Usual meaning | Fix before re-queueing |
+| --- | --- | --- |
+| `S3 DELETE failed: HTTP 403` | the IAM user lacks `s3:DeleteObject` on the bucket, or the keys or bucket are wrong | the IAM policy or the secrets |
+| `S3 DELETE failed: HTTP 301` | wrong region or endpoint for the bucket | `DARI_MEDIA_S3_REGION` / `DARI_MEDIA_S3_ENDPOINT` |
+| `HttpTimeoutException`, `HttpConnectTimeoutException`, `HTTP 5xx` | storage unreachable for longer than the retry horizon | wait for the provider, then re-queue |
+| `Clé de stockage invalide` (local mode) | a key outside the upload root; the application never writes one | investigate how the row was created |
+
+```sql
+-- 2. Re-queue once the cause is fixed: one row ...
+UPDATE media_cleanup
+SET status = 'PENDING', attempts = 0, next_attempt_at = now(), updated_at = now()
+WHERE status = 'DEAD' AND id = '<id>';
+
+-- ... or every DEAD row, after a systemic fix.
+UPDATE media_cleanup
+SET status = 'PENDING', attempts = 0, next_attempt_at = now(), updated_at = now()
+WHERE status = 'DEAD';
+```
+
+Resetting `attempts` gives each key a full new retry budget. Never `DELETE` a
+`media_cleanup` row: its existence is what revokes the key, and without it a
+still-present file would be served again. Verify that the rows reach
+`DELETED` within a few minutes, the DEAD gauge returns to 0, and, in S3 mode,
+that the objects are gone from the bucket.
+
+If an instance is killed during a run, the `mediaCleanup` lock is held until
+its `lockAtMostFor` of 25 minutes expires (50 rows x 24.2 s worst case per S3
+call, rounded up), which delays cleanup but loses nothing. Check with
+`SELECT * FROM shedlock WHERE name = 'mediaCleanup';`.
+
+A release older than V27 (a rollback) cannot enqueue a key that already has a
+DEAD row (its duplicate check hits the unique index and fails the request), and
+in local mode it serves a DEAD key's file. Roll forward promptly.
 
 The rate limiter is intentionally process-local and has a configurable
 `DARI_RATE_LIMIT_MAX_TRACKED_KEYS` limit (100,000 by default). At the limit it

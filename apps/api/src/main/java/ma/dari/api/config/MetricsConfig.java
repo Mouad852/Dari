@@ -71,6 +71,13 @@ public class MetricsConfig {
                 .description("Media cleanup rows awaiting remote deletion")
                 .tag("status", MediaCleanupStatus.PENDING.name())
                 .register(registry);
+        // Anything above zero needs a person: the worker has stopped retrying
+        // these keys, and in S3 mode their objects may still be public.
+        Gauge.builder("dari.media.cleanup_depth", mediaCleanups,
+                        r -> r.countByStatus(MediaCleanupStatus.DEAD))
+                .description("Media cleanup rows the worker gave up on; needs an operator")
+                .tag("status", MediaCleanupStatus.DEAD.name())
+                .register(registry);
         Gauge.builder("dari.media.cleanup_failures", mediaCleanups,
                         r -> r.countByStatusAndAttemptsGreaterThan(MediaCleanupStatus.PENDING, 0))
                 .description("Media cleanup rows that have already failed and will be retried")

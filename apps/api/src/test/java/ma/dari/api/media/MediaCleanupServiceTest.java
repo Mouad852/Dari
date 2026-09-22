@@ -21,7 +21,7 @@ class MediaCleanupServiceTest {
         when(repository.findDue(eq(MediaCleanupStatus.PENDING), any(Instant.class), any(Pageable.class)))
                 .thenReturn(List.of(cleanup));
 
-        new MediaCleanupService(repository, imageStore, new SimpleMeterRegistry()).processDue();
+        new MediaCleanupService(repository, imageStore, new SimpleMeterRegistry(), 10).processDue();
 
         verify(repository).save(cleanup);
         org.assertj.core.api.Assertions.assertThat(cleanup.getStatus()).isEqualTo(MediaCleanupStatus.PENDING);

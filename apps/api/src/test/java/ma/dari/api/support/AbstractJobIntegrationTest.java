@@ -1,6 +1,8 @@
 package ma.dari.api.support;
 
+import ma.dari.api.media.ImageStore;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 /**
  * Base for integration tests that drive scheduled jobs themselves.
@@ -15,4 +17,8 @@ import org.springframework.test.context.TestPropertySource;
         "dari.listing.expiry-cron=-"
 })
 public abstract class AbstractJobIntegrationTest extends AbstractIntegrationTest {
+
+    /** The real store (local, or S3 where a subclass configures it), stubbable per test. */
+    @MockitoSpyBean
+    protected ImageStore imageStore;
 }

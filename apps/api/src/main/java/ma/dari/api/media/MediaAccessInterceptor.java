@@ -16,8 +16,8 @@ import java.nio.file.Path;
  * <p>Media cleanup is deliberately asynchronous so a temporary storage outage
  * cannot leave an account deletion half-complete. The cleanup outbox therefore
  * doubles as the access-revocation record for files served by this application:
- * once a key is pending deletion, it must no longer be readable even if the
- * object still exists on disk for a retry worker to remove later.
+ * once a key is enqueued (PENDING, and still after it turns DEAD), it must no
+ * longer be readable even if the object still exists on disk.
  */
 @Component
 public class MediaAccessInterceptor implements HandlerInterceptor {
@@ -52,8 +52,10 @@ public class MediaAccessInterceptor implements HandlerInterceptor {
             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
             return false;
         }
-        if (!storageKey.isBlank()
-                && cleanups.existsByStorageKeyAndStatus(storageKey, MediaCleanupStatus.PENDING)) {
+        // Any cleanup row revokes the key, not only PENDING. A DEAD row means
+        // the worker gave up while the file may well still be on disk, and it
+        // must stay hidden until an operator deals with it.
+        if (!storageKey.isBlank() && cleanups.existsByStorageKey(storageKey)) {
             // Do not reveal whether this was a formerly accessible key. This
             // intentionally matches a missing static resource.
             // Do not use sendError here: its internal /error dispatch would
