@@ -23,9 +23,10 @@ public record PublicProfileResponse(UUID id,
                                     Instant memberSince,
                                     long activeListingCount) {
 
-    public static PublicProfileResponse from(User u, long activeListingCount) {
+    /** @param avatarUrl the stored avatar key already rendered for this deployment's storage, or null */
+    public static PublicProfileResponse from(User u, String avatarUrl, long activeListingCount) {
         return new PublicProfileResponse(
-                u.getId(), u.getDisplayName(), u.getCity(), u.getBio(), u.getAvatarUrl(),
+                u.getId(), u.getDisplayName(), u.getCity(), u.getBio(), avatarUrl,
                 VerificationTier.of(u), u.getCreatedAt(), activeListingCount);
     }
 }

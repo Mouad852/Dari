@@ -58,20 +58,20 @@ public class UserController {
         User created = userService.create(principal, request);
 
         HttpStatus status = existed ? HttpStatus.OK : HttpStatus.CREATED;
-        return ResponseEntity.status(status).body(UserResponse.from(created));
+        return ResponseEntity.status(status).body(response(created));
     }
 
     /** 404 with PROFILE_NOT_FOUND when the token is valid but no profile exists. */
     @GetMapping("/me")
     public UserResponse me(@CurrentUser User user) {
-        return UserResponse.from(user);
+        return response(user);
     }
 
     @PatchMapping("/me")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public UserResponse updateMe(@CurrentUser User user,
                                  @Valid @RequestBody UpdateUserRequest request) {
-        return UserResponse.from(userService.update(user, request));
+        return response(userService.update(user, request));
     }
 
     /** Public, unauthenticated. Deliberately a different shape from /me. */
@@ -88,7 +88,7 @@ public class UserController {
     @RateLimited(RateLimitType.UPLOAD)
     public UserResponse uploadAvatar(@CurrentUser User user,
                                      @RequestParam("file") MultipartFile file) {
-        return UserResponse.from(userService.uploadAvatar(user, file));
+        return response(userService.uploadAvatar(user, file));
     }
 
     /**
@@ -108,5 +108,9 @@ public class UserController {
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public Object startPhoneVerification(@CurrentUser User user) {
         throw new NotImplementedYetException("post-MVP");
+    }
+
+    private UserResponse response(User user) {
+        return UserResponse.from(user, userService.avatarUrl(user));
     }
 }

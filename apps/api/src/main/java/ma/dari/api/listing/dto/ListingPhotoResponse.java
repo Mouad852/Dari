@@ -15,10 +15,7 @@ public record ListingPhotoResponse(
         boolean isCover,
         Instant createdAt
 ) {
-    public static ListingPhotoResponse from(ListingPhoto photo) {
-        return from(photo, "/uploads/" + photo.getStorageKey());
-    }
-
+    /** @param url the photo's storage key rendered by {@code ImageStore#publicUrl} */
     public static ListingPhotoResponse from(ListingPhoto photo, String url) {
         return new ListingPhotoResponse(
                 photo.getId(),

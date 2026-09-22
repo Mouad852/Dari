@@ -24,10 +24,14 @@ public record UserResponse(UUID id,
                            VerificationTier verification,
                            Instant createdAt) {
 
-    public static UserResponse from(User u) {
+    /**
+     * @param avatarUrl the stored avatar key already rendered for this
+     *                  deployment's storage ({@code UserService#avatarUrl}), or null
+     */
+    public static UserResponse from(User u, String avatarUrl) {
         return new UserResponse(
                 u.getId(), u.getEmail(), u.isEmailVerified(), u.getPhone(), u.isPhoneVerified(),
-                u.getFirstName(), u.getDisplayName(), u.getCity(), u.getBio(), u.getAvatarUrl(),
+                u.getFirstName(), u.getDisplayName(), u.getCity(), u.getBio(), avatarUrl,
                 u.getRole(), VerificationTier.of(u), u.getCreatedAt());
     }
 }

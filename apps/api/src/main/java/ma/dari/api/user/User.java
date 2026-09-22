@@ -71,8 +71,18 @@ public class User {
     @Column(columnDefinition = "text")
     private String bio;
 
+    /**
+     * Legacy: the rendered URL releases before V26 stored. This release never
+     * reads it and never writes it except to clear it when an account is
+     * scrubbed, since it may still point at the person's photo. A later
+     * contract migration drops it.
+     */
     @Column(name = "avatar_url")
     private String avatarUrl;
+
+    /** The current avatar's storage key. Rendered to a URL only at the response boundary. */
+    @Column(name = "avatar_storage_key", columnDefinition = "text")
+    private String avatarStorageKey;
 
     /** Set by account deletion (phase 09). Every read path must filter on it. */
     @Column(name = "deleted_at")
@@ -152,9 +162,17 @@ public class User {
 
     public void setBio(String bio) { this.bio = bio; }
 
+    /** @deprecated legacy column; render {@link #getAvatarStorageKey()} instead. */
+    @Deprecated
     public String getAvatarUrl() { return avatarUrl; }
 
+    /** @deprecated legacy column; only account scrubbing may still clear it. */
+    @Deprecated
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+
+    public String getAvatarStorageKey() { return avatarStorageKey; }
+
+    public void setAvatarStorageKey(String avatarStorageKey) { this.avatarStorageKey = avatarStorageKey; }
 
     public Instant getDeletedAt() { return deletedAt; }
 

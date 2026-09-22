@@ -67,21 +67,25 @@ public class UserService {
     public User uploadAvatar(User user, MultipartFile file) {
         ImageStore.StoredImage stored = imageStore.store(ImageStore.AVATARS, user.getId(), file);
 
-        String previous = user.getAvatarUrl();
-        user.setAvatarUrl(imageStore.publicUrl(stored.storageKey()));
+        String previousKey = user.getAvatarStorageKey();
+        user.setAvatarStorageKey(stored.storageKey());
         User saved = users.save(user);
 
-        // Best-effort cleanup of the replaced file. A failure here must not fail
-        // the upload: the new avatar is already stored and referenced, and an
-        // orphaned old file is a housekeeping problem, not a user-facing one.
-        if (previous != null && previous.startsWith("/uploads/")) {
-            try {
-                mediaCleanup.enqueue(previous.substring("/uploads/".length()));
-            } catch (RuntimeException ignored) {
-                // deliberately swallowed; see above
-            }
+        // The replaced photo is revoked in the same transaction that stops
+        // referencing it. This used to be a swallowed best-effort call, but a
+        // failure inside it marks the transaction rollback-only anyway, and a
+        // replaced avatar that stays public is exactly what the person asked
+        // to stop.
+        if (previousKey != null) {
+            mediaCleanup.enqueue(previousKey);
         }
         return saved;
+    }
+
+    /** The avatar as clients see it: rendered for this deployment's storage, or null. */
+    public String avatarUrl(User user) {
+        String key = user.getAvatarStorageKey();
+        return key == null ? null : imageStore.publicUrl(key);
     }
 
     /**
@@ -96,13 +100,13 @@ public class UserService {
      * row is still a live row in every backup and every database session an
      * admin opens.
      *
-     * <p>The Firebase identity is removed before the avatar file, and the avatar
-     * file is removed last, after the transaction's writes are staged but before
-     * this method returns. If Firebase deletion fails, the whole transaction
-     * (including the PII scrub) rolls back, which is the recoverable outcome:
-     * the account still exists, undisturbed, and the person can retry. Deleting
-     * the file only after that point means a rollback never leaves a scrubbed
-     * row pointing at an already-deleted photo.
+     * <p>Photos are not deleted here. Their storage keys are enqueued in the
+     * media cleanup outbox in this transaction, which revokes them on commit,
+     * and the cleanup worker deletes the objects afterwards. The Firebase
+     * identity is removed last. If that fails, the whole transaction (the PII
+     * scrub and the enqueued cleanups included) rolls back, which is the
+     * recoverable outcome: the account still exists, undisturbed, with its
+     * photos, and the person can retry.
      */
     @Transactional
     public void deleteAccount(User user) {
@@ -122,13 +126,13 @@ public class UserService {
             }
         });
 
-        String previousAvatarUrl = user.getAvatarUrl();
-        if (previousAvatarUrl != null && previousAvatarUrl.startsWith("/uploads/")) {
+        String avatarKey = user.getAvatarStorageKey();
+        if (avatarKey != null) {
             // Persist the revocation before making the irreversible Firebase
             // call. MediaAccessInterceptor denies this key as soon as this
             // transaction commits, while the scheduled worker keeps retrying
             // the physical deletion if storage is temporarily unavailable.
-            mediaCleanup.enqueue(previousAvatarUrl.substring("/uploads/".length()));
+            mediaCleanup.enqueue(avatarKey);
         }
         scrubPii(user);
         user.setDeletedAt(now);
@@ -171,6 +175,9 @@ public class UserService {
         user.setDisplayName("Utilisateur supprimé");
         user.setCity(null);
         user.setBio(null);
+        user.setAvatarStorageKey(null);
+        // The legacy column can still point at the same photo until the
+        // contract migration drops it.
         user.setAvatarUrl(null);
     }
 
@@ -240,7 +247,7 @@ public class UserService {
         long activeListings = listings.countByOwnerIdAndStatusAndAvailabilityStateAndDeletedAtIsNull(
                 id, ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE);
 
-        return PublicProfileResponse.from(user, activeListings);
+        return PublicProfileResponse.from(user, avatarUrl(user), activeListings);
     }
 
     @Transactional(readOnly = true)
