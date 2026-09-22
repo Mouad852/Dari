@@ -1,0 +1,17 @@
+{
+  "AlarmName": "dari-03-database-unreachable",
+  "AlarmDescription": "Alert 3 of 6. For 5 consecutive minutes the API's readiness database check has failed (dari.database.reachable = 0: database down, or no pool connection within 5 s), or the API published no metrics at all. Silence counts as breaching on purpose: alerts 3-5 depend on the metrics push, and this is its dead-man's switch. If alert 1 is also firing, start there. Runbook: docs/PRODUCTION_OPERATIONS.md, Monitoring > First response > Database unreachable.",
+  "ActionsEnabled": true,
+  "AlarmActions": ["__SNS_TOPIC_ARN__"],
+  "OKActions": ["__SNS_TOPIC_ARN__"],
+  "Namespace": "Dari/Api",
+  "MetricName": "dari.database.reachable.value",
+  "Dimensions": [],
+  "Statistic": "Minimum",
+  "Period": 60,
+  "EvaluationPeriods": 5,
+  "DatapointsToAlarm": 5,
+  "Threshold": 1,
+  "ComparisonOperator": "LessThanThreshold",
+  "TreatMissingData": "breaching"
+}

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.LinkedHashMap;
@@ -152,14 +153,29 @@ public class GlobalExceptionHandler {
     /**
      * The catch-all. The message is deliberately vague to the client and
      * deliberately detailed in the log — never leak SQL or a stack trace.
+     *
+     * <p>Only this handler reports to error tracking: everything above is an
+     * expected 4xx. The report carries the route <em>pattern</em>
+     * ({@code /api/v1/users/{id}}), never the concrete path or query string,
+     * which can name a person.
      */
     @ExceptionHandler(Exception.class)
     ResponseEntity<ErrorResponse> handleUnexpected(Exception e, HttpServletRequest req) {
         log.error("Unhandled exception on {} {}", req.getMethod(), req.getRequestURI(), e);
         meterRegistry.counter("dari.errors.unhandled", "exception", e.getClass().getSimpleName()).increment();
-        errorReporter.report(e, new ErrorReporter.SafeErrorContext(
-                req.getRequestURI(), MDC.get("correlationId"), releaseVersion));
+        try {
+            errorReporter.report(e, new ErrorReporter.SafeErrorContext(
+                    routePattern(req), req.getMethod(), MDC.get("correlationId"), releaseVersion));
+        } catch (RuntimeException reportingFailure) {
+            // Reporting must never change the response.
+            log.warn("Error reporting failed ({})", reportingFailure.getClass().getSimpleName());
+        }
         return ResponseEntity.status(500)
                 .body(ErrorResponse.of(ErrorCode.INTERNAL_ERROR, "Une erreur est survenue"));
+    }
+
+    private static String routePattern(HttpServletRequest req) {
+        return req.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE) instanceof String pattern
+                ? pattern : "unmatched";
     }
 }

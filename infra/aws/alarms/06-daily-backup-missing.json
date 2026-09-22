@@ -1,0 +1,20 @@
+{
+  "AlarmName": "dari-06-daily-backup-missing",
+  "AlarmDescription": "Alert 6 of 6. No AWS Backup job for the RDS database completed in the last 26 hours. A dead-man's switch: AWS Backup only reports non-zero counts, so silence is breaching. Needs the daily AWS Backup rule from docs/PRODUCTION_OPERATIONS.md (RDS automated backups publish no metric). 26 h = the daily cadence plus the backup rule's minimum one-hour start window, plus an hour of slack. Runbook: docs/PRODUCTION_OPERATIONS.md, Monitoring > First response > Backup missing.",
+  "ActionsEnabled": true,
+  "AlarmActions": ["__SNS_TOPIC_ARN__"],
+  "OKActions": ["__SNS_TOPIC_ARN__"],
+  "Namespace": "AWS/Backup",
+  "MetricName": "NumberOfBackupJobsCompleted",
+  "Dimensions": [
+    { "Name": "BackupVaultName", "Value": "__BACKUP_VAULT_NAME__" },
+    { "Name": "ResourceType", "Value": "RDS" }
+  ],
+  "Statistic": "Sum",
+  "Period": 3600,
+  "EvaluationPeriods": 26,
+  "DatapointsToAlarm": 26,
+  "Threshold": 1,
+  "ComparisonOperator": "LessThanThreshold",
+  "TreatMissingData": "breaching"
+}

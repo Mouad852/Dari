@@ -11,6 +11,8 @@ function validateProductionConfiguration() {
     'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
     'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
     'NEXT_PUBLIC_MEDIA_ORIGINS',
+    // Tags every error report; without it a production build reported as "development".
+    'NEXT_PUBLIC_RELEASE_VERSION',
     // Server-only (never NEXT_PUBLIC_): identifies server renders to the API's
     // rate limiter. Same value as the API's DARI_SSR_SHARED_SECRET.
     'DARI_SSR_SHARED_SECRET',
@@ -67,10 +69,12 @@ validateProductionConfiguration();
  * route per request with a nonce, i.e. giving up ISR.
  *
  * img-src/connect-src come from publicOrigins(), the same source
- * resolveMediaUrl uses, so they cannot drift from rendered URLs.
+ * resolveMediaUrl uses, so they cannot drift from rendered URLs. The optional
+ * error-tracking origin comes from the same call as the DSN reporting.ts sends
+ * to; without NEXT_PUBLIC_SENTRY_DSN nothing is added.
  */
 function contentSecurityPolicy() {
-  const { api, media } = publicOrigins();
+  const { api, media, errorReporting } = publicOrigins();
   const firebaseOrigin = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     ? `https://${process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}`
     : 'https://*.firebaseapp.com';
@@ -85,7 +89,7 @@ function contentSecurityPolicy() {
     "style-src-attr 'unsafe-inline'",
     ["img-src 'self' data: blob:", ...media, 'https://*.tile.openstreetmap.org'].join(' '),
     "font-src 'self'",
-    ["connect-src 'self'", api, firebaseOrigin, 'https://identitytoolkit.googleapis.com', 'https://securetoken.googleapis.com', 'https://www.googleapis.com'].join(' '),
+    ["connect-src 'self'", api, firebaseOrigin, 'https://identitytoolkit.googleapis.com', 'https://securetoken.googleapis.com', 'https://www.googleapis.com', ...(errorReporting ? [errorReporting.origin] : [])].join(' '),
     ["frame-src 'self'", firebaseOrigin].join(' '),
     "object-src 'none'",
     "base-uri 'self'",

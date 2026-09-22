@@ -49,6 +49,16 @@ dari:
   # /actuator/info carry it; "development" in production is the mislabel the
   # startup check exists to refuse.
   release-version: ${DARI_RELEASE_VERSION}
+  error-reporting:
+    # SENTRY_DSN stays optional (application.yml); a production start without
+    # it logs one warning naming the variable.
+    environment: ${SENTRY_ENVIRONMENT:production}
+  metrics:
+    cloudwatch:
+      # On by default: alarms 3-5 read these metrics. Needs the task role's
+      # cloudwatch:PutMetricData; without it the push fails on its own thread
+      # and the "DB unreachable" alarm goes off on the missing data.
+      enabled: ${DARI_METRICS_CLOUDWATCH_ENABLED:true}
   web-origins: ${DARI_WEB_ORIGIN}
   firebase:
     credentials-path: ${FIREBASE_CREDENTIALS_PATH}

@@ -7,6 +7,9 @@
 #   minio    stands in for the S3-compatible bucket (bucket created by minio-init)
 #   mailpit  stands in for the SMTP provider: STARTTLS required, accepts any
 #            login, delivers nothing; read mail at http://localhost:18025
+#   errors   stands in for the error-tracking (Sentry) ingest endpoint: prints
+#            every envelope it receives (docker compose ... logs errors) and
+#            forwards nothing
 #
 # Every credential here is a smoke-only placeholder that protects nothing; the
 # real values live in the deployment's secret store. The only real secret is the
@@ -35,12 +38,19 @@ services:
       DARI_NOTIFICATIONS_DELIVERY_INTERVAL_MS: ${SMOKE_DELIVERY_INTERVAL_MS:-5000}
       DARI_NOTIFICATIONS_MAX_ATTEMPTS: ${SMOKE_MAX_ATTEMPTS:-5}
       DARI_NOTIFICATIONS_RETRY_DELAY_SECONDS: ${SMOKE_RETRY_DELAY_SECONDS:-60}
+      # Optional in production; here it points at the local stand-in below.
+      SENTRY_DSN: ${SMOKE_SENTRY_DSN:-http://smokepublickey@errors:8000/1}
+      # Fargate sets AWS_REGION on every task. Setting it here makes the
+      # production CloudWatch push start and then fail for want of credentials
+      # (the container has none), which must not affect a single request.
+      AWS_REGION: ${SMOKE_AWS_REGION:-eu-west-3}
     volumes:
       - ${FIREBASE_SERVICE_ACCOUNT_FILE:-../firebase/service-account.json}:/run/secrets/firebase-service-account.json:ro
     depends_on:
       db: { condition: service_healthy }
       minio-init: { condition: service_completed_successfully }
       mailpit: { condition: service_started }
+      errors: { condition: service_started }
     # Longer than the web drain plus the scheduler drain (30s each), so Docker
     # never SIGKILLs a graceful shutdown in progress.
     stop_grace_period: 75s
@@ -106,6 +116,43 @@ services:
       MP_SMTP_REQUIRE_STARTTLS: "true"    # same rule the production profile enforces
       MP_SMTP_AUTH_ACCEPT_ANY: "true"
     ports: ["127.0.0.1:18025:8025"]
+
+  # Accepts error-tracking envelopes and prints them, decompressed, so the
+  # scrubbed payload can be read with `logs errors`. Answers 200 like the real
+  # endpoint; nothing leaves this network.
+  errors:
+    image: python:3.12-alpine
+    command:
+      - python
+      - -u
+      - -c
+      - |
+        import gzip, http.server
+        class Ingest(http.server.BaseHTTPRequestHandler):
+            def body(self):
+                if self.headers.get('Transfer-Encoding', '').lower() == 'chunked':
+                    data = b''
+                    while True:
+                        size = int(self.rfile.readline().strip(), 16)
+                        if size == 0:
+                            self.rfile.readline()
+                            return data
+                        data += self.rfile.read(size)
+                        self.rfile.readline()
+                return self.rfile.read(int(self.headers.get('Content-Length', 0)))
+            def do_POST(self):
+                data = self.body()
+                if self.headers.get('Content-Encoding', '') == 'gzip':
+                    data = gzip.decompress(data)
+                print('ENVELOPE ' + self.path.split('?')[0])
+                print(data.decode('utf-8', 'replace'))
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(b'{}')
+            def log_message(self, *args):
+                pass
+        http.server.ThreadingHTTPServer(('0.0.0.0', 8000), Ingest).serve_forever()
 
 volumes:
   smoke_pgdata:

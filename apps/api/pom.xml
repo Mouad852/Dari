@@ -32,6 +32,7 @@
         <jts.version>1.20.0</jts.version>
         <shedlock.version>6.3.0</shedlock.version>
         <archunit.version>1.4.0</archunit.version>
+        <sentry.version>8.57.0</sentry.version>
     </properties>
 
     <dependencies>
@@ -63,9 +64,32 @@
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
+        <!-- Push registry for the alarm metrics only (config/CloudWatchMetricsConfig).
+             Off unless dari.metrics.cloudwatch.enabled; production turns it on.
+             Micrometer's version comes from the Boot parent. The async client
+             sends over Netty, so the SDK's Apache client is not needed. -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-cloudwatch2</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+        <!-- Error tracking for unhandled 5xx (common/error/SentryErrorReporter).
+             The core SDK only, no Spring integration: it has no dependencies,
+             installs no servlet filter, uncaught-exception handler or log
+             appender, and sends only what the reporter builds and scrubs. -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry</artifactId>
+            <version>${sentry.version}</version>
         </dependency>
 
         <!--

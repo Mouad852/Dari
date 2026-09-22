@@ -1,0 +1,48 @@
+{
+  "AlarmName": "dari-05-media-cleanup-failing",
+  "AlarmDescription": "Alert 5 of 6. Deleted photos and avatars may still be public: for the whole last hour at least one media cleanup row kept failing (dari.media.cleanup_failures > 0), or at least one row is DEAD (the worker gave up; in S3 mode the object may still be readable). Evaluated every minute over a sliding hour. Runbook: docs/PRODUCTION_OPERATIONS.md, Monitoring > First response > Storage failing, and Dead media cleanup rows.",
+  "ActionsEnabled": true,
+  "AlarmActions": ["__SNS_TOPIC_ARN__"],
+  "OKActions": ["__SNS_TOPIC_ARN__"],
+  "Metrics": [
+    {
+      "Id": "failing_floor",
+      "Label": "Lowest count of failing cleanup rows in the last hour",
+      "ReturnData": false,
+      "MetricStat": {
+        "Metric": {
+          "Namespace": "Dari/Api",
+          "MetricName": "dari.media.cleanup_failures.value",
+          "Dimensions": []
+        },
+        "Period": 3600,
+        "Stat": "Minimum"
+      }
+    },
+    {
+      "Id": "dead_peak",
+      "Label": "Highest DEAD cleanup count in the last hour",
+      "ReturnData": false,
+      "MetricStat": {
+        "Metric": {
+          "Namespace": "Dari/Api",
+          "MetricName": "dari.media.cleanup_depth.value",
+          "Dimensions": [{ "Name": "status", "Value": "DEAD" }]
+        },
+        "Period": 3600,
+        "Stat": "Maximum"
+      }
+    },
+    {
+      "Id": "failing",
+      "Label": "1 when cleanup failed for a whole hour or any row is DEAD",
+      "ReturnData": true,
+      "Expression": "IF(FILL(failing_floor, 0) > 0 OR FILL(dead_peak, 0) > 0, 1, 0)"
+    }
+  ],
+  "EvaluationPeriods": 1,
+  "DatapointsToAlarm": 1,
+  "Threshold": 1,
+  "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+  "TreatMissingData": "notBreaching"
+}

@@ -1,0 +1,48 @@
+{
+  "AlarmName": "dari-04-notification-outbox-stuck",
+  "AlarmDescription": "Alert 4 of 6. Email notifications are not going out: over the last hour the outbox never drained to zero PENDING rows (delivery stopped or cannot keep up), or at least one row is DEAD (gave up after its retries). Evaluated every minute over a sliding hour, so a DEAD row alerts within minutes; the alarm returns to OK an hour after the last DEAD row is re-queued. Runbook: docs/PRODUCTION_OPERATIONS.md, Monitoring > First response > Notification outbox stuck.",
+  "ActionsEnabled": true,
+  "AlarmActions": ["__SNS_TOPIC_ARN__"],
+  "OKActions": ["__SNS_TOPIC_ARN__"],
+  "Metrics": [
+    {
+      "Id": "pending_floor",
+      "Label": "Lowest PENDING count in the last hour",
+      "ReturnData": false,
+      "MetricStat": {
+        "Metric": {
+          "Namespace": "Dari/Api",
+          "MetricName": "dari.notifications.outbox_depth.value",
+          "Dimensions": [{ "Name": "status", "Value": "PENDING" }]
+        },
+        "Period": 3600,
+        "Stat": "Minimum"
+      }
+    },
+    {
+      "Id": "dead_peak",
+      "Label": "Highest DEAD count in the last hour",
+      "ReturnData": false,
+      "MetricStat": {
+        "Metric": {
+          "Namespace": "Dari/Api",
+          "MetricName": "dari.notifications.outbox_depth.value",
+          "Dimensions": [{ "Name": "status", "Value": "DEAD" }]
+        },
+        "Period": 3600,
+        "Stat": "Maximum"
+      }
+    },
+    {
+      "Id": "stuck",
+      "Label": "1 when PENDING never drained in an hour or any row is DEAD",
+      "ReturnData": true,
+      "Expression": "IF(FILL(pending_floor, 0) > 0 OR FILL(dead_peak, 0) > 0, 1, 0)"
+    }
+  ],
+  "EvaluationPeriods": 1,
+  "DatapointsToAlarm": 1,
+  "Threshold": 1,
+  "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+  "TreatMissingData": "notBreaching"
+}

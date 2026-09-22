@@ -50,6 +50,9 @@ const PRODUCTION_WEB = 'http://127.0.0.1:3111';
 const PRODUCTION_MOCK_PORT = 4443;
 const PRODUCTION_MEDIA = `https://media.example.invalid:${PRODUCTION_MOCK_PORT}`;
 const PRODUCTION_CDN = `https://cdn.example.invalid:${PRODUCTION_MOCK_PORT}`;
+// The mock API also plays the error-tracking ingest endpoint; the key is a placeholder.
+const PRODUCTION_ERRORS = `https://errors.example.invalid:${PRODUCTION_MOCK_PORT}`;
+const PRODUCTION_SENTRY_DSN = `https://e2epublickeyplaceholder@errors.example.invalid:${PRODUCTION_MOCK_PORT}/42`;
 export const PRODUCTION_SSR_KEY = 'e2e-production-ssr-shared-secret-placeholder';
 const resolverPreload = path.join(__dirname, 'resolve-example-invalid.cjs').replace(/\\/g, '/');
 
@@ -63,6 +66,7 @@ const productionEnv = {
   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: 'e2e.firebaseapp.com',
   NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'e2e-project',
   NEXT_PUBLIC_RELEASE_VERSION: 'e2e',
+  NEXT_PUBLIC_SENTRY_DSN: PRODUCTION_SENTRY_DSN,
   NEXT_PUBLIC_E2E_TEST_MODE: '',
   ...legalPlaceholders,
   DARI_WEB_DIST_DIR: '.next-production-e2e',
@@ -104,6 +108,7 @@ export default defineConfig({
         cdnOrigin: PRODUCTION_CDN,
         mockUrl: `https://127.0.0.1:${PRODUCTION_MOCK_PORT}`,
         publicApiOrigin: `https://api.public.example.invalid:${PRODUCTION_MOCK_PORT}`,
+        errorsOrigin: PRODUCTION_ERRORS,
       },
     },
   ],

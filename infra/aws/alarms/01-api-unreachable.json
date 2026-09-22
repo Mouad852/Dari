@@ -1,0 +1,19 @@
+{
+  "AlarmName": "dari-01-api-unreachable",
+  "AlarmDescription": "Alert 1 of 6. The API is not answering from the internet: the Route 53 health check on https://<api domain>/actuator/health/liveness has been unhealthy (or silent) for 3 consecutive minutes. Route 53 health-check metrics exist only in us-east-1, so this alarm and its SNS topic live there. Runbook: docs/PRODUCTION_OPERATIONS.md, Monitoring > First response > API down.",
+  "ActionsEnabled": true,
+  "AlarmActions": ["__SNS_TOPIC_ARN_US_EAST_1__"],
+  "OKActions": ["__SNS_TOPIC_ARN_US_EAST_1__"],
+  "Namespace": "AWS/Route53",
+  "MetricName": "HealthCheckStatus",
+  "Dimensions": [
+    { "Name": "HealthCheckId", "Value": "__API_HEALTH_CHECK_ID__" }
+  ],
+  "Statistic": "Minimum",
+  "Period": 60,
+  "EvaluationPeriods": 3,
+  "DatapointsToAlarm": 3,
+  "Threshold": 1,
+  "ComparisonOperator": "LessThanThreshold",
+  "TreatMissingData": "breaching"
+}

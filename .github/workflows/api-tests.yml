@@ -9,6 +9,7 @@ on:
       - 'apps/web/**'
       - 'apps/mobile/**'
       - 'infra/scripts/**'
+      - 'infra/aws/**'
       - '.github/workflows/api-tests.yml'
   pull_request:
     paths:
@@ -18,6 +19,7 @@ on:
       - 'apps/web/**'
       - 'apps/mobile/**'
       - 'infra/scripts/**'
+      - 'infra/aws/**'
       - '.github/workflows/api-tests.yml'
 
 permissions:

@@ -11,6 +11,9 @@ import ma.dari.api.moderation.ReportRepository;
 import ma.dari.api.moderation.ReportStatus;
 import ma.dari.api.notification.NotificationOutboxRepository;
 import ma.dari.api.notification.NotificationOutboxStatus;
+import org.springframework.boot.actuate.health.HealthContributorRegistry;
+import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.actuate.health.Status;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -33,15 +36,17 @@ public class MetricsConfig {
     private final ReportRepository reports;
     private final NotificationOutboxRepository outbox;
     private final MediaCleanupRepository mediaCleanups;
+    private final HealthContributorRegistry health;
 
     public MetricsConfig(MeterRegistry registry, ListingRepository listings,
                          ReportRepository reports, NotificationOutboxRepository outbox,
-                         MediaCleanupRepository mediaCleanups) {
+                         MediaCleanupRepository mediaCleanups, HealthContributorRegistry health) {
         this.registry = registry;
         this.listings = listings;
         this.reports = reports;
         this.outbox = outbox;
         this.mediaCleanups = mediaCleanups;
+        this.health = health;
     }
 
     @PostConstruct
@@ -82,5 +87,18 @@ public class MetricsConfig {
                         r -> r.countByStatusAndAttemptsGreaterThan(MediaCleanupStatus.PENDING, 0))
                 .description("Media cleanup rows that have already failed and will be retried")
                 .register(registry);
+
+        // The readiness probe's own database check, as a number an alarm can
+        // read: 1 while it passes, 0 when a connection cannot be had or fails
+        // validation (database down, or the pool exhausted past its timeout).
+        // Unlike the ALB's view of readiness, a dead process publishes nothing
+        // here rather than 0, so this separates "database" from "API down".
+        if (health.getContributor("db") instanceof HealthIndicator database) {
+            Gauge.builder("dari.database.reachable", database,
+                            indicator -> Status.UP.equals(indicator.health().getStatus()) ? 1 : 0)
+                    .description("1 when the readiness database check passes, 0 when it fails")
+                    .strongReference(true)
+                    .register(registry);
+        }
     }
 }

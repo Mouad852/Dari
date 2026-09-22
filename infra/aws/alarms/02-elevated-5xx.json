@@ -1,0 +1,71 @@
+{
+  "AlarmName": "dari-02-elevated-5xx",
+  "AlarmDescription": "Alert 2 of 6. For two consecutive 5-minute periods, at least __FIVE_XX_RATE_PERCENT__% of API responses were 5xx, with at least __FIVE_XX_MIN_REQUESTS__ requests in the period. Counts both 5xx the API returned (HTTPCode_Target_5XX_Count) and 502/503/504 the ALB generated (HTTPCode_ELB_5XX_Count). Error-tracking events carry the cause. Runbook: docs/PRODUCTION_OPERATIONS.md, Monitoring > First response > Elevated 5xx.",
+  "ActionsEnabled": true,
+  "AlarmActions": ["__SNS_TOPIC_ARN__"],
+  "OKActions": ["__SNS_TOPIC_ARN__"],
+  "Metrics": [
+    {
+      "Id": "requests",
+      "ReturnData": false,
+      "MetricStat": {
+        "Metric": {
+          "Namespace": "AWS/ApplicationELB",
+          "MetricName": "RequestCount",
+          "Dimensions": [{ "Name": "LoadBalancer", "Value": "__ALB_ARN_SUFFIX__" }]
+        },
+        "Period": 300,
+        "Stat": "Sum"
+      }
+    },
+    {
+      "Id": "target_5xx",
+      "ReturnData": false,
+      "MetricStat": {
+        "Metric": {
+          "Namespace": "AWS/ApplicationELB",
+          "MetricName": "HTTPCode_Target_5XX_Count",
+          "Dimensions": [{ "Name": "LoadBalancer", "Value": "__ALB_ARN_SUFFIX__" }]
+        },
+        "Period": 300,
+        "Stat": "Sum"
+      }
+    },
+    {
+      "Id": "alb_5xx",
+      "ReturnData": false,
+      "MetricStat": {
+        "Metric": {
+          "Namespace": "AWS/ApplicationELB",
+          "MetricName": "HTTPCode_ELB_5XX_Count",
+          "Dimensions": [{ "Name": "LoadBalancer", "Value": "__ALB_ARN_SUFFIX__" }]
+        },
+        "Period": 300,
+        "Stat": "Sum"
+      }
+    },
+    {
+      "Id": "errors",
+      "Label": "5xx responses (API + ALB)",
+      "ReturnData": false,
+      "Expression": "FILL(target_5xx, 0) + FILL(alb_5xx, 0)"
+    },
+    {
+      "Id": "volume",
+      "Label": "Responses (an ALB 503 without a target is not in RequestCount)",
+      "ReturnData": false,
+      "Expression": "MAX([FILL(requests, 0), errors])"
+    },
+    {
+      "Id": "breach",
+      "Label": "1 when the 5xx rate is at or above the threshold with enough traffic",
+      "ReturnData": true,
+      "Expression": "IF(volume >= __FIVE_XX_MIN_REQUESTS__ AND 100 * errors >= __FIVE_XX_RATE_PERCENT__ * volume, 1, 0)"
+    }
+  ],
+  "EvaluationPeriods": 2,
+  "DatapointsToAlarm": 2,
+  "Threshold": 1,
+  "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+  "TreatMissingData": "notBreaching"
+}

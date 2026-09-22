@@ -124,6 +124,22 @@ dari:
   # Tags every error report and is shown at /actuator/info. Production requires
   # it; everywhere else an unset value reads as "development".
   release-version: ${DARI_RELEASE_VERSION:development}
+  # Optional. Without a DSN unhandled errors are only logged and counted; see
+  # common/error/SentryErrorReporter for exactly what an event may contain.
+  error-reporting:
+    sentry-dsn: ${SENTRY_DSN:}
+    environment: ${SENTRY_ENVIRONMENT:development}
+  # CloudWatch push of the five alarm metrics (config/CloudWatchMetricsConfig).
+  # Off here; application-production.yml turns it on. Namespace, step and the
+  # allow-list are what infra/aws/alarms is written against: change them together.
+  metrics:
+    cloudwatch:
+      enabled: ${DARI_METRICS_CLOUDWATCH_ENABLED:false}
+      namespace: Dari/Api
+      step: 1m                     # standard resolution; alarms read 1-5 min periods
+      region: ${DARI_METRICS_CLOUDWATCH_REGION:${AWS_REGION:}}
+      # Tests and VPC-endpoint setups only; empty means the regional AWS endpoint.
+      endpoint: ${DARI_METRICS_CLOUDWATCH_ENDPOINT:}
   web-origins: ${DARI_WEB_ORIGIN:http://localhost:3000}
   upload-dir: ${DARI_UPLOAD_DIR:./uploads}
   media:

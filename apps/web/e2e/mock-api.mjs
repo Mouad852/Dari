@@ -137,6 +137,17 @@ const listingOneDetail = () => ({
  */
 const ssrAudit = { keyed: [], unkeyed: [], wrongKey: [] };
 
+/*
+ * A stand-in for the error-tracking ingest endpoint (the production project's
+ * NEXT_PUBLIC_SENTRY_DSN points here, never at the vendor). Keeps each
+ * envelope exactly as the browser sent it, plus the request headers that
+ * could leak something.
+ */
+const errorReports = [];
+
+/** A listing whose API lookup fails the way a broken upstream does (same id in error-reporting.spec.ts). */
+const BROKEN_LISTING_ID = '0b5e1a7c-9f3d-4c2a-8e61-5d4f3c2b1a09';
+
 function auditSsrKey(request, call) {
   const presented = request.headers['x-dari-ssr-key'];
   if (presented === undefined) ssrAudit.unkeyed.push(call);
@@ -189,6 +200,21 @@ async function handle(request, response) {
 
   if (url.pathname === '/__ssr-audit' && request.method === 'GET') return sendJson(response, 200, ssrAudit);
 
+  if (/^\/api\/\d+\/envelope\/?$/.test(url.pathname) && request.method === 'POST') {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    errorReports.push({
+      body: Buffer.concat(chunks).toString('utf8'),
+      query: url.search,
+      cookie: request.headers.cookie ?? null,
+      referer: request.headers.referer ?? null,
+      authorization: request.headers.authorization ?? null,
+    });
+    return sendJson(response, 200, { id: 'e2e' });
+  }
+  if (url.pathname === '/__error-reports' && request.method === 'GET') return sendJson(response, 200, errorReports);
+  if (url.pathname === '/__error-reports' && request.method === 'DELETE') { errorReports.length = 0; return sendNoContent(response); }
+
   const prefix = '/api/v1';
   if (!url.pathname.startsWith(prefix)) return error(response, 404, 'NOT_FOUND', 'Route inconnue');
   const path = url.pathname.slice(prefix.length) || '/';
@@ -236,6 +262,10 @@ async function handle(request, response) {
     return sendJson(response, 201, photo);
   }
   if (path === '/listings/listing-1' && method === 'GET') return sendJson(response, 200, listingOneDetail());
+  if (path === `/listings/${BROKEN_LISTING_ID}` && method === 'GET') {
+    response.writeHead(502, { 'content-type': 'text/html' });
+    return response.end('<html><body>502 Bad Gateway</body></html>');
+  }
   if (path === '/users/other-user' && method === 'GET') return sendJson(response, 200, { id: 'other-user', displayName: 'Amina', city: 'Rabat', bio: null, avatarUrl: null, verification: 'EMAIL', memberSince: now, activeListingCount: 1 });
 
   if (path === '/favorites/ids' && method === 'GET') return sendJson(response, 200, [...state.favorites]);
