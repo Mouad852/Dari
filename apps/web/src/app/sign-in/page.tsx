@@ -8,6 +8,21 @@ import { sendPasswordReset, signInFirebase } from '@/lib/firebase';
 import { ApiError, apiFetch } from '@/lib/api';
 import { ensureProfile } from '@/lib/profile';
 
+/**
+ * Where to land after signing in.
+ *
+ * apiFetch sends a visitor here with ?next= when their session ends mid-page,
+ * so returning them to /account would lose the thread, listing or draft they
+ * were on. Read from location rather than useSearchParams: this page is
+ * prerendered, and that hook would make it opt out of static rendering.
+ * Only a same-origin path is accepted — never "//host" or a full URL.
+ */
+function returnPath(): string | null {
+  if (typeof window === 'undefined') return null;
+  const value = new URLSearchParams(window.location.search).get('next');
+  return value && value.startsWith('/') && !value.startsWith('//') ? value : null;
+}
+
 export default function SignInPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -83,12 +98,13 @@ export default function SignInPage() {
         router.push('/profile-recovery');
         return;
       }
+      const destination = returnPath() ?? '/account';
       try {
         await apiFetch('/users/me', { token: await credential.user.getIdToken(true) });
-        router.push('/account');
+        router.push(destination);
       } catch (cause) {
         if (cause instanceof ApiError && cause.isMissingProfile) {
-          try { await ensureProfile(); router.push('/account'); }
+          try { await ensureProfile(); router.push(destination); }
           catch { router.push('/profile-recovery'); }
         } else throw cause;
       }

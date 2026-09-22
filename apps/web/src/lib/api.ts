@@ -91,7 +91,86 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   timeoutMs?: number;
 }
 
+/**
+ * A 401 the browser can recover from: the token was rejected, not the person.
+ *
+ * Both codes come from the auth filter or the @CurrentUser resolver, i.e.
+ * before the handler runs. 403 is deliberately absent — a suspended account, a
+ * non-owner or a non-admin is *authenticated*, and signing them out would
+ * hide why they were refused.
+ */
+function isRejectedSession(cause: unknown): cause is ApiError {
+  return cause instanceof ApiError
+    && cause.status === 401
+    && (cause.code === ErrorCode.INVALID_TOKEN || cause.code === ErrorCode.UNAUTHENTICATED);
+}
+
+/**
+ * The one forced refresh per stale token.
+ *
+ * Every authenticated page asks for a token on mount and the nav polls its
+ * badge, so an hour-old session produces several 401s within milliseconds.
+ * Keyed on the token that was rejected, and kept after it settles, so all of
+ * them await the same Firebase call and a request whose 401 arrives late
+ * reuses the answer instead of asking again.
+ */
+let forcedRefresh: { stale: string; fresh: Promise<string | null> } | undefined;
+
+function refreshRejectedToken(stale: string): Promise<string | null> {
+  if (forcedRefresh?.stale === stale) return forcedRefresh.fresh;
+  const fresh = import('./firebase').then(({ getIdToken }) => getIdToken(true)).catch(() => null);
+  forcedRefresh = { stale, fresh };
+  return fresh;
+}
+
+/** One sign-out, however many requests discover the session is gone. */
+let endingSession: Promise<void> | undefined;
+
+function endSession(): Promise<void> {
+  endingSession ??= (async () => {
+    await import('./firebase').then(({ signOut }) => signOut()).catch(() => undefined);
+    const here = `${window.location.pathname}${window.location.search}`;
+    if (window.location.pathname === '/sign-in') return;
+    // A full navigation, not a router push: every page's state was built for a
+    // session that no longer exists.
+    window.location.assign(`/sign-in?next=${encodeURIComponent(here)}`);
+  })();
+  return endingSession;
+}
+
+/**
+ * Sends the request, and on a rejected session forces one token refresh and
+ * replays it exactly once.
+ *
+ * Replaying a POST or DELETE is safe here specifically because a 401 is raised
+ * before any handler work: FirebaseAuthFilter and CurrentUserArgumentResolver
+ * both reject the request during authentication, and POST /users checks the
+ * principal in its first statement. Nothing was executed, so nothing can
+ * happen twice. If the replay is rejected too, the session is over: sign out
+ * and send the visitor to /sign-in with the path they were on.
+ */
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  try {
+    return await sendRequest<T>(path, options);
+  } catch (cause) {
+    const stale = options.token;
+    if (!stale || typeof window === 'undefined' || !isRejectedSession(cause)) throw cause;
+
+    const fresh = await refreshRejectedToken(stale);
+    if (fresh && fresh !== stale) {
+      try {
+        return await sendRequest<T>(path, { ...options, token: fresh });
+      } catch (replayed) {
+        if (!isRejectedSession(replayed)) throw replayed;
+      }
+    }
+
+    void endSession();
+    throw cause;
+  }
+}
+
+async function sendRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, token, headers, timeoutMs = 15000, signal, ...rest } = options;
   const controller = new AbortController();
   let timedOut = false;

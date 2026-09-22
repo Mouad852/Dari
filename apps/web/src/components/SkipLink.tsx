@@ -20,17 +20,31 @@ import { usePathname } from 'next/navigation';
  * in the DOM -- it has no way to know the `onClick` below does the real
  * work. Keyed on `pathname`, the same pattern `SiteNav` already uses, since
  * a client-side transition swaps `{children}` (a new `<main>`) without
- * remounting this component. The click handler itself re-queries `<main>`
- * directly rather than trusting the id, so it stays correct even in the
- * narrow window between a page's loading and loaded `<main>` (two pages in
- * this app swap one for the other without a pathname change).
+ * remounting this component. Both the click handler and the id
+ * assignment re-query `<main>` rather than trusting a single lookup, so they
+ * stay correct when a route's loading.tsx `<main>` is replaced by the loaded
+ * page's without a pathname change.
  */
 export function SkipLink() {
   const pathname = usePathname();
 
   useEffect(() => {
-    const main = document.querySelector('main');
-    if (main) main.id = 'main-content';
+    const assign = () => {
+      const main = document.querySelector('main');
+      if (main && main.id !== 'main-content') main.id = 'main-content';
+    };
+    assign();
+
+    // Keyed on pathname alone, the id was assigned to whichever <main> existed
+    // at that moment -- and a route with a loading.tsx renders one <main> for
+    // its skeleton and swaps in another when the content lands, with no
+    // pathname change. The id stayed on the discarded element, "#main-content"
+    // resolved to nothing, and axe failed both its skip-link and region rules
+    // on /account. Following the element rather than the route is what the
+    // click handler below already does.
+    const observer = new MutationObserver(assign);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, [pathname]);
 
   return (

@@ -90,6 +90,17 @@ const detail = (id = 'listing-1', status = 'PENDING_REVIEW') => ({
   rooms: [],
 });
 
+/*
+ * Which bearer tokens the API treats as expired (401 INVALID_TOKEN) or as
+ * belonging to someone who may not do this (403). Set by POST /__auth; this is
+ * how the web app's token-refresh-and-replay path is exercised, since the mock
+ * otherwise accepts every token.
+ */
+const auth = { rejected: new Set(), forbidden: new Set() };
+
+/** Every /api/v1 call, so a test can prove a replayed write executed once. */
+const calls = [];
+
 const state = {
   favorites: new Set(),
   draft: null,
@@ -101,6 +112,9 @@ const state = {
 };
 
 function reset() {
+  auth.rejected = new Set();
+  auth.forbidden = new Set();
+  calls.length = 0;
   state.favorites = new Set();
   state.draft = null;
   state.submitted = false;
@@ -200,6 +214,14 @@ async function handle(request, response) {
 
   if (url.pathname === '/__ssr-audit' && request.method === 'GET') return sendJson(response, 200, ssrAudit);
 
+  if (url.pathname === '/__auth' && request.method === 'POST') {
+    const body = await readBody(request);
+    auth.rejected = new Set(body.rejectTokens ?? []);
+    auth.forbidden = new Set(body.forbidTokens ?? []);
+    return sendNoContent(response);
+  }
+  if (url.pathname === '/__calls' && request.method === 'GET') return sendJson(response, 200, calls);
+
   if (/^\/api\/\d+\/envelope\/?$/.test(url.pathname) && request.method === 'POST') {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
@@ -220,6 +242,17 @@ async function handle(request, response) {
   const path = url.pathname.slice(prefix.length) || '/';
   const method = request.method;
   auditSsrKey(request, `${method} ${path}${url.search}`);
+
+  const bearer = (request.headers.authorization ?? '').replace(/^Bearer /, '');
+  if (bearer && auth.rejected.has(bearer)) {
+    calls.push({ method, path, token: bearer, status: 401 });
+    return error(response, 401, 'INVALID_TOKEN', 'Session expirée');
+  }
+  if (bearer && auth.forbidden.has(bearer)) {
+    calls.push({ method, path, token: bearer, status: 403 });
+    return error(response, 403, 'FORBIDDEN', 'Accès refusé');
+  }
+  calls.push({ method, path, token: bearer || null, status: 200 });
 
   if (path === '/users/me' && method === 'GET') return sendJson(response, 200, state.deleted ? { ...me(), displayName: '' } : me());
   if (path === '/users' && method === 'POST') return sendJson(response, 201, me());

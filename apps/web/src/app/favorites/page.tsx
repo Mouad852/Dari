@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ListingCard } from '@/components/ds/ListingCard';
 import { apiFetch, ApiError, resolveMediaUrl, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
+import { ErrorNotice } from '@/components/ErrorNotice';
 import { amount } from '@/lib/format';
 import { UNAVAILABLE_REASON_LABELS } from '@/lib/labels';
 import type { PublicListing } from '@/types/api';
@@ -28,7 +29,9 @@ export default function FavoritesPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  // Bumped by the error notice's retry, which is what re-runs the load effect.
+  const [reloadKey, setReloadKey] = useState(0);
   const [token, setToken] = useState<string | null>(null);
   const loadMoreRef = useRef<HTMLButtonElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
@@ -100,7 +103,7 @@ export default function FavoritesPage() {
           setNextCursor(page.nextCursor);
         }
       } catch (cause) {
-        if (isCurrent) setError(cause instanceof ApiError ? cause.message : 'Impossible de charger vos favoris.');
+        if (isCurrent) setError(cause);
       }
     }
 
@@ -108,7 +111,7 @@ export default function FavoritesPage() {
     return () => {
       isCurrent = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   const handleLoadMore = () => {
     if (!nextCursor || !token || loadingMore) return;
@@ -123,7 +126,7 @@ export default function FavoritesPage() {
         setItems((prev) => [...(prev ?? []), ...page.items]);
         setNextCursor(page.nextCursor);
       } catch (cause) {
-        setError(cause instanceof ApiError ? cause.message : 'Impossible de charger la suite.');
+        setError(cause);
       } finally {
         setLoadingMore(false);
       }
@@ -188,26 +191,21 @@ export default function FavoritesPage() {
         </header>
 
         {error ? (
-          <section
-            style={{
-              background: 'var(--surface-card)',
-              border: '1px solid var(--border-hairline)',
-              borderRadius: 'var(--radius-card)',
-              boxShadow: 'var(--shadow-xs)',
-              padding: 'var(--space-5)',
-              display: 'grid',
-              gap: 'var(--space-3)',
+          <ErrorNotice
+            error={error}
+            fallback="Impossible de charger vos favoris."
+            onRetry={typeof error === 'string' ? undefined : () => {
+              setError(null);
+              setItems(null);
+              setReloadKey((key) => key + 1);
             }}
           >
-            <p role="alert" style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>
-              {error}
-            </p>
             {!token ? (
               <Link href="/sign-in" style={{ color: 'var(--brand)', font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)' }}>
                 Se connecter
               </Link>
             ) : null}
-          </section>
+          </ErrorNotice>
         ) : !items ? (
           <p style={{ color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>Chargement de vos favoris…</p>
         ) : items.length === 0 ? (

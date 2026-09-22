@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
-import { apiFetch, ApiError, resolveMediaUrl, type CursorPage } from '@/lib/api';
+import { apiFetch, resolveMediaUrl, type CursorPage } from '@/lib/api';
 import { centerFor } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
 import { Badge } from '@/components/ds/Badge';
@@ -16,6 +16,7 @@ import { ListingCard } from '@/components/ds/ListingCard';
 import { Select } from '@/components/ds/Select';
 import { Tabs } from '@/components/ds/Tabs';
 import { Tag } from '@/components/ds/Tag';
+import { ErrorNotice } from '@/components/ErrorNotice';
 import { amount, distance } from '@/lib/format';
 import { AMENITY_LABELS } from '@/lib/labels';
 import type { MapPin, PublicListing } from '@/types/api';
@@ -319,8 +320,10 @@ function SearchResultsPageContent() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [mapLoading, setMapLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [mapError, setMapError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [mapError, setMapError] = useState<unknown>(null);
+  // Bumped by the error notices' retry, which is what re-runs the load effects.
+  const [reloadKey, setReloadKey] = useState(0);
 
   const hasRadiusMode = radius.trim().length > 0;
   const effectiveRadiusM = Number.parseInt(radius, 10);
@@ -550,7 +553,7 @@ function SearchResultsPageContent() {
         setError(null);
       } catch (err) {
         if (!isCurrent) return;
-        setError(err instanceof ApiError ? err.message : 'Une erreur est survenue');
+        setError(err);
       } finally {
         if (isCurrent) {
           setLoading(false);
@@ -566,7 +569,7 @@ function SearchResultsPageContent() {
     return () => {
       isCurrent = false;
     };
-  }, [city, currentSort, effectiveRadiusM, hasRadiusMode, neighborhood, referencePoint.lat, referencePoint.lng, searchParams, view]);
+  }, [city, currentSort, effectiveRadiusM, hasRadiusMode, neighborhood, referencePoint.lat, referencePoint.lng, reloadKey, searchParams, view]);
 
   useEffect(() => {
     if (view !== 'map') return;
@@ -608,7 +611,7 @@ function SearchResultsPageContent() {
         setMapPins(pins);
       } catch (err) {
         if (!isCurrent) return;
-        setMapError(err instanceof ApiError ? err.message : 'Une erreur est survenue');
+        setMapError(err);
       } finally {
         if (isCurrent) setMapLoading(false);
       }
@@ -619,7 +622,7 @@ function SearchResultsPageContent() {
     return () => {
       isCurrent = false;
     };
-  }, [city, currentSort, effectiveRadiusM, furnishing, hasRadiusMode, neighborhood, priceMax, priceMin, propertyType, referencePoint.lat, referencePoint.lng, roomType, searchParams, view]);
+  }, [city, currentSort, effectiveRadiusM, furnishing, hasRadiusMode, neighborhood, priceMax, priceMin, propertyType, referencePoint.lat, referencePoint.lng, reloadKey, roomType, searchParams, view]);
 
   /**
    * How many filters are actually narrowing the search.
@@ -707,7 +710,7 @@ function SearchResultsPageContent() {
         setListings((prev) => [...prev, ...page.items]);
         setNextCursor(page.nextCursor);
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Une erreur est survenue');
+        setError(err);
       } finally {
         setLoadingMore(false);
       }
@@ -1019,13 +1022,29 @@ function SearchResultsPageContent() {
 
           <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
             {error ? (
-              <div style={{ ...cardStyle, padding: '1.5rem', color: 'var(--text-heading)' }}>{error}</div>
+              <ErrorNotice
+                error={error}
+                fallback="Impossible de charger les annonces."
+                onRetry={() => {
+                  setError(null);
+                  setReloadKey((key) => key + 1);
+                }}
+              />
             ) : null}
 
             {view === 'map' ? (
               <div style={{ ...cardStyle, overflow: 'hidden', minHeight: 620 }}>
                 {mapError ? (
-                  <div style={{ padding: '1.5rem', color: 'var(--text-heading)' }}>{mapError}</div>
+                  <div style={{ padding: '1.5rem' }}>
+                    <ErrorNotice
+                      error={mapError}
+                      fallback="Impossible de charger la carte."
+                      onRetry={() => {
+                        setMapError(null);
+                        setReloadKey((key) => key + 1);
+                      }}
+                    />
+                  </div>
                 ) : mapLoading ? (
                   <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Chargement de la carte…</div>
                 ) : (

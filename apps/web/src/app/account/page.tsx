@@ -6,6 +6,7 @@ import { Bell, ChevronRight, CreditCard, Lock, LogOut, PencilLine, ShieldCheck, 
 import { useEffect, useRef, useState } from 'react';
 
 import { apiFetch, ApiError, type CursorPage } from '@/lib/api';
+import { ErrorNotice } from '@/components/ErrorNotice';
 import { getIdToken, signOut } from '@/lib/firebase';
 import { VERIFICATION_LABELS } from '@/lib/labels';
 import type { ListingDetail, Me } from '@/types/api';
@@ -46,7 +47,9 @@ export default function AccountPage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Me | null>(null);
   const [stats, setStats] = useState<AccountStats | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  // Bumped by the error notice's retry, which is what re-runs the load effect.
+  const [reloadKey, setReloadKey] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
 
@@ -74,9 +77,10 @@ export default function AccountPage() {
         if (isCurrent) setProfile(result);
       } catch (cause) {
         if (isCurrent) {
+          // A missing profile is a step to take, not a failure to report.
           setError(cause instanceof ApiError && cause.isMissingProfile
             ? 'Votre profil Dari doit encore être créé.'
-            : cause instanceof ApiError ? cause.message : 'Impossible de charger votre compte.');
+            : cause);
         }
         return;
       }
@@ -106,7 +110,7 @@ export default function AccountPage() {
     return () => {
       isCurrent = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   const handleSignOut = () => {
     if (signingOut) return;
@@ -116,10 +120,18 @@ export default function AccountPage() {
 
   if (error) {
     return (
-      <main style={{ minHeight: '100vh', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-muted)' }}>
+      <main style={{ minHeight: '100vh', padding: 'var(--space-8) var(--gutter-mobile)', display: 'grid', gap: 'var(--space-4)', alignContent: 'start' }}>
         <h1 style={{ margin: 0, font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Votre compte</h1>
-        <p role="alert">{error}</p>
-        <Link href="/sign-in" style={{ color: 'var(--brand)' }}>Se connecter</Link>
+        <ErrorNotice
+          error={error}
+          fallback="Impossible de charger votre compte."
+          onRetry={typeof error === 'string' ? undefined : () => {
+            setError(null);
+            setReloadKey((key) => key + 1);
+          }}
+        >
+          <Link href="/sign-in" style={{ color: 'var(--brand)' }}>Se connecter</Link>
+        </ErrorNotice>
       </main>
     );
   }

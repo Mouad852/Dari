@@ -6,6 +6,7 @@ import { use, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ds/Button';
 import { Icon } from '@/components/ds/Icon';
 import { IconButton } from '@/components/ds/IconButton';
+import { ErrorNotice } from '@/components/ErrorNotice';
 import { apiFetch, ApiError, resolveMediaUrl, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { clockTime, dayLabel, rentPerMonth } from '@/lib/format';
@@ -46,7 +47,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  // Bumped by the error notice's retry, which is what re-runs the load effect.
+  const [reloadKey, setReloadKey] = useState(0);
   const [sendError, setSendError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -106,9 +109,11 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         }
       } catch (cause) {
         if (isCurrent) {
+          // 403 keeps its own sentence: the server's "Accès refusé" says
+          // nothing about which conversation the visitor tried to open.
           setError(cause instanceof ApiError && cause.status === 403
             ? 'Vous n’avez pas accès à cette conversation.'
-            : cause instanceof ApiError ? cause.message : 'Impossible de charger cette conversation.');
+            : cause);
         }
       }
     }
@@ -117,7 +122,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     return () => {
       isCurrent = false;
     };
-  }, [id]);
+  }, [id, reloadKey]);
 
   /**
    * Read receipts: "Vu" under the current user's own trailing message once
@@ -308,12 +313,20 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   if (error) {
     return (
       <main style={{ minHeight: '100vh', padding: 'var(--space-8) var(--gutter-mobile)', display: 'grid', gap: 'var(--space-4)', justifyItems: 'start', alignContent: 'start' }}>
-        <h1 style={{ margin: 0, font: 'var(--type-h2)', color: 'var(--text-heading)' }}>{error}</h1>
-        <Link href={token ? '/messages' : '/sign-in'} style={{ textDecoration: 'none' }}>
-          <Button variant="secondary" iconLeft={token ? 'arrow-left' : undefined}>
-            {token ? 'Retour aux messages' : 'Se connecter'}
-          </Button>
-        </Link>
+        <ErrorNotice
+          error={error}
+          fallback="Impossible de charger cette conversation."
+          onRetry={typeof error === 'string' ? undefined : () => {
+            setError(null);
+            setReloadKey((key) => key + 1);
+          }}
+        >
+          <Link href={token ? '/messages' : '/sign-in'} style={{ textDecoration: 'none' }}>
+            <Button variant="secondary" iconLeft={token ? 'arrow-left' : undefined}>
+              {token ? 'Retour aux messages' : 'Se connecter'}
+            </Button>
+          </Link>
+        </ErrorNotice>
       </main>
     );
   }

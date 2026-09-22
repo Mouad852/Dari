@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ds/Button';
 import { Card } from '@/components/ds/Card';
-import { apiFetch, ApiError, type CursorPage } from '@/lib/api';
+import { ErrorNotice } from '@/components/ErrorNotice';
+import { apiFetch, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { relativeTime } from '@/lib/format';
 import type { Conversation } from '@/types/api';
@@ -36,7 +37,9 @@ export default function InboxPage() {
   const [conversations, setConversations] = useState<Conversation[] | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  // Bumped by the error notice's retry, which is what re-runs the load effect.
+  const [reloadKey, setReloadKey] = useState(0);
   const [token, setToken] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
 
@@ -94,7 +97,7 @@ export default function InboxPage() {
           setNextCursor(page.nextCursor);
         }
       } catch (cause) {
-        if (isCurrent) setError(cause instanceof ApiError ? cause.message : 'Impossible de charger vos conversations.');
+        if (isCurrent) setError(cause);
       }
     }
 
@@ -102,7 +105,7 @@ export default function InboxPage() {
     return () => {
       isCurrent = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   const handleLoadMore = () => {
     if (!nextCursor || !token || loadingMore) return;
@@ -117,7 +120,7 @@ export default function InboxPage() {
         setConversations((prev) => [...(prev ?? []), ...page.items]);
         setNextCursor(page.nextCursor);
       } catch (cause) {
-        setError(cause instanceof ApiError ? cause.message : 'Impossible de charger la suite.');
+        setError(cause);
       } finally {
         setLoadingMore(false);
       }
@@ -156,15 +159,23 @@ export default function InboxPage() {
           <h1 ref={headingRef} tabIndex={-1} style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Conversations</h1>
         </header>
 
+        {/* The only string error here is "Connectez-vous…", which retrying cannot fix. */}
         {error ? (
-          <Card padding="var(--card-pad-lg)" style={{ display: 'grid', gap: 'var(--space-4)', justifyItems: 'start' }}>
-            <p role="alert" style={{ margin: 0, color: 'var(--text-body)', font: 'var(--type-body)' }}>{error}</p>
+          <ErrorNotice
+            error={error}
+            fallback="Impossible de charger vos conversations."
+            onRetry={typeof error === 'string' ? undefined : () => {
+              setError(null);
+              setConversations(null);
+              setReloadKey((key) => key + 1);
+            }}
+          >
             {!token ? (
               <Link href="/sign-in" style={{ textDecoration: 'none' }}>
                 <Button variant="primary">Se connecter</Button>
               </Link>
             ) : null}
-          </Card>
+          </ErrorNotice>
         ) : !conversations ? (
           <p style={{ color: 'var(--text-body)', font: 'var(--type-body-sm)' }}>Chargement de vos conversations…</p>
         ) : conversations.length === 0 ? (

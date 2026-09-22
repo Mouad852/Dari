@@ -33,6 +33,10 @@ type E2eAuthState = {
   displayName?: string;
   emailVerified?: boolean;
   token: string;
+  /** What a forced refresh hands back, so the 401 replay path is reachable in tests. */
+  refreshedToken?: string;
+  /** How many forced refreshes happened; a test asserts concurrent 401s share one. */
+  refreshCount?: number;
 };
 
 declare global {
@@ -106,7 +110,20 @@ export function getFirebaseAuth(): Auth {
  */
 export async function getIdToken(forceRefresh = false): Promise<string | null> {
   const state = e2eAuthState();
-  if (state) return state.token;
+  if (state) {
+    // Firebase answers a forced refresh with a *different* token, and apiFetch
+    // only replays when it gets one, so the seam has to model that too.
+    if (forceRefresh) {
+      const refreshed: E2eAuthState = {
+        ...state,
+        token: state.refreshedToken ?? state.token,
+        refreshCount: (state.refreshCount ?? 0) + 1,
+      };
+      window.__DARI_E2E_AUTH__ = refreshed;
+      return refreshed.token;
+    }
+    return state.token;
+  }
   const auth = getFirebaseAuth();
   await auth.authStateReady();
   const user = auth.currentUser;

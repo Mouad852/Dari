@@ -156,6 +156,17 @@ test('the CSP allows exactly the origins the media resolver renders, and never t
   expect(csp).not.toContain('api.internal');
 });
 
+test('the build ships a global-error boundary above the root layout', async () => {
+  // Only the artifact is asserted. A throw *inside* the root layout is the one
+  // failure nothing outside the app can induce in a production build — an
+  // aborted or corrupted layout chunk merely stops hydration and leaves the
+  // server HTML standing, and a test seam that could throw on demand would
+  // have to ship in the layout itself. The rendered page was verified by hand
+  // against this build with a temporary harness; see the Phase 5 report.
+  const chunks = listFiles(path.join(DIST_DIR, 'static', 'chunks', 'app'));
+  expect(chunks.some((file) => /global-error-[^\\/]+\.js$/.test(file)), 'global-error chunk built').toBe(true);
+});
+
 test('the sitemap and robots.txt are built to revalidate, not frozen at the build', async ({ request }) => {
   // The manifest is where a missing `export const revalidate` shows up: it
   // reads `initialRevalidateSeconds: false`, the route is prerendered once,
