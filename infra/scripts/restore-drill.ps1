@@ -64,5 +64,7 @@ try {
     $checks | ForEach-Object { if ($_ -match 'POSTGIS|^[ ]*[0-9]+[ ]*$') { Write-Host $_.Trim() } }
 }
 finally {
-    docker rm -f $container *> $null
+    # -v also removes the image's anonymous data volume, which would otherwise
+    # keep a full copy of the restored data after every drill.
+    docker rm -f -v $container *> $null
 }

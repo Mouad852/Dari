@@ -305,55 +305,125 @@ This policy targets an RPO of 24 hours. The restore procedure below is the
 source of truth for the RTO estimate; measure it during the first production
 restore drill and record the result rather than promising an untested number.
 
-### Create and upload
+### How the policy is met on AWS (Option A)
 
-Run from a trusted operations host. The destination and credentials are
-provided by the deployment environment, never committed to the repository.
+Three layers, each configured on the AWS side; the repository supplies only
+the two scripts. None of this is provisioned yet.
 
-```powershell
-$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$file = ".\dari-$stamp.dump"
+1. **RDS automated backups and point-in-time recovery** are the primary
+   recovery path. On the `dari` instance set the backup retention period to
+   **35 days** (the RDS maximum, matching the daily retention above), a backup
+   window in the lowest-traffic hours that ends before the 02:00 UTC expiry job
+   (for example 01:00-01:30 UTC), storage encryption with a customer-managed
+   KMS key (chosen at creation), deletion protection, and "retain automated
+   backups" on deletion. AWS documents that PITR can restore to within about
+   five minutes of the latest transaction, which improves the 24-hour RPO for
+   this path. A PITR or snapshot restore always creates a **new** instance;
+   point `DB_URL` at it deliberately, and never restore over the running one.
+2. **Weekly and monthly copies outside the account.** Automated backups stop
+   at 35 days and live in the production account, so they are not offsite. An
+   AWS Backup plan takes weekly (keep 12 weeks) and monthly (keep 12 months)
+   snapshots and copies each to a vault in a **separate AWS account**, locked
+   with Vault Lock. Cross-account copies need the customer-managed KMS key to
+   be shared with that account; the default `aws/rds` key cannot be.
+3. **Logical dumps** (`infra/scripts/backup.sh`, `pg_dump -Fc`): the
+   pre-deploy dump the release contract requires, and any ad-hoc export. They
+   are engine-independent and restorable into any PostGIS 16. Keep them in the
+   versioned, SSE-KMS, Object Lock bucket in the backup account, with the
+   retention enforced by a lifecycle rule.
 
-docker exec dari-db pg_dump -U $env:POSTGRES_BACKUP_USER `
-  -d $env:POSTGRES_DB -Fc -f "/tmp/dari-$stamp.dump"
-docker cp "dari-db:/tmp/dari-$stamp.dump" $file
+Object storage (photos, avatars) is not in any of these: enable versioning on
+the media bucket and a replication rule to the backup account.
 
-pg_restore --list $file | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "Backup archive failed pg_restore validation" }
+### Pre-deploy dump
 
-# Use the approved S3-compatible client or provider CLI here.
-# Upload $file to the versioned, immutable offsite backup bucket.
+Run from an operations host that can reach RDS (inside the VPC, or through an
+SSM port forward), with the PostgreSQL 16 client tools, as a dedicated backup
+role (`CREATE ROLE dari_backup LOGIN PASSWORD ...; GRANT pg_read_all_data TO
+dari_backup;`). The script takes its target only from the standard libpq
+variables and has no defaults, so it cannot fall back to a development
+container. It refuses a `BACKUP_DIR` inside any git work tree.
+
+```bash
+export PGHOST=<rds-endpoint> PGDATABASE=dari PGUSER=dari_backup
+read -rs PGPASSWORD && export PGPASSWORD      # or ~/.pgpass (mode 0600); never echo it
+export BACKUP_DIR=/secure/dari-backups         # encrypted volume, outside any git work tree
+infra/scripts/backup.sh
+infra/scripts/restore-drill.sh "$BACKUP_DIR"/dari-dari-<timestamp>.dump
 ```
 
-After upload, verify the object exists, has the expected encryption and
-retention metadata, and has a checksum matching the local archive. Remove the
-temporary local archive after verification. Do not print database passwords or
-cloud credentials in logs.
+`backup.sh` writes `dari-<database>-<UTC timestamp>.dump` and a `.sha256`
+beside it, readable by the operator only, and fails (exit 1, nothing left
+behind) when `pg_dump` fails, the archive is smaller than `BACKUP_MIN_BYTES`
+(4096), `pg_restore --list` cannot read it, or it has no `flyway_schema_history`
+data. A host without client tools can set `BACKUP_PG_IMAGE=postgis/postgis:16-3.4`
+to run them through Docker (plus `BACKUP_DOCKER_NETWORK` when the database is
+a container). Upload both files with the backup account's credentials, for
+example `aws s3 cp <file> s3://<backup-bucket>/predeploy/ --sse aws:kms`, and
+confirm the object's checksum, encryption and retention before migrating.
+Record the archive name, size and sha256 in the release log, then delete the
+local copy. Do not print database passwords or cloud credentials in logs.
 
 ### Restore verification and disaster recovery
 
-At least weekly, restore the newest backup into an isolated PostGIS 16
-environment. The environment must not be reachable by the public API.
+At least weekly, restore the newest backup into an isolated environment that
+the public API cannot reach. Never test a restore against the production
+database.
 
-```powershell
-docker run --name dari-db-restore-validation `
-  -e POSTGRES_DB=dari -e POSTGRES_USER=dari `
-  -e POSTGRES_PASSWORD=restore_validation `
-  -d postgis/postgis:16-3.4
+For a logical dump, `infra/scripts/restore-drill.sh <archive>` does the whole
+drill: it checks the `.sha256` if one is beside the archive, restores into a
+uniquely named, throwaway PostGIS 16 container that publishes no port, and
+checks the row counts of `users`, `listings` and `flyway_schema_history` (and
+that no migration failed), `count(*) FROM published_listings`, one
+`ST_DWithin` query, and `postgis_full_version()`. It prints the elapsed
+seconds of each phase and exits non-zero naming the step that failed; the
+container is removed either way. It restores with `--no-owner
+--no-privileges`, because the drill database has none of the source's roles.
 
-# Wait for the image init process to complete before restoring.
-docker cp .\dari-backup.dump dari-db-restore-validation:/tmp/restore.dump
-docker exec dari-db-restore-validation pg_restore -U dari -d dari `
-  --no-owner --exit-on-error /tmp/restore.dump
-docker exec dari-db-restore-validation psql -U dari -d dari `
-  -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM users; SELECT count(*) FROM listings; SELECT count(*) FROM flyway_schema_history; SELECT postgis_full_version();"
-docker rm -f dari-db-restore-validation
+For an RDS snapshot or PITR, restore to a new private instance in the same VPC,
+run the same checks with `psql`, then delete the instance:
+
+```sql
+SELECT count(*) FROM users;
+SELECT count(*) FROM listings;
+SELECT count(*), count(*) FILTER (WHERE NOT success) FROM flyway_schema_history;
+SELECT count(*) FROM published_listings;
+SELECT count(*) FROM listings
+WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint(-6.8498, 33.9716), 4326)::geography, 50000);
+SELECT postgis_full_version();
 ```
 
-Record the archive timestamp, restore duration, row-count checks, PostGIS
-version, and operator. If restore verification fails, page the on-call owner
-and keep the previous known-good backup. Never test a restore against the
-production database.
+Record the archive or snapshot timestamp, the duration of each phase, the
+counts, the PostGIS version and the operator. If verification fails, page the
+on-call owner and keep the previous known-good backup.
+
+**RTO: not measured.** No production-sized restore has been timed, so this
+document does not state a recovery time. The first real drill sets it; record
+both numbers here when it has run:
+
+| Path | Measured RTO | Date, source size, operator |
+| --- | --- | --- |
+| RDS PITR to a new instance, then repoint `DB_URL` | not measured | |
+| Logical dump restored by `restore-drill.sh` | not measured | |
+
+(The script's only run so far was on the local smoke stack with a 60 KB
+archive, 21.8 s in total, most of it container start-up. That is a check that
+the script works, not an RTO.)
+
+### Backup alerts
+
+Wired in Phase 4 (monitoring); the conditions, from the policy above:
+
+- no successful automated backup or AWS Backup job for the instance in 25 h,
+  or an RDS backup failure event;
+- a scheduled copy to the backup account failed;
+- an archive or snapshot unexpectedly small (`backup.sh` already refuses one
+  under `BACKUP_MIN_BYTES`);
+- no successful restore verification in the last 7 days;
+- no pre-deploy dump recorded for a release that includes a migration.
+
+A schedule that never fires produces no error, so the missing-backup alert must
+be a dead-man's switch on the last success, not an alert on failures.
 
 ## Deployment and rollback
 

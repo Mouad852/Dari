@@ -33,7 +33,7 @@ Set `DARI_NOTIFICATIONS_ENABLED=true`, `DARI_NOTIFICATIONS_FROM`, `SMTP_HOST`, `
 
 ### PostgreSQL backups and restore
 
-Run the encrypted custom-format daily dump and offsite upload policy in `docs/PRODUCTION_OPERATIONS.md`. At least weekly, run `infra/scripts/restore-drill.ps1 -BackupFile <archive>` on an isolated operator host, record duration, row-count checks, PostGIS version, and operator, then page on-call if the drill fails. This repository does not have production access, so backup scheduling, retention, object-lock, and the first production restore remain operator actions.
+Run the encrypted custom-format daily dump and offsite upload policy in `docs/PRODUCTION_OPERATIONS.md`. At least weekly, run `infra/scripts/restore-drill.sh <archive>` (Linux; `infra/scripts/restore-drill.ps1 -BackupFile <archive>` on Windows) on an isolated operator host, record duration, row-count checks, PostGIS version, and operator, then page on-call if the drill fails. This repository does not have production access, so backup scheduling, retention, object-lock, and the first production restore remain operator actions.
 
 ### Outbox and cleanup monitoring
 
