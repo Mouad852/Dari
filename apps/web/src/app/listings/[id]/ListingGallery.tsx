@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Heart, Share2 } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Share2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -79,13 +79,30 @@ export function ListingGallery({
   };
 
   const activePhoto = photos[photoIndex];
+  const multiple = photos.length > 1;
+  const step = (delta: number) => setPhotoIndex((current) => (current + delta + photos.length) % photos.length);
 
   return (
-    <div style={{ position: 'relative', height: 360, background: 'var(--sable-200)' }}>
+    /*
+      A focusable group, so Left/Right reach the photos at all: the dots were
+      the only control, and a keyboard user had to tab through one 8x8 button
+      per photo to move between them.
+    */
+    <div
+      role={multiple ? 'group' : undefined}
+      aria-label={multiple ? `Photos de l’annonce : ${title}` : undefined}
+      tabIndex={multiple ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (!multiple) return;
+        if (event.key === 'ArrowRight') { event.preventDefault(); step(1); }
+        else if (event.key === 'ArrowLeft') { event.preventDefault(); step(-1); }
+      }}
+      style={{ position: 'relative', height: 360, background: 'var(--sable-200)' }}
+    >
       {activePhoto ? (
         <img
           src={resolveMediaUrl(activePhoto.url)}
-          alt={title}
+          alt={multiple ? `${title} — photo ${photoIndex + 1} sur ${photos.length}` : title}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
       ) : (
@@ -142,35 +159,84 @@ export function ListingGallery({
           </button>
         </div>
       </div>
-      {photos.length > 1 && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 12,
-            left: 0,
-            right: 0,
-            display: 'flex',
-            justifyContent: 'center',
-            gap: 6,
-          }}
-        >
-          {photos.map((photo, index) => (
-            <button
-              key={photo.id}
-              type="button"
-              aria-label={`Photo ${index + 1}`}
-              onClick={() => setPhotoIndex(index)}
-              style={{
-                width: 8,
-                height: 8,
-                padding: 0,
-                border: 0,
-                borderRadius: 'var(--radius-pill)',
-                background: index === photoIndex ? '#fff' : 'rgba(255,255,255,0.5)',
-              }}
-            />
-          ))}
-        </div>
+      {multiple && (
+        <>
+          {/* Visible, 40px targets: the dots were the only way to change photo. */}
+          <button
+            type="button"
+            aria-label="Photo précédente"
+            onClick={() => step(-1)}
+            style={{ ...iconButtonStyle, position: 'absolute', top: '50%', left: 'var(--gutter-mobile)', transform: 'translateY(-50%)' }}
+          >
+            <ChevronLeft size={20} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            aria-label="Photo suivante"
+            onClick={() => step(1)}
+            style={{ ...iconButtonStyle, position: 'absolute', top: '50%', right: 'var(--gutter-mobile)', transform: 'translateY(-50%)' }}
+          >
+            <ChevronRight size={20} aria-hidden="true" />
+          </button>
+
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 4,
+              left: 0,
+              right: 0,
+              display: 'flex',
+              justifyContent: 'center',
+              gap: 2,
+            }}
+          >
+            {photos.map((photo, index) => {
+              const current = index === photoIndex;
+              return (
+                /*
+                  24x24 of target around an 8px dot (WCAG 2.5.8): the button
+                  itself used to be the 8px dot. The active one is a wider
+                  pill, not just a brighter colour, and carries aria-current.
+                */
+                <button
+                  key={photo.id}
+                  type="button"
+                  aria-label={`Photo ${index + 1} sur ${photos.length}`}
+                  aria-current={current ? 'true' : undefined}
+                  onClick={() => setPhotoIndex(index)}
+                  style={{
+                    width: 24,
+                    height: 24,
+                    padding: 0,
+                    border: 0,
+                    background: 'transparent',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      display: 'block',
+                      width: current ? 20 : 8,
+                      height: 8,
+                      borderRadius: 'var(--radius-pill)',
+                      background: current ? '#fff' : 'rgba(255,255,255,0.5)',
+                      transition: 'var(--transition-control)',
+                    }}
+                  />
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Which photo is showing, for anyone who cannot see it change. */}
+          <span aria-live="polite" aria-atomic="true" className="visually-hidden">
+            {`Photo ${photoIndex + 1} sur ${photos.length}`}
+          </span>
+        </>
       )}
     </div>
   );

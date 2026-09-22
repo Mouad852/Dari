@@ -177,7 +177,7 @@ export default function InboxPage() {
             ) : null}
           </ErrorNotice>
         ) : !conversations ? (
-          <p style={{ color: 'var(--text-body)', font: 'var(--type-body-sm)' }}>Chargement de vos conversations…</p>
+          <p role="status" style={{ color: 'var(--text-body)', font: 'var(--type-body-sm)' }}>Chargement de vos conversations…</p>
         ) : conversations.length === 0 ? (
           <Card padding="var(--space-7)" style={{ display: 'grid', gap: 'var(--space-3)', textAlign: 'center', justifyItems: 'center' }}>
             <p style={{ margin: 0, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Aucune conversation</p>

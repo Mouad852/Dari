@@ -137,7 +137,11 @@ export default function AccountPage() {
   }
 
   if (!profile) {
-    return <main style={{ minHeight: '100vh', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-muted)' }}>Chargement de votre compte…</main>;
+    return (
+      <main style={{ minHeight: '100vh', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-muted)' }}>
+        <p role="status" style={{ margin: 0 }}>Chargement de votre compte…</p>
+      </main>
+    );
   }
 
   const completionMet = PROFILE_COMPLETION_CHECKS.filter((check) => check.met(profile)).length;

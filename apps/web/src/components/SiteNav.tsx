@@ -91,6 +91,15 @@ function unreadBadgeLabel(count: number): string {
   return count > 99 ? '99+' : String(count);
 }
 
+/**
+ * What the live region below says. Empty at zero, so clearing an inbox is
+ * silent rather than announcing "0 message non lu".
+ */
+function unreadAnnouncement(count: number): string {
+  if (count <= 0) return '';
+  return count > 1 ? `${count} messages non lus` : '1 message non lu';
+}
+
 function useSignedIn() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
 
@@ -211,6 +220,17 @@ export function SiteNav() {
           <Logo showText={false} />
         </Link>
       </header>
+
+      {/*
+        The badge polls every 30 s and was rendered aria-hidden, so a screen
+        reader was never told a message had arrived. One polite region for the
+        whole nav: React only touches this text node when the count actually
+        changes, so an unchanged poll announces nothing. aria-live rather than
+        role="status", so a page's own status region stays the only one.
+      */}
+      <span aria-live="polite" aria-atomic="true" className="visually-hidden">
+        {unreadAnnouncement(unreadCount)}
+      </span>
 
       <nav
         aria-label="Navigation principale"

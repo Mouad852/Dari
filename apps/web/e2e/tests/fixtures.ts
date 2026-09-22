@@ -15,8 +15,12 @@ export const test = base.extend<{ authenticatedPage: Page }>({
 export { expect };
 
 export async function expectAccessible(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .exclude('.leaflet-container')
-    .analyze();
-  expect(results.violations, results.violations.map((item) => `${item.id}: ${item.help}`).join('\n')).toEqual([]);
+  // The maps are IN this scan. `.exclude('.leaflet-container')` used to take
+  // them out of every run, which is how two unnamed, focusable Leaflet
+  // containers stayed invisible to it.
+  const results = await new AxeBuilder({ page }).analyze();
+  const report = results.violations
+    .map((item) => [`${item.id}: ${item.help}`, ...item.nodes.map((node) => `  ${node.html}`)].join('\n'))
+    .join('\n');
+  expect(results.violations, report).toEqual([]);
 }

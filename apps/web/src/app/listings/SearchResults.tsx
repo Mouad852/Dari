@@ -13,6 +13,7 @@ import { Button } from '@/components/ds/Button';
 import { Card } from '@/components/ds/Card';
 import { Input } from '@/components/ds/Input';
 import { ListingCard } from '@/components/ds/ListingCard';
+import { Radio } from '@/components/ds/Radio';
 import { Select } from '@/components/ds/Select';
 import { Tabs } from '@/components/ds/Tabs';
 import { Tag } from '@/components/ds/Tag';
@@ -40,6 +41,14 @@ const SORTS = [
 ] as const;
 
 type SortValue = (typeof SORTS)[number]['value'];
+
+/** The results/map tabs control this element; both are the same panel. */
+const RESULTS_PANEL_ID = 'search-results-panel';
+
+const SEARCH_MODES = [
+  { value: 'place', label: 'Ville / quartier' },
+  { value: 'radius', label: 'Rayon' },
+] as const;
 type ViewValue = 'results' | 'map';
 
 const MapPanel = dynamic(
@@ -58,13 +67,35 @@ const MapPanel = dynamic(
 
     return function ListingsMapPanel({ mapCenter, mapPins }: { mapCenter: [number, number]; mapPins: MapPin[] }) {
       return (
-        <MapContainer center={mapCenter} zoom={12} scrollWheelZoom={false} style={{ height: '620px', width: '100%' }}>
+        <MapContainer
+          center={mapCenter}
+          zoom={12}
+          scrollWheelZoom={false}
+          style={{ height: '620px', width: '100%' }}
+          // Leaflet's container is focusable but anonymous: tabbing into it
+          // announced "groupe" and nothing else. MapContainerProps does not
+          // accept ARIA attributes, so they go on the container element the
+          // map instance owns.
+          ref={(map) => {
+            map?.getContainer().setAttribute('role', 'region');
+            map?.getContainer().setAttribute('aria-label', 'Carte des annonces');
+          }}
+        >
           <TileLayer
             attribution="&copy; OpenStreetMap contributors"
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {mapPins.map((pin) => (
-            <Marker key={pin.id} position={[pin.latitude, pin.longitude]} icon={mapMarkerIcon}>
+            // Leaflet gives every marker role="button" and tabindex="0"; with
+            // a divIcon there is nothing inside to name it, so each pin was an
+            // anonymous button. `title` is the option that reaches the marker
+            // element, and it names the popup this opens.
+            <Marker
+              key={pin.id}
+              position={[pin.latitude, pin.longitude]}
+              icon={mapMarkerIcon}
+              title={`${pin.title}, ${pin.neighborhood}`}
+            >
               <Popup>
                 <div style={{ display: 'grid', gap: '0.3rem', minWidth: 160 }}>
                   <strong style={{ font: 'var(--type-body-sm)', color: 'var(--text-heading)' }}>{pin.title}</strong>
@@ -465,6 +496,14 @@ function SearchResultsPageContent() {
     });
   };
 
+  /** The same search, as a list: what the map's escape link points at. */
+  const listViewHref = (() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('view');
+    const query = params.toString();
+    return query ? `/listings?${query}` : '/listings';
+  })();
+
   const toggleView = (nextView: ViewValue) => {
     setView(nextView);
     updateUrl(nextView);
@@ -750,6 +789,7 @@ function SearchResultsPageContent() {
                   label="Présentation des résultats"
                   value={view}
                   onChange={(value) => toggleView(value as ViewValue)}
+                  panelId={RESULTS_PANEL_ID}
                   tabs={[
                     { value: 'results', label: 'Résultats' },
                     { value: 'map', label: 'Carte' },
@@ -757,19 +797,19 @@ function SearchResultsPageContent() {
                 />
 
           {/*
-            The kit's own control for this row: `Tabs variant="segmented"`. Hand-
-            rolling it cost the keyboard behaviour the tablist role promises --
-            arrow keys now move between sorts, which they never did here.
+            A native select, not `Tabs`. This was a tablist that controlled no
+            panel: a screen reader announced "onglet, 2 sur 5" for a sort order
+            and pointed at a tabpanel that did not exist. Choosing one value
+            from a list of five is what a select is, and on a phone it opens
+            the OS picker instead of a five-pill row that scrolls sideways.
           */}
-          <div className="scroll-row" style={{ maxWidth: '100%' }}>
-            <Tabs
-              variant="segmented"
-              label="Trier les annonces"
-              value={currentSort}
-              onChange={(value) => setSort(value as SortValue)}
-              tabs={visibleSorts.map((option) => ({ value: option.value, label: option.label }))}
-            />
-          </div>
+          <Select
+            label="Trier les annonces"
+            value={currentSort}
+            onChange={(event) => setSort(event.target.value as SortValue)}
+            options={visibleSorts.map((option) => ({ value: option.value, label: option.label }))}
+            style={{ minWidth: 220 }}
+          />
           </div>
         </div>
 
@@ -830,31 +870,38 @@ function SearchResultsPageContent() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-4)' }}>
                 {/*
-                  City/neighbourhood and radius are mutually exclusive modes, not
-                  two filters -- which is what a segmented control says and what
-                  two independent pill buttons did not.
+                  City/neighbourhood and radius are mutually exclusive modes,
+                  not two filters. They were a tablist with no panel, announced
+                  as tabs; a radio group is what "pick one of these two" is,
+                  and the fieldset gives the pair the name "Mode de recherche"
+                  that the tablist's aria-label used to carry.
                 */}
-                <Tabs
-                  variant="segmented"
-                  label="Mode de recherche"
-                  value={hasRadiusMode ? 'radius' : 'place'}
-                  onChange={(value) => {
-                    if (value === 'radius') {
-                      const nextRadius = radius || '2500';
-                      setRadius(nextRadius);
-                      setView('results');
-                      updateUrl('results', nextRadius);
-                    } else {
-                      setRadius('');
-                      setView('results');
-                      updateUrl('results', '');
-                    }
-                  }}
-                  tabs={[
-                    { value: 'place', label: 'Ville / quartier' },
-                    { value: 'radius', label: 'Rayon' },
-                  ]}
-                />
+                <fieldset style={{ margin: 0, padding: 0, border: 0, display: 'grid', gap: 'var(--space-2)' }}>
+                  <legend style={{ padding: 0, font: 'var(--type-label)', color: 'var(--text-heading)', marginBottom: 'var(--space-2)' }}>
+                    Mode de recherche
+                  </legend>
+                  {SEARCH_MODES.map((mode) => (
+                    <Radio
+                      key={mode.value}
+                      name="search-mode"
+                      value={mode.value}
+                      label={mode.label}
+                      checked={(hasRadiusMode ? 'radius' : 'place') === mode.value}
+                      onChange={() => {
+                        if (mode.value === 'radius') {
+                          const nextRadius = radius || '2500';
+                          setRadius(nextRadius);
+                          setView('results');
+                          updateUrl('results', nextRadius);
+                        } else {
+                          setRadius('');
+                          setView('results');
+                          updateUrl('results', '');
+                        }
+                      }}
+                    />
+                  ))}
+                </fieldset>
 
                 {hasRadiusMode ? (
                   <Input
@@ -1020,7 +1067,12 @@ function SearchResultsPageContent() {
             </Card>
           </aside>
 
-          <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+          <div
+            id={RESULTS_PANEL_ID}
+            role="tabpanel"
+            aria-label={view === 'map' ? 'Carte des annonces' : 'Liste des annonces'}
+            style={{ display: 'grid', gap: 'var(--space-5)' }}
+          >
             {error ? (
               <ErrorNotice
                 error={error}
@@ -1034,6 +1086,16 @@ function SearchResultsPageContent() {
 
             {view === 'map' ? (
               <div style={{ ...cardStyle, overflow: 'hidden', minHeight: 620 }}>
+                {/*
+                  A map is the one view of these results that cannot be read
+                  without sight. The same listings, as a list, one link away --
+                  not only through the segmented control above.
+                */}
+                <p style={{ margin: 0, padding: 'var(--space-4) var(--space-5) 0' }}>
+                  <Link href={listViewHref} style={{ color: 'var(--brand)', font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)' }}>
+                    Voir ces annonces en liste
+                  </Link>
+                </p>
                 {mapError ? (
                   <div style={{ padding: '1.5rem' }}>
                     <ErrorNotice
@@ -1046,7 +1108,7 @@ function SearchResultsPageContent() {
                     />
                   </div>
                 ) : mapLoading ? (
-                  <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Chargement de la carte…</div>
+                  <div role="status" style={{ padding: '2rem', color: 'var(--text-muted)' }}>Chargement de la carte…</div>
                 ) : (
                   <MapPanel mapCenter={mapCenter} mapPins={mapPins} />
                 )}
@@ -1072,7 +1134,7 @@ function SearchResultsPageContent() {
                 </div>
 
                 {loading ? (
-                  <div style={{ color: 'var(--text-muted)' }}>Chargement des annonces…</div>
+                  <div role="status" style={{ color: 'var(--text-muted)' }}>Chargement des annonces…</div>
                 ) : nextCursor ? (
                   <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 'var(--space-4)' }}>
                     <Button

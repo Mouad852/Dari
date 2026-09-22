@@ -207,7 +207,7 @@ export default function FavoritesPage() {
             ) : null}
           </ErrorNotice>
         ) : !items ? (
-          <p style={{ color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>Chargement de vos favoris…</p>
+          <p role="status" style={{ color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>Chargement de vos favoris…</p>
         ) : items.length === 0 ? (
           <section
             style={{

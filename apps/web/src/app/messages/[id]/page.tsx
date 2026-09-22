@@ -332,7 +332,11 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   }
 
   if (!conversation || !messages || !myId) {
-    return <main style={{ minHeight: '100vh', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-body)' }}>Chargement de la conversation…</main>;
+    return (
+      <main style={{ minHeight: '100vh', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-body)' }}>
+        <p role="status" style={{ margin: 0 }}>Chargement de la conversation…</p>
+      </main>
+    );
   }
 
   return (
@@ -424,7 +428,18 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             alignContent: 'start',
           }}
         >
-        <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-3)' }}>
+        {/*
+          role="log" + aria-live="polite": a message added to this list is
+          announced on its own, and the thread already on screen is not read
+          out again. The app had no live region at all, so a message arriving
+          in an open thread was completely silent.
+        */}
+        <ol
+          role="log"
+          aria-live="polite"
+          aria-label="Messages de la conversation"
+          style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-3)' }}
+        >
           {messages.map((message, index) => {
             const mine = message.senderId === myId;
             const sentAt = new Date(message.sentAt);

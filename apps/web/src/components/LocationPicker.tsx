@@ -104,6 +104,12 @@ const MapCanvas = dynamic(
           zoom={pin ? 16 : 12}
           scrollWheelZoom={false}
           style={{ height: 340, width: '100%' }}
+          // Named, like the search map (same reason, same mechanism). The
+          // lat/lng fields beside it remain the keyboard path to this value.
+          ref={(map) => {
+            map?.getContainer().setAttribute('role', 'region');
+            map?.getContainer().setAttribute('aria-label', 'Carte de localisation du logement');
+          }}
         >
           <TileLayer
             attribution="&copy; OpenStreetMap contributors"

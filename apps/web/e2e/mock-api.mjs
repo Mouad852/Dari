@@ -318,7 +318,9 @@ async function handle(request, response) {
     return sendJson(response, 201, message);
   }
   if (path === '/conversations/conversation-1/read' && method === 'PATCH') return sendNoContent(response);
-  if (path === '/conversations/unread-count' && method === 'GET') return sendJson(response, 200, { count: 1 });
+  // The API's own shape (ConversationController.UnreadCountResponse); `count`
+  // silently left the nav badge at zero in every e2e run.
+  if (path === '/conversations/unread-count' && method === 'GET') return sendJson(response, 200, { unreadCount: state.messages.filter((message) => message.senderId !== 'e2e-user-1' && !message.readAt).length });
 
   if (path === '/reports' && method === 'POST') { state.reportCreated = true; return sendJson(response, 201, { id: 'report-1', status: 'PENDING' }); }
 

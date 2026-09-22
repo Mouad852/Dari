@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { CheckCircle2, MapPin, Save, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
+import { Button } from '@/components/ds/Button';
+import { Dialog } from '@/components/ds/Dialog';
+import { Input } from '@/components/ds/Input';
 import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
 import { getIdToken, signOut } from '@/lib/firebase';
 import { VERIFICATION_LABELS } from '@/lib/labels';
@@ -21,6 +24,9 @@ export default function AccountProfilePage() {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const avatarButtonRef = useRef<HTMLButtonElement | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const deleteButtonRef = useRef<HTMLButtonElement | null>(null);
   const saveButtonRef = useRef<HTMLButtonElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
@@ -128,21 +134,26 @@ export default function AccountProfilePage() {
     }
   };
 
+  /*
+   * The confirmation used to be window.confirm + window.prompt: unstylable,
+   * outside the page for a screen reader, impossible to translate, and
+   * untestable without dispatching a raw click past them. The typed-SUPPRIMER
+   * step stays -- this is irreversible, cascades to every listing the person
+   * owns, and has no undo -- it just happens in the app's own Dialog, which
+   * traps focus, returns it to the button, and closes on Escape.
+   */
   const deleteAccount = async () => {
-    if (!token || deleting) return;
-    // Two steps on purpose. This is irreversible, cascades to every listing the
-    // person owns, and there is no undo anywhere in the product.
-    if (!window.confirm('Supprimer définitivement votre compte ? Vos annonces seront retirées.')) return;
-    if (window.prompt('Pour confirmer, tapez SUPPRIMER') !== 'SUPPRIMER') return;
+    if (!token || deleting || deleteConfirmation.trim() !== 'SUPPRIMER') return;
 
     shouldRefocusDeleteRef.current = true;
     setDeleting(true);
+    setDeleteError(null);
     try {
       await apiFetch('/users/me', { method: 'DELETE', token });
       await signOut();
       window.location.href = '/';
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : 'Suppression impossible.');
+      setDeleteError(cause instanceof ApiError ? cause.message : 'Suppression impossible.');
       setDeleting(false);
     }
   };
@@ -425,7 +436,11 @@ export default function AccountProfilePage() {
         <button
           ref={deleteButtonRef}
           type="button"
-          onClick={() => void deleteAccount()}
+          onClick={() => {
+            setDeleteConfirmation('');
+            setDeleteError(null);
+            setDeleteOpen(true);
+          }}
           disabled={deleting}
           style={{
             justifySelf: 'start',
@@ -441,6 +456,40 @@ export default function AccountProfilePage() {
           {deleting ? 'Suppression…' : 'Supprimer définitivement mon compte'}
         </button>
       </section>
+
+      <Dialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        title="Supprimer définitivement votre compte ?"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Annuler</Button>
+            <Button
+              variant="danger"
+              onClick={() => void deleteAccount()}
+              disabled={deleteConfirmation.trim() !== 'SUPPRIMER'}
+              loading={deleting}
+            >
+              Supprimer mon compte
+            </Button>
+          </>
+        }
+      >
+        <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <p style={{ margin: 0, fontWeight: 'var(--weight-regular)', fontSize: 'var(--text-body-sm)', fontFamily: 'var(--font-ui)', color: 'var(--text-body)', lineHeight: 1.6 }}>
+            Vos annonces seront retirées et cette action est définitive.
+          </p>
+          <Input
+            label="Tapez SUPPRIMER pour confirmer"
+            value={deleteConfirmation}
+            onChange={(event) => setDeleteConfirmation(event.target.value)}
+            autoComplete="off"
+          />
+          {deleteError ? (
+            <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{deleteError}</p>
+          ) : null}
+        </div>
+      </Dialog>
     </main>
   );
 }

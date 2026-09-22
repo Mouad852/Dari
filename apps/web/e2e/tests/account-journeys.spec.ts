@@ -74,7 +74,23 @@ test('favorites, messaging, reporting, moderation, and account deletion remain a
     if (route.request().method() === 'DELETE') deletionRequested = true;
     await route.continue();
   });
-  page.on('dialog', async (dialog) => dialog.accept(dialog.type() === 'prompt' ? 'SUPPRIMER' : undefined));
-  await page.getByRole('button', { name: /supprimer définitivement mon compte/i }).dispatchEvent('click');
+  // The confirmation is the app's own Dialog now, so this is a real click and
+  // real typing -- dispatchEvent('click') existed only to get past confirm().
+  await page.getByRole('button', { name: /supprimer définitivement mon compte/i }).click();
+  const confirmation = page.getByRole('dialog');
+  await expect(confirmation).toBeVisible();
+  await expectAccessible(page);
+
+  // Escape cancels, and focus goes back to the button that opened it.
+  await page.keyboard.press('Escape');
+  await expect(confirmation).toBeHidden();
+  await expect(page.getByRole('button', { name: /supprimer définitivement mon compte/i })).toBeFocused();
+  expect(deletionRequested, 'cancelling deletes nothing').toBe(false);
+
+  await page.getByRole('button', { name: /supprimer définitivement mon compte/i }).click();
+  // Not armed until the word is typed exactly.
+  await expect(page.getByRole('button', { name: 'Supprimer mon compte' })).toBeDisabled();
+  await page.getByLabel('Tapez SUPPRIMER pour confirmer').fill('SUPPRIMER');
+  await page.getByRole('button', { name: 'Supprimer mon compte' }).click();
   await expect.poll(() => deletionRequested).toBe(true);
 });
