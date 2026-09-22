@@ -108,6 +108,9 @@ public class ReportService {
             Listing listing = listings.findById(targetId)
                     .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
             if (listing.isAutoFlagged() && listing.getStatus() == ListingStatus.SUSPENDED) {
+                // expires_at is left alone: a suspension does not extend a
+                // listing's life. One restored past its date expires on the
+                // next nightly run, with the usual notification.
                 listing.setStatus(listing.getPriorStatus() != null ? listing.getPriorStatus() : ListingStatus.PUBLISHED);
                 listing.setPriorStatus(null);
                 listing.setAutoFlagged(false);

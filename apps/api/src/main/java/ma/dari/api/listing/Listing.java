@@ -142,6 +142,13 @@ public class Listing {
     @Column(name = "expiry_warned_at")
     private Instant expiryWarnedAt;
 
+    /**
+     * End of a published listing's life. Set only by {@link ListingExpiry#startWindow}
+     * on approval; never derived from {@code updatedAt}, which every write bumps.
+     */
+    @Column(name = "expires_at")
+    private Instant expiresAt;
+
     protected Listing() {
         // JPA
     }
@@ -411,5 +418,13 @@ public class Listing {
 
     public void setExpiryWarnedAt(Instant expiryWarnedAt) {
         this.expiryWarnedAt = expiryWarnedAt;
+    }
+
+    public Instant getExpiresAt() {
+        return expiresAt;
+    }
+
+    void setExpiresAt(Instant expiresAt) {
+        this.expiresAt = expiresAt;
     }
 }

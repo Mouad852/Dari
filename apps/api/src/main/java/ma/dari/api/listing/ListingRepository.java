@@ -1,7 +1,9 @@
 package ma.dari.api.listing;
 
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,30 +14,51 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ListingRepository extends JpaRepository<Listing, UUID> {
-                @Modifying
-                @Query("""
-                                                update Listing l
-                                                set l.status = ma.dari.api.listing.ListingStatus.EXPIRED
-                                                where l.status = ma.dari.api.listing.ListingStatus.PUBLISHED
-                                                        and l.updatedAt < :cutoff
-                                                        and l.deletedAt is null
-                                                """)
-                int expirePublishedBefore(@Param("cutoff") Instant cutoff);
 
-                    List<Listing> findByStatusAndUpdatedAtBeforeAndDeletedAtIsNull(
-                            ListingStatus status, Instant cutoff);
+    // The expiry job's three queries. Status values are bound as parameters:
+    // a JPQL enum literal is rendered as 'EXPIRED'::ListingStatus, which
+    // PostgreSQL rejects because the column's type is listing_status.
 
+    /**
+     * Gives a window to published listings that have none: rows approved by
+     * a release older than V28 while both ran during a deploy or after a
+     * rollback. Only ever fills a NULL; never moves an existing date.
+     */
+    @Modifying
+    @Query("""
+            update Listing l set l.expiresAt = :expiresAt
+            where l.status = :published and l.deletedAt is null and l.expiresAt is null
+            """)
+    int startMissingExpiryWindows(@Param("published") ListingStatus published,
+                                  @Param("expiresAt") Instant expiresAt);
+
+    /** Published, not yet warned, and ending within the warning window. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select l from Listing l
-            where l.status = :status
-              and l.updatedAt < :warningCutoff
-              and l.updatedAt >= :expiryCutoff
+            where l.status = :published
               and l.deletedAt is null
               and l.expiryWarnedAt is null
+              and l.expiresAt > :now
+              and l.expiresAt <= :warnBefore
             """)
-    List<Listing> findExpiringSoon(@Param("status") ListingStatus status,
-                                   @Param("warningCutoff") Instant warningCutoff,
-                                   @Param("expiryCutoff") Instant expiryCutoff);
+    List<Listing> findToWarnOfExpiry(@Param("published") ListingStatus published,
+                                     @Param("now") Instant now,
+                                     @Param("warnBefore") Instant warnBefore);
+
+    /**
+     * Published and past its end. Locked so an owner's concurrent transition
+     * (an edit sending it to review, say) is either seen or waits, and never
+     * overwritten by this job's stale copy.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select l from Listing l
+            where l.status = :published
+              and l.deletedAt is null
+              and l.expiresAt <= :now
+            """)
+    List<Listing> findDueForExpiry(@Param("published") ListingStatus published, @Param("now") Instant now);
 
     List<Listing> findByStatusAndAvailabilityStateAndDeletedAtIsNull(
             ListingStatus status,

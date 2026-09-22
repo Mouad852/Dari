@@ -54,7 +54,7 @@ class FlywayMigrationSmokeTest {
              var postgis = connection.createStatement().executeQuery("SELECT postgis_full_version()")) {
             assertThat(migrations.next()).isTrue();
             assertThat(migrations.getLong(1)).isEqualTo(result.migrationsExecuted);
-            assertThat(migrations.getInt(2)).isEqualTo(27);
+            assertThat(migrations.getInt(2)).isEqualTo(28);
 
             assertThat(postgis.next()).isTrue();
             assertThat(postgis.getString(1)).contains("POSTGIS");

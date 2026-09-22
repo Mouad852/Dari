@@ -237,6 +237,50 @@ the ALB observed at its right edge; therefore a forged leftmost value cannot
 choose the limiter bucket. Do not use `preserve`. AWS documents this behaviour
 in [HTTP headers and Application Load Balancers](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/x-forwarded-headers.html).
 
+## Listing expiry
+
+A published listing lives `dari.listing.expiry-days` (60) from its approval.
+`listings.expires_at` holds the date, and one rule sets it:
+
+- **Approval** (`PENDING_REVIEW -> PUBLISHED`) sets `expires_at = now + 60 days`
+  and clears `expiry_warned_at`. That covers first publication and
+  re-approval, because an owner's edit of a published listing and a renewal
+  of an expired one both send it back to review.
+- **Nothing else moves it.** Marking the room found or reopening it, photo
+  edits, the expiry warning itself, and any other write leave it alone.
+  `updated_at` is a row-audit column and plays no part.
+- **Restoring from `SUSPENDED`** (dismissing reports against an
+  auto-suspended listing) keeps the date it had. A listing restored after its
+  date has passed expires on the next nightly run, with the usual notification.
+
+The job runs nightly at 02:00 UTC (`dari.listing.expiry-cron`) under the
+ShedLock lock `listingExpiryJob`. In one transaction it warns every live
+published listing whose date is within `dari.listing.expiry-warning-days` (7)
+and that has not been warned yet ("Votre annonce expire dans N jours"), then
+expires every live published listing whose date has passed. Each change and
+its notification in the outbox commit together, so the owners told their
+listing expired are exactly the listings expired. A published listing with no
+date (approved by a pre-V28 release during a rolling deploy or after a
+rollback) is given one on the next run and logged. Metrics:
+`dari.jobs.listing_expiry.runs`, `.warned`, `.expired`.
+
+**No listing has ever expired under earlier releases.** The job returned
+`int`, and ShedLock refuses to proxy a method returning a primitive, so every
+scheduled run threw `LockingNotSupportedException` before doing anything.
+Behind that, its bulk update rendered the status as `'EXPIRED'::ListingStatus`,
+which PostgreSQL rejects (the type is `listing_status`), and even then a
+warned listing reset its own `updated_at` clock and could never expire.
+
+**On the deploy that applies V28**, every live published listing, and every
+suspended one that would be restored to published, gets a fresh 60-day date
+counted from the migration, with its old warning cleared. Nothing expires at
+deploy time: the first warnings go out about 53 days later and the first
+expiries about 60 days later. The backfill hardcodes 60 days; changing
+`dari.listing.expiry-days` affects later approvals only.
+
+Contract step, in a later release: drop V18's `idx_listings_expiry` on
+`(status, updated_at)`, which only the previous release's job uses.
+
 ## Database backups
 
 ### Policy

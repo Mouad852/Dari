@@ -8,6 +8,7 @@ import ma.dari.api.common.pagination.TypedCursors;
 import ma.dari.api.listing.HouseRulesRepository;
 import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingAmenityRepository;
+import ma.dari.api.listing.ListingExpiry;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingRoomRepository;
 import ma.dari.api.listing.ListingStatus;
@@ -48,6 +49,7 @@ public class AdminService {
     private final NotificationService notifications;
     private final UserRepository users;
     private final BannedIdentityRepository bannedIdentities;
+    private final ListingExpiry expiry;
 
     public AdminService(ListingRepository listings,
                        ListingAmenityRepository listingAmenities,
@@ -59,7 +61,8 @@ public class AdminService {
                        ReportService reportService,
                        NotificationService notifications,
                        UserRepository users,
-                       BannedIdentityRepository bannedIdentities) {
+                       BannedIdentityRepository bannedIdentities,
+                       ListingExpiry expiry) {
         this.listings = listings;
         this.listingAmenities = listingAmenities;
         this.houseRules = houseRules;
@@ -71,6 +74,7 @@ public class AdminService {
         this.notifications = notifications;
         this.users = users;
         this.bannedIdentities = bannedIdentities;
+        this.expiry = expiry;
     }
 
     @Transactional(readOnly = true)
@@ -246,6 +250,9 @@ public class AdminService {
         listing.setStatus(ListingStatus.PUBLISHED);
         listing.setPriorStatus(null);
         listing.setRejectionReason(null);
+        // The only transition that starts a listing's life: first publication,
+        // and re-approval after an edit or a renewal (both re-enter review).
+        expiry.startWindow(listing);
         listings.save(listing);
         notifications.listingApproved(listing);
         adminActions.save(AdminAction.of(admin, "APPROVE_LISTING", ReportTarget.LISTING, listingId, null));

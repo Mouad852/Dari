@@ -41,7 +41,8 @@ public class OutboxNotificationService implements NotificationService {
     @Override
     @Transactional
     public void listingExpiringSoon(Object listing, int daysRemaining) {
-        enqueue("LISTING_EXPIRING_SOON", listing, "Votre annonce expire dans " + daysRemaining + " jours");
+        enqueue("LISTING_EXPIRING_SOON", listing, "Votre annonce expire dans " + daysRemaining
+                + (daysRemaining == 1 ? " jour" : " jours"));
     }
 
     @Override
