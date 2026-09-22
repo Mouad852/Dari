@@ -80,6 +80,13 @@ if ($null -ne $ssrSecret -and $ssrSecret.Length -lt 32) {
 }
 $null = Require-Setting 'DARI_TRUSTED_PROXY_IPS'
 
+# The deployed image tag; latest moves and development is the non-production default.
+$release = Require-Setting 'DARI_RELEASE_VERSION'
+if ($null -ne $release -and (-not ($release -cmatch '^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$') -or
+        @('latest', 'development') -contains $release.ToLowerInvariant())) {
+    $problems.Add('DARI_RELEASE_VERSION must be the deployed image tag (letters, digits, . _ + - only; not latest or development)')
+}
+
 $provider = Require-Setting 'DARI_MEDIA_PROVIDER'
 if ($null -ne $provider -and $provider.ToLowerInvariant() -ne 's3') {
     $problems.Add('DARI_MEDIA_PROVIDER must be s3 in production')

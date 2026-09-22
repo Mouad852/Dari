@@ -45,6 +45,10 @@ spring:
           writetimeout: 10000
 
 dari:
+  # No default: the image tag this task runs. Every error report and
+  # /actuator/info carry it; "development" in production is the mislabel the
+  # startup check exists to refuse.
+  release-version: ${DARI_RELEASE_VERSION}
   web-origins: ${DARI_WEB_ORIGIN}
   firebase:
     credentials-path: ${FIREBASE_CREDENTIALS_PATH}

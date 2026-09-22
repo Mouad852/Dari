@@ -106,6 +106,24 @@ if require DARI_SSR_SHARED_SECRET; then
 fi
 require DARI_TRUSTED_PROXY_IPS
 
+# The deployed image tag; latest moves and development is the non-production default.
+if require DARI_RELEASE_VERSION; then
+    release_ok=1
+    case "$value" in
+        [A-Za-z0-9]*) ;;
+        *) release_ok=0 ;;
+    esac
+    case "$value" in
+        *[!A-Za-z0-9._+-]*) release_ok=0 ;;
+    esac
+    [ "${#value}" -le 128 ] || release_ok=0
+    case "$(lower "$value")" in
+        latest | development) release_ok=0 ;;
+    esac
+    [ "$release_ok" -eq 1 ] || add_problem \
+        'DARI_RELEASE_VERSION must be the deployed image tag (letters, digits, . _ + - only; not latest or development)'
+fi
+
 if require DARI_MEDIA_PROVIDER; then
     [ "$(lower "$value")" = 's3' ] || add_problem 'DARI_MEDIA_PROVIDER must be s3 in production'
 fi

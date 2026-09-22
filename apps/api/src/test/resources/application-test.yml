@@ -9,6 +9,7 @@ spring:
     enabled: true
 
 dari:
+  release-version: test-release-4b1d
   web-origins: http://localhost:3000
   firebase:
     credentials-path: unused-in-tests   # FirebaseConfig is excluded from this profile

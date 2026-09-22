@@ -120,6 +120,10 @@ management:
           include: readinessState,db
 
 dari:
+  # The deployed image tag, set by the deployment (never baked into the image).
+  # Tags every error report and is shown at /actuator/info. Production requires
+  # it; everywhere else an unset value reads as "development".
+  release-version: ${DARI_RELEASE_VERSION:development}
   web-origins: ${DARI_WEB_ORIGIN:http://localhost:3000}
   upload-dir: ${DARI_UPLOAD_DIR:./uploads}
   media:

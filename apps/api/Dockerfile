@@ -6,6 +6,10 @@
 # Firebase key in infra/firebase cannot enter the image even by accident. The
 # key is mounted at runtime as a read-only file and FIREBASE_CREDENTIALS_PATH
 # points at it.
+#
+# The release version is deliberately NOT baked in: the deployment sets
+# DARI_RELEASE_VERSION to the same immutable tag it deploys (the git SHA), so
+# the image a task runs and the version it reports cannot disagree.
 
 # --- build -------------------------------------------------------------------
 FROM maven:3.9-eclipse-temurin-21 AS build

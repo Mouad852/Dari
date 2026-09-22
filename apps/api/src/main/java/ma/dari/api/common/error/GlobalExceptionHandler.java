@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
@@ -29,15 +30,18 @@ public class GlobalExceptionHandler {
 
     private final MeterRegistry meterRegistry;
     private final ErrorReporter errorReporter;
+    private final String releaseVersion;
 
     @Autowired
-    public GlobalExceptionHandler(MeterRegistry meterRegistry, ErrorReporter errorReporter) {
+    public GlobalExceptionHandler(MeterRegistry meterRegistry, ErrorReporter errorReporter,
+                                  @Value("${dari.release-version}") String releaseVersion) {
         this.meterRegistry = meterRegistry;
         this.errorReporter = errorReporter;
+        this.releaseVersion = releaseVersion;
     }
 
     public GlobalExceptionHandler(MeterRegistry meterRegistry) {
-        this(meterRegistry, new NoopErrorReporter());
+        this(meterRegistry, new NoopErrorReporter(), "development");
     }
 
     @ExceptionHandler(ApiException.class)
@@ -154,7 +158,7 @@ public class GlobalExceptionHandler {
         log.error("Unhandled exception on {} {}", req.getMethod(), req.getRequestURI(), e);
         meterRegistry.counter("dari.errors.unhandled", "exception", e.getClass().getSimpleName()).increment();
         errorReporter.report(e, new ErrorReporter.SafeErrorContext(
-                req.getRequestURI(), MDC.get("correlationId"), "development"));
+                req.getRequestURI(), MDC.get("correlationId"), releaseVersion));
         return ResponseEntity.status(500)
                 .body(ErrorResponse.of(ErrorCode.INTERNAL_ERROR, "Une erreur est survenue"));
     }

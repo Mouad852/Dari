@@ -627,7 +627,7 @@ history.
 
 | Task-definition environment | SSM `SecureString` |
 | --- | --- |
-| `SPRING_PROFILES_ACTIVE=production`, `DB_URL`, `DARI_WEB_ORIGIN`, `DARI_TRUSTED_PROXY_IPS`, `DARI_MEDIA_PROVIDER=s3`, `DARI_MEDIA_PUBLIC_BASE_URL`, `DARI_MEDIA_S3_ENDPOINT`, `DARI_MEDIA_S3_REGION`, `DARI_MEDIA_S3_BUCKET`, `SMTP_HOST`, `SMTP_PORT=587` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DARI_LOCATION_FUZZ_SECRET`, `DARI_SSR_SHARED_SECRET`, `DARI_MEDIA_S3_ACCESS_KEY`, `DARI_MEDIA_S3_SECRET_KEY`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `DARI_NOTIFICATIONS_FROM`, Firebase service-account JSON |
+| `SPRING_PROFILES_ACTIVE=production`, `DARI_RELEASE_VERSION`, `DB_URL`, `DARI_WEB_ORIGIN`, `DARI_TRUSTED_PROXY_IPS`, `DARI_MEDIA_PROVIDER=s3`, `DARI_MEDIA_PUBLIC_BASE_URL`, `DARI_MEDIA_S3_ENDPOINT`, `DARI_MEDIA_S3_REGION`, `DARI_MEDIA_S3_BUCKET`, `SMTP_HOST`, `SMTP_PORT=587` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DARI_LOCATION_FUZZ_SECRET`, `DARI_SSR_SHARED_SECRET`, `DARI_MEDIA_S3_ACCESS_KEY`, `DARI_MEDIA_S3_SECRET_KEY`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `DARI_NOTIFICATIONS_FROM`, Firebase service-account JSON |
 
 Set `FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase/service-account.json` in
 the API container. Add a non-essential BusyBox init container that reads the
@@ -703,7 +703,13 @@ docker push "$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/dari-api:$git_sha"
 Provision the network, ACM certificate, ALB, RDS, S3/CloudFront, ECR,
 Parameter Store entries, IAM permissions, ECS cluster, task definition, and
 service using reviewed infrastructure configuration. Register the image SHA in
-a new task-definition revision and deploy the service. The API applies Flyway
+a new task-definition revision, with `DARI_RELEASE_VERSION` set to the **same**
+`$git_sha` in its environment, and deploy the service. The version is not baked
+into the image, and production refuses to start without it (or with `latest`
+or `development`); every error report is tagged with it and
+`/actuator/info` shows it (`{"release":{"version":"<sha>"}}`), so after a
+deploy or rollback `curl -fsS https://<api domain>/actuator/info` says which
+image is serving. The API applies Flyway
 migrations on startup; take a verified backup first and allow the new task to
 become ready before draining the old task. Never run `flyway clean` in any
 environment holding production data.
@@ -711,8 +717,8 @@ environment holding production data.
 ### Routine deploy and rollback
 
 For each release, build and push a new SHA tag, register a new task-definition
-revision with that exact image, update the ECS service, and wait for its
-deployment to stabilize. Check the ALB readiness target, liveness endpoint,
+revision with that exact image and `DARI_RELEASE_VERSION` set to the same SHA,
+update the ECS service, and wait for its deployment to stabilize. Check the ALB readiness target, liveness endpoint,
 application logs, and a real media upload before declaring the release good.
 
 If the release fails, select the previous known-good ECS task-definition

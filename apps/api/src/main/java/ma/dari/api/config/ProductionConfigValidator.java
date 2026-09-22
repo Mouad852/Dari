@@ -11,6 +11,7 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Refuses to start the {@code production} profile with a missing or unsafe
@@ -77,6 +78,12 @@ public class ProductionConfigValidator
         }
 
         check.required("DARI_TRUSTED_PROXY_IPS", "server.tomcat.remoteip.internal-proxies");
+
+        String release = check.required("DARI_RELEASE_VERSION", "dari.release-version");
+        if (release != null && !isReleaseVersion(release)) {
+            check.invalid("DARI_RELEASE_VERSION", "must be the deployed image tag "
+                    + "(letters, digits, . _ + - only; not latest or development)");
+        }
 
         String provider = check.required("DARI_MEDIA_PROVIDER", "dari.media.provider");
         if (provider != null && !provider.trim().equalsIgnoreCase("s3")) {
@@ -146,6 +153,20 @@ public class ProductionConfigValidator
             return false;
         }
     }
+
+    /**
+     * An immutable image tag such as a git SHA. "latest" moves between images
+     * and "development" is the non-production default, so either would label
+     * every error report with something that does not identify a build.
+     */
+    private static boolean isReleaseVersion(String value) {
+        String trimmed = value.trim();
+        return RELEASE_VERSION.matcher(trimmed).matches()
+                && !trimmed.equalsIgnoreCase("latest")
+                && !trimmed.equalsIgnoreCase("development");
+    }
+
+    private static final Pattern RELEASE_VERSION = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._+-]{0,127}");
 
     private static boolean isPort(String value) {
         try {

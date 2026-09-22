@@ -53,6 +53,7 @@ class ProductionConfigValidatorTest {
         properties.put("dari.location.fuzz-secret", "test-only-fuzz-secret-with-at-least-thirty-two-characters");
         properties.put("dari.ssr.shared-secret", "test-only-ssr-shared-secret-with-at-least-32-characters");
         properties.put("server.tomcat.remoteip.internal-proxies", "^10\\.0\\.10\\.\\d{1,3}$");
+        properties.put("dari.release-version", "6dd691a0c4e2");
         properties.put("dari.media.provider", "s3");
         properties.put("dari.media.public-base-url", "https://media.dari.ma");
         properties.put("dari.media.s3.endpoint", "https://s3.eu-west-3.amazonaws.com");
@@ -96,6 +97,7 @@ class ProductionConfigValidatorTest {
             "DARI_LOCATION_FUZZ_SECRET, dari.location.fuzz-secret",
             "DARI_SSR_SHARED_SECRET, dari.ssr.shared-secret",
             "DARI_TRUSTED_PROXY_IPS, server.tomcat.remoteip.internal-proxies",
+            "DARI_RELEASE_VERSION, dari.release-version",
             "DARI_MEDIA_PROVIDER, dari.media.provider",
             "DARI_MEDIA_PUBLIC_BASE_URL, dari.media.public-base-url",
             "DARI_MEDIA_S3_ENDPOINT, dari.media.s3.endpoint",
@@ -144,6 +146,11 @@ class ProductionConfigValidatorTest {
             "DARI_LOCATION_FUZZ_SECRET  | dari.location.fuzz-secret    | too-short",
             "DARI_SSR_SHARED_SECRET     | dari.ssr.shared-secret       | too-short",
             "DARI_SSR_SHARED_SECRET     | dari.ssr.shared-secret       | exactly-31-characters-long-abcd",
+            "DARI_RELEASE_VERSION       | dari.release-version         | latest",
+            "DARI_RELEASE_VERSION       | dari.release-version         | Development",
+            "DARI_RELEASE_VERSION       | dari.release-version         | release 1",
+            "DARI_RELEASE_VERSION       | dari.release-version         | feature/branch",
+            "DARI_RELEASE_VERSION       | dari.release-version         | -leading-dash",
             "SMTP_PORT                  | spring.mail.port             | smtp",
             "SMTP_PORT                  | spring.mail.port             | 70000",
             "FIREBASE_CREDENTIALS_PATH  | dari.firebase.credentials-path | /run/secrets/does-not-exist.json"
@@ -155,6 +162,16 @@ class ProductionConfigValidatorTest {
         List<String> problems = problems(properties);
         assertThat(problems).hasSize(1);
         assertThat(problems.getFirst()).startsWith(variable + " ");
+    }
+
+    @ParameterizedTest(name = "DARI_RELEASE_VERSION={0}")
+    @DisplayName("Immutable image tags are accepted as the release version")
+    @CsvSource({"6dd691a0c4e2f1b3a5d7e9f0a1b2c3d4e5f6a7b8", "2026.09.22", "v1.4.0+build.7", "rel_42"})
+    void imageTagsAreAcceptedAsTheReleaseVersion(String release) {
+        var properties = valid();
+        properties.put("dari.release-version", release);
+
+        assertThat(problems(properties)).isEmpty();
     }
 
     @Test
