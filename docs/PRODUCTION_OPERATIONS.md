@@ -200,8 +200,8 @@ key and none lands in a per-address bucket):
 | `/flatshare/[city]` (SSG + ISR, 15 min) | `GET /listings?city=…&sort=updated\|priceasc\|pricedesc`, `GET /listings/count?city=…` | `SEARCH` | shared SSR |
 | `/listings/[id]` (dynamic; `generateMetadata` and page share one call) | `GET /listings/{id}` | `SSR_READ` | shared SSR |
 | `/profile/[id]` (dynamic) | `GET /users/{id}` | `SSR_READ` | shared SSR |
-| `/sitemap/[id].xml` (static at build) | `GET /listings/sitemap/count`, `GET /listings/sitemap?limit=…&offset=…` | `SEARCH` | shared SSR |
-| `/robots.txt` (static at build) | `GET /listings/sitemap/count` | `SEARCH` | shared SSR |
+| `/sitemap/[id].xml` (ISR, 1 h) | `GET /listings/sitemap/count`, `GET /listings/sitemap?limit=…&offset=…` | `SEARCH` | shared SSR |
+| `/robots.txt` (ISR, 1 h) | `GET /listings/sitemap/count` | `SEARCH` | shared SSR |
 
 Before this key existed, the `SEARCH` calls above counted against the web
 host's own address at 120/minute. Everything else in the web app calls the

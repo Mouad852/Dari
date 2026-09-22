@@ -6,6 +6,14 @@ import { CITIES, citySlug } from '@/lib/cities';
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 const BATCH_SIZE = 50_000;
 
+/**
+ * Without this the batches are prerendered once at build time and a listing
+ * published afterwards never enters the index until the next deploy. Next
+ * needs a literal here — a value read from configuration is not statically
+ * analysable and is silently ignored.
+ */
+export const revalidate = 3600;
+
 type SitemapCount = { count: number };
 type SitemapEntry = { id: string; updatedAt: string };
 

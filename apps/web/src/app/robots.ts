@@ -3,6 +3,9 @@ import { apiFetch } from '@/lib/api';
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 
+/** Same hour as the sitemap: `batchCount` below grows with the catalogue. */
+export const revalidate = 3600;
+
 /**
  * robots.txt is advisory — it stops well-behaved crawlers, not attackers. The
  * admin, account and messaging routes are protected server-side; this only

@@ -1,4 +1,6 @@
-import Link from 'next/link';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { MapPin, ShieldCheck } from 'lucide-react';
 
 import { apiFetch, ApiError } from '@/lib/api';
@@ -9,22 +11,48 @@ import { FocusOnMount } from '@/components/FocusOnMount';
 import { ReportDialog } from '@/components/ReportDialog';
 import { ContactButton } from './ContactButton';
 
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+
+/**
+ * One lookup per request, shared with generateMetadata — the same shape as
+ * listings/[id]. The API answers 404 for a profile that never existed, was
+ * deleted or is banned alike, so all three end at notFound() and none of them
+ * confirms that an account ever existed.
+ */
+const getProfile = cache(async (id: string): Promise<PublicProfile | null> => {
+  try {
+    return await apiFetch<PublicProfile>(`/users/${encodeURIComponent(id)}`);
+  } catch (cause) {
+    if (cause instanceof ApiError && cause.status === 404) return null;
+    throw cause;
+  }
+});
+
+/**
+ * Public profiles carry a person's display name, city and bio. Dari's privacy
+ * posture is that this exists to let one member judge another inside the
+ * product, not to put members in a search index — so the page is noindex, and
+ * `follow` because its listing links are public pages that should be crawled.
+ */
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const profile = await getProfile(id);
+
+  if (!profile) return { title: 'Profil introuvable', robots: { index: false, follow: false } };
+
+  return {
+    // The root template already appends " | Dari".
+    title: `Profil de ${profile.displayName}`,
+    alternates: { canonical: `${SITE}/profile/${profile.id}` },
+    robots: { index: false, follow: true },
+  };
+}
+
 export default async function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const profile = await getProfile(id);
 
-  let profile: PublicProfile;
-  try {
-    profile = await apiFetch<PublicProfile>(`/users/${encodeURIComponent(id)}`);
-  } catch (cause) {
-    return (
-      <main style={{ minHeight: '100vh', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-muted)' }}>
-        <h1 style={{ font: 'var(--type-h2)', color: 'var(--text-heading)' }}>
-          {cause instanceof ApiError && cause.status === 404 ? 'Ce profil est introuvable.' : 'Une erreur est survenue.'}
-        </h1>
-        <Link href="/" style={{ color: 'var(--brand)' }}>Retour à l’accueil</Link>
-      </main>
-    );
-  }
+  if (!profile) notFound();
 
   const memberSince = new Date(profile.memberSince).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 

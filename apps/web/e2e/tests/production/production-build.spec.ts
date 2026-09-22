@@ -74,6 +74,9 @@ function directive(csp: string, name: string): string[] {
   return entry ? entry.split(/\s+/).slice(1) : [];
 }
 
+/** The production project's own build directory (playwright.config.ts sets DARI_WEB_DIST_DIR). */
+const DIST_DIR = path.join(__dirname, '..', '..', '..', '.next-production-e2e');
+
 const RELATIVE_COVER = '/uploads/listings/e2e-owner/e2e-relative-cover.png';
 const ABSOLUTE_COVER = '/cdn/listings/e2e-owner/e2e-absolute-cover.png';
 
@@ -153,6 +156,30 @@ test('the CSP allows exactly the origins the media resolver renders, and never t
   expect(csp).not.toContain('api.internal');
 });
 
+test('the sitemap and robots.txt are built to revalidate, not frozen at the build', async ({ request }) => {
+  // The manifest is where a missing `export const revalidate` shows up: it
+  // reads `initialRevalidateSeconds: false`, the route is prerendered once,
+  // and a listing published later never enters the index without a redeploy.
+  const manifest = JSON.parse(readFileSync(path.join(DIST_DIR, 'prerender-manifest.json'), 'utf8'));
+  for (const route of ['/sitemap/0.xml', '/robots.txt']) {
+    expect(manifest.routes[route]?.initialRevalidateSeconds, route).toBe(3600);
+    expect((await request.get(route)).status(), route).toBe(200);
+  }
+});
+
+test('a public profile is noindex with its own title and canonical, and a missing one is a real 404', async ({ request }) => {
+  const found = await request.get('/profile/other-user');
+  expect(found.status()).toBe(200);
+  const html = await found.text();
+  expect(html).toContain('<title>Profil de Amina | Dari</title>');
+  expect(html).toMatch(/<meta name="robots" content="noindex, follow"\/?>/);
+  expect(html).toContain('<link rel="canonical" href="https://www.example.invalid/profile/other-user"/>');
+
+  const missing = await request.get('/profile/no-such-profile');
+  expect(missing.status()).toBe(404);
+  expect(await missing.text()).toContain('Ce profil est introuvable');
+});
+
 test('no served output names the internal API host or the SSR key', async ({ request }) => {
   const forbidden = ['api.internal', PRODUCTION_SSR_KEY];
   for (const path of ['/', '/sign-in', '/flatshare/rabat', '/listings/listing-1', '/profile/other-user', '/sitemap/0.xml', '/robots.txt']) {
@@ -163,10 +190,9 @@ test('no served output names the internal API host or the SSR key', async ({ req
   }
 
   // Everything a browser can download, plus the prerendered pages as built.
-  const distDir = path.join(__dirname, '..', '..', '..', '.next-production-e2e');
   const files = [
-    ...listFiles(path.join(distDir, 'static')),
-    ...listFiles(path.join(distDir, 'server', 'app')).filter((file) => /\.(html|rsc|body)$/.test(file)),
+    ...listFiles(path.join(DIST_DIR, 'static')),
+    ...listFiles(path.join(DIST_DIR, 'server', 'app')).filter((file) => /\.(html|rsc|body)$/.test(file)),
   ];
   expect(files.length).toBeGreaterThan(20);
   for (const file of files) {
