@@ -12,6 +12,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -94,6 +97,21 @@ class MediaCleanupDeadLetterIntegrationTest extends AbstractJobIntegrationTest {
         assertThat(deadRows).isPositive();
         assertThat(meters.get("dari.media.cleanup_depth").tag("status", "DEAD").gauge().value())
                 .isEqualTo(deadRows.doubleValue());
+    }
+
+    @Test
+    void anEnqueuedKeyIsDueAtOnceByTheApplicationClock() {
+        // Stamped with the database's now() instead, a key enqueued a moment
+        // ago was "not due yet" whenever the database clock ran ahead of the
+        // application's, as Docker's VM clock does by a few hundred ms.
+        String key = newKey();
+        Instant before = Instant.now().minus(1, ChronoUnit.MICROS);
+        mediaCleanup.enqueue(key);
+        Instant after = Instant.now().plus(1, ChronoUnit.MICROS);
+
+        Instant nextAttemptAt = jdbc.queryForObject(
+                "SELECT next_attempt_at FROM media_cleanup WHERE storage_key = ?", Timestamp.class, key).toInstant();
+        assertThat(nextAttemptAt).isBetween(before, after);
     }
 
     @Test
@@ -227,7 +245,9 @@ class MediaCleanupDeadLetterIntegrationTest extends AbstractJobIntegrationTest {
     }
 
     private void makeDue(String key) {
-        jdbc.update("UPDATE media_cleanup SET next_attempt_at = now() - interval '1 second' WHERE storage_key = ?", key);
+        // A minute back, so a database clock running a little ahead of the
+        // application's (Docker's VM) still leaves the row due.
+        jdbc.update("UPDATE media_cleanup SET next_attempt_at = now() - interval '1 minute' WHERE storage_key = ?", key);
     }
 
     private String status(String key) {

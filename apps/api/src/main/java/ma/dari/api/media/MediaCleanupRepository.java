@@ -29,8 +29,8 @@ public interface MediaCleanupRepository extends JpaRepository<MediaCleanup, UUID
     @Modifying
     @Query(value = """
             insert into media_cleanup (id, storage_key, status, attempts, next_attempt_at, created_at, updated_at)
-            values (:id, :storageKey, 'PENDING', 0, now(), now(), now())
+            values (:id, :storageKey, 'PENDING', 0, :now, :now, :now)
             on conflict (storage_key) do nothing
             """, nativeQuery = true)
-    int insertIfAbsent(@Param("id") UUID id, @Param("storageKey") String storageKey);
+    int insertIfAbsent(@Param("id") UUID id, @Param("storageKey") String storageKey, @Param("now") Instant now);
 }

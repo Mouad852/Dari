@@ -43,7 +43,10 @@ public class MediaCleanupService {
     @Transactional
     public void enqueue(String storageKey) {
         if (storageKey == null || storageKey.isBlank()) return;
-        cleanups.insertIfAbsent(Ids.newId(), storageKey);
+        // The application clock, not the database's now(): findDue and the
+        // retry backoff use it too, and mixing the two made a key enqueued a
+        // moment ago "not due yet" whenever the database clock ran ahead.
+        cleanups.insertIfAbsent(Ids.newId(), storageKey, Instant.now());
     }
 
     /**
@@ -63,7 +66,9 @@ public class MediaCleanupService {
      * transaction open. A row that cannot be saved is left PENDING for the next
      * run and does not cost the rest of the batch its updates.
      */
-    @Scheduled(fixedDelayString = "${dari.media.cleanup-interval-ms:60000}")
+    // The first run comes one interval after startup rather than during it.
+    @Scheduled(fixedDelayString = "${dari.media.cleanup-interval-ms:60000}",
+            initialDelayString = "${dari.media.cleanup-interval-ms:60000}")
     @SchedulerLock(name = "mediaCleanup", lockAtMostFor = "PT25M")
     public void processDue() {
         for (MediaCleanup cleanup : cleanups.findDue(MediaCleanupStatus.PENDING, Instant.now(), PageRequest.of(0, BATCH_SIZE))) {

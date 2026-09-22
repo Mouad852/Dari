@@ -97,8 +97,9 @@ variable.
 
 ### Dead media cleanup rows
 
-The worker runs every `DARI_MEDIA_CLEANUP_INTERVAL_MS` (60 s) on one instance
-at a time (ShedLock lock `mediaCleanup`), takes at most 50 due rows per run,
+The worker runs every `DARI_MEDIA_CLEANUP_INTERVAL_MS` (60 s; the first run
+one interval after startup) on one instance at a time (ShedLock lock
+`mediaCleanup`), takes at most 50 due rows per run,
 and saves each row's outcome on its own. A failed deletion is retried after 60
 s, 2, 4, 8, 16 and 32 min, then hourly. After `DARI_MEDIA_CLEANUP_MAX_ATTEMPTS`
 failures (10 by default, about 4 h after the first) the row becomes `DEAD`:
@@ -346,6 +347,7 @@ container. It refuses a `BACKUP_DIR` inside any git work tree.
 
 ```bash
 export PGHOST=<rds-endpoint> PGDATABASE=dari PGUSER=dari_backup
+export PGSSLMODE=verify-full PGSSLROOTCERT=/etc/ssl/rds/global-bundle.pem   # the AWS RDS CA bundle
 read -rs PGPASSWORD && export PGPASSWORD      # or ~/.pgpass (mode 0600); never echo it
 export BACKUP_DIR=/secure/dari-backups         # encrypted volume, outside any git work tree
 infra/scripts/backup.sh
@@ -356,9 +358,11 @@ infra/scripts/restore-drill.sh "$BACKUP_DIR"/dari-dari-<timestamp>.dump
 beside it, readable by the operator only, and fails (exit 1, nothing left
 behind) when `pg_dump` fails, the archive is smaller than `BACKUP_MIN_BYTES`
 (4096), `pg_restore --list` cannot read it, or it has no `flyway_schema_history`
-data. A host without client tools can set `BACKUP_PG_IMAGE=postgis/postgis:16-3.4`
-to run them through Docker (plus `BACKUP_DOCKER_NETWORK` when the database is
-a container). Upload both files with the backup account's credentials, for
+data. For a database that is itself a container (the smoke stack, a drill), a
+host without client tools can set `BACKUP_PG_IMAGE=postgis/postgis:16-3.4` to
+run them through Docker, with `BACKUP_DOCKER_NETWORK` naming its network. That
+mode passes only `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER` and `PGPASSWORD`,
+not the TLS settings or the CA file, so use the local client tools against RDS. Upload both files with the backup account's credentials, for
 example `aws s3 cp <file> s3://<backup-bucket>/predeploy/ --sse aws:kms`, and
 confirm the object's checksum, encryption and retention before migrating.
 Record the archive name, size and sha256 in the release log, then delete the

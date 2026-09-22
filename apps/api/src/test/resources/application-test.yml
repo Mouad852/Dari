@@ -14,6 +14,14 @@ dari:
     credentials-path: unused-in-tests   # FirebaseConfig is excluded from this profile
   ssr:
     shared-secret: test-only-ssr-shared-secret-with-at-least-32-characters
+  # Scheduled jobs never fire on their own during the suite. Every cached test
+  # context runs its own scheduler over the one shared database and ShedLock
+  # table, so a background run could take the lock, or a row, that a test is
+  # asserting on. Tests call the jobs directly.
+  media:
+    cleanup-interval-ms: 3600000
+  listing:
+    expiry-cron: "-"
   # Integration tests exercise endpoint behavior, not production quotas. The
   # limiter itself is covered with deliberately small windows in unit tests.
   rate-limits:
