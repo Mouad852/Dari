@@ -142,6 +142,13 @@ dari:
     # Development/test only. Production overrides this with a required secret.
     fuzz-secret: ${DARI_LOCATION_FUZZ_SECRET:development-only-location-fuzz-secret-change-before-production}
 
+  # Server-only secret shared with the web runtime. A read presenting it in
+  # X-Dari-Ssr-Key is a trusted Next.js server render and uses the shared
+  # ssr-read ceiling below instead of the web host's per-IP search quota.
+  # Empty (the development default) trusts no request; production requires it.
+  ssr:
+    shared-secret: ${DARI_SSR_SHARED_SECRET:}
+
   # Listing expiry (phase 10). Sixty days keeps the marketplace credible;
   # stale listings are the exact failure Dari exists to replace.
   listing:
@@ -159,7 +166,8 @@ dari:
     delivery-interval-ms: ${DARI_NOTIFICATIONS_DELIVERY_INTERVAL_MS:30000}
 
   # Process-local abuse protection. Each policy applies independently to the
-  # authenticated Firebase identity and source address.
+  # authenticated Firebase identity and source address (except keyed SSR reads,
+  # see ssr-read).
   rate-limits:
     # This bounds the per-client keys held by this single-process limiter.
     # At capacity, new clients share a fixed overflow bucket rather than
@@ -183,8 +191,10 @@ dari:
     search:
       max: ${DARI_RATE_LIMIT_SEARCH_MAX:120}
       window: ${DARI_RATE_LIMIT_SEARCH_WINDOW:PT1M}
-    # Next.js Server Components share the web runtime's source IP. This is a
-    # deliberate site-wide protective ceiling, not per-visitor fairness.
+    # The one shared bucket for reads carrying the SSR key (dari.ssr above):
+    # Next.js renders all share the web runtime's source IP. A deliberate
+    # site-wide protective ceiling, not per-visitor fairness. Unkeyed callers
+    # never draw from it; SSR_READ endpoints fall back to search for them.
     ssr-read:
       max: ${DARI_RATE_LIMIT_SSR_READ_MAX:10000}
       window: ${DARI_RATE_LIMIT_SSR_READ_WINDOW:PT1M}

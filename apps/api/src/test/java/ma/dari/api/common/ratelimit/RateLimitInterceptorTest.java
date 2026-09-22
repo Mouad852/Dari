@@ -32,7 +32,7 @@ class RateLimitInterceptorTest {
                 20, Duration.ofHours(1),
                 5, Duration.ofHours(1),
                 2, Duration.ofHours(1));
-        RateLimitInterceptor interceptor = new RateLimitInterceptor(service);
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service, SSR_SECRET);
         HandlerMethod handler = new HandlerMethod(new SearchEndpoint(), SearchEndpoint.class.getMethod("search"));
 
         MockHttpServletRequest firstAddress = new MockHttpServletRequest();
@@ -55,7 +55,7 @@ class RateLimitInterceptorTest {
                 20, Duration.ofHours(1),
                 5, Duration.ofHours(1),
                 120, Duration.ofMinutes(1));
-        RateLimitInterceptor interceptor = new RateLimitInterceptor(service);
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service, SSR_SECRET);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
                         new AuthenticatedUser("uid-rate-test", "rate@example.ma", true, null),
@@ -78,7 +78,7 @@ class RateLimitInterceptorTest {
         RateLimitService service = new RateLimitService(
                 5, Duration.ofHours(1), 30, Duration.ofMinutes(1), 5, Duration.ofHours(1),
                 20, Duration.ofHours(1), 1, Duration.ofHours(1), 120, Duration.ofMinutes(1));
-        RateLimitInterceptor interceptor = new RateLimitInterceptor(service);
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service, SSR_SECRET);
         HandlerMethod handler = new HandlerMethod(new SignupEndpoint(), SignupEndpoint.class.getMethod("signup"));
         MockHttpServletRequest first = new MockHttpServletRequest();
         first.setRemoteAddr("2001:db8:1234:5678::1");
@@ -95,7 +95,7 @@ class RateLimitInterceptorTest {
         RateLimitService service = new RateLimitService(
                 5, Duration.ofHours(1), 30, Duration.ofMinutes(1), 5, Duration.ofHours(1),
                 20, Duration.ofHours(1), 1, Duration.ofHours(1), 120, Duration.ofMinutes(1));
-        RateLimitInterceptor interceptor = new RateLimitInterceptor(service);
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service, SSR_SECRET);
         HandlerMethod handler = new HandlerMethod(new SignupEndpoint(), SignupEndpoint.class.getMethod("signup"));
         MockHttpServletRequest first = new MockHttpServletRequest();
         first.setRemoteAddr("203.0.113.7:41000");
@@ -108,42 +108,124 @@ class RateLimitInterceptorTest {
     }
 
     @Test
-    void generousSharedSsrReadCeilingDoesNotThrottleOrdinaryRenderedTraffic() throws Exception {
-        RateLimitService service = new RateLimitService(
-                5, Duration.ofHours(1), 30, Duration.ofMinutes(1), 5, Duration.ofHours(1),
-                20, Duration.ofHours(1), 5, Duration.ofHours(1), 120, Duration.ofMinutes(1));
-        RateLimitInterceptor interceptor = new RateLimitInterceptor(service);
-        HandlerMethod handler = new HandlerMethod(new SsrReadEndpoint(), SsrReadEndpoint.class.getMethod("read"));
+    void keyedRendersFromTheWebHostShareTheSsrCeilingInsteadOfItsSearchQuota() throws Exception {
+        RateLimitService service = serviceWithSearchMax(120);
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service, SSR_SECRET);
 
-        for (int request = 0; request < 121; request++) {
-            MockHttpServletRequest renderedRequest = new MockHttpServletRequest();
-            // Distinct source addresses model visitors behind the Next.js
-            // runtime: all use the one shared SSR policy, never SEARCH's 120/IP.
-            renderedRequest.setRemoteAddr("198.51.100." + (request % 250));
-            assertThatCode(() -> interceptor.preHandle(renderedRequest, new MockHttpServletResponse(), handler))
-                    .doesNotThrowAnyException();
+        for (HandlerMethod handler : new HandlerMethod[] { ssrRead(), search() }) {
+            for (int request = 0; request < 121; request++) {
+                // One source address: every render comes from the Next.js host.
+                MockHttpServletRequest rendered = keyed(request("10.0.0.5"), SSR_SECRET);
+                assertThatCode(() -> interceptor.preHandle(rendered, new MockHttpServletResponse(), handler))
+                        .doesNotThrowAnyException();
+            }
+        }
+        assertThat(service.tracks(RateLimitType.SSR_READ, "shared:ssr-read")).isTrue();
+        assertThat(service.tracks(RateLimitType.SEARCH, "ip:10.0.0.5")).isFalse();
+        assertThat(service.tracks(RateLimitType.SSR_READ, "ip:10.0.0.5")).isFalse();
+        assertThat(service.windowCount()).isEqualTo(1);
+    }
+
+    @Test
+    void keyedSsrReadKeepsAnAuthenticatedUserDimensionAlongsideTheSharedCeiling() throws Exception {
+        RateLimitService service = serviceWithSearchMax(120);
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service, SSR_SECRET);
+        MockHttpServletRequest request = keyed(request("10.0.0.5"), SSR_SECRET);
+
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                new AuthenticatedUser("uid-ssr-user", "ssr@example.ma", true, null), null));
+        interceptor.preHandle(request, new MockHttpServletResponse(), ssrRead());
+        assertThat(service.tracks(RateLimitType.SSR_READ, "user:uid-ssr-user")).isTrue();
+        assertThat(service.windowCount()).isEqualTo(2);
+
+        // An anonymous keyed read joins only the shared protective ceiling.
+        SecurityContextHolder.clearContext();
+        interceptor.preHandle(request, new MockHttpServletResponse(), ssrRead());
+        assertThat(service.windowCount()).isEqualTo(2);
+    }
+
+    @Test
+    void unkeyedSsrReadIsLimitedPerAddressAtTheSearchThreshold() throws Exception {
+        RateLimitService service = serviceWithSearchMax(2);
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service, SSR_SECRET);
+
+        interceptor.preHandle(request("192.0.2.30"), new MockHttpServletResponse(), ssrRead());
+        interceptor.preHandle(request("192.0.2.30"), new MockHttpServletResponse(), ssrRead());
+        assertThatThrownBy(() -> interceptor.preHandle(request("192.0.2.30"), new MockHttpServletResponse(), ssrRead()))
+                .isInstanceOf(RateLimitExceededException.class);
+
+        // Another address still has its own quota, and nothing touched the SSR ceiling.
+        assertThatCode(() -> interceptor.preHandle(request("192.0.2.31"), new MockHttpServletResponse(), ssrRead()))
+                .doesNotThrowAnyException();
+        assertThat(service.tracks(RateLimitType.SEARCH, "ip:192.0.2.30")).isTrue();
+        assertThat(service.tracks(RateLimitType.SSR_READ, "shared:ssr-read")).isFalse();
+    }
+
+    @Test
+    void aWrongOrPartialKeyIsTreatedExactlyLikeNoKey() throws Exception {
+        for (String wrong : new String[] { "wrong", SSR_SECRET.substring(0, 20), SSR_SECRET + "x", "" }) {
+            RateLimitService service = serviceWithSearchMax(1);
+            RateLimitInterceptor interceptor = new RateLimitInterceptor(service, SSR_SECRET);
+
+            interceptor.preHandle(keyed(request("192.0.2.40"), wrong), new MockHttpServletResponse(), ssrRead());
+            assertThatThrownBy(() -> interceptor.preHandle(keyed(request("192.0.2.40"), wrong), new MockHttpServletResponse(), ssrRead()))
+                    .isInstanceOf(RateLimitExceededException.class);
+            assertThat(service.tracks(RateLimitType.SSR_READ, "shared:ssr-read")).isFalse();
         }
     }
 
     @Test
-    void ssrReadKeepsAnAuthenticatedUserDimensionAlongsideTheSharedCeiling() throws Exception {
+    void anUnconfiguredSecretTrustsNoRequestEvenWithAnEmptyHeader() throws Exception {
+        RateLimitService service = serviceWithSearchMax(1);
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service, "");
+
+        interceptor.preHandle(keyed(request("192.0.2.50"), ""), new MockHttpServletResponse(), ssrRead());
+        assertThatThrownBy(() -> interceptor.preHandle(keyed(request("192.0.2.50"), ""), new MockHttpServletResponse(), ssrRead()))
+                .isInstanceOf(RateLimitExceededException.class);
+        assertThat(service.tracks(RateLimitType.SSR_READ, "shared:ssr-read")).isFalse();
+    }
+
+    @Test
+    void mutationPoliciesIgnoreTheSsrKey() throws Exception {
+        // signup.max = 1: a valid key must not move SIGNUP onto the SSR ceiling.
         RateLimitService service = new RateLimitService(
+                1, Duration.ofHours(1), 1, Duration.ofMinutes(1), 1, Duration.ofHours(1),
+                1, Duration.ofHours(1), 1, Duration.ofHours(1), 120, Duration.ofMinutes(1));
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service, SSR_SECRET);
+        HandlerMethod signup = new HandlerMethod(new SignupEndpoint(), SignupEndpoint.class.getMethod("signup"));
+
+        interceptor.preHandle(keyed(request("192.0.2.60"), SSR_SECRET), new MockHttpServletResponse(), signup);
+        assertThatThrownBy(() -> interceptor.preHandle(keyed(request("192.0.2.60"), SSR_SECRET), new MockHttpServletResponse(), signup))
+                .isInstanceOf(RateLimitExceededException.class);
+        assertThat(service.tracks(RateLimitType.SIGNUP, "ip:192.0.2.60")).isTrue();
+        assertThat(service.tracks(RateLimitType.SSR_READ, "shared:ssr-read")).isFalse();
+    }
+
+    private static final String SSR_SECRET = "test-only-ssr-shared-secret-with-at-least-32-characters";
+
+    private static RateLimitService serviceWithSearchMax(int searchMax) {
+        return new RateLimitService(
                 5, Duration.ofHours(1), 30, Duration.ofMinutes(1), 5, Duration.ofHours(1),
-                20, Duration.ofHours(1), 5, Duration.ofHours(1), 120, Duration.ofMinutes(1));
-        RateLimitInterceptor interceptor = new RateLimitInterceptor(service);
-        HandlerMethod handler = new HandlerMethod(new SsrReadEndpoint(), SsrReadEndpoint.class.getMethod("read"));
+                20, Duration.ofHours(1), 5, Duration.ofHours(1), searchMax, Duration.ofMinutes(1));
+    }
+
+    private static MockHttpServletRequest request(String remoteAddress) {
         MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr(remoteAddress);
+        return request;
+    }
 
-        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
-                new AuthenticatedUser("uid-ssr-user", "ssr@example.ma", true, null), null));
-        interceptor.preHandle(request, new MockHttpServletResponse(), handler);
-        assertThat(service.windowCount()).isEqualTo(2);
+    private static MockHttpServletRequest keyed(MockHttpServletRequest request, String key) {
+        request.addHeader(RateLimitInterceptor.SSR_KEY_HEADER, key);
+        return request;
+    }
 
-        // An anonymous SSR-shaped read joins only the shared protective
-        // ceiling: it creates no source-address or user-specific window.
-        SecurityContextHolder.clearContext();
-        interceptor.preHandle(request, new MockHttpServletResponse(), handler);
-        assertThat(service.windowCount()).isEqualTo(2);
+    private static HandlerMethod ssrRead() throws NoSuchMethodException {
+        return new HandlerMethod(new SsrReadEndpoint(), SsrReadEndpoint.class.getMethod("read"));
+    }
+
+    private static HandlerMethod search() throws NoSuchMethodException {
+        return new HandlerMethod(new SearchEndpoint(), SearchEndpoint.class.getMethod("search"));
     }
 
     private static final class SignupEndpoint {

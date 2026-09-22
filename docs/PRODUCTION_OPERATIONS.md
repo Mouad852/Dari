@@ -25,19 +25,60 @@ bucket instead of allocating another key or allowing the request. The cap-hit
 counter is retained for operational diagnosis. Redis-backed rate limiting is a
 mandatory prerequisite before horizontal API scaling.
 
-Public listing detail and reference-data reads use the separate, generous
-`DARI_RATE_LIMIT_SSR_READ_MAX` / `DARI_RATE_LIMIT_SSR_READ_WINDOW` shared
-ceiling (10,000/minute by default). Caller analysis found that Next.js Server
-Components call listing detail (`/listings/[id]`) and public profiles
-(`/profile/[id]`) from the web runtime, without a trustworthy visitor-address
-header; cities, amenities, and neighborhoods remain browser-reference routes,
-while the mobile client calls listing detail directly. Applying the normal
-per-address `SEARCH` quota would therefore throttle all SSR users together.
-`SSR_READ` deliberately has one site-wide ceiling and retains a second
-per-Firebase-user dimension for authenticated callers; anonymous reads have no
-identity dimension. Per-visitor fairness for anonymous SSR traffic requires a
-trusted edge-to-API identity design and remains a follow-up. Do not add a
-client-settable SSR header: it would create a rate-limit bypass.
+Every Next.js server render (Server Components, `generateMetadata`, ISR pages,
+`sitemap.ts`, `robots.ts`) reaches the API from the web runtime's one address
+and carries no trustworthy visitor address, so a per-address quota would
+throttle every visitor together. The web runtime therefore identifies itself
+with the server-only shared secret `DARI_SSR_SHARED_SECRET`, sent in the
+`X-Dari-Ssr-Key` header by `apiFetch` only when it runs on the server:
+
+- A **read** (`SEARCH` or `SSR_READ` policy) whose key matches, compared in
+  constant time, draws on one shared bucket,
+  `DARI_RATE_LIMIT_SSR_READ_MAX` / `DARI_RATE_LIMIT_SSR_READ_WINDOW`
+  (10,000/minute by default), plus a per-Firebase-user window when the call is
+  authenticated. It never touches the web host's per-address bucket.
+- **Every other request** — browsers, the mobile app, anyone with a missing or
+  wrong key — gets the normal per-address (and per-user) limit under the
+  `SEARCH` policy, including on endpoints annotated `SSR_READ` (listing detail
+  `/listings/{id}` and public profiles `/users/{id}`). An unkeyed caller cannot
+  spend the shared SSR budget, and listing enumeration is bounded per address.
+  Cities, amenities and neighborhoods are browser/mobile reference routes and
+  are annotated `SEARCH`.
+- **Mutation policies** (signup, upload, report, message, listing) ignore the
+  header entirely.
+
+Every server-side API call the web app makes (verified against a production
+build and `next start`, 2026-09-22; all go through `apiFetch`, so all carry the
+key and none lands in a per-address bucket):
+
+| Web route (render mode) | API call | Endpoint policy | Limiter with the key |
+| --- | --- | --- | --- |
+| `/` (ISR, 15 min) | `GET /listings/featured?limit=4`, `GET /listings/count`, `GET /listings/count?city=…` ×4 | `SEARCH` | shared SSR |
+| `/flatshare/[city]` (SSG + ISR, 15 min) | `GET /listings?city=…&sort=updated\|priceasc\|pricedesc`, `GET /listings/count?city=…` | `SEARCH` | shared SSR |
+| `/listings/[id]` (dynamic; `generateMetadata` and page share one call) | `GET /listings/{id}` | `SSR_READ` | shared SSR |
+| `/profile/[id]` (dynamic) | `GET /users/{id}` | `SSR_READ` | shared SSR |
+| `/sitemap/[id].xml` (static at build) | `GET /listings/sitemap/count`, `GET /listings/sitemap?limit=…&offset=…` | `SEARCH` | shared SSR |
+| `/robots.txt` (static at build) | `GET /listings/sitemap/count` | `SEARCH` | shared SSR |
+
+Before this key existed, the `SEARCH` calls above counted against the web
+host's own address at 120/minute. Everything else in the web app calls the
+API from the browser and is limited per visitor address.
+
+The header is not in the CORS allow-list, so browser JavaScript on another
+origin cannot send it, and the value is never logged, echoed, put in error
+bodies or used as a metric tag. The secret is required in production on both
+sides (at least 32 characters; the API's startup check, the validation
+scripts and the web build gate all enforce it). **Rotation:** change it on the
+API and the web service in the same deploy. During a mismatch nothing breaks
+outright, but server renders fall back to the web host's per-address `SEARCH`
+quota (120/minute by default) and start returning 429 under load.
+
+Known limits, deliberately deferred: per-visitor fairness for anonymous SSR
+traffic does not exist — anyone who can drive many page renders can still
+spend the shared SSR budget, bounded only by the web host's edge and by ISR
+caching. Mobile and browser callers share the per-address `SEARCH` limit, which
+can be tight behind carrier-grade NAT; `DARI_RATE_LIMIT_SEARCH_MAX` stays
+tunable for that reason.
 
 Production uses Tomcat's native `RemoteIpValve`, not Spring's framework
 forwarded-header transformer. `DARI_TRUSTED_PROXY_IPS` is required and must be
@@ -324,7 +365,7 @@ history.
 
 | Task-definition environment | SSM `SecureString` |
 | --- | --- |
-| `SPRING_PROFILES_ACTIVE=production`, `DB_URL`, `DARI_WEB_ORIGIN`, `DARI_TRUSTED_PROXY_IPS`, `DARI_MEDIA_PROVIDER=s3`, `DARI_MEDIA_PUBLIC_BASE_URL`, `DARI_MEDIA_S3_ENDPOINT`, `DARI_MEDIA_S3_REGION`, `DARI_MEDIA_S3_BUCKET`, `SMTP_HOST`, `SMTP_PORT=587` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DARI_LOCATION_FUZZ_SECRET`, `DARI_MEDIA_S3_ACCESS_KEY`, `DARI_MEDIA_S3_SECRET_KEY`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `DARI_NOTIFICATIONS_FROM`, Firebase service-account JSON |
+| `SPRING_PROFILES_ACTIVE=production`, `DB_URL`, `DARI_WEB_ORIGIN`, `DARI_TRUSTED_PROXY_IPS`, `DARI_MEDIA_PROVIDER=s3`, `DARI_MEDIA_PUBLIC_BASE_URL`, `DARI_MEDIA_S3_ENDPOINT`, `DARI_MEDIA_S3_REGION`, `DARI_MEDIA_S3_BUCKET`, `SMTP_HOST`, `SMTP_PORT=587` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DARI_LOCATION_FUZZ_SECRET`, `DARI_SSR_SHARED_SECRET`, `DARI_MEDIA_S3_ACCESS_KEY`, `DARI_MEDIA_S3_SECRET_KEY`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `DARI_NOTIFICATIONS_FROM`, Firebase service-account JSON |
 
 Set `FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase/service-account.json` in
 the API container. Add a non-essential BusyBox init container that reads the
@@ -337,6 +378,12 @@ Store `DARI_LOCATION_FUZZ_SECRET` as a Parameter Store `SecureString` with at
 least 32 characters. It keys the deterministic public listing-pin offsets;
 rotating it deliberately moves every public pin and should be coordinated with
 product support rather than treated as an invisible credential rotation.
+
+Store `DARI_SSR_SHARED_SECRET` the same way (at least 32 characters) and
+reference the **same** parameter from the web service's task definition; the
+web app needs it at `next build` and at runtime, as a server-only variable
+(never a `NEXT_PUBLIC_` name). Rotate it on both services in one deploy, as
+described under "Media, rate limits, and proxy boundary".
 
 ### Build and first deployment
 

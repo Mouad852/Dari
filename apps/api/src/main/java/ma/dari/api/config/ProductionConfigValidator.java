@@ -71,6 +71,11 @@ public class ProductionConfigValidator
             check.invalid("DARI_LOCATION_FUZZ_SECRET", "must be at least 32 characters long");
         }
 
+        String ssrSecret = check.required("DARI_SSR_SHARED_SECRET", "dari.ssr.shared-secret");
+        if (ssrSecret != null && ssrSecret.trim().length() < 32) {
+            check.invalid("DARI_SSR_SHARED_SECRET", "must be at least 32 characters long");
+        }
+
         check.required("DARI_TRUSTED_PROXY_IPS", "server.tomcat.remoteip.internal-proxies");
 
         String provider = check.required("DARI_MEDIA_PROVIDER", "dari.media.provider");

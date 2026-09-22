@@ -31,7 +31,7 @@ public class ReferenceDataController {
 
     /** Cities with live published counts, for the homepage tiles. */
     @GetMapping("/cities")
-    @RateLimited(RateLimitType.SSR_READ)
+    @RateLimited(RateLimitType.SEARCH)
     public List<CitySummary> cities() {
         return listingSearch.cityCounts().stream()
                 .map(entry -> new CitySummary(entry.getCity(), entry.getCount()))
@@ -40,7 +40,7 @@ public class ReferenceDataController {
 
     /** The reference codes a listing can be tagged with, in display order. */
     @GetMapping("/amenities")
-    @RateLimited(RateLimitType.SSR_READ)
+    @RateLimited(RateLimitType.SEARCH)
     public List<String> amenities() {
         return this.amenities.findAllByOrderBySortOrderAsc().stream().map(Amenity::getCode).toList();
     }
@@ -56,7 +56,7 @@ public class ReferenceDataController {
      * all (2026-09-06).
      */
     @GetMapping("/neighborhoods")
-    @RateLimited(RateLimitType.SSR_READ)
+    @RateLimited(RateLimitType.SEARCH)
     public List<String> neighborhoods(@RequestParam(required = false) String city) {
         if (city == null || city.isBlank()) {
             throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Ville requise");

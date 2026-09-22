@@ -2,6 +2,7 @@ package ma.dari.api.common.ratelimit;
 
 import ma.dari.api.common.auth.AuthenticatedUser;
 import ma.dari.api.common.error.RateLimitExceededException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -14,15 +15,29 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Arrays;
 
 @Component
 public class RateLimitInterceptor implements HandlerInterceptor {
 
-    private final RateLimitService rateLimitService;
+    /**
+     * Carries the web runtime's server-only shared secret. Deliberately absent
+     * from the CORS allow-list, and never logged, echoed or tagged.
+     */
+    static final String SSR_KEY_HEADER = "X-Dari-Ssr-Key";
 
-    public RateLimitInterceptor(RateLimitService rateLimitService) {
+    private final RateLimitService rateLimitService;
+    /** Null when unconfigured: then no request is ever a trusted SSR call. */
+    private final byte[] ssrSharedSecret;
+
+    public RateLimitInterceptor(RateLimitService rateLimitService,
+                                @Value("${dari.ssr.shared-secret:}") String ssrSharedSecret) {
         this.rateLimitService = rateLimitService;
+        this.ssrSharedSecret = ssrSharedSecret == null || ssrSharedSecret.isBlank()
+                ? null
+                : ssrSharedSecret.getBytes(StandardCharsets.UTF_8);
     }
 
     @Override
@@ -35,28 +50,45 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        if (annotation.value() == RateLimitType.SSR_READ) {
-            // Next.js Server Components all originate from the web runtime's
-            // address and do not carry a trustworthy visitor address. This is
-            // intentionally a site-wide protective ceiling, not a fairness
-            // quota; a client-controlled marker would be an abuse bypass.
-            check(annotation.value(), "shared:ssr-read");
-            String identity = identity();
-            // A signed-in visitor still has a stable Firebase identity even
-            // when the Next.js server hides its source address. Retain that
-            // independent limit; anonymous reads intentionally have none.
+        RateLimitType type = annotation.value();
+        String identity = identity();
+
+        if (isRead(type) && isTrustedSsrCall(request)) {
+            // Every Next.js server render arrives from the web runtime's own
+            // address and carries no trustworthy visitor address, so keyed
+            // reads share one site-wide protective ceiling instead of the web
+            // host's per-IP quota. A signed-in visitor keeps an independent
+            // identity limit.
             if (identity != null) {
-                check(annotation.value(), "user:" + identity);
+                check(RateLimitType.SSR_READ, "user:" + identity);
             }
+            check(RateLimitType.SSR_READ, "shared:ssr-read");
             return true;
         }
 
-        String identity = identity();
+        // Browsers, the mobile app and anyone without the key: the ordinary
+        // per-IP (and per-user) limit. An SSR_READ endpoint falls back to
+        // SEARCH, so an unkeyed caller can neither spend the shared SSR budget
+        // nor enumerate outside a per-address quota.
+        RateLimitType effective = type == RateLimitType.SSR_READ ? RateLimitType.SEARCH : type;
         if (identity != null) {
-            check(annotation.value(), "user:" + identity);
+            check(effective, "user:" + identity);
         }
-        check(annotation.value(), "ip:" + sourceAddress(request.getRemoteAddr()));
+        check(effective, "ip:" + sourceAddress(request.getRemoteAddr()));
         return true;
+    }
+
+    /** Mutation policies never consult the SSR key. */
+    private static boolean isRead(RateLimitType type) {
+        return type == RateLimitType.SEARCH || type == RateLimitType.SSR_READ;
+    }
+
+    private boolean isTrustedSsrCall(HttpServletRequest request) {
+        if (ssrSharedSecret == null) return false;
+        String presented = request.getHeader(SSR_KEY_HEADER);
+        // Constant time with respect to the configured secret's contents.
+        return presented != null
+                && MessageDigest.isEqual(presented.getBytes(StandardCharsets.UTF_8), ssrSharedSecret);
     }
 
     private void check(RateLimitType type, String dimension) {

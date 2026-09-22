@@ -5,6 +5,7 @@ const safeCiEnv = {
   NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:4110/api/v1',
   NEXT_PUBLIC_SITE_URL: 'http://127.0.0.1:3110',
   NEXT_PUBLIC_MEDIA_ORIGINS: 'http://127.0.0.1:4110',
+  DARI_SSR_SHARED_SECRET: 'e2e-only-ssr-shared-secret-placeholder-value',
   NEXT_PUBLIC_FIREBASE_API_KEY: 'e2e-public-key',
   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: 'e2e.firebaseapp.com',
   NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'e2e-project',

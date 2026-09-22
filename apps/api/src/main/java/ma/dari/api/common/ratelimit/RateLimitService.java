@@ -160,6 +160,10 @@ public class RateLimitService {
         return windows.size();
     }
 
+    boolean tracks(RateLimitType type, String dimension) {
+        return windows.containsKey(new BucketKey(type, dimension));
+    }
+
     long trackedKeyCapHitCount() {
         return trackedKeyCapHits.sum();
     }

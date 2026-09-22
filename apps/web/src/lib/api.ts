@@ -15,6 +15,19 @@ export { resolveMediaUrl } from './config';
 const WEB_CONFIG = getWebConfig();
 const BASE_URL = WEB_CONFIG.apiBaseUrl;
 
+/**
+ * Server renders (Server Components, metadata, sitemap, robots, ISR) all reach
+ * the API from this host's one address. The server-only shared secret lets the
+ * API count them against its shared SSR ceiling instead of that address's
+ * per-IP quota. Browser code never has it: the variable is not NEXT_PUBLIC_, so
+ * its value is never inlined, and this branch is compiled out of client chunks.
+ */
+function serverRenderHeaders(): Record<string, string> {
+  if (typeof window !== 'undefined') return {};
+  const secret = process.env.DARI_SSR_SHARED_SECRET?.trim();
+  return secret ? { 'X-Dari-Ssr-Key': secret } : {};
+}
+
 export interface ApiErrorBody {
   code: string;
   message: string;
@@ -104,6 +117,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
       ...rest,
       signal: controller.signal,
       headers: {
+        ...serverRenderHeaders(),
         ...(body !== undefined && !isFormData ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...headers,

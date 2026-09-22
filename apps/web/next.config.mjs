@@ -9,6 +9,9 @@ function validateProductionConfiguration() {
     'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
     'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
     'NEXT_PUBLIC_MEDIA_ORIGINS',
+    // Server-only (never NEXT_PUBLIC_): identifies server renders to the API's
+    // rate limiter. Same value as the API's DARI_SSR_SHARED_SECRET.
+    'DARI_SSR_SHARED_SECRET',
     'DARI_LEGAL_ENTITY_NAME',
     'DARI_LEGAL_ADDRESS',
     'DARI_LEGAL_REGISTRATION',
@@ -23,6 +26,9 @@ function validateProductionConfiguration() {
   ];
   const missing = required.filter((name) => !process.env[name]?.trim());
   if (missing.length) throw new Error(`Configuration de production manquante : ${missing.join(', ')}`);
+  if (process.env.DARI_SSR_SHARED_SECRET.trim().length < 32) {
+    throw new Error('Configuration de production invalide : DARI_SSR_SHARED_SECRET (32 caractères minimum)');
+  }
 
   for (const name of ['NEXT_PUBLIC_API_BASE_URL', 'API_BASE_URL', 'NEXT_PUBLIC_SITE_URL']) {
     let parsed;

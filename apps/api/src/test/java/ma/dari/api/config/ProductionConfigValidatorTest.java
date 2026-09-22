@@ -51,6 +51,7 @@ class ProductionConfigValidatorTest {
         properties.put("dari.web-origins", "https://dari.ma,https://www.dari.ma");
         properties.put("dari.firebase.credentials-path", credentials.toString());
         properties.put("dari.location.fuzz-secret", "test-only-fuzz-secret-with-at-least-thirty-two-characters");
+        properties.put("dari.ssr.shared-secret", "test-only-ssr-shared-secret-with-at-least-32-characters");
         properties.put("server.tomcat.remoteip.internal-proxies", "^10\\.0\\.10\\.\\d{1,3}$");
         properties.put("dari.media.provider", "s3");
         properties.put("dari.media.public-base-url", "https://media.dari.ma");
@@ -93,6 +94,7 @@ class ProductionConfigValidatorTest {
             "DARI_WEB_ORIGIN, dari.web-origins",
             "FIREBASE_CREDENTIALS_PATH, dari.firebase.credentials-path",
             "DARI_LOCATION_FUZZ_SECRET, dari.location.fuzz-secret",
+            "DARI_SSR_SHARED_SECRET, dari.ssr.shared-secret",
             "DARI_TRUSTED_PROXY_IPS, server.tomcat.remoteip.internal-proxies",
             "DARI_MEDIA_PROVIDER, dari.media.provider",
             "DARI_MEDIA_PUBLIC_BASE_URL, dari.media.public-base-url",
@@ -140,6 +142,8 @@ class ProductionConfigValidatorTest {
             "DB_URL                     | spring.datasource.url        | jdbc:postgresql://",
             "DARI_NOTIFICATIONS_FROM    | dari.notifications.from      | no-reply",
             "DARI_LOCATION_FUZZ_SECRET  | dari.location.fuzz-secret    | too-short",
+            "DARI_SSR_SHARED_SECRET     | dari.ssr.shared-secret       | too-short",
+            "DARI_SSR_SHARED_SECRET     | dari.ssr.shared-secret       | exactly-31-characters-long-abcd",
             "SMTP_PORT                  | spring.mail.port             | smtp",
             "SMTP_PORT                  | spring.mail.port             | 70000",
             "FIREBASE_CREDENTIALS_PATH  | dari.firebase.credentials-path | /run/secrets/does-not-exist.json"

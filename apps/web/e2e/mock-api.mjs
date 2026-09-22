@@ -130,6 +130,20 @@ const listingOneDetail = () => ({
   photos: [photo('photo-relative', RELATIVE_COVER, 0), photo('photo-absolute', ABSOLUTE_COVER, 1)],
 });
 
+/*
+ * Which API calls carried the web runtime's SSR key. Server renders must send
+ * the configured value; browser calls must send nothing (and could not: the
+ * CORS allow-list below does not permit the header).
+ */
+const ssrAudit = { keyed: [], unkeyed: [], wrongKey: [] };
+
+function auditSsrKey(request, call) {
+  const presented = request.headers['x-dari-ssr-key'];
+  if (presented === undefined) ssrAudit.unkeyed.push(call);
+  else if (presented === process.env.E2E_EXPECTED_SSR_KEY) ssrAudit.keyed.push(call);
+  else ssrAudit.wrongKey.push(call);
+}
+
 function sendPng(response) {
   response.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'no-store' });
   response.end(PNG);
@@ -173,10 +187,13 @@ async function handle(request, response) {
   if (url.pathname === '/__reset' && request.method === 'POST') { reset(); return sendNoContent(response); }
   if (request.method === 'GET' && /^\/(uploads|cdn)\/.+\.png$/.test(url.pathname)) return sendPng(response);
 
+  if (url.pathname === '/__ssr-audit' && request.method === 'GET') return sendJson(response, 200, ssrAudit);
+
   const prefix = '/api/v1';
   if (!url.pathname.startsWith(prefix)) return error(response, 404, 'NOT_FOUND', 'Route inconnue');
   const path = url.pathname.slice(prefix.length) || '/';
   const method = request.method;
+  auditSsrKey(request, `${method} ${path}${url.search}`);
 
   if (path === '/users/me' && method === 'GET') return sendJson(response, 200, state.deleted ? { ...me(), displayName: '' } : me());
   if (path === '/users' && method === 'POST') return sendJson(response, 201, me());

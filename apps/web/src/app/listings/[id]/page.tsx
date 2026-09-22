@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cache } from 'react';
 
 import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
 import { amount } from '@/lib/format';
@@ -12,18 +13,20 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 /**
  * Fetched once per request and reused by both generateMetadata and the page.
  *
- * Next dedupes identical fetches within a request, but ApiError has to be
+ * React's cache() does the per-request dedupe: Next's own fetch memoization
+ * skips requests that carry an AbortSignal, which apiFetch always does, so
+ * without it every view cost the API two detail lookups. ApiError has to be
  * swallowed into null here: an uncaught throw inside generateMetadata fails the
  * whole route rather than producing the 404 a missing listing should give.
  */
-async function getListing(id: string): Promise<PublicListingDetail | null> {
+const getListing = cache(async (id: string): Promise<PublicListingDetail | null> => {
   try {
     return await apiFetch<PublicListingDetail>(`/listings/${encodeURIComponent(id)}`);
   } catch (cause) {
     if (cause instanceof ApiError && cause.status === 404) return null;
     throw cause;
   }
-}
+});
 
 export async function generateMetadata({
   params,

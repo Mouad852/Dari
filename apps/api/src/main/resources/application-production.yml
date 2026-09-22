@@ -51,6 +51,10 @@ dari:
   location:
     # No default: a public listing id must not be enough to reconstruct its pin offset.
     fuzz-secret: ${DARI_LOCATION_FUZZ_SECRET}
+  ssr:
+    # No default. Shared with the web runtime (same name there, server-only);
+    # a request presenting it is a trusted server render for rate limiting.
+    shared-secret: ${DARI_SSR_SHARED_SECRET}
   # No defaults. application.yml falls back to local disk and empty S3
   # credentials, which boots fine and then fails every upload with a 503.
   media:
