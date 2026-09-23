@@ -56,20 +56,19 @@ docker run -d --name "$db" --network "$network" --network-alias db \
     -e POSTGRES_DB=dari -e POSTGRES_USER=dari -e POSTGRES_PASSWORD="$db_password" \
     "$db_image" >/dev/null || fail "could not start $db_image"
 
-# The PostGIS image restarts the server after its init scripts; pg_isready
-# alone can pass before that, and Flyway would then lose its connection.
+# The image initialises on a temporary server, shuts it down and only then
+# starts the real one; pg_isready passes on both. Wait for the entrypoint's
+# own "init process complete" line, then for the real server.
 ready=
-for _ in $(seq 1 60); do
-    if docker exec "$db" pg_isready -U dari -d dari >/dev/null 2>&1 \
-       && [ "$(docker exec "$db" psql -X -tAq -U dari -d dari -c "SELECT count(*) FROM pg_extension WHERE extname = 'postgis'" 2>/dev/null)" = 1 ]; then
+for _ in $(seq 1 90); do
+    if docker logs "$db" 2>&1 | grep -q 'PostgreSQL init process complete; ready for start up.' \
+       && docker exec "$db" pg_isready -U dari -d dari >/dev/null 2>&1; then
         ready=yes
         break
     fi
     sleep 2
 done
 [ -n "$ready" ] || fail "PostGIS did not finish initialising"
-sleep 3
-docker exec "$db" pg_isready -U dari -d dari >/dev/null 2>&1 || fail "PostGIS restarted unexpectedly"
 
 docker run -d --name "$api" --network "$network" --env-file "$(host_path "$work/api.env")" \
     -v "$(host_path "$key"):/run/secrets/firebase-service-account.json:ro" \

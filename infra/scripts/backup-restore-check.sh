@@ -47,18 +47,19 @@ docker run -d --name "$db" --network "$network" \
 in_db() { docker exec -i "$db" psql -X -q -U dari -d dari -v ON_ERROR_STOP=1 "$@"; }
 scalar() { in_db -tAc "$1"; }
 
+# The image initialises on a temporary server, shuts it down and only then
+# starts the real one; pg_isready passes on both. Wait for the entrypoint's
+# own "init process complete" line, then for the real server.
 ready=
-for _ in $(seq 1 60); do
-    if docker exec "$db" pg_isready -U dari -d dari >/dev/null 2>&1 \
-       && [ "$(scalar "SELECT count(*) FROM pg_extension WHERE extname = 'postgis'" 2>/dev/null)" = 1 ]; then
+for _ in $(seq 1 90); do
+    if docker logs "$db" 2>&1 | grep -q 'PostgreSQL init process complete; ready for start up.' \
+       && docker exec "$db" pg_isready -U dari -d dari >/dev/null 2>&1; then
         ready=yes
         break
     fi
     sleep 2
 done
 [ -n "$ready" ] || fail "PostGIS did not finish initialising"
-sleep 3
-docker exec "$db" pg_isready -U dari -d dari >/dev/null 2>&1 || fail "PostGIS restarted unexpectedly"
 
 echo "== migrate ($flyway_image)"
 docker run --rm --network "$network" \
