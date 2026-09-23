@@ -817,7 +817,8 @@ On PowerShell, invoke the matrix with `bash ./infra/prod-smoke/fail-fast-matrix.
 Always run `down -v` when finished; it removes only this smoke project's
 throwaway volumes.
 
-CI runs a narrower version of this on every API or infra change
+CI runs a narrower version of this whenever `apps/api`, `infra/prod-smoke`,
+`infra/scripts` or the workflow itself changes
 (`.github/workflows/production-gates.yml`, job `production-image`): it builds
 the image, starts it with the production profile against an empty PostGIS
 through `infra/prod-smoke/readiness-check.sh` (readiness must answer
