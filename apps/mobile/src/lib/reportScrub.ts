@@ -3,10 +3,13 @@ import type { ErrorEvent } from '@sentry/react-native';
 /**
  * What an error report may carry, and nothing else.
  *
- * Ported from apps/web/src/lib/sentry-reporter.ts: the event is rebuilt from
- * an allow-list rather than cleaned field by field, so whatever the SDK or a
- * native layer adds (user, request and its headers, breadcrumbs, extra data,
- * device contexts) never leaves the phone. Exception messages are dropped
+ * Ported from apps/web/src/lib/sentry-reporter.ts: a JavaScript event is
+ * rebuilt from an allow-list rather than cleaned field by field, so whatever
+ * the SDK adds to it (user, request and its headers, breadcrumbs, extra data,
+ * device contexts) never leaves the phone. Events raised by the native SDKs
+ * themselves — native crashes, ANRs and app hangs — do not pass through this
+ * function; they carry device details and no scrubbing (see
+ * docs/MOBILE_RELEASE.md). Exception messages are dropped
  * too: they can quote a server body, an email address or a message someone
  * wrote. What remains is the exception type, its stack frames, the release
  * and these tags. The one addition over the web is the OS name and version,

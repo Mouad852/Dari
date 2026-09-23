@@ -10,7 +10,8 @@ import { scrub } from './reportScrub';
  * native crashes, and reportError() sends the handled failures worth knowing
  * about (a render error, a timeout, a request that failed). Every JavaScript
  * event goes through scrub() first; breadcrumbs, sessions and performance
- * data are off, as on the web.
+ * data are off, as on the web. Native crash, ANR and app-hang events are sent
+ * by the native SDKs without passing through scrub().
  *
  * In Expo Go there is no native Sentry module: the SDK falls back to
  * JavaScript-only capture, so the app still runs there.
