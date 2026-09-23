@@ -16,7 +16,7 @@ import {
 import { Icon } from '@/components/Icon';
 import { TextButton } from '@/components/Button';
 import { TopBar } from '@/components/TopBar';
-import { apiFetch, ApiError } from '@/lib/api';
+import { apiFetch, ApiError, errorMessage, reportUnexpected } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { hasNetwork } from '@/lib/network';
 import { clockTime, dayLabel } from '@/lib/format';
@@ -32,6 +32,8 @@ import type { Conversation, CursorPage, Message } from '@/types/api';
  * segment -- normalized once at the top rather than asserted at every call
  * site below.
  */
+const SIGN_IN_REQUIRED = 'Connectez-vous pour voir cette conversation.';
+
 export default function ConversationScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = Array.isArray(params.id) ? params.id[0]! : params.id;
@@ -41,6 +43,10 @@ export default function ConversationScreen() {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Bumped by "Réessayer", which re-runs the load.
+  const [reloadKey, setReloadKey] = useState(0);
+  // Set while the poll keeps failing: new replies are not arriving, and the reader should know.
+  const [pollError, setPollError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -58,10 +64,11 @@ export default function ConversationScreen() {
 
   useEffect(() => {
     let isCurrent = true;
+    setError(null);
     (async () => {
       const idToken = await getIdToken();
       if (!idToken) {
-        if (isCurrent) setError('Connectez-vous pour voir cette conversation.');
+        if (isCurrent) setError(SIGN_IN_REQUIRED);
         return;
       }
       try {
@@ -80,13 +87,14 @@ export default function ConversationScreen() {
         setNextCursor(page.nextCursor ?? null);
         void apiFetch(`/conversations/${encodeURIComponent(id)}/read`, { method: 'PATCH', token: idToken }).catch(() => {});
       } catch (cause) {
-        if (isCurrent) setError(cause instanceof ApiError ? cause.message : 'Impossible de charger cette conversation.');
+        if (isCurrent) setError(errorMessage(cause, 'Impossible de charger cette conversation.'));
+        reportUnexpected(cause, 'thread');
       }
     })();
     return () => {
       isCurrent = false;
     };
-  }, [id]);
+  }, [id, reloadKey]);
 
   /**
    * The thread's poll, every 5 s while the app is in the foreground, and at
@@ -141,10 +149,14 @@ export default function ConversationScreen() {
       try {
         await fetchNewer();
         const fresh = await apiFetch<Conversation>(threadPath, { token });
-        if (!isCurrent || !fresh.lastMessageId || !fresh.lastMessageReadAt) return;
+        if (!isCurrent) return;
+        setPollError(null);
+        if (!fresh.lastMessageId || !fresh.lastMessageReadAt) return;
         setMessages((previous) => (previous ?? []).map((message) => message.id === fresh.lastMessageId ? { ...message, readAt: fresh.lastMessageReadAt } : message));
-      } catch {
-        // A missed cycle is retried by the next one a few seconds later.
+      } catch (cause) {
+        // Retried by the next cycle a few seconds later; said meanwhile.
+        if (isCurrent) setPollError(errorMessage(cause, 'Actualisation impossible pour le moment.'));
+        reportUnexpected(cause, 'thread-poll');
       } finally {
         polling = false;
       }
@@ -169,7 +181,7 @@ export default function ConversationScreen() {
       setNextCursor(page.nextCursor ?? null);
     } catch (cause) {
       if (cause instanceof ApiError && cause.code === 'INVALID_CURSOR') setNextCursor(null);
-      setSendError(cause instanceof ApiError ? cause.message : 'Impossible de charger les anciens messages.');
+      setSendError(errorMessage(cause, 'Impossible de charger les anciens messages.'));
     } finally { setLoadingMore(false); }
   }
 
@@ -190,7 +202,7 @@ export default function ConversationScreen() {
       setMessages((prev) => mergeMessages(prev ?? [], [sent], 'newer'));
       setDraft('');
     } catch (cause) {
-      setSendError(cause instanceof ApiError ? cause.message : 'Le message n’a pas pu être envoyé.');
+      setSendError(errorMessage(cause, 'Le message n’a pas pu être envoyé.'));
     } finally {
       sendingRef.current = false;
       setSending(false);
@@ -199,8 +211,14 @@ export default function ConversationScreen() {
 
   if (error) {
     return (
-      <View style={styles.centerScreen}>
-        <Text style={{ color: color.danger, textAlign: 'center' }}>{error}</Text>
+      <View style={styles.screen}>
+        <TopBar title="Conversation" onBack={() => router.back()} />
+        <View style={styles.centerScreen}>
+          <Text style={{ color: color.danger, textAlign: 'center' }} accessibilityLiveRegion="assertive">{error}</Text>
+          {error === SIGN_IN_REQUIRED
+            ? <TextButton onPress={() => router.push('/sign-in')}>Se connecter</TextButton>
+            : <TextButton onPress={() => setReloadKey((key) => key + 1)}>Réessayer</TextButton>}
+        </View>
       </View>
     );
   }
@@ -216,6 +234,7 @@ export default function ConversationScreen() {
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <TopBar title={conversation.otherUserDisplayName} onBack={() => router.back()} action={<TextButton onPress={() => router.push({ pathname: '/report' as never, params: { targetType: 'USER', targetId: conversation.otherUserId } })}>Signaler</TextButton>} />
+      {pollError && <Text style={styles.pollError} accessibilityLiveRegion="polite">{pollError} Les nouveaux messages s’afficheront dès que possible.</Text>}
       <FlatList
         ref={listRef}
         data={messages}
@@ -288,7 +307,8 @@ export default function ConversationScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bgPage },
-  centerScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: color.bgPage, padding: 20 },
+  centerScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: color.bgPage, padding: 20 },
+  pollError: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: color.warningSubtle, color: color.textBody, fontFamily: font.uiRegular, fontSize: 12 },
   list: { padding: 16, gap: 8 },
   daySeparator: {
     alignSelf: 'center',

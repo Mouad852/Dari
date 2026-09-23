@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 
 import { Button } from '@/components/Button';
 import { TopBar } from '@/components/TopBar';
-import { apiFetch, ApiError } from '@/lib/api';
+import { apiFetch, errorMessage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { color, font, layout, radius, type } from '@/theme/tokens';
 import type { ReportReason, ReportTargetType } from '@/types/api';
@@ -31,7 +31,7 @@ export default function ReportScreen() {
     if (!reason) { setError('Choisissez une raison.'); return; }
     setSubmitting(true); setError(null);
     try { await apiFetch('/reports', { method: 'POST', token, body: { targetType, targetId, reason, details: details.trim() || null } }); setSubmitted(true); }
-    catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Le signalement n’a pas pu être envoyé.'); }
+    catch (cause) { setError(errorMessage(cause, 'Le signalement n’a pas pu être envoyé.')); }
     finally { setSubmitting(false); }
   }
 

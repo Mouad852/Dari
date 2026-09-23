@@ -8,7 +8,7 @@ import { Button, TextButton } from '@/components/Button';
 import { ListingCard } from '@/components/ListingCard';
 import { TextField } from '@/components/TextField';
 import { TopBar } from '@/components/TopBar';
-import { apiFetch, ApiError } from '@/lib/api';
+import { apiFetch, ApiError, errorMessage } from '@/lib/api';
 import { EMPTY_FILTERS, searchParams, validateFilters, type ListingFilters, type SearchSort, type SearchView } from '@/lib/search';
 import { hasNetwork, isAbortError, subscribeToNetwork } from '@/lib/network';
 import { color, font, layout, radius, type } from '@/theme/tokens';
@@ -67,7 +67,7 @@ export default function FeedScreen() {
         await load(undefined, true);
         return;
       }
-      setError(cause instanceof ApiError ? cause.message : 'Impossible de charger les annonces.');
+      setError(errorMessage(cause, 'Impossible de charger les annonces.'));
     } finally {
       if (cursor) setLoadingMore(false); else { setLoading(false); setRefreshing(false); }
     }
@@ -83,7 +83,7 @@ export default function FeedScreen() {
       const result = await apiFetch<MapPin[]>(`/listings/map?${searchParams(filters)}`, { signal: controller.signal });
       setPins(result);
     } catch (cause) {
-      if (!isAbortError(cause)) setError(cause instanceof ApiError ? cause.message : 'Impossible de charger la carte.');
+      if (!isAbortError(cause)) setError(errorMessage(cause, 'Impossible de charger la carte.'));
     } finally { setMapLoading(false); }
   }, [filters]);
 

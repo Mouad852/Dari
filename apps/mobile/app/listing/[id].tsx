@@ -5,7 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
-import { apiFetch, apiOrigin, ApiError } from '@/lib/api';
+import { TopBar } from '@/components/TopBar';
+import { apiFetch, apiOrigin, errorMessage, reportUnexpected } from '@/lib/api';
 import { hasNetwork } from '@/lib/network';
 import { getIdToken } from '@/lib/firebase';
 import { amount } from '@/lib/format';
@@ -49,21 +50,25 @@ export default function ListingDetailScreen() {
   const [contacting, setContacting] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
   const [favoriteError, setFavoriteError] = useState<string | null>(null);
+  // Bumped by "Réessayer", which re-runs the load below.
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let isCurrent = true;
+    setError(null);
     (async () => {
       try {
         const detail = await apiFetch<PublicListingDetail>(`/listings/${encodeURIComponent(id)}`);
         if (isCurrent) setListing(detail);
       } catch (cause) {
-        if (isCurrent) setError(cause instanceof ApiError ? cause.message : 'Impossible de charger cette annonce.');
+        if (isCurrent) setError(errorMessage(cause, 'Impossible de charger cette annonce.'));
+        reportUnexpected(cause, 'listing-detail');
       }
     })();
     return () => {
       isCurrent = false;
     };
-  }, [id]);
+  }, [id, reloadKey]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -75,8 +80,11 @@ export default function ListingDetailScreen() {
       try {
         const ids = await apiFetch<string[]>('/favorites/ids', { token });
         if (isCurrent) setSaved(ids.includes(id));
-      } catch {
-        // A failed favourites check just leaves the heart unfilled -- not worth its own error state.
+      } catch (cause) {
+        // Said, not swallowed: an unfilled heart would otherwise claim the
+        // listing is not saved when that is simply unknown.
+        if (isCurrent) setFavoriteError(errorMessage(cause, 'L’état de vos favoris n’a pas pu être vérifié.'));
+        reportUnexpected(cause, 'favorite-ids');
       }
     })();
     return () => {
@@ -98,7 +106,7 @@ export default function ListingDetailScreen() {
       await apiFetch(`/favorites/${encodeURIComponent(id)}`, { method: next ? 'POST' : 'DELETE', token });
     } catch (cause) {
       setSaved(!next);
-      setFavoriteError(cause instanceof ApiError ? cause.message : 'La mise à jour du favori a échoué.');
+      setFavoriteError(errorMessage(cause, 'La mise à jour du favori a échoué.'));
     }
   }
 
@@ -118,7 +126,7 @@ export default function ListingDetailScreen() {
       });
       router.push({ pathname: '/messages/[id]', params: { id: created.id } });
     } catch (cause) {
-      setContactError(cause instanceof ApiError ? cause.message : 'Impossible de démarrer la conversation.');
+      setContactError(errorMessage(cause, 'Impossible de démarrer la conversation.'));
     } finally {
       setContacting(false);
     }
@@ -126,8 +134,12 @@ export default function ListingDetailScreen() {
 
   if (error) {
     return (
-      <View style={styles.centerScreen}>
-        <Text style={[type.body, { color: color.danger, textAlign: 'center' }]}>{error}</Text>
+      <View style={styles.screen}>
+        <TopBar title="Annonce" onBack={() => router.back()} />
+        <View style={styles.centerScreen}>
+          <Text style={[type.body, { color: color.danger, textAlign: 'center' }]} accessibilityLiveRegion="assertive">{error}</Text>
+          <Button variant="secondary" onPress={() => setReloadKey((key) => key + 1)}>Réessayer</Button>
+        </View>
       </View>
     );
   }
@@ -221,15 +233,15 @@ export default function ListingDetailScreen() {
           <View style={styles.factsGrid}>
             <View style={styles.factRow}>
               <Text style={[type.bodySm, { color: color.textMuted }]}>Wi-Fi</Text>
-              <Text style={type.bodySm}>{CHARGE_LABEL[listing.wifiIncluded]}</Text>
+              <Text style={type.bodySm}>{CHARGE_LABEL[listing.wifiIncluded] ?? CHARGE_LABEL.NA}</Text>
             </View>
             <View style={styles.factRow}>
               <Text style={[type.bodySm, { color: color.textMuted }]}>Électricité</Text>
-              <Text style={type.bodySm}>{CHARGE_LABEL[listing.electricityIncluded]}</Text>
+              <Text style={type.bodySm}>{CHARGE_LABEL[listing.electricityIncluded] ?? CHARGE_LABEL.NA}</Text>
             </View>
             <View style={styles.factRow}>
               <Text style={[type.bodySm, { color: color.textMuted }]}>Eau</Text>
-              <Text style={type.bodySm}>{CHARGE_LABEL[listing.waterIncluded]}</Text>
+              <Text style={type.bodySm}>{CHARGE_LABEL[listing.waterIncluded] ?? CHARGE_LABEL.NA}</Text>
             </View>
           </View>
         </View>
@@ -281,7 +293,7 @@ function RuleLine({ ok, label }: { ok: boolean; label: string }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bgPage },
-  centerScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: color.bgPage, padding: layout.gutterMobile },
+  centerScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, backgroundColor: color.bgPage, padding: layout.gutterMobile },
   photo: { height: 260, backgroundColor: color.bgInset, alignItems: 'center', justifyContent: 'center' },
   photoImg: { width: '100%', height: '100%' },
   photoPlaceholder: {

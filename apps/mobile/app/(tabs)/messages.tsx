@@ -4,7 +4,7 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Tex
 
 import { Button, TextButton } from '@/components/Button';
 import { TopBar } from '@/components/TopBar';
-import { apiFetch, ApiError } from '@/lib/api';
+import { apiFetch, ApiError, errorMessage } from '@/lib/api';
 import { hasNetwork } from '@/lib/network';
 import { getIdToken, onAuthChange } from '@/lib/firebase';
 import { relativeTime } from '@/lib/format';
@@ -33,7 +33,7 @@ export default function MessagesScreen() {
     try {
       const page = await apiFetch<CursorPage<Conversation>>('/conversations', { token });
       setConversations(page.items); setNextCursor(page.nextCursor);
-    } catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Impossible de charger vos conversations.'); }
+    } catch (cause) { setError(errorMessage(cause, 'Impossible de charger vos conversations.')); }
     finally { if (refresh) setRefreshing(false); }
   }, []);
   useEffect(() => { if (signedIn) void load(); else setConversations(null); }, [signedIn, load]);
@@ -47,7 +47,7 @@ export default function MessagesScreen() {
       setConversations((previous) => [...(previous ?? []), ...page.items]); setNextCursor(page.nextCursor);
     } catch (cause) {
       if (cause instanceof ApiError && cause.code === 'INVALID_CURSOR') await load(true);
-      else setError(cause instanceof ApiError ? cause.message : 'Impossible de charger la suite.');
+      else setError(errorMessage(cause, 'Impossible de charger la suite.'));
     } finally { setLoadingMore(false); }
   }, [load, loadingMore, nextCursor]);
 

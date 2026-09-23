@@ -5,7 +5,7 @@ import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } f
 import { Button, TextButton } from '@/components/Button';
 import { ListingCard } from '@/components/ListingCard';
 import { TopBar } from '@/components/TopBar';
-import { apiFetch, ApiError } from '@/lib/api';
+import { apiFetch, ApiError, errorMessage } from '@/lib/api';
 import { hasNetwork } from '@/lib/network';
 import { getIdToken, onAuthChange } from '@/lib/firebase';
 import { color, layout, type } from '@/theme/tokens';
@@ -35,7 +35,7 @@ export default function FavoritesScreen() {
       setItems(page.items);
       setNextCursor(page.nextCursor);
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : 'Impossible de charger vos favoris.');
+      setError(errorMessage(cause, 'Impossible de charger vos favoris.'));
     } finally {
       if (refresh) setRefreshing(false);
     }
@@ -54,7 +54,7 @@ export default function FavoritesScreen() {
       setNextCursor(page.nextCursor);
     } catch (cause) {
       if (cause instanceof ApiError && cause.code === 'INVALID_CURSOR') await load(true);
-      else setError(cause instanceof ApiError ? cause.message : 'Impossible de charger la suite.');
+      else setError(errorMessage(cause, 'Impossible de charger la suite.'));
     } finally {
       setLoadingMore(false);
     }
@@ -69,7 +69,7 @@ export default function FavoritesScreen() {
       await apiFetch(`/favorites/${encodeURIComponent(id)}`, { method: 'DELETE', token });
     } catch (cause) {
       setItems(previous);
-      setError(cause instanceof ApiError ? cause.message : 'Le favori n’a pas pu être retiré.');
+      setError(errorMessage(cause, 'Le favori n’a pas pu être retiré.'));
     }
   }
 

@@ -6,7 +6,7 @@ import { Alert, Image, Platform, ScrollView, StyleSheet, Text, View } from 'reac
 import { Button, TextButton } from '@/components/Button';
 import { TextField } from '@/components/TextField';
 import { TopBar } from '@/components/TopBar';
-import { apiFetch, apiOrigin, apiUpload, ApiError } from '@/lib/api';
+import { apiFetch, apiOrigin, apiUpload, errorMessage, reportUnexpected } from '@/lib/api';
 import { getIdToken, onAuthChange, signOut } from '@/lib/firebase';
 import type { Me } from '@/types/api';
 import { color, layout, radius, type } from '@/theme/tokens';
@@ -22,31 +22,34 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Bumped by "Réessayer". Setting signedIn to the true it already was re-ran nothing.
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => onAuthChange((user) => setSignedIn(Boolean(user))), []);
   useEffect(() => {
     if (!signedIn) { setProfile(null); return; }
     let current = true;
     setLoading(true);
+    setError(null);
     void (async () => {
       const token = await getIdToken();
-      if (!token) return;
+      if (!token) { if (current) setLoading(false); return; }
       try {
         const value = await apiFetch<Me>('/users/me', { token });
         if (!current) return;
         setProfile(value); setFirstName(value.firstName ?? ''); setDisplayName(value.displayName); setCity(value.city ?? ''); setBio(value.bio ?? ''); setError(null);
-      } catch (cause) { if (current) setError(cause instanceof ApiError ? cause.message : 'Impossible de charger votre profil.'); }
+      } catch (cause) { if (current) setError(errorMessage(cause, 'Impossible de charger votre profil.')); reportUnexpected(cause, 'profile'); }
       finally { if (current) setLoading(false); }
     })();
     return () => { current = false; };
-  }, [signedIn]);
+  }, [signedIn, reloadKey]);
 
   async function save() {
     const token = await getIdToken(); if (!token || saving) return;
     if (displayName.trim().length < 2) { setError('Le nom affiché doit contenir au moins 2 caractères.'); return; }
     setSaving(true); setError(null);
     try { setProfile(await apiFetch<Me>('/users/me', { method: 'PATCH', token, body: { firstName: firstName.trim() || null, displayName: displayName.trim(), city: city.trim() || null, bio: bio.trim() || null } })); }
-    catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Impossible d’enregistrer votre profil.'); }
+    catch (cause) { setError(errorMessage(cause, 'Impossible d’enregistrer votre profil.')); }
     finally { setSaving(false); }
   }
 
@@ -58,7 +61,7 @@ export default function ProfileScreen() {
     if (result.canceled || !result.assets[0]) return;
     const asset = result.assets[0]; setAvatarBusy(true); setError(null);
     try { setProfile(await apiUpload<Me>('/users/me/avatar', { uri: asset.uri, name: asset.fileName ?? 'avatar.jpg', type: asset.mimeType ?? 'image/jpeg' }, { token })); }
-    catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Envoi de la photo impossible.'); }
+    catch (cause) { setError(errorMessage(cause, 'Envoi de la photo impossible.')); }
     finally { setAvatarBusy(false); }
   }
 
@@ -66,7 +69,7 @@ export default function ProfileScreen() {
     const token = await getIdToken(); if (!token) return;
     setLoading(true);
     try { await apiFetch('/users/me', { method: 'DELETE', token }); await signOut(); }
-    catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Suppression impossible. Réessayez.'); }
+    catch (cause) { setError(errorMessage(cause, 'Suppression impossible. Réessayez.')); }
     finally { setLoading(false); }
   }
 
@@ -81,7 +84,7 @@ export default function ProfileScreen() {
   }
 
   if (signedIn === false) return <View style={styles.screen}><TopBar title="Profil" /><View style={styles.center}><Text style={[type.body, styles.centerText]}>Connectez-vous pour gérer votre compte, vos annonces et vos favoris.</Text><Button onPress={() => router.push('/sign-in')}>Se connecter</Button><Button variant="secondary" onPress={() => router.push('/sign-up')}>Créer un compte</Button></View></View>;
-  if (loading || !profile) return <View style={styles.screen}><TopBar title="Profil" /><View style={styles.center}><Text style={type.body}>{error ?? 'Chargement…'}</Text>{error && <TextButton onPress={() => setSignedIn(true)}>Réessayer</TextButton>}</View></View>;
+  if (loading || !profile) return <View style={styles.screen}><TopBar title="Profil" /><View style={styles.center}><Text style={type.body}>{error ?? 'Chargement…'}</Text>{error && <TextButton onPress={() => setReloadKey((key) => key + 1)}>Réessayer</TextButton>}</View></View>;
   return <View style={styles.screen}><TopBar title="Profil" /><ScrollView contentContainerStyle={styles.content}>
     {error && <Text style={[type.bodySm, styles.error]} accessibilityLiveRegion="assertive">{error}</Text>}
     <View style={styles.avatarWrap}>{profile.avatarUrl ? <Image source={{ uri: `${apiOrigin}${profile.avatarUrl}` }} style={styles.avatar} /> : <Text style={styles.avatarInitial}>{profile.displayName.charAt(0).toUpperCase()}</Text>}</View>

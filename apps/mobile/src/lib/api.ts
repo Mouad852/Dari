@@ -102,6 +102,24 @@ export function errorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+/**
+ * For a screen's catch block. The client has already reported its own
+ * transport failures, and an ApiError is the server's deliberate answer, so
+ * only anything else — a bug — is reported from here.
+ */
+export function reportUnexpected(cause: unknown, kind: string): void {
+  if (
+    cause instanceof ApiError
+    || cause instanceof ApiTimeoutError
+    || cause instanceof ApiOfflineError
+    || cause instanceof ApiNetworkError
+    || cause instanceof ApiUnexpectedResponseError
+  ) {
+    return;
+  }
+  reportError(cause, { kind });
+}
+
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
   /**
    * Serialized as JSON, unless it is a FormData — see apiFetch. FormData is

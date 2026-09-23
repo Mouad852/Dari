@@ -6,7 +6,7 @@ import { ActivityIndicator, Alert, BackHandler, Image, Pressable, ScrollView, St
 import { Button, TextButton } from '@/components/Button';
 import { TextField } from '@/components/TextField';
 import { TopBar } from '@/components/TopBar';
-import { apiFetch, apiOrigin, apiUpload, ApiError } from '@/lib/api';
+import { apiFetch, apiOrigin, apiUpload, errorMessage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import type { CreateListingRequest, ListingDetail, ListingPhoto } from '@/types/api';
 import { color, font, layout, radius, type } from '@/theme/tokens';
@@ -36,7 +36,7 @@ export default function PublishScreen() {
         const [listing, currentPhotos] = await Promise.all([apiFetch<ListingDetail>(`/listings/mine/${encodeURIComponent(listingId)}`, { token }), apiFetch<ListingPhoto[]>(`/listings/${encodeURIComponent(listingId)}/photos`, { token })]);
         if (!current) return;
         setForm({ title: listing.title, city: listing.city, neighborhood: listing.neighborhood, latitude: String(listing.latitude), longitude: String(listing.longitude), priceRent: String(listing.priceRent), description: listing.description ?? '', availableFrom: listing.availableFrom ?? '', minStayMonths: String(listing.minStayMonths ?? 1) }); setPhotos(currentPhotos);
-      } catch (cause) { if (current) setError(cause instanceof ApiError ? cause.message : 'Impossible de charger votre annonce.'); }
+      } catch (cause) { if (current) setError(errorMessage(cause, 'Impossible de charger votre annonce.')); }
       finally { if (current) setLoading(false); }
     })();
     return () => { current = false; };
@@ -58,7 +58,7 @@ export default function PublishScreen() {
     try {
       const saved = id ? await apiFetch<ListingDetail>(`/listings/${encodeURIComponent(id)}`, { method: 'PATCH', token, body }) : await apiFetch<ListingDetail>('/listings', { method: 'POST', token, body });
       setId(saved.id); setDirty(false); setError(null); Alert.alert('Brouillon enregistré', 'Votre annonce est enregistrée. Ajoutez des photos puis envoyez-la en modération.');
-    } catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Impossible d’enregistrer le brouillon.'); }
+    } catch (cause) { setError(errorMessage(cause, 'Impossible d’enregistrer le brouillon.')); }
     finally { setSaving(false); }
   }
 
@@ -72,11 +72,11 @@ export default function PublishScreen() {
     try {
       for (const [index, asset] of result.assets.entries()) { const uploaded = await apiUpload<ListingPhoto>(`/listings/${encodeURIComponent(id)}/photos`, { uri: asset.uri, name: asset.fileName ?? `photo-${Date.now()}-${index}.jpg`, type: asset.mimeType ?? 'image/jpeg' }, { token, onProgress: setProgress }); setPhotos((previous) => [...previous, uploaded]); }
       setDirty(true);
-    } catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Envoi de la photo impossible.'); }
+    } catch (cause) { setError(errorMessage(cause, 'Envoi de la photo impossible.')); }
     finally { setUploading(false); setProgress(0); }
   }
-  async function photoAction(photo: ListingPhoto, action: 'cover' | 'delete') { const token = await getIdToken(); if (!token || !id) return; try { if (action === 'delete') { await apiFetch(`/listings/${id}/photos/${photo.id}`, { method: 'DELETE', token }); setPhotos((previous) => previous.filter((item) => item.id !== photo.id)); } else { const updated = await apiFetch<ListingPhoto>(`/listings/${id}/photos/${photo.id}?isCover=true`, { method: 'PATCH', token }); setPhotos((previous) => previous.map((item) => item.id === updated.id ? updated : { ...item, isCover: false })); } setDirty(true); } catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Modification de la photo impossible.'); } }
-  async function submitListing() { const token = await getIdToken(); if (!token || !id) { setError('Enregistrez d’abord le brouillon.'); return; } try { await apiFetch(`/listings/${id}/submit`, { method: 'POST', token }); setDirty(false); Alert.alert('Annonce envoyée', 'Votre annonce est maintenant en attente de modération.', [{ text: 'OK', onPress: () => router.back() }]); } catch (cause) { setError(cause instanceof ApiError ? cause.message : 'Votre annonce ne peut pas encore être envoyée.'); } }
+  async function photoAction(photo: ListingPhoto, action: 'cover' | 'delete') { const token = await getIdToken(); if (!token || !id) return; try { if (action === 'delete') { await apiFetch(`/listings/${id}/photos/${photo.id}`, { method: 'DELETE', token }); setPhotos((previous) => previous.filter((item) => item.id !== photo.id)); } else { const updated = await apiFetch<ListingPhoto>(`/listings/${id}/photos/${photo.id}?isCover=true`, { method: 'PATCH', token }); setPhotos((previous) => previous.map((item) => item.id === updated.id ? updated : { ...item, isCover: false })); } setDirty(true); } catch (cause) { setError(errorMessage(cause, 'Modification de la photo impossible.')); } }
+  async function submitListing() { const token = await getIdToken(); if (!token || !id) { setError('Enregistrez d’abord le brouillon.'); return; } try { await apiFetch(`/listings/${id}/submit`, { method: 'POST', token }); setDirty(false); Alert.alert('Annonce envoyée', 'Votre annonce est maintenant en attente de modération.', [{ text: 'OK', onPress: () => router.back() }]); } catch (cause) { setError(errorMessage(cause, 'Votre annonce ne peut pas encore être envoyée.')); } }
 
   if (loading) return <View style={styles.screen}><TopBar title="Publier" onBack={leave} /><View style={styles.center}><ActivityIndicator color={color.brand} /></View></View>;
   return <View style={styles.screen}><TopBar title={id ? 'Modifier l’annonce' : 'Publier une annonce'} onBack={leave} /><ScrollView contentContainerStyle={styles.content}>
