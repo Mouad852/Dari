@@ -9,15 +9,17 @@
  * Next's `NEXT_PUBLIC_*`.
  */
 
+import { API_BASE_URL } from './config';
 import { ErrorCode } from './errors';
 import type { CursorPage } from '@/types/api';
 
-// `localhost` only reaches the host machine from the iOS simulator or the
-// web target -- an Android emulator needs 10.0.2.2, and a real physical
-// device needs the host's LAN IP. Set EXPO_PUBLIC_API_BASE_URL in .env
-// accordingly per platform; there is no single default that works on all
-// four (iOS sim / Android emulator / physical device / web).
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL?.trim() || 'http://localhost:8080/api/v1';
+// Empty only in a release build without EXPO_PUBLIC_API_BASE_URL, which the
+// root layout never gets past ("Configuration requise"), and which the
+// production build gate in app.config.ts refuses to build in the first place.
+// `localhost` only reaches the host machine from the iOS simulator or the web
+// target -- an Android emulator needs 10.0.2.2, and a real physical device
+// needs the host's LAN IP. Set EXPO_PUBLIC_API_BASE_URL in .env accordingly.
+const BASE_URL = API_BASE_URL ?? '';
 
 export interface ApiErrorBody {
   code: string;
