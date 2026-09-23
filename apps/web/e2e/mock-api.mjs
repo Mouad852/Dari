@@ -110,6 +110,7 @@ const state = {
   submitted: false,
   deleted: false,
   messages: [{ id: 'message-1', conversationId: 'conversation-1', senderId: 'other-user', body: 'Bonjour, la chambre est-elle toujours disponible ?', sentAt: now, readAt: null }],
+  messageSeq: 1,
   reportCreated: false,
   adminUserStatus: 'SUSPENDED',
   ownListings: ownListings(),
@@ -124,9 +125,55 @@ function reset() {
   state.submitted = false;
   state.deleted = false;
   state.messages = [{ id: 'message-1', conversationId: 'conversation-1', senderId: 'other-user', body: 'Bonjour, la chambre est-elle toujours disponible ?', sentAt: now, readAt: null }];
+  state.messageSeq = 1;
   state.reportCreated = false;
   state.adminUserStatus = 'SUSPENDED';
   state.ownListings = ownListings();
+}
+
+/**
+ * A new message, a minute after the previous one. Ids sort in sending order,
+ * like the API's time-ordered UUIDs.
+ */
+function nextMessage(senderId, body) {
+  state.messageSeq += 1;
+  const sequence = state.messageSeq;
+  return {
+    id: `message-${String(sequence).padStart(4, '0')}`,
+    conversationId: 'conversation-1',
+    senderId,
+    body,
+    sentAt: new Date(Date.parse(now) + sequence * 60_000).toISOString(),
+    readAt: null,
+  };
+}
+
+/*
+ * GET /conversations/{id}/messages, same contract as the API: the newest page
+ * by default, `cursor` for the next older page, `after` for what is newer than
+ * a known message (one page, hasMore when there is more). Oldest-first within a
+ * page; nextCursor is omitted when there is none, as the API omits nulls.
+ */
+const MESSAGE_PAGE = 20;
+function sendMessagePage(response, params) {
+  const cursor = params.get('cursor');
+  const after = params.get('after');
+  if (cursor !== null && after !== null) return error(response, 400, 'VALIDATION_FAILED', 'Utilisez cursor ou after, pas les deux');
+  if (after !== null) {
+    const index = state.messages.findIndex((message) => message.id === after);
+    if (index === -1) return error(response, 400, 'INVALID_CURSOR', 'Pagination invalide');
+    const newer = state.messages.slice(index + 1);
+    return sendJson(response, 200, { items: newer.slice(0, MESSAGE_PAGE), hasMore: newer.length > MESSAGE_PAGE });
+  }
+  let end = state.messages.length;
+  if (cursor !== null) {
+    const match = /^older:(\d+)$/.exec(cursor);
+    if (!match) return error(response, 400, 'INVALID_CURSOR', 'Pagination invalide');
+    end = Number(match[1]);
+  }
+  const start = Math.max(0, end - MESSAGE_PAGE);
+  const page = { items: state.messages.slice(start, end), hasMore: start > 0 };
+  return sendJson(response, 200, start > 0 ? { ...page, nextCursor: `older:${start}` } : page);
 }
 
 const me = () => ({
@@ -226,6 +273,21 @@ async function handle(request, response) {
     return sendNoContent(response);
   }
   if (url.pathname === '/__calls' && request.method === 'GET') return sendJson(response, 200, calls);
+  // A reply from the other participant, as if they had written while the thread was open.
+  if (url.pathname === '/__messages' && request.method === 'POST') {
+    const body = await readBody(request);
+    state.messages.push(nextMessage('other-user', body.body));
+    return sendNoContent(response);
+  }
+  // A thread of `count` messages ("Message 1" … "Message N"), alternating senders.
+  if (url.pathname === '/__thread' && request.method === 'POST') {
+    const body = await readBody(request);
+    state.messages = [];
+    for (let index = 1; index <= body.count; index += 1) {
+      state.messages.push(nextMessage(index % 2 ? 'other-user' : 'e2e-user-1', `Message ${index}`));
+    }
+    return sendNoContent(response);
+  }
 
   if (/^\/api\/\d+\/envelope\/?$/.test(url.pathname) && request.method === 'POST') {
     const chunks = [];
@@ -257,7 +319,7 @@ async function handle(request, response) {
     calls.push({ method, path, token: bearer, status: 403 });
     return error(response, 403, 'FORBIDDEN', 'Accès refusé');
   }
-  calls.push({ method, path, token: bearer || null, status: 200 });
+  calls.push({ method, path, query: url.search, token: bearer || null, status: 200 });
 
   if (path === '/users/me' && method === 'GET') return sendJson(response, 200, state.deleted ? { ...me(), displayName: '' } : me());
   if (path === '/users' && method === 'POST') return sendJson(response, 201, me());
@@ -321,10 +383,10 @@ async function handle(request, response) {
   const conversation = { id: 'conversation-1', listingId: 'listing-1', participantAId: 'e2e-user-1', participantBId: 'other-user', otherUserId: 'other-user', otherUserDisplayName: 'Amina', createdAt: now, lastMessage: state.messages.at(-1)?.body ?? null, lastMessageAt: now, unreadCount: 1, lastMessageId: state.messages.at(-1)?.id ?? null, lastMessageReadAt: null };
   if (path === '/conversations' && method === 'GET') return sendJson(response, 200, { items: [conversation], nextCursor: null, hasMore: false });
   if (path === '/conversations/conversation-1' && method === 'GET') return sendJson(response, 200, conversation);
-  if (path === '/conversations/conversation-1/messages' && method === 'GET') return sendJson(response, 200, { items: state.messages, nextCursor: null, hasMore: false });
+  if (path === '/conversations/conversation-1/messages' && method === 'GET') return sendMessagePage(response, url.searchParams);
   if (path === '/conversations/conversation-1/messages' && method === 'POST') {
     const body = await readBody(request);
-    const message = { id: `message-${state.messages.length + 1}`, conversationId: 'conversation-1', senderId: 'e2e-user-1', body: body.body, sentAt: now, readAt: null };
+    const message = nextMessage('e2e-user-1', body.body);
     state.messages.push(message);
     return sendJson(response, 201, message);
   }

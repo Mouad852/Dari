@@ -1,16 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { use, useEffect, useRef, useState, type FormEvent } from 'react';
+import { use, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 
 import { Button } from '@/components/ds/Button';
 import { Icon } from '@/components/ds/Icon';
 import { IconButton } from '@/components/ds/IconButton';
-import { ErrorNotice } from '@/components/ErrorNotice';
+import { ErrorNotice, errorMessage } from '@/components/ErrorNotice';
 import { apiFetch, ApiError, resolveMediaUrl, type CursorPage } from '@/lib/api';
+import { ErrorCode } from '@/lib/errors';
 import { getIdToken } from '@/lib/firebase';
 import { clockTime, dayLabel, rentPerMonth } from '@/lib/format';
+import { confirmPending, isPending, mergeMessages, PENDING_PREFIX } from '@/lib/messages';
 import type { Conversation, Me, Message, PublicListing } from '@/types/api';
+
+/**
+ * What the next render does to the message region's scroll: follow the thread
+ * to its end, or keep the messages on screen where they are while older ones
+ * are added above them.
+ */
+type ScrollPlan = { kind: 'bottom' } | { kind: 'keep'; height: number; top: number };
 
 /**
  * How the thread's listing context resolved.
@@ -47,15 +56,21 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<unknown>(null);
   const [error, setError] = useState<unknown>(null);
   // Bumped by the error notice's retry, which is what re-runs the load effect.
   const [reloadKey, setReloadKey] = useState(0);
   const [sendError, setSendError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
-  const endRef = useRef<HTMLDivElement | null>(null);
   const composerRef = useRef<HTMLInputElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const scrollRegionRef = useRef<HTMLDivElement | null>(null);
+  const scrollPlanRef = useRef<ScrollPlan | null>(null);
+  const atBottomRef = useRef(true);
+  // The newest message this page has *fetched*. Never one it just sent: see the poll.
+  const anchorRef = useRef<string | null>(null);
+  const sendingRef = useRef(false);
 
   // No route-change announcement exists anywhere in this app for a
   // client-side transition -- see the same fix on account/listings/page.tsx.
@@ -90,6 +105,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         setToken(idToken);
         setMyId(me.id);
         setConversation(thread);
+        // The newest page: the thread opens on its latest message.
+        anchorRef.current = page.items.at(-1)?.id ?? null;
+        scrollPlanRef.current = { kind: 'bottom' };
         setMessages(page.items);
         setNextCursor(page.nextCursor);
 
@@ -125,27 +143,67 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   }, [id, reloadKey]);
 
   /**
-   * Read receipts: "Vu" under the current user's own trailing message once
-   * the other participant has read it.
+   * The thread's poll: new replies, and "Vu" under one's own last message.
    *
-   * Nothing in this app pushes state changes to an open tab, so the only way
-   * to learn that a message already on screen was *just* read is to ask
-   * again. Polls the conversation summary -- one small row, not a full
-   * message-list refetch -- since all that's actually needed is one
-   * message's id and readAt. Deliberately narrow: this does not attempt to
-   * deliver new incoming messages live, which is a materially bigger feature
-   * (this app's cursor pagination pages forward from the oldest message, not
-   * backward from the newest, so "catch up a possibly-long gap live" is a
-   * different design question than "recheck one known message's read
-   * state") and was not what was asked for here.
+   * Nothing pushes to an open tab, so every 5 s while the tab is visible (and
+   * at once when it becomes visible again) the page asks for messages `after=`
+   * the newest one it has fetched, then re-reads the conversation summary for
+   * the read receipt. A hidden tab makes no requests.
+   *
+   * The anchor is only ever a message that came from a GET, never one this page
+   * just sent: a reply written a moment before one's own message is newer than
+   * the anchor, so it still arrives. And no poll runs while a send is in
+   * flight, so the sent message cannot land twice, once from each request.
    */
   useEffect(() => {
-    if (!token) return;
+    if (!token || !myId) return;
     let isCurrent = true;
+    let polling = false;
+    const threadPath = `/conversations/${encodeURIComponent(id)}`;
+
+    const fetchNewer = async () => {
+      let anchor = anchorRef.current;
+      // Bounded: each round is one page at most.
+      for (let round = 0; round < 5; round += 1) {
+        const requestedAfter = anchor;
+        let page: CursorPage<Message>;
+        try {
+          page = await apiFetch<CursorPage<Message>>(
+            `${threadPath}/messages${requestedAfter ? `?after=${encodeURIComponent(requestedAfter)}` : ''}`,
+            { token },
+          );
+        } catch (cause) {
+          // The anchor is no longer a visible message: start over from the newest page.
+          if (requestedAfter && cause instanceof ApiError && cause.code === ErrorCode.INVALID_CURSOR) {
+            anchor = null;
+            continue;
+          }
+          throw cause;
+        }
+        if (!isCurrent) return;
+        const last = page.items.at(-1);
+        if (last) {
+          anchor = last.id;
+          anchorRef.current = last.id;
+          // Follow the thread only for a reader already at its end.
+          if (atBottomRef.current) scrollPlanRef.current = { kind: 'bottom' };
+          setMessages((prev) => mergeMessages(prev ?? [], page.items, 'newer'));
+          // Seen on an open, visible thread: read, as on opening it.
+          if (page.items.some((message) => message.senderId !== myId)) {
+            void apiFetch(`${threadPath}/read`, { method: 'PATCH', token }).catch(() => {});
+          }
+        }
+        // Without an anchor this was the newest page, whose hasMore means *older*.
+        if (!requestedAfter || !page.hasMore) return;
+      }
+    };
+
     const poll = async () => {
-      if (document.visibilityState !== 'visible') return;
+      if (polling || sendingRef.current || document.visibilityState !== 'visible') return;
+      polling = true;
       try {
-        const fresh = await apiFetch<Conversation>(`/conversations/${encodeURIComponent(id)}`, { token });
+        await fetchNewer();
+        const fresh = await apiFetch<Conversation>(threadPath, { token });
         if (!isCurrent) return;
         if (fresh.lastMessageId && fresh.lastMessageReadAt) {
           setMessages((prev) =>
@@ -159,43 +217,78 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
       } catch {
         // A missed refresh cycle isn't worth surfacing an error for; the next
         // poll a few seconds later tries again.
+      } finally {
+        polling = false;
       }
     };
-    const interval = setInterval(poll, 5000);
+
+    const interval = setInterval(() => void poll(), 5000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void poll();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       isCurrent = false;
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [token, id]);
+  }, [token, myId, id]);
 
   /**
-   * Land on the newest message, and stay there after sending.
+   * Applies the scroll plan the last change asked for, before paint.
    *
-   * The thread opened scrolled to the top before, which for a conversation of
-   * any length means opening on its first message. `auto` on the first paint so
-   * there is no visible scroll animation on load.
+   * Opening lands on the newest message; sending, or a reply arriving while the
+   * reader is at the end, follows the thread down; a reply arriving while they
+   * are reading further up leaves them where they are; older messages added
+   * above keep the visible ones in place.
    *
-   * The later `smooth` is checked against prefers-reduced-motion by hand,
-   * because the CSS rule in app.css (`scroll-behavior: auto !important` under
-   * the media query) does not reach it: that property only governs a scroll
-   * that defers to CSS, and an explicit `behavior: 'smooth'` in the API call
-   * is a direct request the browser honours regardless of the stylesheet. A
-   * previous version of this comment assumed the CSS rule was enough — it
-   * is not, for exactly this call.
+   * `auto` on the first scroll so there is no visible animation on load. The
+   * later `smooth` is checked against prefers-reduced-motion by hand, because
+   * the CSS rule in app.css (`scroll-behavior: auto !important` under the media
+   * query) does not reach it: that property only governs a scroll that defers
+   * to CSS, and an explicit `behavior: 'smooth'` in the API call is a direct
+   * request the browser honours regardless of the stylesheet.
    */
-  const messageCount = messages?.length ?? 0;
   const hasScrolled = useRef(false);
-  useEffect(() => {
-    if (messageCount === 0) return;
+  useLayoutEffect(() => {
+    const region = scrollRegionRef.current;
+    const plan = scrollPlanRef.current;
+    if (!region || !plan) return;
+    scrollPlanRef.current = null;
+    if (plan.kind === 'keep') {
+      region.scrollTop = plan.top + (region.scrollHeight - plan.height);
+      return;
+    }
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const behavior = hasScrolled.current && !reducedMotion ? 'smooth' : 'auto';
-    endRef.current?.scrollIntoView({ behavior, block: 'end' });
+    region.scrollTo({ top: region.scrollHeight, behavior: hasScrolled.current && !reducedMotion ? 'smooth' : 'auto' });
     hasScrolled.current = true;
-  }, [messageCount]);
+    atBottomRef.current = true;
+  }, [messages]);
+
+  /**
+   * A reader at the end stays at the end when the region itself changes size:
+   * the listing card arrives after the first scroll and pushes the header down,
+   * which hid the newest message on opening. Only the region's own box is
+   * observed, so older messages added above never trigger this.
+   */
+  useEffect(() => {
+    const region = scrollRegionRef.current;
+    if (!region || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      if (atBottomRef.current) region.scrollTop = region.scrollHeight;
+    });
+    observer.observe(region);
+    return () => observer.disconnect();
+  }, [conversation]);
+
+  const onThreadScroll = () => {
+    const region = scrollRegionRef.current;
+    if (region) atBottomRef.current = region.scrollHeight - region.scrollTop - region.clientHeight < 48;
+  };
 
   /**
    * Same `disabled={<async state>}` focus loss as the composer below, this
-   * time on "Voir les messages suivants" (`loading={loadingMore}` on the
+   * time on "Voir les messages précédents" (`loading={loadingMore}` on the
    * shared `Button`, which doesn't forward refs -- so this captures
    * `document.activeElement` instead of holding a ref to the button
    * itself, same technique as the publish wizard's photo buttons). Falls
@@ -213,7 +306,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
       const el = lastFocusedBeforeLoadMoreRef.current;
       lastFocusedBeforeLoadMoreRef.current = null;
       const usable = el.isConnected && !(el instanceof HTMLButtonElement && el.disabled);
-      (usable ? el : headingRef.current)?.focus();
+      // preventScroll: a plain focus() scrolled the button back into view and
+      // undid the kept reading position from the scroll plan above.
+      (usable ? el : headingRef.current)?.focus({ preventScroll: true });
     }
   }, [loadingMore]);
 
@@ -221,16 +316,21 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     if (!nextCursor || !token || loadingMore) return;
     armLoadMoreRefocus();
     setLoadingMore(true);
+    setLoadMoreError(null);
     void (async () => {
       try {
         const page = await apiFetch<CursorPage<Message>>(
           `/conversations/${encodeURIComponent(id)}/messages?cursor=${encodeURIComponent(nextCursor)}`,
           { token },
         );
-        setMessages((prev) => [...(prev ?? []), ...page.items]);
+        const region = scrollRegionRef.current;
+        if (region) scrollPlanRef.current = { kind: 'keep', height: region.scrollHeight, top: region.scrollTop };
+        setMessages((prev) => mergeMessages(prev ?? [], page.items, 'older'));
         setNextCursor(page.nextCursor);
       } catch (cause) {
-        setError(cause instanceof ApiError ? cause.message : 'Impossible de charger la suite.');
+        // Beside the button, not the page-level error: that one replaces the
+        // whole thread, which is still perfectly readable.
+        setLoadMoreError(cause);
       } finally {
         setLoadingMore(false);
       }
@@ -271,7 +371,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     const value = draft.trim();
     if (!value || !token || sending || !myId) return;
 
-    const pendingId = `pending-${crypto.randomUUID()}`;
+    const pendingId = `${PENDING_PREFIX}${crypto.randomUUID()}`;
     const optimisticMessage: Message = {
       id: pendingId,
       conversationId: id,
@@ -282,9 +382,11 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     };
 
     shouldRefocusRef.current = true;
+    scrollPlanRef.current = { kind: 'bottom' };
     setMessages((prev) => [...(prev ?? []), optimisticMessage]);
     setDraft('');
     setSending(true);
+    sendingRef.current = true;
     setSendError(null);
     void (async () => {
       try {
@@ -293,7 +395,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
           token,
           body: { body: value },
         });
-        setMessages((prev) => (prev ?? []).map((message) => (message.id === pendingId ? sent : message)));
+        setMessages((prev) => confirmPending(prev ?? [], pendingId, sent));
       } catch (cause) {
         setMessages((prev) => (prev ?? []).filter((message) => message.id !== pendingId));
         setDraft(value);
@@ -303,8 +405,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         // with a bare "Retour aux messages" screen on every failed send,
         // discarding a still-perfectly-loaded conversation over one message
         // that didn't go through.
-        setSendError(cause instanceof ApiError ? cause.message : 'Le message n’a pas pu être envoyé.');
+        setSendError(errorMessage(cause, 'Le message n’a pas pu être envoyé.'));
       } finally {
+        sendingRef.current = false;
         setSending(false);
       }
     })();
@@ -418,7 +521,11 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         )}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-5) var(--gutter-mobile)' }}>
+      <div
+        ref={scrollRegionRef}
+        onScroll={onThreadScroll}
+        style={{ flex: 1, overflowY: 'auto', padding: 'var(--space-5) var(--gutter-mobile)' }}
+      >
         <div
           style={{
             ...THREAD_COLUMN,
@@ -428,6 +535,21 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             alignContent: 'start',
           }}
         >
+        {/*
+          Above the list: the thread opens on its newest page, and the cursor
+          leads to older messages, which are added on top.
+        */}
+        {nextCursor ? (
+          <Button variant="secondary" size="sm" loading={loadingMore} onClick={handleLoadMore} style={{ justifySelf: 'center' }}>
+            {loadingMore ? 'Chargement…' : 'Voir les messages précédents'}
+          </Button>
+        ) : null}
+        {loadMoreError ? (
+          <p role="alert" style={{ margin: 0, justifySelf: 'center', color: 'var(--danger)', font: 'var(--type-body-sm)' }}>
+            {errorMessage(loadMoreError, 'Impossible de charger les messages précédents.')}
+          </p>
+        ) : null}
+
         {/*
           role="log" + aria-live="polite": a message added to this list is
           announced on its own, and the thread already on screen is not read
@@ -449,7 +571,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             const newDay = !previous || new Date(previous.sentAt).toDateString() !== sentAt.toDateString();
             // The optimistic placeholder from `onSubmit` -- never a real
             // server id, which is always a UUID with no prefix.
-            const pending = message.id.startsWith('pending-');
+            const pending = isPending(message);
             // Only the trailing edge of the thread, the same convention
             // every messaging app uses: a receipt on an older message the
             // other participant has since replied past would just be noise.
@@ -535,20 +657,6 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             );
           })}
         </ol>
-
-        {/*
-          Below the list, not above it. The API pages forward in time — the
-          repository orders `sentAt asc` and the cursor asks for rows *after* the
-          last one — so this button loads what comes next, and it sat above the
-          messages it was going to append underneath them.
-        */}
-        {nextCursor ? (
-          <Button variant="secondary" size="sm" loading={loadingMore} onClick={handleLoadMore} style={{ justifySelf: 'center' }}>
-            {loadingMore ? 'Chargement…' : 'Voir les messages suivants'}
-          </Button>
-        ) : null}
-
-        <div ref={endRef} />
         </div>
       </div>
 
