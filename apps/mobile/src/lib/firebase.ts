@@ -74,11 +74,11 @@ export function getFirebaseAuth(): Auth {
  * reading `currentUser` synchronously on mount can return null for a user
  * who is perfectly well signed in.
  */
-export async function getIdToken(): Promise<string | null> {
+export async function getIdToken(forceRefresh = false): Promise<string | null> {
   const auth = getFirebaseAuth();
   await auth.authStateReady();
   const user = auth.currentUser;
-  return user ? user.getIdToken() : null;
+  return user ? user.getIdToken(forceRefresh) : null;
 }
 
 export function signOut(): Promise<void> {
