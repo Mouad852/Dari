@@ -340,6 +340,7 @@ async function handle(request, response) {
   if (path === '/admin/listings/listing-new/approve' && method === 'POST') return sendNoContent(response);
   if (path === '/admin/reports' && method === 'GET') return sendJson(response, 200, [{ targetType: 'LISTING', targetId: 'listing-1', reportCount: 1, reporterCount: 1, firstReportedAt: now, reasons: ['OTHER'], details: ['Vérifier le contenu'], autoFlagged: false, priorDismissedReports: 0, targetLabel: 'Chambre lumineuse à Agdal' }]);
   if (path === '/admin/users' && method === 'GET') return sendJson(response, 200, { items: [{ id: 'reported-user', email: 'reported@example.invalid', displayName: 'Compte signalé', firstName: 'Compte', city: 'Rabat', role: 'USER', status: state.adminUserStatus, reportCount: 3, createdAt: now }], nextCursor: null, hasMore: false });
+  if (/^\/admin\/reports\/(LISTING|USER)\/[^/]+\/action$/.test(path) && method === 'POST') return sendNoContent(response);
   const adminUserMatch = path.match(/^\/admin\/users\/([^/]+)\/(suspend|unsuspend|ban)$/);
   if (adminUserMatch && method === 'POST') { state.adminUserStatus = adminUserMatch[2] === 'unsuspend' ? 'ACTIVE' : adminUserMatch[2] === 'ban' ? 'BANNED' : 'SUSPENDED'; return sendJson(response, 200, { status: 'ok' }); }
 

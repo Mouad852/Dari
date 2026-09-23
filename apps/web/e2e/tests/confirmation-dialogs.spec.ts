@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Page, Request } from '@playwright/test';
 
 import { expect, expectAccessible, test } from './fixtures';
 
@@ -61,5 +61,31 @@ test('deleting a listing asks in a dialog that cancels cleanly and deletes on co
     .toEqual(['/listings/listing-own']);
   // The card and its button are gone; focus falls back to the page heading.
   await expect(page.getByRole('heading', { name: 'Mes annonces' })).toBeFocused();
+  expect(nativeDialogs).toEqual([]);
+});
+
+test('a report action takes its optional reason from a labelled field, and Annuler cancels it', async ({ authenticatedPage: page }) => {
+  const nativeDialogs = refuseNativeDialogs(page);
+  await page.goto('/admin/reports');
+
+  const opener = page.getByRole('button', { name: 'Suspendre l’annonce' });
+  await opener.click();
+  const dialog = page.getByRole('dialog', { name: 'Suspendre l’annonce ?' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('Chambre lumineuse à Agdal');
+  await expectAccessible(page);
+  await expectFocusTrapped(page);
+
+  await dialog.getByRole('button', { name: 'Annuler' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(opener).toBeFocused();
+  expect((await mockCalls(page)).filter((call) => call.path.endsWith('/action')), 'Annuler acts on nothing').toEqual([]);
+
+  await opener.click();
+  await dialog.getByLabel('Raison de la suspension (facultatif)').fill('  Photos sans rapport avec le logement  ');
+  const sent = page.waitForRequest((request: Request) => request.method() === 'POST' && request.url().endsWith('/admin/reports/LISTING/listing-1/action'));
+  await dialog.getByRole('button', { name: 'Suspendre', exact: true }).click();
+  expect((await sent).postDataJSON()).toEqual({ action: 'SUSPEND', reason: 'Photos sans rapport avec le logement' });
+  await expect(page.getByText('Chambre lumineuse à Agdal')).toHaveCount(0);
   expect(nativeDialogs).toEqual([]);
 });

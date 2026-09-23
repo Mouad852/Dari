@@ -4,15 +4,28 @@ import { AlertTriangle, Ban, Check, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
+import { Button } from '@/components/ds/Button';
+import { Dialog } from '@/components/ds/Dialog';
+import { Textarea } from '@/components/ds/Textarea';
 import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { relativeTime } from '@/lib/format';
 import { REPORT_REASON_LABELS, REPORT_TARGET_LABELS } from '@/lib/labels';
 
-const ACTION_REASON_PROMPT: Record<'DISMISS' | 'SUSPEND' | 'BAN', string> = {
-  DISMISS: 'Raison du classement sans suite (facultatif) :',
-  SUSPEND: 'Raison de la suspension (facultatif) :',
-  BAN: 'Raison du bannissement (facultatif) :',
+type QueueAction = 'DISMISS' | 'SUSPEND' | 'BAN';
+
+const ACTION_REASON_LABEL: Record<QueueAction, string> = {
+  DISMISS: 'Raison du classement sans suite (facultatif)',
+  SUSPEND: 'Raison de la suspension (facultatif)',
+  BAN: 'Raison du bannissement (facultatif)',
+};
+
+// Where the text goes (AdminService): a ban reason is the body of the email
+// the banned person receives; the other two only reach the moderation log.
+const ACTION_REASON_HELPER: Record<QueueAction, string> = {
+  DISMISS: 'Conservée dans le journal de modération, jamais envoyée.',
+  SUSPEND: 'Conservée dans le journal de modération, jamais envoyée.',
+  BAN: 'Envoyée par e-mail à la personne bannie. Sans raison, elle reçoit un message générique.',
 };
 
 const queueActionStyle = (pending: boolean): React.CSSProperties => ({
@@ -101,21 +114,35 @@ export default function AdminReportsPage() {
   }, []);
 
 
-  const handleAction = (item: AdminReportQueueItem, action: 'DISMISS' | 'SUSPEND' | 'BAN') => {
-    const key = `${item.targetType}:${item.targetId}`;
+  /*
+   * Each action used to go through window.confirm (suspend, ban) and then
+   * window.prompt for the reason -- and cancelling that prompt still ran the
+   * action, with no reason. One Dialog now carries the question and a
+   * labelled reason field, and "Annuler" or Escape cancels the whole action.
+   *
+   * The opener is refocused before the action starts for the same reason as
+   * on account/listings/page.tsx: armActionRefocus captures whatever has
+   * focus, and at confirm time that is the dialog's button, about to unmount.
+   */
+  const [confirming, setConfirming] = useState<{ item: AdminReportQueueItem; action: QueueAction } | null>(null);
+  const [reason, setReason] = useState('');
+  const confirmOpenerRef = useRef<HTMLElement | null>(null);
+
+  const handleAction = (item: AdminReportQueueItem, action: QueueAction) => {
     if (pendingKey || !token) return;
+    const active = document.activeElement;
+    confirmOpenerRef.current = active instanceof HTMLElement ? active : null;
+    setReason('');
+    setConfirming({ item, action });
+  };
 
-    // Suspend and ban change someone's account or take a listing down, so they
-    // ask twice. Dismiss is reversible in effect -- the reports simply close.
-    if (action !== 'DISMISS') {
-      const target = item.targetLabel ?? `#${item.targetId.slice(0, 8)}`;
-      const question = action === 'BAN'
-        ? `Bannir définitivement ${target} ? Ses annonces seront retirées et son adresse ne pourra plus se réinscrire.`
-        : `Suspendre ${target} ?`;
-      if (!window.confirm(question)) return;
-    }
-
-    const reason = window.prompt(ACTION_REASON_PROMPT[action]) ?? undefined;
+  const confirmAction = () => {
+    if (!confirming || pendingKey || !token) return;
+    const { item, action } = confirming;
+    const key = `${item.targetType}:${item.targetId}`;
+    const trimmedReason = reason.trim() || undefined;
+    confirmOpenerRef.current?.focus();
+    setConfirming(null);
 
     armActionRefocus(key);
     setPendingKey(key);
@@ -125,7 +152,7 @@ export default function AdminReportsPage() {
         await apiFetch(`/admin/reports/${item.targetType}/${encodeURIComponent(item.targetId)}/action`, {
           method: 'POST',
           token,
-          body: { action, reason },
+          body: { action, reason: trimmedReason },
         });
         setQueue((prev) => (prev ?? []).filter((row) => `${row.targetType}:${row.targetId}` !== key));
       } catch (cause) {
@@ -367,6 +394,46 @@ export default function AdminReportsPage() {
           </div>
         )}
       </div>
+
+      {confirming && (
+        <Dialog
+          open
+          title={
+            confirming.action === 'DISMISS'
+              ? 'Classer sans suite ?'
+              : confirming.action === 'BAN'
+                ? 'Bannir définitivement ce compte ?'
+                : confirming.item.targetType === 'LISTING' ? 'Suspendre l’annonce ?' : 'Suspendre le compte ?'
+          }
+          onClose={() => setConfirming(null)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setConfirming(null)}>Annuler</Button>
+              <Button variant={confirming.action === 'DISMISS' ? 'primary' : 'danger'} onClick={confirmAction}>
+                {confirming.action === 'DISMISS' ? 'Classer sans suite' : confirming.action === 'BAN' ? 'Bannir' : 'Suspendre'}
+              </Button>
+            </>
+          }
+        >
+          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+            <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-body)' }}>
+              <strong style={{ color: 'var(--text-heading)' }}>
+                {confirming.item.targetLabel ?? `#${confirming.item.targetId.slice(0, 8)}`}
+              </strong>
+              {confirming.action === 'DISMISS' ? ' : les signalements en attente seront clos sans action.' : null}
+              {confirming.action === 'BAN' ? ' : ses annonces seront retirées et son adresse ne pourra plus se réinscrire.' : null}
+            </p>
+            <Textarea
+              label={ACTION_REASON_LABEL[confirming.action]}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              rows={3}
+              maxLength={1000}
+              helper={ACTION_REASON_HELPER[confirming.action]}
+            />
+          </div>
+        </Dialog>
+      )}
     </main>
   );
 }
