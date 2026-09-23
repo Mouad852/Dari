@@ -60,6 +60,13 @@ describe('production build gate', () => {
       .toEqual(['EXPO_PUBLIC_API_BASE_URL must end with /api/v1']);
   });
 
+  it('accepts a build without a Sentry DSN, and refuses one that is not https', () => {
+    expect(releaseConfigErrors(COMPLETE)).toEqual([]);
+    expect(releaseConfigErrors({ ...COMPLETE, EXPO_PUBLIC_SENTRY_DSN: 'https://fakepublickey@errors.example.invalid/42' })).toEqual([]);
+    expect(releaseConfigErrors({ ...COMPLETE, EXPO_PUBLIC_SENTRY_DSN: 'http://fakepublickey@errors.example.invalid/42' }))
+      .toEqual(['EXPO_PUBLIC_SENTRY_DSN must be an https:// DSN']);
+  });
+
   it('lets a development build through with nothing set', () => {
     expect(withReleaseConfig(BASE, {})).toEqual(BASE);
   });

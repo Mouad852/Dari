@@ -46,6 +46,12 @@
           "resizeMode": "contain",
           "backgroundColor": "#FBF7F2"
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "project": "dari-mobile"
+        }
       ]
     ],
     "experiments": {

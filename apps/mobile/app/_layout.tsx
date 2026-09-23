@@ -18,6 +18,11 @@ import { Text, View } from 'react-native';
 
 import { color } from '@/theme/tokens';
 import { configErrors } from '@/lib/config';
+import { startErrorReporting } from '@/lib/reporting';
+
+// Before anything renders, so a crash during startup is reported too. Does
+// nothing without EXPO_PUBLIC_SENTRY_DSN.
+startErrorReporting();
 
 // Held up until the brand typefaces are ready -- the type scale (h1/h2/price
 // etc.) is a defined visual identity, not a fallback-tolerant detail, so a

@@ -45,6 +45,12 @@ export function releaseConfigErrors(env: Env): string[] {
 
   if (!value('EXPO_PUBLIC_RELEASE_VERSION')) errors.push('EXPO_PUBLIC_RELEASE_VERSION is missing');
 
+  // Optional: without it error reporting stays off.
+  const dsn = value('EXPO_PUBLIC_SENTRY_DSN');
+  if (dsn && !HTTPS_URL.test(dsn.replace(/^https:\/\/[^@/\s]+@/, 'https://'))) {
+    errors.push('EXPO_PUBLIC_SENTRY_DSN must be an https:// DSN');
+  }
+
   // Not EXPO_PUBLIC_: it belongs in the Android manifest, not in the bundle.
   if (!value('GOOGLE_MAPS_ANDROID_API_KEY')) errors.push('GOOGLE_MAPS_ANDROID_API_KEY is missing');
 

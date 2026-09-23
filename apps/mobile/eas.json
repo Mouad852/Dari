@@ -5,17 +5,17 @@
       "developmentClient": true,
       "distribution": "internal",
       "environment": "development",
-      "env": { "APP_VARIANT": "development" }
+      "env": { "APP_VARIANT": "development", "SENTRY_DISABLE_AUTO_UPLOAD": "true" }
     },
     "preview": {
       "distribution": "internal",
       "environment": "preview",
-      "env": { "APP_VARIANT": "preview" }
+      "env": { "APP_VARIANT": "preview", "SENTRY_DISABLE_AUTO_UPLOAD": "true" }
     },
     "production": {
       "autoIncrement": true,
       "environment": "production",
-      "env": { "APP_VARIANT": "production" }
+      "env": { "APP_VARIANT": "production", "SENTRY_DISABLE_AUTO_UPLOAD": "true" }
     }
   },
   "submit": {
