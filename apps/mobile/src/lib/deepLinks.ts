@@ -20,10 +20,12 @@ const LINK = /^(dari|exps?):\/\/([^/?#]*)([^?#]*)/i;
 const ID = /^[A-Za-z0-9-]{1,64}$/;
 
 export function parseDeepLink(value: string): DeepLinkTarget | null {
-  const match = LINK.exec(value.trim());
-  if (!match) return null;
-  const [, scheme, host, path] = match;
   const split = (part: string) => part.split('/').filter(Boolean);
+  const trimmed = value.trim();
+  const match = LINK.exec(trimmed);
+  if (!match && !trimmed.startsWith('/')) return null;
+  // A bare path ("/listings/x"), as expo-router may hand over, reads like the path of a dari:/// link.
+  const [, scheme, host, path] = match ?? [trimmed, 'dari', '', trimmed.replace(/[?#].*$/, '')];
 
   let segments: string[];
   if (scheme!.toLowerCase() === 'dari') {
@@ -41,4 +43,12 @@ export function parseDeepLink(value: string): DeepLinkTarget | null {
   if (kind === 'listings' || kind === 'listing') return { pathname: '/listing/[id]', params: { id } };
   if (kind === 'messages' || kind === 'conversation') return { pathname: '/messages/[id]', params: { id } };
   return null;
+}
+
+/** The app route a link opens, as a path, or null when the link is not one of the above. */
+export function deepLinkPath(value: string): string | null {
+  const target = parseDeepLink(value);
+  if (!target) return null;
+  if (target.pathname === '/sign-in') return '/sign-in';
+  return target.pathname.replace('[id]', encodeURIComponent(target.params.id));
 }

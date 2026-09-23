@@ -1,4 +1,4 @@
-import { parseDeepLink } from '../deepLinks';
+import { deepLinkPath, parseDeepLink } from '../deepLinks';
 
 const ID = '0b5e1a7c-9f3d-4c2a-8e61-5d4f3c2b1a09';
 
@@ -23,6 +23,15 @@ describe('parseDeepLink', () => {
   it('sends the web’s profile-recovery link to sign-in', () => {
     expect(parseDeepLink('dari://profile-recovery')).toEqual({ pathname: '/sign-in' });
     expect(parseDeepLink('dari:///profile-recovery')).toEqual({ pathname: '/sign-in' });
+  });
+
+  it('rewrites a link to the app route expo-router should open', () => {
+    expect(deepLinkPath(`dari://listings/${ID}`)).toBe(`/listing/${ID}`);
+    expect(deepLinkPath(`/listings/${ID}`)).toBe(`/listing/${ID}`);
+    expect(deepLinkPath(`dari://conversation/${ID}`)).toBe(`/messages/${ID}`);
+    expect(deepLinkPath('dari://profile-recovery')).toBe('/sign-in');
+    expect(deepLinkPath('exp://192.168.1.20:8081')).toBeNull();
+    expect(deepLinkPath('/some/other/route')).toBeNull();
   });
 
   it.each([

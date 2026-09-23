@@ -11,15 +11,12 @@ import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import * as Linking from 'expo-linking';
-import { router } from 'expo-router';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { color, layout, type } from '@/theme/tokens';
 import { configErrors } from '@/lib/config';
-import { parseDeepLink } from '@/lib/deepLinks';
 import { reportError, startErrorReporting } from '@/lib/reporting';
 
 // Before anything renders, so a crash during startup is reported too. Does
@@ -33,7 +30,6 @@ startErrorReporting();
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const url = Linking.useURL();
   const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
@@ -46,8 +42,6 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded || fontError) void SplashScreen.hideAsync();
   }, [fontsLoaded, fontError]);
-
-  useEffect(() => { if (url) routeDeepLink(url); }, [url]);
 
   if (!fontsLoaded && !fontError) return null;
 
@@ -93,9 +87,3 @@ const styles = StyleSheet.create({
   crash: { flex: 1, justifyContent: 'center', gap: 16, padding: layout.gutterMobile, backgroundColor: color.bgPage },
   crashText: { color: color.textBody },
 });
-
-/** A link the app does not know leaves it on its current route. */
-function routeDeepLink(value: string): void {
-  const target = parseDeepLink(value);
-  if (target) router.push(target);
-}
