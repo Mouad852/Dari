@@ -12,13 +12,11 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
-import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Text, View } from 'react-native';
 
 import { color } from '@/theme/tokens';
-import { configureNotificationPresentation } from '@/lib/notifications';
 import { configErrors } from '@/lib/config';
 
 // Held up until the brand typefaces are ready -- the type scale (h1/h2/price
@@ -41,19 +39,6 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded || fontError) void SplashScreen.hideAsync();
   }, [fontsLoaded, fontError]);
-
-  useEffect(() => {
-    configureNotificationPresentation();
-    const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const target = response.notification.request.content.data?.url;
-      if (typeof target === 'string') routeDeepLink(target);
-    });
-    void Notifications.getLastNotificationResponseAsync().then((response) => {
-      const target = response?.notification.request.content.data?.url;
-      if (typeof target === 'string') routeDeepLink(target);
-    });
-    return () => responseSubscription.remove();
-  }, []);
 
   useEffect(() => { if (url) routeDeepLink(url); }, [url]);
 

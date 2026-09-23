@@ -8,7 +8,6 @@ import { TextField } from '@/components/TextField';
 import { TopBar } from '@/components/TopBar';
 import { apiFetch, apiOrigin, apiUpload, ApiError } from '@/lib/api';
 import { getIdToken, onAuthChange, signOut } from '@/lib/firebase';
-import { requestNotificationPermission } from '@/lib/notifications';
 import type { Me } from '@/types/api';
 import { color, layout, radius, type } from '@/theme/tokens';
 
@@ -93,7 +92,6 @@ export default function ProfileScreen() {
     <TextField label="Bio" value={bio} onChangeText={setBio} multiline numberOfLines={4} style={styles.bioInput} />
     <Button onPress={() => void save()} loading={saving}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Button>
     <Button variant="secondary" onPress={() => router.push('/publish' as never)}>Publier une annonce</Button>
-    <Button variant="secondary" onPress={() => void requestNotificationPermission()}>Activer les notifications</Button>
     <Button variant="secondary" onPress={() => void signOut()}>Se déconnecter</Button>
     <TextButton onPress={confirmDelete}>Supprimer définitivement mon compte</TextButton>
   </ScrollView></View>;
