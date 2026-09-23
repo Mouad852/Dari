@@ -437,7 +437,7 @@ class MessagingApiTest extends AbstractIntegrationTest {
 
         given().header("Authorization", "Bearer seeker-read-token")
                 .when().patch("/conversations/" + conversation.getId() + "/read")
-                .then().statusCode(200);
+                .then().statusCode(204);
 
         assertThat(messages.findById(message.getId())).isPresent();
         assertThat(messages.findById(message.getId()).get().getReadAt()).isNotNull();
@@ -463,7 +463,7 @@ class MessagingApiTest extends AbstractIntegrationTest {
 
         given().header("Authorization", "Bearer seeker-receipt-token")
                 .when().patch("/conversations/" + conversation.getId() + "/read")
-                .then().statusCode(200);
+                .then().statusCode(204);
 
         stubToken("uid-owner-receipt", "owner.receipt@example.ma", true);
 
@@ -494,7 +494,7 @@ class MessagingApiTest extends AbstractIntegrationTest {
 
         given().header("Authorization", "Bearer seeker-unread-token")
                 .when().patch("/conversations/" + conversation.getId() + "/read")
-                .then().statusCode(200);
+                .then().statusCode(204);
 
         given().header("Authorization", "Bearer seeker-unread-token")
                 .when().get("/conversations")
@@ -526,7 +526,7 @@ class MessagingApiTest extends AbstractIntegrationTest {
 
         given().header("Authorization", "Bearer seeker-total-token")
                 .when().patch("/conversations/" + withOwnerOne.getId() + "/read")
-                .then().statusCode(200);
+                .then().statusCode(204);
 
         given().header("Authorization", "Bearer seeker-total-token")
                 .when().get("/conversations/unread-count")

@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -109,9 +110,16 @@ public class ConversationController {
                 .body(conversationService.sendMessage(user, id, request));
     }
 
-    /** Marks read up to a point. Per-participant, never a shared flag. */
+    /**
+     * Marks read up to a point. Per-participant, never a shared flag.
+     *
+     * <p>204, like every other endpoint without a body: a bare {@code void}
+     * answered 200 with an empty body, which the web client counts (and
+     * reports) as an unexpected response.
+     */
     @PatchMapping("/{id}/read")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public void markRead(@CurrentUser User user, @PathVariable UUID id) {
         conversationService.markRead(user, id);
     }
