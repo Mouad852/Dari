@@ -28,7 +28,9 @@ type OwnedListing = ListingDetail;
 const STATUS_META: Record<ListingStatus, { chipBg: string; chipColor: string; icon: LucideIcon }> = {
   DRAFT: { chipBg: 'var(--sable-100)', chipColor: 'var(--text-muted)', icon: Clock3 },
   PENDING_REVIEW: { chipBg: 'var(--sand-100)', chipColor: 'var(--sand-700)', icon: Clock3 },
-  PUBLISHED: { chipBg: 'var(--brand-subtle)', chipColor: 'var(--brand)', icon: CheckCircle2 },
+  // --clay-700, not --brand: --brand on --brand-subtle is 4.40:1, under AA for
+  // this 13px label; clay-700 is 6.75:1 and is what the admin chips use.
+  PUBLISHED: { chipBg: 'var(--brand-subtle)', chipColor: 'var(--clay-700)', icon: CheckCircle2 },
   REJECTED: { chipBg: 'var(--danger-subtle)', chipColor: 'var(--danger)', icon: ShieldAlert },
   SUSPENDED: { chipBg: 'var(--danger-subtle)', chipColor: 'var(--danger)', icon: ShieldAlert },
   EXPIRED: { chipBg: 'var(--sable-100)', chipColor: 'var(--text-muted)', icon: Clock3 },
