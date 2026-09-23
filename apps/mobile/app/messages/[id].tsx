@@ -47,6 +47,7 @@ export default function ConversationScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   // Set while the poll keeps failing: new replies are not arriving, and the reader should know.
   const [pollError, setPollError] = useState<string | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -104,8 +105,13 @@ export default function ConversationScreen() {
    *
    * The anchor is only ever a message that came from a GET, never one just
    * sent: a reply written a moment before one's own message is newer than the
-   * anchor, so it still arrives. No poll runs while a send is in flight, so
-   * the sent message cannot land twice.
+   * anchor, so it still arrives. No poll starts while a send is in flight; one
+   * already running can still bring the sent message back, and the merge by id
+   * keeps it once.
+   *
+   * Each cycle asks Firebase for the current token (cached, refreshed near
+   * expiry) rather than reusing the one from opening the screen, which after an
+   * hour would turn every poll into a rejected request and a replay.
    */
   useEffect(() => {
     if (!token || !myId) return;
@@ -113,7 +119,7 @@ export default function ConversationScreen() {
     let polling = false;
     const threadPath = `/conversations/${encodeURIComponent(id)}`;
 
-    const fetchNewer = async () => {
+    const fetchNewer = async (token: string) => {
       let anchor = anchorRef.current;
       // Bounded: each round is one page at most.
       for (let round = 0; round < 5; round += 1) {
@@ -147,8 +153,9 @@ export default function ConversationScreen() {
       if (polling || sendingRef.current || AppState.currentState !== 'active') return;
       polling = true;
       try {
-        await fetchNewer();
-        const fresh = await apiFetch<Conversation>(threadPath, { token });
+        const current = (await getIdToken().catch(() => null)) ?? token;
+        await fetchNewer(current);
+        const fresh = await apiFetch<Conversation>(threadPath, { token: current });
         if (!isCurrent) return;
         setPollError(null);
         if (!fresh.lastMessageId || !fresh.lastMessageReadAt) return;
@@ -174,14 +181,17 @@ export default function ConversationScreen() {
   async function loadMore() {
     if (!nextCursor || !token || loadingMore) return;
     setLoadingMore(true);
+    setLoadMoreError(null);
     try {
       const page = await apiFetch<CursorPage<Message>>(`/conversations/${encodeURIComponent(id)}/messages?cursor=${encodeURIComponent(nextCursor)}`, { token });
       // Older messages go above; maintainVisibleContentPosition keeps the reader where they were.
       setMessages((previous) => mergeMessages(previous ?? [], page.items, 'older'));
       setNextCursor(page.nextCursor ?? null);
     } catch (cause) {
-      if (cause instanceof ApiError && cause.code === 'INVALID_CURSOR') setNextCursor(null);
-      setSendError(errorMessage(cause, 'Impossible de charger les anciens messages.'));
+      // Beside its own button, which retries the load (the send banner's
+      // "Réessayer" resends the draft). The cursor is kept, so history stays reachable.
+      setLoadMoreError(errorMessage(cause, 'Impossible de charger les messages précédents.'));
+      reportUnexpected(cause, 'thread-older');
     } finally { setLoadingMore(false); }
   }
 
@@ -242,7 +252,7 @@ export default function ConversationScreen() {
         contentContainerStyle={styles.list}
         // Older messages load above: keep the first visible one in place.
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
-        ListHeaderComponent={nextCursor ? <Pressable onPress={() => void loadMore()} disabled={loadingMore} accessibilityRole="button" style={styles.loadMore}><Text style={styles.loadMoreText}>{loadingMore ? 'Chargement…' : 'Charger les messages précédents'}</Text></Pressable> : null}
+        ListHeaderComponent={nextCursor ? <View>{loadMoreError && <Text style={styles.loadMoreError} accessibilityLiveRegion="polite">{loadMoreError}</Text>}<Pressable onPress={() => void loadMore()} disabled={loadingMore} accessibilityRole="button" style={styles.loadMore}><Text style={styles.loadMoreText}>{loadingMore ? 'Chargement…' : loadMoreError ? 'Réessayer' : 'Charger les messages précédents'}</Text></Pressable></View> : null}
         scrollEventThrottle={100}
         onScroll={(event) => {
           const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
@@ -346,6 +356,7 @@ const styles = StyleSheet.create({
   },
   loadMore: { alignSelf: 'center', padding: 12 },
   loadMoreText: { color: color.brand, fontFamily: font.uiSemibold, fontSize: 13 },
+  loadMoreError: { alignSelf: 'center', textAlign: 'center', color: color.danger, fontFamily: font.uiRegular, fontSize: 12 },
   sendError: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingHorizontal: 16, paddingBottom: 8, backgroundColor: color.dangerSubtle },
   sendErrorText: { flex: 1, color: color.danger, fontFamily: font.uiRegular, fontSize: 12 },
   retryText: { color: color.brand, fontFamily: font.uiSemibold, fontSize: 12 },
