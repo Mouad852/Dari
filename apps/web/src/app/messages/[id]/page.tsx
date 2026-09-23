@@ -46,6 +46,8 @@ type ListingContext =
  */
 const THREAD_COLUMN = { width: '100%', maxWidth: 760, margin: '0 auto', minWidth: 0 } as const;
 
+const MESSAGE_LIST = { listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-3)' } as const;
+
 export default function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
 
@@ -57,6 +59,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState<unknown>(null);
+  // How many messages at the front came from "Voir les messages précédents".
+  const [olderCount, setOlderCount] = useState(0);
   const [error, setError] = useState<unknown>(null);
   // Bumped by the error notice's retry, which is what re-runs the load effect.
   const [reloadKey, setReloadKey] = useState(0);
@@ -71,6 +75,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   // The newest message this page has *fetched*. Never one it just sent: see the poll.
   const anchorRef = useRef<string | null>(null);
   const sendingRef = useRef(false);
+  // A confirmed own message keeps its placeholder's key, so the live log does
+  // not see a new item (and announce it again) when the server copy swaps in.
+  const keyAliasRef = useRef(new Map<string, string>());
 
   // No route-change announcement exists anywhere in this app for a
   // client-side transition -- see the same fix on account/listings/page.tsx.
@@ -109,6 +116,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         anchorRef.current = page.items.at(-1)?.id ?? null;
         scrollPlanRef.current = { kind: 'bottom' };
         setMessages(page.items);
+        setOlderCount(0);
         setNextCursor(page.nextCursor);
 
         // Fire-and-forget: marking read failing shouldn't block reading the thread.
@@ -152,8 +160,14 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
    *
    * The anchor is only ever a message that came from a GET, never one this page
    * just sent: a reply written a moment before one's own message is newer than
-   * the anchor, so it still arrives. And no poll runs while a send is in
-   * flight, so the sent message cannot land twice, once from each request.
+   * the anchor, so it still arrives. No poll starts while a send is in flight;
+   * one already running can still bring the sent message back before the POST
+   * answers, and it then shows next to the placeholder until the send confirms
+   * and the merge by id keeps one.
+   *
+   * Each cycle asks Firebase for the current token (cached, refreshed near
+   * expiry) rather than reusing the one from opening the page, which after an
+   * hour would turn every poll into a rejected request and a replay.
    */
   useEffect(() => {
     if (!token || !myId) return;
@@ -161,7 +175,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     let polling = false;
     const threadPath = `/conversations/${encodeURIComponent(id)}`;
 
-    const fetchNewer = async () => {
+    const fetchNewer = async (token: string) => {
       let anchor = anchorRef.current;
       // Bounded: each round is one page at most.
       for (let round = 0; round < 5; round += 1) {
@@ -202,8 +216,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
       if (polling || sendingRef.current || document.visibilityState !== 'visible') return;
       polling = true;
       try {
-        await fetchNewer();
-        const fresh = await apiFetch<Conversation>(threadPath, { token });
+        const current = (await getIdToken().catch(() => null)) ?? token;
+        await fetchNewer(current);
+        const fresh = await apiFetch<Conversation>(threadPath, { token: current });
         if (!isCurrent) return;
         if (fresh.lastMessageId && fresh.lastMessageReadAt) {
           setMessages((prev) =>
@@ -325,6 +340,8 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         );
         const region = scrollRegionRef.current;
         if (region) scrollPlanRef.current = { kind: 'keep', height: region.scrollHeight, top: region.scrollTop };
+        const known = new Set((messages ?? []).map((message) => message.id));
+        setOlderCount((count) => count + page.items.filter((message) => !known.has(message.id)).length);
         setMessages((prev) => mergeMessages(prev ?? [], page.items, 'older'));
         setNextCursor(page.nextCursor);
       } catch (cause) {
@@ -395,6 +412,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
           token,
           body: { body: value },
         });
+        keyAliasRef.current.set(sent.id, pendingId);
         setMessages((prev) => confirmPending(prev ?? [], pendingId, sent));
       } catch (cause) {
         setMessages((prev) => (prev ?? []).filter((message) => message.id !== pendingId));
@@ -441,6 +459,103 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
       </main>
     );
   }
+
+  // Shared by the list of loaded older pages and the live log below, with
+  // indexes into the whole thread so separators and the receipt stay right.
+  const renderMessage = (message: Message, index: number) => {
+    const mine = message.senderId === myId;
+    const sentAt = new Date(message.sentAt);
+    const previous = messages[index - 1];
+    // A separator whenever the calendar day changes, so a thread read top
+    // to bottom shows when the gaps were.
+    const newDay = !previous || new Date(previous.sentAt).toDateString() !== sentAt.toDateString();
+    // The optimistic placeholder from `onSubmit` -- never a real
+    // server id, which is always a UUID with no prefix.
+    const pending = isPending(message);
+    // Only the trailing edge of the thread, the same convention
+    // every messaging app uses: a receipt on an older message the
+    // other participant has since replied past would just be noise.
+    const showReadReceipt = mine && !pending && index === messages.length - 1 && Boolean(message.readAt);
+
+    return (
+      <li key={keyAliasRef.current.get(message.id) ?? message.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-3)' }}>
+        {newDay && (
+          <span
+            style={{
+              justifySelf: 'center',
+              padding: '4px 12px',
+              borderRadius: 'var(--radius-pill)',
+              background: 'var(--sable-100)',
+              color: 'var(--text-body)',
+              font: 'var(--type-caption)',
+            }}
+          >
+            {dayLabel(sentAt)}
+          </span>
+        )}
+
+        <div
+          style={{
+            maxWidth: '78%',
+            justifySelf: mine ? 'end' : 'start',
+            padding: '0.7rem 0.9rem',
+            borderRadius: mine
+              ? 'var(--radius-md) var(--radius-md) var(--radius-xs) var(--radius-md)'
+              : 'var(--radius-md) var(--radius-md) var(--radius-md) var(--radius-xs)',
+            background: mine ? 'var(--brand)' : 'var(--surface-card)',
+            color: mine ? 'var(--text-on-brand)' : 'var(--text-body)',
+            border: mine ? '1px solid var(--brand)' : '1px solid var(--border-hairline)',
+            boxShadow: 'var(--shadow-xs)',
+            // Longhand, not the `font` shorthand -- see ReportDialog.tsx for why.
+            fontWeight: 'var(--weight-regular)',
+            fontSize: 'var(--text-body-md)',
+            fontFamily: 'var(--font-ui)',
+            lineHeight: 1.5,
+            overflowWrap: 'anywhere',
+            // The one visual cue that a bubble is the optimistic
+            // placeholder rather than a confirmed send -- gone the
+            // instant the real response swaps it in, or the whole
+            // bubble is gone if the send failed.
+            opacity: pending ? 0.6 : 1,
+          }}
+        >
+          {message.body}
+          {/*
+            A bubble with no time on it leaves a reader guessing whether a
+            reply came back in five minutes or five days. The hour goes
+            here; the day is carried by the separator above.
+          */}
+          <time
+            dateTime={message.sentAt}
+            style={{
+              display: 'block',
+              marginTop: 4,
+              textAlign: 'right',
+              font: 'var(--type-caption)',
+              // Full opacity, not the 0.82 that would read as "quieter":
+              // white on --brand is 4.87:1, and 82% of it is 3.81 — under
+              // AA for text this size. The hierarchy comes from the size.
+              color: mine ? 'var(--text-on-brand)' : 'var(--text-muted)',
+            }}
+          >
+            {clockTime(sentAt)}
+          </time>
+        </div>
+        {showReadReceipt && (
+          <span
+            style={{
+              justifySelf: 'end',
+              marginTop: -8,
+              font: 'var(--type-caption)',
+              color: 'var(--text-muted)',
+            }}
+          >
+            Vu
+          </span>
+        )}
+      </li>
+    );
+  };
 
   return (
     <main
@@ -551,6 +666,16 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         ) : null}
 
         {/*
+          Older pages loaded on request sit in a plain list above the live
+          region: 20 messages the reader asked for are not read out.
+        */}
+        {olderCount > 0 ? (
+          <ol aria-label="Messages précédents" style={MESSAGE_LIST}>
+            {messages.slice(0, olderCount).map((message, index) => renderMessage(message, index))}
+          </ol>
+        ) : null}
+
+        {/*
           role="log" + aria-live="polite": a message added to this list is
           announced on its own, and the thread already on screen is not read
           out again. The app had no live region at all, so a message arriving
@@ -560,102 +685,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
           role="log"
           aria-live="polite"
           aria-label="Messages de la conversation"
-          style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-3)' }}
+          style={MESSAGE_LIST}
         >
-          {messages.map((message, index) => {
-            const mine = message.senderId === myId;
-            const sentAt = new Date(message.sentAt);
-            const previous = messages[index - 1];
-            // A separator whenever the calendar day changes, so a thread read top
-            // to bottom shows when the gaps were.
-            const newDay = !previous || new Date(previous.sentAt).toDateString() !== sentAt.toDateString();
-            // The optimistic placeholder from `onSubmit` -- never a real
-            // server id, which is always a UUID with no prefix.
-            const pending = isPending(message);
-            // Only the trailing edge of the thread, the same convention
-            // every messaging app uses: a receipt on an older message the
-            // other participant has since replied past would just be noise.
-            const showReadReceipt = mine && !pending && index === messages.length - 1 && Boolean(message.readAt);
-
-            return (
-              <li key={message.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-3)' }}>
-                {newDay && (
-                  <span
-                    style={{
-                      justifySelf: 'center',
-                      padding: '4px 12px',
-                      borderRadius: 'var(--radius-pill)',
-                      background: 'var(--sable-100)',
-                      color: 'var(--text-body)',
-                      font: 'var(--type-caption)',
-                    }}
-                  >
-                    {dayLabel(sentAt)}
-                  </span>
-                )}
-
-                <div
-                  style={{
-                    maxWidth: '78%',
-                    justifySelf: mine ? 'end' : 'start',
-                    padding: '0.7rem 0.9rem',
-                    borderRadius: mine
-                      ? 'var(--radius-md) var(--radius-md) var(--radius-xs) var(--radius-md)'
-                      : 'var(--radius-md) var(--radius-md) var(--radius-md) var(--radius-xs)',
-                    background: mine ? 'var(--brand)' : 'var(--surface-card)',
-                    color: mine ? 'var(--text-on-brand)' : 'var(--text-body)',
-                    border: mine ? '1px solid var(--brand)' : '1px solid var(--border-hairline)',
-                    boxShadow: 'var(--shadow-xs)',
-                    // Longhand, not the `font` shorthand -- see ReportDialog.tsx for why.
-                    fontWeight: 'var(--weight-regular)',
-                    fontSize: 'var(--text-body-md)',
-                    fontFamily: 'var(--font-ui)',
-                    lineHeight: 1.5,
-                    overflowWrap: 'anywhere',
-                    // The one visual cue that a bubble is the optimistic
-                    // placeholder rather than a confirmed send -- gone the
-                    // instant the real response swaps it in, or the whole
-                    // bubble is gone if the send failed.
-                    opacity: pending ? 0.6 : 1,
-                  }}
-                >
-                  {message.body}
-                  {/*
-                    A bubble with no time on it leaves a reader guessing whether a
-                    reply came back in five minutes or five days. The hour goes
-                    here; the day is carried by the separator above.
-                  */}
-                  <time
-                    dateTime={message.sentAt}
-                    style={{
-                      display: 'block',
-                      marginTop: 4,
-                      textAlign: 'right',
-                      font: 'var(--type-caption)',
-                      // Full opacity, not the 0.82 that would read as "quieter":
-                      // white on --brand is 4.87:1, and 82% of it is 3.81 — under
-                      // AA for text this size. The hierarchy comes from the size.
-                      color: mine ? 'var(--text-on-brand)' : 'var(--text-muted)',
-                    }}
-                  >
-                    {clockTime(sentAt)}
-                  </time>
-                </div>
-                {showReadReceipt && (
-                  <span
-                    style={{
-                      justifySelf: 'end',
-                      marginTop: -8,
-                      font: 'var(--type-caption)',
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    Vu
-                  </span>
-                )}
-              </li>
-            );
-          })}
+          {messages.slice(olderCount).map((message, offset) => renderMessage(message, olderCount + offset))}
         </ol>
         </div>
       </div>

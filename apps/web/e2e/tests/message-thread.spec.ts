@@ -66,7 +66,8 @@ test('a long thread opens at its newest message and loads older ones above witho
   const log = page.getByRole('log', { name: 'Messages de la conversation' });
   // An item's text runs the body into its time ("Message 4511:46"), so the
   // number is the one directly followed by HH:MM.
-  const bubble = (n: number) => log.getByRole('listitem').filter({ hasText: new RegExp(`Message ${n}(?=\\d{2}:\\d{2})`) });
+  const thread = page.getByRole('main').getByRole('listitem');
+  const bubble = (n: number) => thread.filter({ hasText: new RegExp(`Message ${n}(?=\\d{2}:\\d{2})`) });
 
   await expect(log.getByRole('listitem')).toHaveCount(20);
   await expect(bubble(45)).toBeInViewport();
@@ -74,12 +75,15 @@ test('a long thread opens at its newest message and loads older ones above witho
   await expect(bubble(25)).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Voir les messages précédents' }).click();
-  await expect(log.getByRole('listitem')).toHaveCount(40);
+  await expect(thread).toHaveCount(40);
   // The message that was at the top before the load is still on screen.
   await expect(bubble(26)).toBeInViewport();
+  // Older pages sit outside the live region, so they are not read out.
+  await expect(log.getByRole('listitem')).toHaveCount(20);
 
   await page.getByRole('button', { name: 'Voir les messages précédents' }).click();
-  await expect(log.getByRole('listitem')).toHaveCount(45);
+  await expect(thread).toHaveCount(45);
+  await expect(log.getByRole('listitem')).toHaveCount(20);
   await expect(bubble(1)).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Voir les messages précédents' })).toHaveCount(0);
 });
