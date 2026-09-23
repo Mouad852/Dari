@@ -806,6 +806,24 @@ On PowerShell, invoke the matrix with `bash ./infra/prod-smoke/fail-fast-matrix.
 Always run `down -v` when finished; it removes only this smoke project's
 throwaway volumes.
 
+CI runs a narrower version of this on every API or infra change
+(`.github/workflows/production-gates.yml`, job `production-image`): it builds
+the image, starts it with the production profile against an empty PostGIS
+through `infra/prod-smoke/readiness-check.sh` (readiness must answer
+`{"status":"UP"}`), then runs the fail-fast matrix. CI has no Firebase key, so
+`infra/prod-smoke/throwaway-service-account.sh` generates one around a fresh
+RSA key; the API only parses it at startup. The check also turns the
+CloudWatch push off, so nothing tries to reach AWS. MinIO, Mailpit and the
+rate-limit script stay local-only.
+
+```bash
+docker build -t dari-api:ci apps/api
+bash infra/prod-smoke/throwaway-service-account.sh /tmp/sa.json
+export SMOKE_IMAGE=dari-api:ci FIREBASE_SERVICE_ACCOUNT_FILE=/tmp/sa.json
+bash infra/prod-smoke/readiness-check.sh
+bash infra/prod-smoke/fail-fast-matrix.sh
+```
+
 Monitoring in the smoke stack:
 
 - `curl -fsS http://localhost:18080/actuator/info` shows

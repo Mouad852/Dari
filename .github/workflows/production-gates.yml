@@ -1,0 +1,46 @@
+name: Production image gates
+
+# Regression gates for the deployment artifact. Each job
+# runs one script that also runs unchanged in Git Bash, so a local run of the
+# gate is the same commands against the same images.
+
+on:
+  push:
+    paths:
+      - 'apps/api/**'
+      - 'infra/prod-smoke/**'
+      - 'infra/scripts/**'
+      - '.github/workflows/production-gates.yml'
+  pull_request:
+    paths:
+      - 'apps/api/**'
+      - 'infra/prod-smoke/**'
+      - 'infra/scripts/**'
+      - '.github/workflows/production-gates.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  production-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SMOKE_IMAGE: dari-api:ci
+      # Generated in the job; parses like a real key and authorises nothing.
+      FIREBASE_SERVICE_ACCOUNT_FILE: ${{ runner.temp }}/throwaway-service-account.json
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build the API image
+        run: docker build -t "$SMOKE_IMAGE" apps/api
+
+      - name: Generate a throwaway Firebase service account
+        run: bash infra/prod-smoke/throwaway-service-account.sh "$FIREBASE_SERVICE_ACCOUNT_FILE"
+
+      - name: Start with the production profile against an empty PostGIS; readiness must be UP
+        run: bash infra/prod-smoke/readiness-check.sh
+
+      - name: Every broken production variable must stop startup, named and unleaked
+        run: bash infra/prod-smoke/fail-fast-matrix.sh
