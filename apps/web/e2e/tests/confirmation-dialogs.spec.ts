@@ -26,13 +26,15 @@ async function mockCalls(page: Page) {
   return (await (await page.request.get(`${MOCK}/__calls`)).json()) as { method: string; path: string }[];
 }
 
-/** Tab through twice as many stops as the dialog has; focus must never leave it. */
+/** Tab, then Shift+Tab, through twice as many stops as the dialog has; focus must never leave it. */
 async function expectFocusTrapped(page: Page) {
   const dialog = page.getByRole('dialog');
   const stops = await dialog.locator('button, textarea, input, a[href]').count();
-  for (let i = 0; i < stops * 2; i += 1) {
-    await page.keyboard.press('Tab');
-    expect(await dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
+  for (const key of ['Tab', 'Shift+Tab']) {
+    for (let i = 0; i < stops * 2; i += 1) {
+      await page.keyboard.press(key);
+      expect(await dialog.evaluate((node) => node.contains(document.activeElement)), `${key} #${i + 1}`).toBe(true);
+    }
   }
 }
 
@@ -103,6 +105,7 @@ test('banning asks in a dialog, and an empty reason is left out rather than sent
   await expect(dialog).toContainText('Compte signalé');
   await expect(dialog.getByLabel('Raison du bannissement (facultatif)')).toBeVisible();
   await expectAccessible(page);
+  await expectFocusTrapped(page);
 
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
