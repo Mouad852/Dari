@@ -97,12 +97,15 @@ describe('deadline and network errors', () => {
     await expect(pending).rejects.toBe(cancelled);
   });
 
-  it('reads an empty success as undefined, and a non-API error page as unexpected', async () => {
-    const { api, fetch } = load();
-    fetch.mockResolvedValueOnce(response(200, ''));
+  it('reads a 204 as undefined, and an empty 200 or a non-API error page as unexpected, as the web does', async () => {
+    const { api, fetch, reportError } = load();
+    fetch.mockResolvedValueOnce(response(204, ''));
     await expect(api.apiFetch('/conversations/c/read', { method: 'PATCH', token: 't' })).resolves.toBeUndefined();
+    fetch.mockResolvedValueOnce(response(200, ''));
+    await expect(api.apiFetch('/users/me', { token: 't' })).rejects.toMatchObject({ name: 'ApiUnexpectedResponseError' });
     fetch.mockResolvedValueOnce(response(502, '<html>Bad gateway</html>'));
     await expect(api.apiFetch('/listings')).rejects.toMatchObject({ name: 'ApiUnexpectedResponseError', message: 'Réponse inattendue du service' });
+    expect(reportError).toHaveBeenCalledTimes(2);
   });
 
   it('shows each failure in its own French, and the fallback otherwise', () => {

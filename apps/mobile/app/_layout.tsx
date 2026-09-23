@@ -46,7 +46,9 @@ export default function RootLayout() {
   if (!fontsLoaded && !fontError) return null;
 
   const configurationErrors = configErrors();
-  if (configurationErrors.length > 0) return <SafeAreaProvider><View style={{ flex: 1, justifyContent: 'center', padding: 24, backgroundColor: color.bgPage }}><Text style={{ color: color.textHeading, fontSize: 20, fontWeight: '700', marginBottom: 12 }}>Configuration requise</Text>{configurationErrors.map((message) => <Text key={message} style={{ color: color.danger, marginBottom: 6 }}>{message}</Text>)}<Text style={{ color: color.textMuted, marginTop: 12 }}>Copiez .env.example vers .env, renseignez les valeurs puis redémarrez Expo.</Text></View></SafeAreaProvider>;
+  // The variable names and the .env instruction are for a developer; a release
+  // build (which the build gate should never let get here) says only what a user can do.
+  if (configurationErrors.length > 0) return <SafeAreaProvider><View style={{ flex: 1, justifyContent: 'center', padding: 24, backgroundColor: color.bgPage }}><Text style={{ color: color.textHeading, fontSize: 20, fontWeight: '700', marginBottom: 12 }}>Configuration requise</Text>{__DEV__ ? <>{configurationErrors.map((message) => <Text key={message} style={{ color: color.danger, marginBottom: 6 }}>{message}</Text>)}<Text style={{ color: color.textMuted, marginTop: 12 }}>Copiez .env.example vers .env, renseignez les valeurs puis redémarrez Expo.</Text></> : <Text style={{ color: color.textBody }}>Cette version de l’application est incomplète. Mettez-la à jour depuis le store.</Text>}</View></SafeAreaProvider>;
 
   return (
     <SafeAreaProvider>

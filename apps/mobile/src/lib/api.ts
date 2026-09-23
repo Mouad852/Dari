@@ -286,14 +286,14 @@ async function connectionError(cause: unknown): Promise<Error> {
 }
 
 /**
- * The response envelope, shared by fetch and the upload XHR. A success with
- * no body (204, or a 200 from a `void` endpoint such as PATCH /read) is
- * `undefined`; an error must carry the API's { code, message } or it is a
- * response from something that is not the API (a proxy's HTML page).
+ * The response envelope, shared by fetch and the upload XHR. Same rules as the
+ * web client: 204 is `undefined`; any other success must carry JSON, and an
+ * error must carry the API's { code, message }, or it is a response from
+ * something that is not the API (a proxy's HTML page) and is reported.
  */
 function readResponse<T>(status: number, text: string, correlationId?: string): T {
   const ok = status >= 200 && status < 300;
-  if (ok && text.trim() === '') return undefined as T;
+  if (status === 204) return undefined as T;
 
   let payload: unknown = null;
   try { payload = text ? JSON.parse(text) : null; } catch { payload = null; }
