@@ -378,6 +378,23 @@ class MessagingApiTest extends AbstractIntegrationTest {
                 .extract().asString();
         assertThat(unknownAnswer).isEqualTo(foreignAnswer);
 
+        // A message of this very thread that is no longer visible answers the same.
+        Message removed = messages.save(new Message(conversation, owner, "Retiré"));
+        jdbc.update("update messages set deleted_at = now() where id = ?", removed.getId());
+        String removedAnswer = given().header("Authorization", "Bearer test-token")
+                .queryParam("after", removed.getId().toString())
+                .when().get(path)
+                .then().statusCode(400)
+                .extract().asString();
+        assertThat(removedAnswer).isEqualTo(foreignAnswer);
+
+        // A conversation that does not exist is a 404 whatever the parameters.
+        given().header("Authorization", "Bearer test-token")
+                .queryParam("after", own.getId().toString())
+                .when().get("/conversations/" + UUID.randomUUID() + "/messages")
+                .then().statusCode(404)
+                .body("code", equalTo("NOT_FOUND"));
+
         given().header("Authorization", "Bearer test-token")
                 .queryParam("after", "not-a-uuid")
                 .when().get(path)

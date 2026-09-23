@@ -31,9 +31,11 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
      * The next older page, newest first; the service reverses it.
      *
      * <p>The {@code sentAt <=} bound repeats what the keyset condition already
-     * implies. It is there for the planner: the OR form alone is only a filter,
-     * so the scan started at the thread's end and discarded every newer row;
-     * with the bound it starts at the cursor on idx_messages_conversation_sent.
+     * implies. It is there for the planner. Measured once with EXPLAIN ANALYZE on
+     * a 100,000-message fixture (2026-09-23, not pinned by a test): with the OR
+     * form alone the keyset was only a filter on idx_messages_conversation_sent,
+     * discarding every row between the thread's end and the cursor; with the
+     * bound it became an index condition and the scan started at the cursor.
      * The same holds for {@link #findVisibleByConversationAfter}.
      */
     @Query("""

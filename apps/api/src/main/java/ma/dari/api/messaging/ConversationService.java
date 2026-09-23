@@ -159,8 +159,10 @@ public class ConversationService {
      *       exist, and the client asks again with the last id it received.</li>
      * </ul>
      *
-     * <p>Participation is checked before either parameter is read, so a stranger
-     * is refused the same way whatever they send. An {@code after} id that is not
+     * <p>Participation is checked before either parameter is interpreted, so a
+     * stranger is refused the same way whatever cursor or id they send. (An
+     * {@code after} that is not a UUID at all never reaches this method: request
+     * binding answers 400 for it, the same for every conversation.) An {@code after} id that is not
      * a visible message of this conversation — unknown, deleted or from another
      * thread — is the same 400 as a bad cursor, so the answer never says which.
      */
