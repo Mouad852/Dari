@@ -5,12 +5,12 @@
 | Slice | Status | Evidence / boundary |
 | --- | --- | --- |
 | Favorites | Implemented | Auth-gated list, cursor pagination, refresh, offline/error retry, safe rollback after failed removal, and listing-detail synchronization through `/favorites` and `/favorites/ids`. |
-| Messaging | Implemented | Inbox pagination, unread badge polling, thread history, mark-read, read-receipt polling, guarded send button, draft-preserving send errors, and deep links for conversations. |
+| Messaging | Implemented | Inbox pagination, unread badge polling, thread history opening on the newest page with older pages above, a 5 s foreground poll for new replies (`after=`) and read receipts, mark-read, guarded send button, draft-preserving send errors, and deep links for conversations. |
 | Search, filters, sort, map | Implemented | Typed native filter sheet, validation, cursor recovery on `INVALID_CURSOR`, cancellation, refresh/empty/offline states, and `react-native-maps` pins sourced only from `/listings/map` fuzzed coordinates. |
 | Owner listing/photos | Implemented with API constraints | Native draft/edit form, server validation, unsaved-change guard, camera/library permissions, multipart upload progress, photo cover/delete actions, and submit-to-review. Location is entered by the owner; exact coordinates never enter public DTOs. |
 | Profile/account/reporting | Implemented | Profile update/avatar, sign-out, irreversible account deletion confirmation, listing reporting with duplicate-submit protection, and French recovery/error states. |
-| Push/deep links/offline | Partial by contract | Permission UX, safe presentation handling, cold/background URL routing, and offline detection exist. Device-token registration and server notification routing are deferred because the API does not expose those contracts. |
-| Release readiness | Prepared | EAS development/preview/production profiles, startup config validation, permission rationale strings, and operator checklist exist. No store submission or production credential use was performed. |
+| Deep links/offline | Implemented | `dari://listings/{id}` and `dari://messages/{id}` routing, offline detection, and typed timeout/offline/network errors. Push notifications do not exist: the permission prompt and `expo-notifications` were removed in Phase 6 because the API has no device-token contract. |
+| Release readiness | Not built yet | The repository side is in place (production build gate, EAS environments, versioning, splash, crash reporting, legal links); no binary has been built and nothing has run on a device. See [MOBILE_RELEASE.md](MOBILE_RELEASE.md) for the owner steps. |
 
 ## Backend gaps intentionally not invented
 
@@ -21,14 +21,4 @@
 
 ## Release/operator checklist
 
-Before a release operator builds:
-
-1. Copy `.env.example` to `.env`, set the API URL reachable from the selected simulator/device, and set the Firebase web-app configuration. Never commit `.env` or service credentials.
-2. Verify Firebase authorized domains / mobile scheme behavior for `dari`, and verify the API accepts the Firebase project’s bearer tokens.
-3. Run `npx expo start --clear` and test both the iOS simulator and Android emulator. Test a LAN API URL on a physical device; `localhost` is not the host machine there.
-4. Run the accessibility pass: VoiceOver/TalkBack labels and focus order, dynamic text clipping, filter controls, map markers/callouts, photo permissions, form errors, and destructive account deletion.
-5. On physical devices, test camera and photo-library denial/recovery, background/foreground notification taps, cold-start listing/conversation links, offline refresh/send behavior, keyboard avoidance, and Android back handling.
-6. Run `eas build --profile development`, `eas build --profile preview`, and (after human approval) `eas build --profile production`. Store credentials and signing files remain in EAS/account configuration, not this repository.
-7. Prepare store screenshots for Explorer list/filter/map, listing detail, favorites, messages, publish/photos, profile, and the sign-in flow. Confirm privacy declarations for Firebase Auth, API account data, camera/photo library, and notifications.
-
-No physical device, Apple/Google store account, EAS project, or production credential was available to this implementation session; those checks remain operator-owned.
+Superseded by [MOBILE_RELEASE.md](MOBILE_RELEASE.md): the account-bound steps in order, the real-device matrix, and draft store declarations. The earlier list here said "Prepared" and told the operator to run `eas build`, which could not work before `eas init`, the EAS environment variables and the Maps key existed.

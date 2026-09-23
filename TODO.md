@@ -231,6 +231,7 @@ Firebase-persistence path itself) is unverified until one is available.
 - [ ] Push notifications, camera/photo-library upload with EXIF stripping, native map view, deep links
 - [ ] Offline and poor-connectivity handling
 - [ ] App store assets, review submissions, privacy declarations
+- [~] **Production-readiness Phase 6, mobile release readiness (2026-09-23), repository side only** — a production build now refuses to start without its configuration (`app.config.ts` gate, EAS environment per profile, remote versioning), the release build has no `localhost` API fallback, splash via the `expo-splash-screen` plugin, the notification prompt and `expo-notifications` are gone (no push exists), Sentry reports only with a DSN and scrubbed like the web, 15 s request deadline with typed French errors and one shared token refresh on a 401, a root error boundary, privacy/terms links, a typed `SUPPRIMER` deletion dialog on both platforms, deep links on the web's paths, and a jest-expo suite run in CI. Threads (web and mobile) now open at the newest message and poll for new replies. Nothing has been built on EAS or run on a phone; the owner steps, the device matrix and draft store declarations are in `docs/MOBILE_RELEASE.md`.
 - [ ] Real device / simulator testing — everything above is verified only via `expo start --web` in this environment; the RN-specific Firebase persistence path, camera/push/native-map work, and general on-device feel are all still unverified
 
 ## Verification policy
