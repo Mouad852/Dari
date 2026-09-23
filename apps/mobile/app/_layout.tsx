@@ -19,6 +19,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { color, layout, type } from '@/theme/tokens';
 import { configErrors } from '@/lib/config';
+import { parseDeepLink } from '@/lib/deepLinks';
 import { reportError, startErrorReporting } from '@/lib/reporting';
 
 // Before anything renders, so a crash during startup is reported too. Does
@@ -93,18 +94,8 @@ const styles = StyleSheet.create({
   crashText: { color: color.textBody },
 });
 
+/** A link the app does not know leaves it on its current route. */
 function routeDeepLink(value: string): void {
-  try {
-    const parsed = Linking.parse(value);
-    const pathSegments = parsed.path?.replace(/^\/+/, '').split('/').filter(Boolean) ?? [];
-    const segments = ['listing', 'conversation', 'messages', 'account-recovery'].includes(parsed.hostname ?? '')
-      ? [parsed.hostname, ...pathSegments]
-      : pathSegments;
-    const [kind, id] = segments;
-    if (kind === 'listing' && id) router.push({ pathname: '/listing/[id]', params: { id } });
-    else if ((kind === 'conversation' || kind === 'messages') && id) router.push({ pathname: '/messages/[id]', params: { id } });
-    else if (kind === 'account-recovery') router.push('/sign-in');
-  } catch {
-    // Malformed external URLs are ignored; the app remains on its current route.
-  }
+  const target = parseDeepLink(value);
+  if (target) router.push(target);
 }
