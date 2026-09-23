@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 
+import { Button } from '@/components/ds/Button';
+import { Dialog } from '@/components/ds/Dialog';
 import { ListingThumb } from '@/components/ListingThumb';
 import { apiFetch, ApiError, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
@@ -195,8 +197,33 @@ export default function MyListingsPage() {
   const handleReopen = (listingId: string) =>
     runAction(listingId, `/listings/${encodeURIComponent(listingId)}/reopen`, 'POST', { availabilityState: 'AVAILABLE' });
 
-  const handleDelete = (listingId: string) => {
-    if (!window.confirm('Supprimer définitivement cette annonce ?')) return;
+  /*
+   * The confirmation used to be window.confirm, with the same defects the
+   * account deletion had (see account/profile/page.tsx): unstylable, outside
+   * the page for a screen reader, untestable without a raw dispatched click.
+   * It is the app's Dialog now, naming the listing it is about to delete.
+   *
+   * The opener is remembered because runAction captures whatever has focus
+   * to restore it afterwards, and at confirm time that is the dialog's own
+   * button, about to unmount. Focus goes back to the card's "Supprimer"
+   * first, so a failed delete lands there again and a successful one falls
+   * back to the page heading, as before.
+   */
+  const [deleteTarget, setDeleteTarget] = useState<OwnedListing | null>(null);
+  const deleteOpenerRef = useRef<HTMLElement | null>(null);
+
+  const handleDelete = (listing: OwnedListing) => {
+    if (pendingId || !token) return;
+    const active = document.activeElement;
+    deleteOpenerRef.current = active instanceof HTMLElement ? active : null;
+    setDeleteTarget(listing);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    const listingId = deleteTarget.id;
+    deleteOpenerRef.current?.focus();
+    setDeleteTarget(null);
     runAction(listingId, `/listings/${encodeURIComponent(listingId)}`, 'DELETE', null);
   };
 
@@ -464,7 +491,7 @@ export default function MyListingsPage() {
                             <button
                               type="button"
                               disabled={isPending}
-                              onClick={() => handleDelete(listing.id)}
+                              onClick={() => handleDelete(listing)}
                               aria-label="Supprimer"
                               style={{ ...actionButtonStyle, color: 'var(--danger)', borderColor: 'var(--danger-border)' }}
                             >
@@ -503,6 +530,25 @@ export default function MyListingsPage() {
           </>
         )}
       </div>
+
+      {deleteTarget && (
+        <Dialog
+          open
+          title="Supprimer cette annonce ?"
+          onClose={() => setDeleteTarget(null)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Annuler</Button>
+              <Button variant="danger" onClick={confirmDelete}>Supprimer</Button>
+            </>
+          }
+        >
+          <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-body)' }}>
+            <strong style={{ color: 'var(--text-heading)' }}>{deleteTarget.title}</strong> sera supprimée
+            définitivement. Cette action est irréversible.
+          </p>
+        </Dialog>
+      )}
     </main>
   );
 }

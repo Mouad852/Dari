@@ -90,6 +90,9 @@ const detail = (id = 'listing-1', status = 'PENDING_REVIEW') => ({
   rooms: [],
 });
 
+/** The signed-in owner's dashboard (/listings/mine); deleting removes a row. */
+const ownListings = () => [{ ...detail('listing-own', 'PUBLISHED'), title: 'Studio calme à Hassan', neighborhood: 'Hassan' }];
+
 /*
  * Which bearer tokens the API treats as expired (401 INVALID_TOKEN) or as
  * belonging to someone who may not do this (403). Set by POST /__auth; this is
@@ -109,6 +112,7 @@ const state = {
   messages: [{ id: 'message-1', conversationId: 'conversation-1', senderId: 'other-user', body: 'Bonjour, la chambre est-elle toujours disponible ?', sentAt: now, readAt: null }],
   reportCreated: false,
   adminUserStatus: 'SUSPENDED',
+  ownListings: ownListings(),
 };
 
 function reset() {
@@ -122,6 +126,7 @@ function reset() {
   state.messages = [{ id: 'message-1', conversationId: 'conversation-1', senderId: 'other-user', body: 'Bonjour, la chambre est-elle toujours disponible ?', sentAt: now, readAt: null }];
   state.reportCreated = false;
   state.adminUserStatus = 'SUSPENDED';
+  state.ownListings = ownListings();
 }
 
 const me = () => ({
@@ -262,6 +267,12 @@ async function handle(request, response) {
   if (path === '/amenities' && method === 'GET') return sendJson(response, 200, ['WIFI', 'PARKING']);
   if (path.startsWith('/neighborhoods') && method === 'GET') return sendJson(response, 200, ['Agdal', 'Hassan']);
 
+  if (path === '/listings/mine' && method === 'GET') return sendJson(response, 200, { items: state.ownListings, nextCursor: null, hasMore: false });
+  const ownListingMatch = path.match(/^\/listings\/([^/]+)$/);
+  if (ownListingMatch && method === 'DELETE') {
+    state.ownListings = state.ownListings.filter((item) => item.id !== ownListingMatch[1]);
+    return sendNoContent(response);
+  }
   if (path === '/listings/count' && method === 'GET') return sendJson(response, 200, { count: 2, capped: false });
   if (path === '/listings/featured' && method === 'GET') return sendJson(response, 200, publicListings);
   if (path === '/listings/sitemap/count' && method === 'GET') return sendJson(response, 200, { count: publicListings.length });
