@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Image, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button, TextButton } from '@/components/Button';
+import { LegalLinks } from '@/components/LegalLinks';
 import { TextField } from '@/components/TextField';
 import { TopBar } from '@/components/TopBar';
 import { apiFetch, apiOrigin, apiUpload, errorMessage, reportUnexpected } from '@/lib/api';
@@ -83,7 +84,7 @@ export default function ProfileScreen() {
     ]);
   }
 
-  if (signedIn === false) return <View style={styles.screen}><TopBar title="Profil" /><View style={styles.center}><Text style={[type.body, styles.centerText]}>Connectez-vous pour gérer votre compte, vos annonces et vos favoris.</Text><Button onPress={() => router.push('/sign-in')}>Se connecter</Button><Button variant="secondary" onPress={() => router.push('/sign-up')}>Créer un compte</Button></View></View>;
+  if (signedIn === false) return <View style={styles.screen}><TopBar title="Profil" /><View style={styles.center}><Text style={[type.body, styles.centerText]}>Connectez-vous pour gérer votre compte, vos annonces et vos favoris.</Text><Button onPress={() => router.push('/sign-in')}>Se connecter</Button><Button variant="secondary" onPress={() => router.push('/sign-up')}>Créer un compte</Button><LegalLinks /></View></View>;
   if (loading || !profile) return <View style={styles.screen}><TopBar title="Profil" /><View style={styles.center}><Text style={type.body}>{error ?? 'Chargement…'}</Text>{error && <TextButton onPress={() => setReloadKey((key) => key + 1)}>Réessayer</TextButton>}</View></View>;
   return <View style={styles.screen}><TopBar title="Profil" /><ScrollView contentContainerStyle={styles.content}>
     {error && <Text style={[type.bodySm, styles.error]} accessibilityLiveRegion="assertive">{error}</Text>}
@@ -97,6 +98,7 @@ export default function ProfileScreen() {
     <Button variant="secondary" onPress={() => router.push('/publish' as never)}>Publier une annonce</Button>
     <Button variant="secondary" onPress={() => void signOut()}>Se déconnecter</Button>
     <TextButton onPress={confirmDelete}>Supprimer définitivement mon compte</TextButton>
+    <LegalLinks />
   </ScrollView></View>;
 }
 

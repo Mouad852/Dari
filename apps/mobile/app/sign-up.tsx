@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button, TextButton } from '@/components/Button';
+import { LegalLinks } from '@/components/LegalLinks';
 import { Icon } from '@/components/Icon';
 import { TextField } from '@/components/TextField';
 import { apiFetch, ApiError } from '@/lib/api';
@@ -111,6 +112,8 @@ export default function SignUpScreen() {
             <Text style={[type.bodySm, { color: color.textMuted }]}>Vous avez déjà un compte ? </Text>
             <TextButton onPress={() => router.push('/sign-in')}>Se connecter</TextButton>
           </View>
+
+          <LegalLinks />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

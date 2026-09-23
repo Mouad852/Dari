@@ -97,9 +97,9 @@ const styles = StyleSheet.create({
   },
 });
 
-export function TextButton({ children, onPress, disabled = false }: { children: string; onPress: () => void; disabled?: boolean }) {
+export function TextButton({ children, onPress, disabled = false, role = 'button', hint }: { children: string; onPress: () => void; disabled?: boolean; role?: 'button' | 'link'; hint?: string }) {
   return (
-    <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" hitSlop={8}>
+    <Pressable onPress={onPress} disabled={disabled} accessibilityRole={role} accessibilityHint={hint} hitSlop={8}>
       <Text style={{ fontFamily: font.uiSemibold, fontSize: 13, color: color.brand, opacity: disabled ? 0.6 : 1 }}>{children}</Text>
     </Pressable>
   );

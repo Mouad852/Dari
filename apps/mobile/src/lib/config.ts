@@ -16,6 +16,13 @@ const DEVELOPMENT_API_BASE_URL = 'http://localhost:8080/api/v1';
 export const API_BASE_URL: string | null =
   process.env.EXPO_PUBLIC_API_BASE_URL?.trim() || (__DEV__ ? DEVELOPMENT_API_BASE_URL : null);
 
+/**
+ * The web app's origin, where the privacy notice and terms live. A production
+ * build cannot be made without it (app.config.ts); in development the links
+ * are simply hidden when it is unset.
+ */
+export const SITE_URL: string | null = process.env.EXPO_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') || null;
+
 export function configErrors(): string[] {
   const required: Record<string, string | null | undefined> = {
     EXPO_PUBLIC_API_BASE_URL: API_BASE_URL,
