@@ -33,4 +33,9 @@ cat > "$out" <<EOF
   "token_uri": "https://oauth2.googleapis.com/token"
 }
 EOF
+# World-readable on purpose: the API container runs as uid 10001 and reads
+# this through a bind mount, and on Linux a 600 file owned by the CI runner's
+# user is unreadable to it. The key authorises nothing. (Docker Desktop on
+# Windows ignores these modes, which is how a local run hid this.)
+chmod 644 "$out"
 echo "throwaway service account written to $out"
