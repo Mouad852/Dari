@@ -583,6 +583,55 @@ formal SLA — re-run the script after any change to the search/map query path,
 a schema change touching the indexes in `V15__search_sort_indexes.sql`, or a
 significant jump in expected production listing volume.
 
+### Query plans
+
+Every pooled connection starts with `plan_cache_mode = force_custom_plan`, set
+beside `statement_timeout` in `application.yml`
+(`spring.datasource.hikari.data-source-properties.options`). PostgreSQL then
+plans each execution of a prepared statement for the values it carries, and
+never reuses a generic plan.
+
+**Why.** The sorted search filters with `(:city IS NULL OR l.city = :city)`
+and orders by `CASE WHEN :sort = ... END`. With the values known, the planner
+folds both away and walks `idx_listings_searchable_price` or
+`..._updated` for 20 rows. In a generic plan it cannot, and the same page is a
+sequential scan of every listing plus a sort. Measured on the 50,000-listing
+fixture (`ListingSearchIndexUsageTest`, 2026-09-23):
+
+| Plan for "Rabat, price ascending, first page" | Node | Execution |
+| --- | --- | --- |
+| custom (the setting) | Index Scan on `idx_listings_searchable_price` | 0.10 ms |
+| generic (`force_generic_plan`) | Seq Scan + top-N sort | 415 ms (368 ms of it JIT) |
+
+The driver server-prepares a statement after its fifth use, and PostgreSQL's
+default (`auto`) may switch to the generic plan from that statement's sixth execution when
+its estimate beats the average custom plan. **On this fixture it did not**:
+the generic plan is estimated at 825,790 against about 14 for the custom one,
+and after six all-city browses followed by a city search, `auto` still chose
+the index every time. So the setting guarantees what the cost model happens
+to produce today; it does not fix an observed regression. The test asserts
+`SHOW plan_cache_mode` on a pooled connection, because the plans alone would
+pass either way.
+
+**Cost.** One planning pass per execution for every statement the API runs.
+The sorted search already pays it under `auto` (0.3 to 0.9 ms observed). A
+short statement that `auto` would have cached pays more: a primary-key lookup
+on `listings` measured 0.118 ms of planning under the setting against 0.008 ms
+with the cached generic plan, about 0.11 ms per query. Removing the setting
+is a legitimate trade if planning time ever shows up in profiles; the test's
+mode assertion then has to go with it, deliberately.
+
+**Operator notes.**
+- Do not put `options=` in `DB_URL`. The driver lets a URL parameter replace
+  the pool's `options`, which would drop this setting and the statement
+  timeout together.
+- A connection pooler between the API and PostgreSQL (none today) must pass
+  the `options` startup parameter through; re-check both settings if one is
+  added.
+- `prepareThreshold=0` would reach the same plans by never server-preparing,
+  at the cost of re-parsing every statement too. The planning-only setting was
+  preferred.
+
 ## Production deployment (AWS, managed services)
 
 This is the selected **AWS Option A** deployment shape. It is a small

@@ -23,7 +23,14 @@ spring:
         socketTimeout: 45
         # A pathological radius search dies with an error instead of pinning one
         # of ten connections until the pool is gone.
-        options: -c statement_timeout=${DARI_DB_STATEMENT_TIMEOUT:30s}
+        #
+        # plan_cache_mode: the driver server-prepares a statement after its
+        # fifth use, and five executions later PostgreSQL may reuse one generic
+        # plan for every value. The sorted search's `:city IS NULL OR` filter
+        # and `CASE WHEN :sort` ordering only reach the V15 indexes when the
+        # values are known at plan time. The price is one planning pass per
+        # execution (docs/PRODUCTION_OPERATIONS.md, "Query plans").
+        options: -c statement_timeout=${DARI_DB_STATEMENT_TIMEOUT:30s} -c plan_cache_mode=force_custom_plan
 
   jpa:
     open-in-view: false           # a lazy load inside a view render is a bug, not a convenience

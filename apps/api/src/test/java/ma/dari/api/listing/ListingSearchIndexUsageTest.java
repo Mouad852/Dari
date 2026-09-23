@@ -7,6 +7,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -15,11 +16,21 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.sql.DataSource;
+
+import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.Banner;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.Query;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -40,12 +51,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>The query orders by {@code CASE WHEN :sort = ... THEN column END}. It is
  * planned here the way a JDBC execution with bound values is planned (a custom
  * plan), where the sort value folds the CASE away and the index serves the
- * ORDER BY. Measured once and recorded, not asserted: under a plan forced
- * generic ({@code plan_cache_mode = force_generic_plan}) the same page is a
- * sequential scan plus a top-N sort (418 ms against 0.15 ms). Splitting the
- * query per sort did not change that — the optional
- * {@code (:city IS NULL OR l.city = :city)} filter is what keeps the index out
- * of a generic plan — so the query stays as it is.
+ * ORDER BY. Measured and recorded, not asserted: under a generic plan
+ * ({@code plan_cache_mode = force_generic_plan}) the same page is a sequential
+ * scan plus a top-N sort (415 ms against 0.1 ms). Splitting the query per sort
+ * did not change that — the optional {@code (:city IS NULL OR l.city = :city)}
+ * filter is what keeps the index out of a generic plan — so the query stays as
+ * it is, and the pool forbids generic plans instead
+ * ({@code plan_cache_mode = force_custom_plan}, asserted by
+ * {@link #pooledPreparedSearchKeepsItsIndex}).
  *
  * <p>Its own container, seeded once for the class: the shared suite database
  * holds a handful of listings on purpose, and 50,000 more would change what
@@ -59,8 +72,43 @@ class ListingSearchIndexUsageTest {
     private static final String UPDATED_INDEX = "idx_listings_searchable_updated";
     private static final Pattern NAMED_PARAMETER = Pattern.compile("(?<!:):(\\w+)");
 
+    /**
+     * PREPARE parameter types, by name. Spelled out because a bare
+     * {@code $n IS NULL} gives Postgres nothing to infer a type from.
+     */
+    private static final Map<String, String> PARAMETER_TYPES = Map.ofEntries(
+            Map.entry("city", "text"),
+            Map.entry("neighborhood", "text"),
+            Map.entry("minPrice", "numeric"),
+            Map.entry("maxPrice", "numeric"),
+            Map.entry("propertyTypes", "text[]"),
+            Map.entry("roomTypes", "text[]"),
+            Map.entry("furnishings", "text[]"),
+            Map.entry("availableBy", "date"),
+            Map.entry("amenityCodes", "text[]"),
+            Map.entry("amenityCount", "int"),
+            Map.entry("sort", "text"),
+            Map.entry("lastPrice", "numeric"),
+            Map.entry("lastCreatedAt", "timestamptz"),
+            Map.entry("lastUpdatedAt", "timestamptz"),
+            Map.entry("lastId", "uuid"),
+            Map.entry("limit", "int"));
+
     private static PostgreSQLContainer<?> postgres;
     private static Connection connection;
+    private static ConfigurableApplicationContext application;
+
+    /**
+     * Only the DataSource auto-configuration, bound from the same
+     * application.yml the API starts with, so the pool's connection options
+     * are the ones production gets. The production profile itself is left
+     * off: its startup validator wants SMTP, Firebase and the rest, and it
+     * overrides only the URL and credentials of this block.
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ImportAutoConfiguration(DataSourceAutoConfiguration.class)
+    static class DataSourceOnly {
+    }
 
     @BeforeAll
     static void startSeededDatabase() throws Exception {
@@ -94,10 +142,23 @@ class ListingSearchIndexUsageTest {
         try (Statement statement = connection.createStatement()) {
             statement.execute("ANALYZE");
         }
+
+        // Command-line arguments, not default properties: application.yml's own
+        // ${DB_URL:...} would outrank a default.
+        application = new SpringApplicationBuilder(DataSourceOnly.class)
+                .web(WebApplicationType.NONE)
+                .bannerMode(Banner.Mode.OFF)
+                .logStartupInfo(false)
+                .run("--spring.datasource.url=" + postgres.getJdbcUrl(),
+                        "--spring.datasource.username=" + postgres.getUsername(),
+                        "--spring.datasource.password=" + postgres.getPassword());
     }
 
     @AfterAll
     static void stopSeededDatabase() throws Exception {
+        if (application != null) {
+            application.close();
+        }
         if (connection != null) {
             connection.close();
         }
@@ -134,6 +195,70 @@ class ListingSearchIndexUsageTest {
     void updatedSortUsesItsIndex() throws Exception {
         assertIndexScan(explain("updated", false), UPDATED_INDEX, "updated, first page");
         assertIndexScan(explain("updated", true), UPDATED_INDEX, "updated, resumed page");
+    }
+
+    /**
+     * What a busy pool actually runs. The driver turns a statement it has seen
+     * five times into a named server-side one, and five executions later
+     * PostgreSQL may reuse one generic plan, in which the city and the sort are
+     * unknown, whenever that plan's estimate beats the average of the custom
+     * plans so far. Browsing every city is one of those executions and costs a
+     * full scan either way, which raises that average; if the generic plan
+     * ever won, the cheap one-city search that follows would inherit its scan.
+     *
+     * <p>On this fixture it does not win under {@code auto} either (the generic
+     * estimate is several orders of magnitude above the custom ones), so the
+     * plans alone cannot tell the two modes apart. The pool's
+     * {@code plan_cache_mode = force_custom_plan} (application.yml) makes that a
+     * guarantee instead of a cost-model outcome, and the mode is asserted first.
+     */
+    @Test
+    @DisplayName("on a pooled connection, the prepared search keeps its index after six all-city executions")
+    void pooledPreparedSearchKeepsItsIndex() throws Exception {
+        DataSource dataSource = application.getBean(DataSource.class);
+        assertThat(dataSource).isInstanceOf(HikariDataSource.class);
+
+        List<String> names = new ArrayList<>();
+        String prepared = numbered(sortedSearchSql(), names);
+        try (Connection pooled = dataSource.getConnection();
+             Statement statement = pooled.createStatement()) {
+            // The plans below come out the same under the default `auto` on this
+            // fixture: the setting is the guarantee, so it is asserted directly.
+            try (ResultSet mode = statement.executeQuery("SHOW plan_cache_mode")) {
+                mode.next();
+                assertThat(mode.getString(1)).isEqualTo("force_custom_plan");
+            }
+            statement.execute("PREPARE sorted_search(" + String.join(", ",
+                    names.stream().map(PARAMETER_TYPES::get).toList()) + ") AS " + prepared);
+            try {
+                for (String sort : List.of("priceasc", "pricedesc", "updated")) {
+                    String index = sort.equals("updated") ? UPDATED_INDEX : PRICE_INDEX;
+                    String browse = "EXECUTE sorted_search(" + literals(names, parameters(null, sort, Map.of())) + ")";
+                    for (int run = 0; run < 6; run++) {
+                        try (ResultSet rows = statement.executeQuery(browse)) {
+                            while (rows.next()) {
+                                // drain the page, as the application does
+                            }
+                        }
+                    }
+                    for (boolean resumed : List.of(false, true)) {
+                        Map<String, Object> cursor = resumed ? lastRowOfFirstPage(sort) : Map.of();
+                        String execute = "EXECUTE sorted_search(" + literals(names, parameters(sort, cursor)) + ")";
+                        String plan;
+                        try (ResultSet rows = statement.executeQuery("EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + execute)) {
+                            rows.next();
+                            plan = rows.getString(1);
+                        }
+                        String description = sort + (resumed ? ", resumed page" : ", first page") + ", prepared";
+                        assertIndexScan(plan, index, description);
+                        // A custom plan carries the value; a generic one would say $1.
+                        assertThat(plan).describedAs(description).contains("'" + CITY + "'");
+                    }
+                }
+            } finally {
+                statement.execute("DEALLOCATE sorted_search");
+            }
+        }
     }
 
     private static void assertIndexScan(String plan, String index, String description) {
@@ -196,8 +321,13 @@ class ListingSearchIndexUsageTest {
 
     /** One city, no other filter, a first page or the page after {@code cursor}. */
     private static Map<String, Object> parameters(String sort, Map<String, Object> cursor) {
+        return parameters(CITY, sort, cursor);
+    }
+
+    /** {@code city} null is the all-city browse. */
+    private static Map<String, Object> parameters(String city, String sort, Map<String, Object> cursor) {
         Map<String, Object> parameters = new LinkedHashMap<>();
-        parameters.put("city", CITY);
+        parameters.put("city", city);
         parameters.put("neighborhood", null);
         parameters.put("minPrice", null);
         parameters.put("maxPrice", null);
@@ -231,6 +361,44 @@ class ListingSearchIndexUsageTest {
         }
         matcher.appendTail(rewritten);
         return rewritten.toString();
+    }
+
+    /** Rewrites :name to $n, one number per distinct name, collecting the names in that order. */
+    private static String numbered(String sql, List<String> names) {
+        Matcher matcher = NAMED_PARAMETER.matcher(sql);
+        StringBuilder rewritten = new StringBuilder();
+        while (matcher.find()) {
+            String name = matcher.group(1);
+            if (!PARAMETER_TYPES.containsKey(name)) {
+                throw new IllegalStateException("no PREPARE type for :" + name);
+            }
+            if (!names.contains(name)) {
+                names.add(name);
+            }
+            matcher.appendReplacement(rewritten, "\\$" + (names.indexOf(name) + 1));
+        }
+        matcher.appendTail(rewritten);
+        return rewritten.toString();
+    }
+
+    /**
+     * EXECUTE takes expressions, not bind parameters, so the values are
+     * written out; PREPARE's declared types coerce each quoted literal.
+     */
+    private static String literals(List<String> names, Map<String, Object> parameters) {
+        List<String> rendered = new ArrayList<>();
+        for (String name : names) {
+            Object value = parameters.get(name);
+            if (value == null) {
+                rendered.add("NULL");
+            } else {
+                String text = value instanceof Timestamp timestamp ? timestamp.toInstant().toString()
+                        : value instanceof BigDecimal decimal ? decimal.toPlainString()
+                        : value.toString();
+                rendered.add("'" + text.replace("'", "''") + "'");
+            }
+        }
+        return String.join(", ", rendered);
     }
 
     /**
