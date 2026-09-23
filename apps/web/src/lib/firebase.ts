@@ -37,6 +37,8 @@ type E2eAuthState = {
   refreshedToken?: string;
   /** How many forced refreshes happened; a test asserts concurrent 401s share one. */
   refreshCount?: number;
+  /** Makes a forced refresh fail the way the SDK does when it cannot reach Firebase. */
+  refreshFails?: boolean;
 };
 
 declare global {
@@ -113,6 +115,7 @@ export async function getIdToken(forceRefresh = false): Promise<string | null> {
   if (state) {
     // Firebase answers a forced refresh with a *different* token, and apiFetch
     // only replays when it gets one, so the seam has to model that too.
+    if (forceRefresh && state.refreshFails) throw new Error('auth/network-request-failed');
     if (forceRefresh) {
       const refreshed: E2eAuthState = {
         ...state,

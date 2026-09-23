@@ -11,15 +11,15 @@ const MOCK = 'http://127.0.0.1:4110';
 const EXPIRED = 'e2e-expired-token';
 const FRESH = 'e2e-firebase-token';
 
-type AuthState = { uid: string; email: string; displayName: string; emailVerified: boolean; token: string; refreshedToken?: string; refreshCount?: number };
+type AuthState = { uid: string; email: string; displayName: string; emailVerified: boolean; token: string; refreshedToken?: string; refreshCount?: number; refreshFails?: boolean };
 
-const test = base.extend<{ signedInWith: (token: string, refreshedToken?: string) => Promise<Page> }>({
+const test = base.extend<{ signedInWith: (token: string, refreshedToken?: string, refreshFails?: boolean) => Promise<Page> }>({
   signedInWith: async ({ page, request }, use) => {
     await request.post(`${MOCK}/__reset`);
-    await use(async (token, refreshedToken) => {
+    await use(async (token, refreshedToken, refreshFails) => {
       await page.addInitScript((auth) => {
         window.__DARI_E2E_AUTH__ = auth as AuthState;
-      }, { uid: 'e2e-user-1', email: 'e2e.user@example.invalid', displayName: 'Utilisateur E2E', emailVerified: true, token, refreshedToken });
+      }, { uid: 'e2e-user-1', email: 'e2e.user@example.invalid', displayName: 'Utilisateur E2E', emailVerified: true, token, refreshedToken, refreshFails });
       return page;
     });
     await request.post(`${MOCK}/__auth`, { data: {} });
@@ -86,6 +86,17 @@ test('a 403 is shown, not treated as a dead session', async ({ signedInWith, req
   await expect(alert(page)).toContainText('Accès refusé');
   expect(page.url()).toContain('/messages');
   expect(await refreshCount(page), 'no token refresh on a 403').toBe(0);
+  expect(await page.evaluate(() => Boolean(window.__DARI_E2E_AUTH__)), 'still signed in').toBe(true);
+});
+
+test('a refresh that cannot reach Firebase keeps the session', async ({ signedInWith, request }) => {
+  await request.post(`${MOCK}/__auth`, { data: { rejectTokens: [EXPIRED] } });
+  const page = await signedInWith(EXPIRED, FRESH, true);
+
+  await page.goto('/messages');
+  // The 401 is shown with a retry, and nobody is signed out over a network blip.
+  await expect(alert(page)).toContainText('Session expirée');
+  expect(page.url()).toContain('/messages');
   expect(await page.evaluate(() => Boolean(window.__DARI_E2E_AUTH__)), 'still signed in').toBe(true);
 });
 

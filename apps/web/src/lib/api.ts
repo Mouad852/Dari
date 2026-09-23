@@ -113,13 +113,22 @@ function isRejectedSession(cause: unknown): cause is ApiError {
  * Keyed on the token that was rejected, and kept after it settles, so all of
  * them await the same Firebase call and a request whose 401 arrives late
  * reuses the answer instead of asking again.
+ *
+ * Resolves to null only when there is no signed-in user. A refresh that
+ * *fails* (offline, Firebase unreachable) rejects instead and is forgotten,
+ * so the next 401 tries again: a network blip during a refresh is not a
+ * reason to sign anyone out.
  */
 let forcedRefresh: { stale: string; fresh: Promise<string | null> } | undefined;
 
 function refreshRejectedToken(stale: string): Promise<string | null> {
   if (forcedRefresh?.stale === stale) return forcedRefresh.fresh;
-  const fresh = import('./firebase').then(({ getIdToken }) => getIdToken(true)).catch(() => null);
-  forcedRefresh = { stale, fresh };
+  const fresh = import('./firebase').then(({ getIdToken }) => getIdToken(true));
+  const entry = { stale, fresh };
+  forcedRefresh = entry;
+  fresh.catch(() => {
+    if (forcedRefresh === entry) forcedRefresh = undefined;
+  });
   return fresh;
 }
 
@@ -129,8 +138,13 @@ let endingSession: Promise<void> | undefined;
 function endSession(): Promise<void> {
   endingSession ??= (async () => {
     await import('./firebase').then(({ signOut }) => signOut()).catch(() => undefined);
+    if (window.location.pathname === '/sign-in') {
+      // Already where the visitor has to go, and no navigation will reset
+      // this module: forget this sign-out so a later session can end too.
+      endingSession = undefined;
+      return;
+    }
     const here = `${window.location.pathname}${window.location.search}`;
-    if (window.location.pathname === '/sign-in') return;
     // A full navigation, not a router push: every page's state was built for a
     // session that no longer exists.
     window.location.assign(`/sign-in?next=${encodeURIComponent(here)}`);
@@ -156,7 +170,14 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     const stale = options.token;
     if (!stale || typeof window === 'undefined' || !isRejectedSession(cause)) throw cause;
 
-    const fresh = await refreshRejectedToken(stale);
+    let fresh: string | null;
+    try {
+      fresh = await refreshRejectedToken(stale);
+    } catch {
+      // Could not reach Firebase to refresh: keep the session and surface the
+      // 401, which the page shows with a retry.
+      throw cause;
+    }
     if (fresh && fresh !== stale) {
       try {
         return await sendRequest<T>(path, { ...options, token: fresh });
