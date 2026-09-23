@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -19,16 +20,17 @@ import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { hasNetwork } from '@/lib/network';
 import { clockTime, dayLabel } from '@/lib/format';
+import { mergeMessages } from '@/lib/messages';
 import { color, font, radius } from '@/theme/tokens';
 import type { Conversation, CursorPage, Message } from '@/types/api';
 
 /**
- * Real send, real history, real mark-read -- deliberately without the web
- * thread page's read-receipt poll or optimistic-send placeholder yet
- * (those are real, tested features there, but porting them is its own
- * pass, not a rider on "does a real message thread work at all"). Router
- * exposes `id` as `string | string[]` for a `[id]` segment -- normalized
- * once at the top rather than asserted at every call site below.
+ * Real send, real history, real mark-read, and the same 5 s poll as the web
+ * thread for new replies and read receipts -- without the web page's
+ * optimistic-send placeholder. The thread opens on its newest page; older
+ * pages load above. Router exposes `id` as `string | string[]` for a `[id]`
+ * segment -- normalized once at the top rather than asserted at every call
+ * site below.
  */
 export default function ConversationScreen() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -45,6 +47,14 @@ export default function ConversationScreen() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
+  // The newest message this screen has *fetched*. Never one it just sent: see the poll.
+  const anchorRef = useRef<string | null>(null);
+  const sendingRef = useRef(false);
+  const atBottomRef = useRef(true);
+  // Scroll to the end on the next content change: on opening, after sending,
+  // and for a reply that arrives while the reader is already at the end.
+  const followRef = useRef(true);
+  const hasScrolledRef = useRef(false);
 
   useEffect(() => {
     let isCurrent = true;
@@ -64,8 +74,10 @@ export default function ConversationScreen() {
         setToken(idToken);
         setMyId(me.id);
         setConversation(thread);
+        anchorRef.current = page.items.at(-1)?.id ?? null;
+        followRef.current = true;
         setMessages(page.items);
-        setNextCursor(page.nextCursor);
+        setNextCursor(page.nextCursor ?? null);
         void apiFetch(`/conversations/${encodeURIComponent(id)}/read`, { method: 'PATCH', token: idToken }).catch(() => {});
       } catch (cause) {
         if (isCurrent) setError(cause instanceof ApiError ? cause.message : 'Impossible de charger cette conversation.');
@@ -76,24 +88,85 @@ export default function ConversationScreen() {
     };
   }, [id]);
 
+  /**
+   * The thread's poll, every 5 s while the app is in the foreground, and at
+   * once when it comes back: messages `after=` the newest one this screen has
+   * fetched, then the conversation summary for "Vu". Nothing runs while the
+   * app is in the background.
+   *
+   * The anchor is only ever a message that came from a GET, never one just
+   * sent: a reply written a moment before one's own message is newer than the
+   * anchor, so it still arrives. No poll runs while a send is in flight, so
+   * the sent message cannot land twice.
+   */
   useEffect(() => {
-    if (!token) return;
-    const interval = setInterval(() => {
-      void apiFetch<Conversation>(`/conversations/${encodeURIComponent(id)}`, { token }).then((fresh) => {
-        if (!fresh.lastMessageId || !fresh.lastMessageReadAt) return;
+    if (!token || !myId) return;
+    let isCurrent = true;
+    let polling = false;
+    const threadPath = `/conversations/${encodeURIComponent(id)}`;
+
+    const fetchNewer = async () => {
+      let anchor = anchorRef.current;
+      // Bounded: each round is one page at most.
+      for (let round = 0; round < 5; round += 1) {
+        const requestedAfter = anchor;
+        let page: CursorPage<Message>;
+        try {
+          page = await apiFetch<CursorPage<Message>>(`${threadPath}/messages${requestedAfter ? `?after=${encodeURIComponent(requestedAfter)}` : ''}`, { token });
+        } catch (cause) {
+          // The anchor is no longer a visible message: start over from the newest page.
+          if (requestedAfter && cause instanceof ApiError && cause.code === 'INVALID_CURSOR') { anchor = null; continue; }
+          throw cause;
+        }
+        if (!isCurrent) return;
+        const last = page.items.at(-1);
+        if (last) {
+          anchor = last.id;
+          anchorRef.current = last.id;
+          followRef.current = atBottomRef.current;
+          setMessages((previous) => mergeMessages(previous ?? [], page.items, 'newer'));
+          // Seen on an open thread in the foreground: read, as on opening it.
+          if (page.items.some((message) => message.senderId !== myId)) {
+            void apiFetch(`${threadPath}/read`, { method: 'PATCH', token }).catch(() => {});
+          }
+        }
+        // Without an anchor this was the newest page, whose hasMore means *older*.
+        if (!requestedAfter || !page.hasMore) return;
+      }
+    };
+
+    const poll = async () => {
+      if (polling || sendingRef.current || AppState.currentState !== 'active') return;
+      polling = true;
+      try {
+        await fetchNewer();
+        const fresh = await apiFetch<Conversation>(threadPath, { token });
+        if (!isCurrent || !fresh.lastMessageId || !fresh.lastMessageReadAt) return;
         setMessages((previous) => (previous ?? []).map((message) => message.id === fresh.lastMessageId ? { ...message, readAt: fresh.lastMessageReadAt } : message));
-      }).catch(() => {});
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [id, token]);
+      } catch {
+        // A missed cycle is retried by the next one a few seconds later.
+      } finally {
+        polling = false;
+      }
+    };
+
+    const interval = setInterval(() => void poll(), 5000);
+    const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') void poll(); });
+    return () => {
+      isCurrent = false;
+      clearInterval(interval);
+      subscription.remove();
+    };
+  }, [id, token, myId]);
 
   async function loadMore() {
     if (!nextCursor || !token || loadingMore) return;
     setLoadingMore(true);
     try {
       const page = await apiFetch<CursorPage<Message>>(`/conversations/${encodeURIComponent(id)}/messages?cursor=${encodeURIComponent(nextCursor)}`, { token });
-      setMessages((previous) => [...(previous ?? []), ...page.items]);
-      setNextCursor(page.nextCursor);
+      // Older messages go above; maintainVisibleContentPosition keeps the reader where they were.
+      setMessages((previous) => mergeMessages(previous ?? [], page.items, 'older'));
+      setNextCursor(page.nextCursor ?? null);
     } catch (cause) {
       if (cause instanceof ApiError && cause.code === 'INVALID_CURSOR') setNextCursor(null);
       setSendError(cause instanceof ApiError ? cause.message : 'Impossible de charger les anciens messages.');
@@ -105,6 +178,7 @@ export default function ConversationScreen() {
     if (!value || !token || sending) return;
     if (!(await hasNetwork())) { setSendError('Vous êtes hors connexion. Le brouillon est conservé.'); return; }
     setSending(true);
+    sendingRef.current = true;
     setSendError(null);
     try {
       const sent = await apiFetch<Message>(`/conversations/${encodeURIComponent(id)}/messages`, {
@@ -112,12 +186,13 @@ export default function ConversationScreen() {
         token,
         body: { body: value },
       });
-      setMessages((prev) => [...(prev ?? []), sent]);
+      followRef.current = true;
+      setMessages((prev) => mergeMessages(prev ?? [], [sent], 'newer'));
       setDraft('');
-      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
     } catch (cause) {
       setSendError(cause instanceof ApiError ? cause.message : 'Le message n’a pas pu être envoyé.');
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   }
@@ -146,8 +221,23 @@ export default function ConversationScreen() {
         data={messages}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        ListFooterComponent={nextCursor ? <Pressable onPress={() => void loadMore()} disabled={loadingMore} style={styles.loadMore}><Text style={styles.loadMoreText}>{loadingMore ? 'Chargement…' : 'Charger les messages suivants'}</Text></Pressable> : null}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+        // Older messages load above: keep the first visible one in place.
+        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+        ListHeaderComponent={nextCursor ? <Pressable onPress={() => void loadMore()} disabled={loadingMore} accessibilityRole="button" style={styles.loadMore}><Text style={styles.loadMoreText}>{loadingMore ? 'Chargement…' : 'Charger les messages précédents'}</Text></Pressable> : null}
+        scrollEventThrottle={100}
+        onScroll={(event) => {
+          const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+          atBottomRef.current = contentOffset.y + layoutMeasurement.height >= contentSize.height - 48;
+        }}
+        onContentSizeChange={() => {
+          if (!followRef.current) return;
+          followRef.current = false;
+          listRef.current?.scrollToEnd({ animated: hasScrolledRef.current });
+          hasScrolledRef.current = true;
+          atBottomRef.current = true;
+        }}
+        // The keyboard or the composer growing shrinks the list: a reader at the end stays there.
+        onLayout={() => { if (atBottomRef.current) listRef.current?.scrollToEnd({ animated: false }); }}
         renderItem={({ item, index }) => {
           const mine = item.senderId === myId;
           const sentAt = new Date(item.sentAt);
