@@ -31,8 +31,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  *   <li>a user controller never reaches into {@code UserRepository};</li>
  *   <li>{@code common.pagination} stays independent of every feature;</li>
  *   <li>no {@code @Query} outside {@code ma.dari.api.listing} reads the
- *       {@code listings} table or the {@code Listing} entity, and no class
- *       outside it touches {@code ListingSearchRepository} — so the
+ *       {@code listings} table or the {@code Listing} entity, no Spring Data
+ *       repository of {@code Listing} is declared outside it (a derived query
+ *       such as {@code findByStatus} carries no {@code @Query} to inspect), and
+ *       no class outside it touches {@code ListingSearchRepository} — so the
  *       {@code status = PUBLISHED AND availability_state = AVAILABLE} invariant
  *       cannot be forgotten in a new feature. Reading the
  *       {@code published_listings} view is exactly how that invariant is
@@ -97,6 +99,18 @@ class ArchitectureTest {
             .should(declareAQueryAgainstTheListingsTable())
             .because("the published_listings view is what applies the public-visibility filter");
 
+    /**
+     * The same invariant for derived queries. Other packages may use
+     * {@code ListingRepository} (moderation, messaging and account deletion
+     * need a listing by id), but a new {@code JpaRepository<Listing, UUID>}
+     * declared elsewhere could read the raw table with a method name alone.
+     */
+    @ArchTest
+    static final ArchRule listingRepositoriesAreDeclaredInsideTheListingPackage = noClasses()
+            .that().resideOutsideOfPackage(LISTING_PACKAGE)
+            .should(beASpringDataRepositoryOfListing())
+            .because("a repository of Listing is a query on the listings table, whatever its method names say");
+
     @ArchTest
     static final ArchRule theSearchRepositoryStaysInsideTheListingPackage = noClasses()
             .that().resideOutsideOfPackage(LISTING_PACKAGE)
@@ -142,6 +156,25 @@ class ArchitectureTest {
                             events.add(SimpleConditionEvent.satisfied(type,
                                     method.getFullName() + " queries the listings table: " + statement.strip()));
                         }
+                    }
+                }
+            }
+        };
+    }
+
+    private static ArchCondition<JavaClass> beASpringDataRepositoryOfListing() {
+        return new ArchCondition<>("be a Spring Data repository of Listing") {
+            @Override
+            public void check(JavaClass type, ConditionEvents events) {
+                if (!type.isAssignableTo(org.springframework.data.repository.Repository.class)) {
+                    return;
+                }
+                for (var parent : type.getInterfaces()) {
+                    if (parent instanceof com.tngtech.archunit.core.domain.JavaParameterizedType parameterized
+                            && parameterized.getActualTypeArguments().stream()
+                                    .anyMatch(argument -> argument.getName().equals("ma.dari.api.listing.Listing"))) {
+                        events.add(SimpleConditionEvent.satisfied(type,
+                                type.getName() + " is a repository of Listing: " + parameterized.getName()));
                     }
                 }
             }
