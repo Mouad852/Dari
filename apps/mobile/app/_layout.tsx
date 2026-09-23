@@ -7,18 +7,19 @@ import {
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { IBMPlexMono_400Regular } from '@expo-google-fonts/ibm-plex-mono';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Text, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { color } from '@/theme/tokens';
+import { Button } from '@/components/Button';
+import { color, layout, type } from '@/theme/tokens';
 import { configErrors } from '@/lib/config';
-import { startErrorReporting } from '@/lib/reporting';
+import { reportError, startErrorReporting } from '@/lib/reporting';
 
 // Before anything renders, so a crash during startup is reported too. Does
 // nothing without EXPO_PUBLIC_SENTRY_DSN.
@@ -65,6 +66,32 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+/**
+ * The whole-app fallback for a render error anywhere below this layout.
+ *
+ * expo-router renders it in place of the route that threw (a route without an
+ * ErrorBoundary of its own passes the error up to this one), so a single
+ * unexpected value can no longer white-screen the app. `retry` re-renders the
+ * route. Reported once per error, without its message (see reportScrub.ts).
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => { reportError(error, { kind: 'render' }); }, [error]);
+  return (
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.crash}>
+        <Text style={type.h2} accessibilityRole="header">Un problème est survenu</Text>
+        <Text style={[type.body, styles.crashText]}>Cet écran n’a pas pu s’afficher. Réessayez ; si le problème continue, fermez puis rouvrez l’application.</Text>
+        <Button onPress={() => void retry()}>Réessayer</Button>
+      </SafeAreaView>
+    </SafeAreaProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  crash: { flex: 1, justifyContent: 'center', gap: 16, padding: layout.gutterMobile, backgroundColor: color.bgPage },
+  crashText: { color: color.textBody },
+});
 
 function routeDeepLink(value: string): void {
   try {
