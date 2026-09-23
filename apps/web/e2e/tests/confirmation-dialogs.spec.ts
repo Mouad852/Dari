@@ -73,6 +73,8 @@ test('a report action takes its optional reason from a labelled field, and Annul
   const dialog = page.getByRole('dialog', { name: 'Suspendre l’annonce ?' });
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText('Chambre lumineuse à Agdal');
+  // Suspending a listing stores the reason on it; only the email is fixed text.
+  await expect(dialog).toContainText('Enregistrée sur l’annonce et dans le journal de modération');
   await expectAccessible(page);
   await expectFocusTrapped(page);
 

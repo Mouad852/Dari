@@ -21,11 +21,15 @@ const ACTION_REASON_LABEL: Record<QueueAction, string> = {
 };
 
 // Where the text goes (AdminService): a ban reason is the body of the email
-// the banned person receives; the other two only reach the moderation log.
-const ACTION_REASON_HELPER: Record<QueueAction, string> = {
-  DISMISS: 'Conservée dans le journal de modération, jamais envoyée.',
-  SUSPEND: 'Conservée dans le journal de modération, jamais envoyée.',
-  BAN: 'Envoyée par e-mail à la personne bannie. Sans raison, elle reçoit un message générique.',
+// the banned person receives; a listing suspension stores it on the listing
+// (rejectionReason, returned to its owner by the API) but its email is fixed
+// text; dismissing, or suspending an account, only reaches the moderation log.
+const actionReasonHelper = (action: QueueAction, targetType: AdminReportQueueItem['targetType']) => {
+  if (action === 'BAN') return 'Envoyée par e-mail à la personne bannie. Sans raison, elle reçoit un message générique.';
+  if (action === 'SUSPEND' && targetType === 'LISTING') {
+    return 'Enregistrée sur l’annonce et dans le journal de modération. Elle n’est pas envoyée par e-mail.';
+  }
+  return 'Conservée dans le journal de modération, jamais envoyée.';
 };
 
 const queueActionStyle = (pending: boolean): React.CSSProperties => ({
@@ -429,7 +433,7 @@ export default function AdminReportsPage() {
               onChange={(event) => setReason(event.target.value)}
               rows={3}
               maxLength={1000}
-              helper={ACTION_REASON_HELPER[confirming.action]}
+              helper={actionReasonHelper(confirming.action, confirming.item.targetType)}
             />
           </div>
         </Dialog>
