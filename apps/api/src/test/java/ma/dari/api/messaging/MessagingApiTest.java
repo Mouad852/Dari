@@ -2,6 +2,8 @@ package ma.dari.api.messaging;
 
 import com.google.firebase.auth.FirebaseToken;
 import jakarta.validation.Validator;
+import ma.dari.api.common.pagination.Cursor;
+import ma.dari.api.common.pagination.TypedCursors;
 import ma.dari.api.listing.AvailabilityState;
 import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingRepository;
@@ -14,9 +16,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -25,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
@@ -48,6 +56,9 @@ class MessagingApiTest extends AbstractIntegrationTest {
 
     @Autowired
     Validator validator;
+
+    @Autowired
+    JdbcTemplate jdbc;
 
     @Test
     @DisplayName("conversation input enforces a target and the message size limit")
@@ -232,6 +243,184 @@ class MessagingApiTest extends AbstractIntegrationTest {
                 .body("{\"body\":\"Intrusion\"}")
                 .header("Authorization", "Bearer " + "uid-c")
                 .when().post("/conversations/" + conversation.getId() + "/messages")
+                .then().statusCode(403)
+                .body("code", equalTo("FORBIDDEN"));
+    }
+
+    /**
+     * {@code count} messages, three to a timestamp so the id tie-break is
+     * exercised, returned in the order the API must serve them. The order comes
+     * from Postgres itself: its uuid comparison is not {@link UUID#compareTo}.
+     */
+    private List<String> seedThread(Conversation conversation, User first, User second, int count) {
+        Instant base = Instant.parse("2026-09-01T08:00:00Z");
+        for (int i = 0; i < count; i++) {
+            Message message = messages.save(new Message(conversation, i % 2 == 0 ? first : second, "Message " + i));
+            jdbc.update("update messages set sent_at = ? where id = ?", Timestamp.from(base.plusSeconds(i / 3)), message.getId());
+        }
+        return jdbc.queryForList("select id::text from messages where conversation_id = ? order by sent_at, id",
+                String.class, conversation.getId());
+    }
+
+    @Test
+    @DisplayName("a thread opens at its newest page and pages back to the first message with no gap or duplicate")
+    void threadOpensAtNewestAndPagesBackwards() throws Exception {
+        User owner = users.save(new User("uid-owner-paging", "owner.paging@example.ma", true, "Owner"));
+        User seeker = users.save(new User("uid-seeker-paging", "seeker.paging@example.ma", true, "Seeker"));
+        Conversation conversation = conversations.save(new Conversation(owner, seeker));
+        List<String> expected = seedThread(conversation, owner, seeker, 45);
+        stubToken("uid-seeker-paging", "seeker.paging@example.ma", true);
+
+        var newest = given().header("Authorization", "Bearer test-token")
+                .when().get("/conversations/" + conversation.getId() + "/messages")
+                .then().statusCode(200)
+                .extract().jsonPath();
+        assertThat(newest.getList("items.id", String.class)).containsExactlyElementsOf(expected.subList(25, 45));
+        assertThat(newest.getBoolean("hasMore")).isTrue();
+
+        List<String> seen = new ArrayList<>(newest.getList("items.id", String.class));
+        String cursor = newest.getString("nextCursor");
+        int pages = 1;
+        while (cursor != null) {
+            var older = given().header("Authorization", "Bearer test-token")
+                    .queryParam("cursor", cursor)
+                    .when().get("/conversations/" + conversation.getId() + "/messages")
+                    .then().statusCode(200)
+                    .extract().jsonPath();
+            seen.addAll(0, older.getList("items.id", String.class));
+            cursor = older.getString("nextCursor");
+            pages++;
+        }
+
+        assertThat(pages).isEqualTo(3);
+        assertThat(seen).containsExactlyElementsOf(expected);
+    }
+
+    @Test
+    @DisplayName("after= returns only newer messages, one page at a time, and picks up a new reply")
+    void afterReturnsOnlyNewerMessages() throws Exception {
+        User owner = users.save(new User("uid-owner-after", "owner.after@example.ma", true, "Owner"));
+        User seeker = users.save(new User("uid-seeker-after", "seeker.after@example.ma", true, "Seeker"));
+        Conversation conversation = conversations.save(new Conversation(owner, seeker));
+        List<String> expected = seedThread(conversation, owner, seeker, 45);
+        stubToken("uid-seeker-after", "seeker.after@example.ma", true);
+        String path = "/conversations/" + conversation.getId() + "/messages";
+
+        // Index 10 shares its timestamp with 9 and 11: the id decides both sides.
+        var first = given().header("Authorization", "Bearer test-token")
+                .queryParam("after", expected.get(10))
+                .when().get(path)
+                .then().statusCode(200)
+                .body("nextCursor", nullValue())
+                .extract().jsonPath();
+        assertThat(first.getList("items.id", String.class)).containsExactlyElementsOf(expected.subList(11, 31));
+        assertThat(first.getBoolean("hasMore")).isTrue();
+
+        var rest = given().header("Authorization", "Bearer test-token")
+                .queryParam("after", expected.get(30))
+                .when().get(path)
+                .then().statusCode(200)
+                .extract().jsonPath();
+        assertThat(rest.getList("items.id", String.class)).containsExactlyElementsOf(expected.subList(31, 45));
+        assertThat(rest.getBoolean("hasMore")).isFalse();
+
+        given().header("Authorization", "Bearer test-token")
+                .queryParam("after", expected.get(44))
+                .when().get(path)
+                .then().statusCode(200)
+                .body("items.size()", equalTo(0))
+                .body("hasMore", equalTo(false));
+
+        Message reply = messages.save(new Message(conversation, owner, "Oui, toujours disponible."));
+        given().header("Authorization", "Bearer test-token")
+                .queryParam("after", expected.get(44))
+                .when().get(path)
+                .then().statusCode(200)
+                .body("items.id", contains(reply.getId().toString()))
+                .body("hasMore", equalTo(false));
+    }
+
+    @Test
+    @DisplayName("after= is refused with cursor, and an unknown or foreign id gets the same answer")
+    void afterIsValidatedWithoutAnExistenceOracle() throws Exception {
+        User owner = users.save(new User("uid-owner-after-bad", "owner.after-bad@example.ma", true, "Owner"));
+        User seeker = users.save(new User("uid-seeker-after-bad", "seeker.after-bad@example.ma", true, "Seeker"));
+        User third = users.save(new User("uid-third-after-bad", "third.after-bad@example.ma", true, "Third"));
+        Conversation conversation = conversations.save(new Conversation(owner, seeker));
+        Message own = messages.save(new Message(conversation, owner, "Bonjour"));
+        Conversation elsewhere = conversations.save(new Conversation(owner, third));
+        Message foreign = messages.save(new Message(elsewhere, third, "Ailleurs"));
+        stubToken("uid-seeker-after-bad", "seeker.after-bad@example.ma", true);
+        String path = "/conversations/" + conversation.getId() + "/messages";
+
+        var olderPayload = Cursor.newPayload();
+        olderPayload.put("mode", TypedCursors.OLDER_MESSAGES_MODE);
+        olderPayload.put("conversationId", conversation.getId().toString());
+        olderPayload.put("lastSentAt", Instant.now().toString());
+        olderPayload.put("lastId", own.getId().toString());
+        given().header("Authorization", "Bearer test-token")
+                .queryParam("cursor", Cursor.encode(olderPayload))
+                .queryParam("after", own.getId().toString())
+                .when().get(path)
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"));
+
+        String foreignAnswer = given().header("Authorization", "Bearer test-token")
+                .queryParam("after", foreign.getId().toString())
+                .when().get(path)
+                .then().statusCode(400)
+                .body("code", equalTo("INVALID_CURSOR"))
+                .extract().asString();
+        String unknownAnswer = given().header("Authorization", "Bearer test-token")
+                .queryParam("after", UUID.randomUUID().toString())
+                .when().get(path)
+                .then().statusCode(400)
+                .extract().asString();
+        assertThat(unknownAnswer).isEqualTo(foreignAnswer);
+
+        given().header("Authorization", "Bearer test-token")
+                .queryParam("after", "not-a-uuid")
+                .when().get(path)
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"));
+
+        // A cursor minted by the old forward-paging contract is refused, not read backwards.
+        var forwardPayload = Cursor.newPayload();
+        forwardPayload.put("mode", "messages");
+        forwardPayload.put("conversationId", conversation.getId().toString());
+        forwardPayload.put("lastSentAt", own.getSentAt().toString());
+        forwardPayload.put("lastId", own.getId().toString());
+        given().header("Authorization", "Bearer test-token")
+                .queryParam("cursor", Cursor.encode(forwardPayload))
+                .when().get(path)
+                .then().statusCode(400)
+                .body("code", equalTo("INVALID_CURSOR"));
+    }
+
+    @Test
+    @DisplayName("a stranger is refused whether they page older or newer")
+    void strangerIsRefusedInEveryPagingMode() throws Exception {
+        User first = users.save(new User("uid-a-modes", "a-modes@example.ma", true, "A"));
+        User second = users.save(new User("uid-b-modes", "b-modes@example.ma", true, "B"));
+        users.save(new User("uid-c-modes", "c-modes@example.ma", true, "C"));
+        Conversation conversation = conversations.save(new Conversation(first, second));
+        Message message = messages.save(new Message(conversation, first, "Hello"));
+        stubToken("uid-c-modes", "c-modes@example.ma", true);
+        String path = "/conversations/" + conversation.getId() + "/messages";
+
+        given().header("Authorization", "Bearer outsider-token")
+                .queryParam("after", message.getId().toString())
+                .when().get(path)
+                .then().statusCode(403)
+                .body("code", equalTo("FORBIDDEN"));
+        given().header("Authorization", "Bearer outsider-token")
+                .queryParam("after", UUID.randomUUID().toString())
+                .when().get(path)
+                .then().statusCode(403)
+                .body("code", equalTo("FORBIDDEN"));
+        given().header("Authorization", "Bearer outsider-token")
+                .queryParam("cursor", "anything")
+                .when().get(path)
                 .then().statusCode(403)
                 .body("code", equalTo("FORBIDDEN"));
     }

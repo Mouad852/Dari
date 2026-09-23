@@ -85,12 +85,18 @@ public class ConversationController {
                 .body(created.response());
     }
 
-    /** Oldest-first within a page, paged backwards from the newest. */
+    /**
+     * Oldest-first within a page. With no parameter, the newest page; {@code cursor}
+     * pages backwards to older messages; {@code after} returns what arrived after a
+     * message the client already has (the thread's poll). Not both at once. See
+     * {@link ConversationService#listMessages}.
+     */
     @GetMapping("/{id}/messages")
     public CursorPage<MessageResponse> messages(@CurrentUser User user,
                                              @PathVariable UUID id,
-                                             @RequestParam(required = false) String cursor) {
-        return conversationService.listMessages(user, id, cursor);
+                                             @RequestParam(required = false) String cursor,
+                                             @RequestParam(required = false) UUID after) {
+        return conversationService.listMessages(user, id, cursor, after);
     }
 
     @PostMapping("/{id}/messages")

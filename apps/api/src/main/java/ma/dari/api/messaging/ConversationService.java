@@ -147,33 +147,67 @@ public class ConversationService {
         return messages.countAllUnreadForUser(currentUser.getId());
     }
 
+    /**
+     * One page of a thread, always oldest-first within the page.
+     *
+     * <ul>
+     *   <li>No parameter: the newest page. {@code nextCursor} leads to the next
+     *       OLDER page.</li>
+     *   <li>{@code cursor}: that older page, with its own {@code nextCursor}.</li>
+     *   <li>{@code after}: messages strictly newer than that message, capped at
+     *       one page. There is no cursor in this mode: {@code hasMore} says more
+     *       exist, and the client asks again with the last id it received.</li>
+     * </ul>
+     *
+     * <p>Participation is checked before either parameter is read, so a stranger
+     * is refused the same way whatever they send. An {@code after} id that is not
+     * a visible message of this conversation — unknown, deleted or from another
+     * thread — is the same 400 as a bad cursor, so the answer never says which.
+     */
     @Transactional(readOnly = true)
-    public CursorPage<MessageResponse> listMessages(User currentUser, UUID conversationId, String cursor) {
-        Conversation conversation = findVisibleConversation(currentUser, conversationId);
-        TypedCursors.MessageCursor decoded = cursor == null ? null : TypedCursors.message(cursor, conversationId);
-        Instant lastSentAt = decoded == null ? null : decoded.lastSentAt();
-        UUID lastId = decoded == null ? null : decoded.lastId();
+    public CursorPage<MessageResponse> listMessages(User currentUser, UUID conversationId, String cursor, UUID after) {
+        findVisibleConversation(currentUser, conversationId);
+        if (cursor != null && after != null) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Utilisez cursor ou after, pas les deux");
+        }
+        if (after != null) {
+            return messagesAfter(conversationId, after);
+        }
 
-        List<Message> rows = lastSentAt == null && lastId == null
-                ? messages.findVisibleByConversation(conversationId, PageRequest.of(0, PAGE_SIZE + 1))
-                : messages.findVisibleByConversationAfter(conversationId, lastSentAt, lastId, PageRequest.of(0, PAGE_SIZE + 1));
+        TypedCursors.MessageCursor decoded = cursor == null ? null : TypedCursors.message(cursor, conversationId);
+        List<Message> rows = decoded == null
+                ? messages.findLatestByConversation(conversationId, PageRequest.of(0, PAGE_SIZE + 1))
+                : messages.findVisibleByConversationBefore(conversationId, decoded.lastSentAt(), decoded.lastId(),
+                        PageRequest.of(0, PAGE_SIZE + 1));
 
         boolean hasMore = rows.size() > PAGE_SIZE;
-        List<Message> pageRows = hasMore ? rows.subList(0, PAGE_SIZE) : rows;
+        List<Message> pageRows = (hasMore ? rows.subList(0, PAGE_SIZE) : rows).reversed();
         List<MessageResponse> items = pageRows.stream().map(MessageResponse::from).toList();
 
         String nextCursor = null;
-        if (hasMore && !pageRows.isEmpty()) {
-            Message last = pageRows.get(pageRows.size() - 1);
+        if (hasMore) {
+            Message oldest = pageRows.get(0);
             var payloadOut = Cursor.newPayload();
-            payloadOut.put("mode", "messages");
+            payloadOut.put("mode", TypedCursors.OLDER_MESSAGES_MODE);
             payloadOut.put("conversationId", conversationId.toString());
-            payloadOut.put("lastSentAt", last.getSentAt().toString());
-            payloadOut.put("lastId", last.getId().toString());
+            payloadOut.put("lastSentAt", oldest.getSentAt().toString());
+            payloadOut.put("lastId", oldest.getId().toString());
             nextCursor = Cursor.encode(payloadOut);
         }
 
         return CursorPage.of(items, nextCursor);
+    }
+
+    private CursorPage<MessageResponse> messagesAfter(UUID conversationId, UUID after) {
+        Message anchor = messages.findVisibleInConversation(after, conversationId)
+                .orElseThrow(() -> new ApiException(400, ErrorCode.INVALID_CURSOR, "Pagination invalide"));
+        List<Message> rows = messages.findVisibleByConversationAfter(conversationId, anchor.getSentAt(), anchor.getId(),
+                PageRequest.of(0, PAGE_SIZE + 1));
+        boolean hasMore = rows.size() > PAGE_SIZE;
+        List<MessageResponse> items = (hasMore ? rows.subList(0, PAGE_SIZE) : rows).stream()
+                .map(MessageResponse::from)
+                .toList();
+        return new CursorPage<>(items, null, hasMore);
     }
 
     @Transactional

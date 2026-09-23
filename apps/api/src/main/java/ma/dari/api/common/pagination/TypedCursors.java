@@ -22,6 +22,14 @@ public final class TypedCursors {
         return new ConversationCursor(requiredInstant(payload, "lastCreatedAt"), requiredUuid(payload, "lastId"));
     }
 
+    /**
+     * A message cursor points at the oldest message of the page that minted it
+     * and leads to OLDER messages. Named apart from the earlier forward-paging
+     * "messages" mode, so a cursor minted by that contract is refused, not
+     * silently read backwards.
+     */
+    public static final String OLDER_MESSAGES_MODE = "messages-older";
+
     public static MessageCursor message(String encoded) {
         return message(encoded, null);
     }
@@ -29,7 +37,7 @@ public final class TypedCursors {
     public static MessageCursor message(String encoded, UUID expectedConversationId) {
         ObjectNode payload = requiredPayload(encoded);
         if (expectedConversationId != null) requireText(payload, "conversationId", expectedConversationId.toString());
-        requireText(payload, "mode", "messages");
+        requireText(payload, "mode", OLDER_MESSAGES_MODE);
         return new MessageCursor(requiredInstant(payload, "lastSentAt"), requiredUuid(payload, "lastId"));
     }
 
