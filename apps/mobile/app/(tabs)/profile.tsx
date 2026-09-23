@@ -1,9 +1,10 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Image, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button, TextButton } from '@/components/Button';
+import { DeleteAccountModal } from '@/components/DeleteAccountModal';
 import { LegalLinks } from '@/components/LegalLinks';
 import { TextField } from '@/components/TextField';
 import { TopBar } from '@/components/TopBar';
@@ -23,6 +24,9 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   // Bumped by "Réessayer". Setting signedIn to the true it already was re-ran nothing.
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -67,21 +71,16 @@ export default function ProfileScreen() {
   }
 
   async function deleteAccount() {
-    const token = await getIdToken(); if (!token) return;
-    setLoading(true);
-    try { await apiFetch('/users/me', { method: 'DELETE', token }); await signOut(); }
-    catch (cause) { setError(errorMessage(cause, 'Suppression impossible. Réessayez.')); }
-    finally { setLoading(false); }
+    const token = await getIdToken(); if (!token || deleting) return;
+    setDeleting(true); setDeleteError(null);
+    try { await apiFetch('/users/me', { method: 'DELETE', token }); setDeleteOpen(false); await signOut(); }
+    catch (cause) { setDeleteError(errorMessage(cause, 'Suppression impossible. Réessayez.')); reportUnexpected(cause, 'account-deletion'); }
+    finally { setDeleting(false); }
   }
 
-  function confirmDelete() {
-    const start = () => {
-      if (Platform.OS === 'ios') Alert.prompt('Confirmation', 'Tapez SUPPRIMER pour confirmer.', (value) => { if (value === 'SUPPRIMER') void deleteAccount(); });
-      else void deleteAccount();
-    };
-    Alert.alert('Supprimer le compte ?', 'Cette action est définitive et retirera vos annonces. Vos conversations seront conservées pour les autres participants.', [
-      { text: 'Annuler', style: 'cancel' }, { text: 'Supprimer', style: 'destructive', onPress: start },
-    ]);
+  function openDelete() {
+    setDeleteError(null);
+    setDeleteOpen(true);
   }
 
   if (signedIn === false) return <View style={styles.screen}><TopBar title="Profil" /><View style={styles.center}><Text style={[type.body, styles.centerText]}>Connectez-vous pour gérer votre compte, vos annonces et vos favoris.</Text><Button onPress={() => router.push('/sign-in')}>Se connecter</Button><Button variant="secondary" onPress={() => router.push('/sign-up')}>Créer un compte</Button><LegalLinks /></View></View>;
@@ -97,9 +96,11 @@ export default function ProfileScreen() {
     <Button onPress={() => void save()} loading={saving}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Button>
     <Button variant="secondary" onPress={() => router.push('/publish' as never)}>Publier une annonce</Button>
     <Button variant="secondary" onPress={() => void signOut()}>Se déconnecter</Button>
-    <TextButton onPress={confirmDelete}>Supprimer définitivement mon compte</TextButton>
+    <TextButton onPress={openDelete}>Supprimer définitivement mon compte</TextButton>
     <LegalLinks />
-  </ScrollView></View>;
+  </ScrollView>
+    <DeleteAccountModal visible={deleteOpen} busy={deleting} error={deleteError} onCancel={() => setDeleteOpen(false)} onConfirm={() => void deleteAccount()} />
+  </View>;
 }
 
 const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: color.bgPage }, content: { padding: layout.gutterMobile, gap: 16, alignItems: 'stretch' }, center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: layout.gutterMobile }, centerText: { textAlign: 'center' }, error: { color: color.danger }, avatarWrap: { alignSelf: 'center', width: 88, height: 88, borderRadius: radius.avatar, backgroundColor: color.brandSubtle, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, avatar: { width: '100%', height: '100%' }, avatarInitial: { fontFamily: type.h1.fontFamily, fontSize: 32, color: color.brand }, bioInput: { height: 110, textAlignVertical: 'top', paddingTop: 12 } });
