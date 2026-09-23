@@ -89,3 +89,29 @@ test('a report action takes its optional reason from a labelled field, and Annul
   await expect(page.getByText('Chambre lumineuse à Agdal')).toHaveCount(0);
   expect(nativeDialogs).toEqual([]);
 });
+
+test('banning asks in a dialog, and an empty reason is left out rather than sent blank', async ({ authenticatedPage: page }) => {
+  const nativeDialogs = refuseNativeDialogs(page);
+  await page.goto('/admin/users');
+
+  const opener = page.getByRole('button', { name: 'Bannir' });
+  await opener.click();
+  const dialog = page.getByRole('dialog', { name: 'Bannir définitivement ce compte ?' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('Compte signalé');
+  await expect(dialog.getByLabel('Raison du bannissement (facultatif)')).toBeVisible();
+  await expectAccessible(page);
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(opener).toBeFocused();
+  expect((await mockCalls(page)).filter((call) => call.path.endsWith('/ban')), 'Escape bans nobody').toEqual([]);
+
+  await opener.click();
+  await dialog.getByLabel('Raison du bannissement (facultatif)').fill('   ');
+  const sent = page.waitForRequest((request: Request) => request.method() === 'POST' && request.url().endsWith('/admin/users/reported-user/ban'));
+  await dialog.getByRole('button', { name: 'Bannir', exact: true }).click();
+  expect((await sent).postDataJSON()).toEqual({});
+  await expect(page.getByText('Banni', { exact: true })).toBeVisible();
+  expect(nativeDialogs).toEqual([]);
+});

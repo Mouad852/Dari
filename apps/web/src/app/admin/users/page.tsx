@@ -3,6 +3,9 @@
 import { Ban, RotateCcw, ShieldOff, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
+import { Button } from '@/components/ds/Button';
+import { Dialog } from '@/components/ds/Dialog';
+import { Textarea } from '@/components/ds/Textarea';
 import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { USER_ACCOUNT_STATUS_LABELS } from '@/lib/labels';
@@ -138,10 +141,30 @@ export default function AdminUsersPage() {
     })();
   };
 
-  const handleBan = (id: string) => {
+  /*
+   * window.confirm then window.prompt before, and cancelling the prompt still
+   * banned the account. One Dialog now: the question, a labelled reason, and
+   * "Annuler"/Escape cancel the ban. The opener is refocused before the
+   * action for the reason given on admin/reports/page.tsx.
+   */
+  const [banTarget, setBanTarget] = useState<AdminUser | null>(null);
+  const [banReason, setBanReason] = useState('');
+  const banOpenerRef = useRef<HTMLElement | null>(null);
+
+  const handleBan = (user: AdminUser) => {
     if (pendingId || !token) return;
-    if (!window.confirm('Bannir définitivement ce compte ? Ses annonces seront retirées.')) return;
-    const reason = window.prompt('Raison du bannissement (facultatif) :') ?? undefined;
+    const active = document.activeElement;
+    banOpenerRef.current = active instanceof HTMLElement ? active : null;
+    setBanReason('');
+    setBanTarget(user);
+  };
+
+  const confirmBan = () => {
+    if (!banTarget || pendingId || !token) return;
+    const id = banTarget.id;
+    const reason = banReason.trim() || undefined;
+    banOpenerRef.current?.focus();
+    setBanTarget(null);
 
     armActionRefocus(id);
     setPendingId(id);
@@ -357,7 +380,7 @@ export default function AdminUsersPage() {
                       <button
                         type="button"
                         disabled={isPending}
-                        onClick={() => handleBan(user.id)}
+                        onClick={() => handleBan(user)}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -391,6 +414,35 @@ export default function AdminUsersPage() {
           </div>
         )}
       </div>
+
+      {banTarget && (
+        <Dialog
+          open
+          title="Bannir définitivement ce compte ?"
+          onClose={() => setBanTarget(null)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setBanTarget(null)}>Annuler</Button>
+              <Button variant="danger" onClick={confirmBan}>Bannir</Button>
+            </>
+          }
+        >
+          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+            <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-body)' }}>
+              <strong style={{ color: 'var(--text-heading)' }}>{banTarget.displayName}</strong> ({banTarget.email}) :
+              ses annonces seront retirées.
+            </p>
+            <Textarea
+              label="Raison du bannissement (facultatif)"
+              value={banReason}
+              onChange={(event) => setBanReason(event.target.value)}
+              rows={3}
+              maxLength={1000}
+              helper="Envoyée par e-mail à la personne bannie. Sans raison, elle reçoit un message générique."
+            />
+          </div>
+        </Dialog>
+      )}
     </main>
   );
 }
