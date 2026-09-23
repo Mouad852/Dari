@@ -1,8 +1,8 @@
-name: Production image gates
+name: Production image and backup gates
 
-# Regression gates for the deployment artifact. Each job
-# runs one script that also runs unchanged in Git Bash, so a local run of the
-# gate is the same commands against the same images.
+# Regression gates for the deployment artifact and the backup path. Every step
+# runs a script that also runs unchanged in Git Bash, so a local run of a gate
+# is the same commands against the same images.
 
 on:
   push:
@@ -44,3 +44,13 @@ jobs:
 
       - name: Every broken production variable must stop startup, named and unleaked
         run: bash infra/prod-smoke/fail-fast-matrix.sh
+
+  backup-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Back up a seeded PostGIS, restore the archive, compare
+        run: bash infra/scripts/backup-restore-check.sh

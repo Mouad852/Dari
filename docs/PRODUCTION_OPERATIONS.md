@@ -415,6 +415,17 @@ both numbers here when it has run:
 archive, 21.8 s in total, most of it container start-up. That is a check that
 the script works, not an RTO.)
 
+**CI gate.** `.github/workflows/production-gates.yml`, job `backup-restore`,
+runs `infra/scripts/backup-restore-check.sh`: a throwaway PostGIS gets the real
+schema (Flyway CLI 11.7.2, the version the API uses) and the 50,000-listing
+load-test fixture, `backup.sh` dumps it into a temporary local directory, and
+`restore-drill.sh` restores that archive. The job fails unless the restored
+users, listings, `published_listings`, `flyway_schema_history` and the drill's
+ST_DWithin count all equal the source's. It proves the scripts and the archive
+format on every change to them; it is not the drill against a real backup
+above, and it never touches AWS. The same command runs locally in Git Bash
+(about 2 minutes; the drill itself took 26.6 s on a 6 MB archive).
+
 ### Backup alerts
 
 The conditions, from the policy above:
