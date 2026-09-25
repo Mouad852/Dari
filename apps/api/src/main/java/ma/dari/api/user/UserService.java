@@ -202,7 +202,7 @@ public class UserService {
         }
         if (!principal.emailVerified()) {
             throw new ApiException(403, ErrorCode.IDENTITY_EMAIL_UNVERIFIED,
-                    "VÃ©rifiez votre adresse e-mail avant de crÃ©er votre profil");
+                    "Vérifiez votre adresse e-mail avant de créer votre profil");
         }
 
         String email = principal.email();
