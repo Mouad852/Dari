@@ -24,8 +24,8 @@ jobs:
       run:
         working-directory: ${{ matrix.app }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -40,8 +40,8 @@ jobs:
     env:
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -63,7 +63,7 @@ jobs:
           -DskipTestScope=true
       - name: Upload OWASP report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: java-dependency-check-report
           path: apps/api/target/dependency-check/
@@ -75,7 +75,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/dependency-review-action@v4
 
   codeql:
@@ -94,7 +94,7 @@ jobs:
         # CodeQL extracts the Java sources directly; there is no Kotlin to miss.
         language: [javascript-typescript, java-kotlin]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
