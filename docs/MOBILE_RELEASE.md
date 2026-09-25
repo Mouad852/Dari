@@ -116,7 +116,7 @@ Info.plist usage strings: `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescri
 | Messages | messaging between users | yes | on account deletion they stay readable by the other participant, shown as "Utilisateur supprimé" |
 | Listing content | publishing | yes | includes the coordinates the owner types for the property; public pages show fuzzed coordinates only |
 | User ID | authentication | yes | Firebase uid |
-| Crash logs, diagnostics | only with `EXPO_PUBLIC_SENTRY_DSN` set | no | JavaScript events: exception type, stack frames, release, OS name and version. Native crash events come from the native SDK unscrubbed; they carry device details and may carry an install-scoped random identifier |
+| Crash logs, diagnostics | only with `EXPO_PUBLIC_SENTRY_DSN` set | no | JavaScript events: exception type, stack frames, release, OS name and version. Native crash events come from the native SDK unscrubbed; per the pinned SDK sources they carry device and app details and, as `user.id`, a random installation id the SDK generates (no IP, `sendDefaultPii: false`). The full list is `docs/LEGAL_PREP.md` §9; `src/lib/__tests__/reporting.test.ts` pins the options |
 | Device location | not collected | — | no location permission |
 | Search queries | sent to the API to answer the search | — | not stored per user (there is no saved search) |
 
