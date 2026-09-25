@@ -23,7 +23,7 @@ far has no Android SDK, no emulator, no Xcode and no EAS login.
 | Runtime safety | Root `ErrorBoundary` with a French retry screen. 15 s request deadline (60 s for uploads), typed timeout / offline / network errors with the web's French copy, and one shared token refresh and one replay on a 401, then sign-out. | `app/_layout.tsx`, `src/lib/api.ts` |
 | Store requirements | Terms and privacy links (web `/legal/terms`, `/legal/privacy`) on the profile tab and the sign-up screen. Account deletion asks for the typed word `SUPPRIMER` in the same dialog on iOS and Android. | `src/components/LegalLinks.tsx`, `src/components/DeleteAccountModal.tsx` |
 | Deep links | `dari://listings/{id}` (and `listing/{id}`), `dari://messages/{id}` (and `conversation/{id}`), `dari://profile-recovery` → the profile-recovery screen, rewritten in `app/+native-intent.tsx` before expo-router matches the URL. | `src/lib/deepLinks.ts`, `app/+native-intent.tsx` |
-| Tests | `npm test` (jest-expo): build gate, API client, message merge, deep links, Sentry scrubber. CI runs it next to `npm run typecheck`. | `.github/workflows/client-quality.yml` |
+| Tests | `npm test` (jest-expo): build gate, API client, message merge, deep links, profile (`profile.test.ts`), Sentry scrubber (`reporting.test.ts`). CI runs it next to `npm run typecheck`. | `.github/workflows/client-quality.yml` |
 
 ## Not verified
 

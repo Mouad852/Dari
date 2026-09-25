@@ -8,7 +8,7 @@ import { Icon } from '@/components/Icon';
 import { TextField } from '@/components/TextField';
 import { ApiError, errorMessage } from '@/lib/api';
 import { onAuthChange, signOut } from '@/lib/firebase';
-import { completeProfile, PROFILE_FIELDS_REQUIRED, sendVerificationEmail } from '@/lib/profile';
+import { completeProfile, hasProfile, PROFILE_FIELDS_REQUIRED, sendVerificationEmail } from '@/lib/profile';
 import { color, font, layout, radius, ramp, type } from '@/theme/tokens';
 
 /**
@@ -29,14 +29,25 @@ export default function ProfileRecoveryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
-  useEffect(() => onAuthChange((current) => {
-    if (!current) {
-      router.replace('/sign-in');
-      return;
-    }
-    setUser(current);
-    setPendingVerification(!current.emailVerified);
-  }), []);
+  useEffect(() => {
+    let active = true;
+    const unsubscribe = onAuthChange((current) => {
+      if (!active) return;
+      if (!current) {
+        router.replace('/sign-in');
+        return;
+      }
+      setUser(current);
+      setPendingVerification(!current.emailVerified);
+      void hasProfile().then((exists) => {
+        if (active && exists) router.replace('/');
+      });
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
 
   async function resend() {
     if (!user) return;
@@ -62,8 +73,8 @@ export default function ProfileRecoveryScreen() {
       await completeProfile(user, { displayName, firstName, city });
       router.replace('/');
     } catch (cause) {
+      setPendingVerification(!user.emailVerified);
       if (cause instanceof ApiError) {
-        if (cause.code === 'IDENTITY_EMAIL_UNVERIFIED') setPendingVerification(true);
         setError(cause.message);
       } else if (cause instanceof Error && cause.message === PROFILE_FIELDS_REQUIRED) {
         setError(PROFILE_FIELDS_REQUIRED);
@@ -114,7 +125,7 @@ export default function ProfileRecoveryScreen() {
           </Button>
 
           <View style={styles.footer}>
-            <TextButton onPress={() => void signOut()}>Utiliser un autre compte</TextButton>
+            <TextButton onPress={() => void signOut().catch(() => {})}>Utiliser un autre compte</TextButton>
           </View>
         </View>
       </ScrollView>

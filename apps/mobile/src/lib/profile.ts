@@ -15,14 +15,27 @@ import { getIdToken } from './firebase';
 
 export type ProfileFields = { displayName: string; firstName: string; city: string };
 
-export const PROFILE_FIELDS_REQUIRED = 'Renseignez au moins votre nom d’affichage.';
+export const PROFILE_FIELDS_REQUIRED = 'Le nom d’affichage doit contenir entre 2 et 60 caractères.';
 export const EMAIL_UNVERIFIED = 'Vérifiez votre adresse e-mail avant de créer votre profil';
 
-/** The `POST /users` body, or null when the one required field is empty. */
+/** The `POST /users` body, or null when the display name is outside 2–60 characters. */
 export function profileBody(fields: ProfileFields): { displayName: string; firstName: string; city: string | null } | null {
   const displayName = fields.displayName.trim();
-  if (!displayName) return null;
+  if (displayName.length < 2 || displayName.length > 60) return null;
   return { displayName, firstName: fields.firstName.trim(), city: fields.city.trim() || null };
+}
+
+/**
+ * Only a definite PROFILE_NOT_FOUND sends the person to profile recovery;
+ * other failures let the app open so each screen can report its own error.
+ */
+export async function hasProfile(): Promise<boolean> {
+  try {
+    await apiFetch('/users/me', { token: (await getIdToken()) ?? undefined });
+    return true;
+  } catch (cause) {
+    return !(cause instanceof ApiError && cause.isMissingProfile);
+  }
 }
 
 export function sendVerificationEmail(user: User): Promise<void> {

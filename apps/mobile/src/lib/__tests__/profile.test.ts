@@ -3,7 +3,7 @@ import { reload } from '@firebase/auth';
 
 import { apiFetch, ApiError } from '../api';
 import { getIdToken } from '../firebase';
-import { completeProfile, PROFILE_FIELDS_REQUIRED, profileBody } from '../profile';
+import { completeProfile, hasProfile, PROFILE_FIELDS_REQUIRED, profileBody } from '../profile';
 
 jest.mock('@firebase/auth', () => ({ reload: jest.fn(), sendEmailVerification: jest.fn() }));
 jest.mock('../firebase', () => ({ getIdToken: jest.fn() }));
@@ -23,6 +23,37 @@ describe('profileBody', () => {
 
   it('refuses an empty display name', () => {
     expect(profileBody({ ...fields, displayName: '   ' })).toBeNull();
+  });
+
+  it('requires a display name between 2 and 60 characters', () => {
+    expect(profileBody({ ...fields, displayName: 'A' })).toBeNull();
+    expect(profileBody({ ...fields, displayName: 'A'.repeat(61) })).toBeNull();
+    expect(profileBody({ ...fields, displayName: 'AB' })?.displayName).toBe('AB');
+    expect(profileBody({ ...fields, displayName: 'A'.repeat(60) })?.displayName).toHaveLength(60);
+  });
+});
+
+describe('hasProfile', () => {
+  it('returns true when the account has a profile', async () => {
+    (getIdToken as jest.Mock).mockResolvedValue('profile-token');
+    (apiFetch as jest.Mock).mockResolvedValueOnce({ id: 'profile-id' });
+
+    await expect(hasProfile()).resolves.toBe(true);
+    expect(apiFetch).toHaveBeenCalledWith('/users/me', { token: 'profile-token' });
+  });
+
+  it('returns false only when the API confirms the profile is missing', async () => {
+    (getIdToken as jest.Mock).mockResolvedValue(null);
+    (apiFetch as jest.Mock).mockRejectedValueOnce(new ApiError(404, 'PROFILE_NOT_FOUND', 'missing'));
+
+    await expect(hasProfile()).resolves.toBe(false);
+    expect(apiFetch).toHaveBeenCalledWith('/users/me', { token: undefined });
+  });
+
+  it('lets other failures fall through to the app', async () => {
+    (apiFetch as jest.Mock).mockRejectedValueOnce(new Error('network failure'));
+
+    await expect(hasProfile()).resolves.toBe(true);
   });
 });
 
