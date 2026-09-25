@@ -11,7 +11,7 @@ import { apiFetch, ApiError, resolveMediaUrl, type CursorPage } from '@/lib/api'
 import { ErrorCode } from '@/lib/errors';
 import { getIdToken } from '@/lib/firebase';
 import { clockTime, dayLabel, rentPerMonth } from '@/lib/format';
-import { confirmPending, isPending, mergeMessages, PENDING_PREFIX } from '@/lib/messages';
+import { confirmPending, isPending, mergeMessages, newestFetched, PENDING_PREFIX, pollAnchor } from '@/lib/messages';
 import type { Conversation, Me, Message, PublicListing } from '@/types/api';
 
 /**
@@ -72,8 +72,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   const scrollRegionRef = useRef<HTMLDivElement | null>(null);
   const scrollPlanRef = useRef<ScrollPlan | null>(null);
   const atBottomRef = useRef(true);
-  // The newest message this page has *fetched*. Never one it just sent: see the poll.
-  const anchorRef = useRef<string | null>(null);
+  // Id → sentAt of every message the newest page and the polls *fetched*. Never
+  // one this page just sent: see the poll.
+  const fetchedRef = useRef(new Map<string, string>());
   const sendingRef = useRef(false);
   // A confirmed own message keeps its placeholder's key, so the live log does
   // not see a new item (and announce it again) when the server copy swaps in.
@@ -113,7 +114,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         setMyId(me.id);
         setConversation(thread);
         // The newest page: the thread opens on its latest message.
-        anchorRef.current = page.items.at(-1)?.id ?? null;
+        fetchedRef.current = new Map(page.items.map((message) => [message.id, message.sentAt]));
         scrollPlanRef.current = { kind: 'bottom' };
         setMessages(page.items);
         setOlderCount(0);
@@ -155,8 +156,10 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
    *
    * Nothing pushes to an open tab, so every 5 s while the tab is visible (and
    * at once when it becomes visible again) the page asks for messages `after=`
-   * the newest one it has fetched, then re-reads the conversation summary for
-   * the read receipt. A hidden tab makes no requests.
+   * a message a minute behind the newest one it has fetched (`pollAnchor`),
+   * then re-reads the conversation summary for the read receipt. A hidden tab
+   * makes no requests. The overlap catches a message that committed after a
+   * newer one was already fetched; only ids not fetched before count as new.
    *
    * The anchor is only ever a message that came from a GET, never one this page
    * just sent: a reply written a moment before one's own message is newer than
@@ -176,7 +179,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
     const threadPath = `/conversations/${encodeURIComponent(id)}`;
 
     const fetchNewer = async (token: string) => {
-      let anchor = anchorRef.current;
+      const fetched = fetchedRef.current;
+      let anchor = pollAnchor(fetched);
+      let continueFrom = newestFetched(fetched);
       // Bounded: each round is one page at most.
       for (let round = 0; round < 5; round += 1) {
         const requestedAfter = anchor;
@@ -190,25 +195,37 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
           // The anchor is no longer a visible message: start over from the newest page.
           if (requestedAfter && cause instanceof ApiError && cause.code === ErrorCode.INVALID_CURSOR) {
             anchor = null;
+            continueFrom = null;
             continue;
           }
           throw cause;
         }
         if (!isCurrent) return;
-        const last = page.items.at(-1);
-        if (last) {
-          anchor = last.id;
-          anchorRef.current = last.id;
+        const added = page.items.filter((message) => !fetched.has(message.id));
+        for (const message of page.items) fetched.set(message.id, message.sentAt);
+        if (page.items.length > 0) {
+          setMessages((prev) => mergeMessages(prev ?? [], page.items, 'newer'));
+        }
+        if (added.length > 0) {
           // Follow the thread only for a reader already at its end.
           if (atBottomRef.current) scrollPlanRef.current = { kind: 'bottom' };
-          setMessages((prev) => mergeMessages(prev ?? [], page.items, 'newer'));
           // Seen on an open, visible thread: read, as on opening it.
-          if (page.items.some((message) => message.senderId !== myId)) {
+          if (added.some((message) => message.senderId !== myId)) {
             void apiFetch(`${threadPath}/read`, { method: 'PATCH', token }).catch(() => {});
           }
         }
-        // Without an anchor this was the newest page, whose hasMore means *older*.
-        if (!requestedAfter || !page.hasMore) return;
+        if (!requestedAfter) {
+          // The newest page, whose hasMore means *older*. If it reaches back to
+          // a message already fetched, nothing is missing; otherwise go on from
+          // the newest one fetched before.
+          if (!page.hasMore || added.length < page.items.length || !continueFrom) return;
+          anchor = continueFrom;
+          continueFrom = null;
+          continue;
+        }
+        const last = page.items.at(-1);
+        if (!page.hasMore || !last) return;
+        anchor = last.id;
       }
     };
 

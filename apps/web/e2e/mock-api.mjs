@@ -279,6 +279,16 @@ async function handle(request, response) {
     state.messages.push(nextMessage('other-user', body.body));
     return sendNoContent(response);
   }
+  // A reply from the other participant stamped 30 s before the newest message
+  // but committed only now, after a poll may already have fetched that newest
+  // one. Kept in send order, as the API orders by (sentAt, id).
+  if (url.pathname === '/__late-message' && request.method === 'POST') {
+    const body = await readBody(request);
+    const newest = state.messages.at(-1);
+    const late = { ...nextMessage('other-user', body.body), sentAt: new Date(Date.parse(newest.sentAt) - 30_000).toISOString() };
+    state.messages.splice(state.messages.length - 1, 0, late);
+    return sendNoContent(response);
+  }
   // A thread of `count` messages ("Message 1" … "Message N"), alternating senders.
   if (url.pathname === '/__thread' && request.method === 'POST') {
     const body = await readBody(request);

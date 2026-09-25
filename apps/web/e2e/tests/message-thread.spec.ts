@@ -36,6 +36,27 @@ test('a reply written while the thread is open appears within one poll, exactly 
   await expect(log.getByRole('listitem')).toHaveCount(2);
 });
 
+test('a message committed after a newer one was already polled still appears, in send order and once', async ({ authenticatedPage: page, request }) => {
+  await page.goto('/messages/conversation-1');
+  const log = page.getByRole('log', { name: 'Messages de la conversation' });
+  await expect(log.getByRole('listitem')).toHaveCount(1);
+
+  await request.post(`${MOCK}/__messages`, { data: { body: 'Réponse déjà reçue.' } });
+  await expect(log.getByText('Réponse déjà reçue.')).toHaveCount(1, { timeout: 7_000 });
+
+  // Stamped before that reply, visible only now: after= the reply would skip it.
+  await request.post(`${MOCK}/__late-message`, { data: { body: 'Message validé en retard.' } });
+  await expect(log.getByText('Message validé en retard.')).toHaveCount(1, { timeout: 7_000 });
+  await expect(log.getByRole('listitem')).toHaveCount(3);
+  await expect(log.getByRole('listitem').nth(1)).toContainText('Message validé en retard.');
+
+  // Later polls read the overlap again and still add nothing.
+  const seen = await afterPolls(page);
+  await expect.poll(() => afterPolls(page), { timeout: 12_000 }).toBeGreaterThan(seen);
+  await expect(log.getByRole('listitem')).toHaveCount(3);
+  await expect(log.getByText('Réponse déjà reçue.')).toHaveCount(1);
+});
+
 test('a reply arriving while the reader is further up leaves them where they are', async ({ authenticatedPage: page, request }) => {
   await request.post(`${MOCK}/__thread`, { data: { count: 20 } });
   await page.goto('/messages/conversation-1');
