@@ -97,7 +97,7 @@ From prebuild (production configuration) plus the autolinked libraries' manifest
 | `CAMERA` | expo-image-picker | listing photos taken in the app |
 | `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE` (max SDK 32) | expo-image-picker, expo-file-system | photo library on Android 12 and older |
 | `ACCESS_NETWORK_STATE`, `ACCESS_WIFI_STATE` | @react-native-community/netinfo | offline detection |
-| `VIBRATE`, `SYSTEM_ALERT_WINDOW` | Expo's app template | not used by Dari's code; left in place because nothing here verified that removing them is safe |
+| `VIBRATE`, `SYSTEM_ALERT_WINDOW` | *removed* (`android.blockedPermissions` in `app.json`, which prebuild writes as `tools:node="remove"`) | Expo's app template adds both. Nothing uses them: no autolinked module's Android sources touch the vibrator, and the exported JS bundle's only `vibrate` is React Native's unused `Vibration` module. `SYSTEM_ALERT_WINDOW` serves React Native's dev tooling, and the template's debug-only manifest still declares it, so only release builds lose it. Checked on the prebuild output; the Gradle-merged manifest was not built here |
 | `RECORD_AUDIO` | *removed* (`tools:node="remove"`) | no video or audio capture |
 
 Removed in Phase 6 with `expo-notifications`: `RECEIVE_BOOT_COMPLETED`, `POST_NOTIFICATIONS` (from that library's manifest). No location permission is requested; the manifest has no `usesCleartextTraffic` (only the template's debug manifest allows it).
