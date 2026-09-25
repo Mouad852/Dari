@@ -236,20 +236,23 @@ else
         elif [ -z "$lat" ] || [ -z "$lng" ]; then
             fail "listing JSON has no latitude/longitude to compare"
         else
-            metres=$(awk -v a="$LISTING_EXACT_LAT" -v b="$LISTING_EXACT_LNG" -v c="$lat" -v d="$lng" 'BEGIN {
+            metres=$(LC_ALL=C awk -v a="$LISTING_EXACT_LAT" -v b="$LISTING_EXACT_LNG" -v c="$lat" -v d="$lng" 'BEGIN {
                 r = 3.141592653589793 / 180; dl = (c - a) * r; dn = (d - b) * r
                 h = sin(dl / 2) ^ 2 + cos(a * r) * cos(c * r) * sin(dn / 2) ^ 2
                 printf "%.0f", 2 * 6371000 * atan2(sqrt(h), sqrt(1 - h)) }')
-            if [ "$metres" -lt 1 ]; then
+            case $metres in
+                ''|*[!0-9]*) fail "could not calculate distance from the exact coordinates" ;;
+                *) if [ "$metres" -lt 1 ]; then
                 fail "public coordinates equal the exact ones: location is not fuzzed"
             elif [ "$metres" -gt $((FUZZ_RADIUS_M + 1)) ]; then
                 fail "public point is ${metres} m from the exact one, beyond the ${FUZZ_RADIUS_M} m radius"
             else
                 pass "public point is ${metres} m from the exact one (radius ${FUZZ_RADIUS_M} m)"
-            fi
+            fi ;;
+            esac
             # P0-1: subtract the offset the unkeyed fuzzer would have added. With
             # the keyed fuzzer this lands anywhere up to twice the radius away.
-            recovered_m=$(awk -v draws="$(unkeyed_draws "$listing_id")" -v a="$LISTING_EXACT_LAT" -v b="$LISTING_EXACT_LNG" \
+            recovered_m=$(LC_ALL=C awk -v draws="$(unkeyed_draws "$listing_id")" -v a="$LISTING_EXACT_LAT" -v b="$LISTING_EXACT_LNG" \
                 -v c="$lat" -v d="$lng" -v radius="$FUZZ_RADIUS_M" 'BEGIN {
                 split(draws, n, " "); pi = 3.141592653589793; r = pi / 180
                 angle = n[1] / 9007199254740992 * 2 * pi; dist = sqrt(n[2] / 9007199254740992) * radius
@@ -257,19 +260,30 @@ else
                 dl = (rlat - a) * r; dn = (rlng - b) * r
                 h = sin(dl / 2) ^ 2 + cos(a * r) * cos(rlat * r) * sin(dn / 2) ^ 2
                 printf "%.0f", 2 * 6371000 * atan2(sqrt(h), sqrt(1 - h)) }')
-            if [ "$recovered_m" -lt 5 ]; then
+            case $recovered_m in
+                ''|*[!0-9]*) fail "could not calculate the pre-fix recovery distance" ;;
+                *) if [ "$recovered_m" -lt 5 ]; then
                 fail "the pre-fix recovery attack (audit P0-1) finds the exact point (${recovered_m} m off)"
             else
                 pass "the pre-fix recovery attack (audit P0-1) misses the exact point by ${recovered_m} m"
-            fi
+            fi ;;
+            esac
             code=$(fetch "$WEB_ORIGIN/listings/$listing_id" listingpage)
-            exact4=$(printf '%.4f' "$LISTING_EXACT_LAT")
             if [ "$code" != 200 ]; then
                 fail "web listing page: HTTP $code"
-            elif grep -qF "$exact4" "$work/listingpage.body"; then
-                fail "web listing page (HTML, JSON-LD or OG tags) contains the exact latitude"
             else
-                pass "web listing page does not contain the exact latitude"
+                exact_lat4=$(LC_ALL=C awk -v coord="$LISTING_EXACT_LAT" 'BEGIN { printf "%.4f", int(coord * 10000) / 10000 }')
+                exact_lng4=$(LC_ALL=C awk -v coord="$LISTING_EXACT_LNG" 'BEGIN { printf "%.4f", int(coord * 10000) / 10000 }')
+                if grep -qF -- "$exact_lat4" "$work/listingpage.body"; then
+                    fail "web listing page (HTML, JSON-LD or OG tags) contains the exact latitude"
+                else
+                    pass "web listing page does not contain the exact latitude"
+                fi
+                if grep -qF -- "$exact_lng4" "$work/listingpage.body"; then
+                    fail "web listing page (HTML, JSON-LD or OG tags) contains the exact longitude"
+                else
+                    pass "web listing page does not contain the exact longitude"
+                fi
             fi
         fi
 

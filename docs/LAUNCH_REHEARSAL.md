@@ -117,7 +117,7 @@ Desktop web, then Android and iOS.
 | 5.2 | View source of the annonce page; open the sitemap | No coordinates in JSON-LD, Open Graph tags or the sitemap | | | |
 | 5.3 | Upload a photo that has GPS EXIF (any phone photo with location on); download it back from `MEDIA_ORIGIN`; `exiftool photo.jpg \| grep -i gps` | No GPS fields (uploads are re-encoded) | | | |
 | 5.4 | Note the throwaway owner's avatar URL and one photo URL; delete that account | PII scrubbed; annonces gone from search; the counterparty's conversation still readable, the sender shown as « Utilisateur supprimé » | | | |
-| 5.5 | Two minutes later: `aws s3api head-object --bucket <media bucket> --key <avatar key>` (the key is the URL path after the bucket) and the same for the photo | `Not Found` for both (the cleanup worker runs every 60 s) | | | |
+| 5.5 | Two minutes later: `aws s3api head-object --bucket <media bucket> --key <avatar key>` (the S3 key is the URL path after the `MEDIA_ORIGIN` host, which is CloudFront) and the same for the photo | `Not Found` for both (the cleanup worker runs every 60 s) | | | |
 | 5.6 | `curl -sI <avatar URL>` through CloudFront | `403`/`404` once the edge copy expires; it may still answer `200` for up to an hour (`max-age=3600`) | | | |
 | 5.7 | Firebase console → Authentication: search the deleted email | Not found | | | |
 | 5.8 | Sign up again with the deleted account's email | Allowed | | | |
