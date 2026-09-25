@@ -799,6 +799,17 @@ flows after rollback. Database migrations are forward-only: do not use
 Prepare a compensating migration only when a rollback cannot safely run
 against the migrated schema.
 
+### Launch rehearsal
+
+Before real users arrive, run `docs/LAUNCH_REHEARSAL.md` on this
+infrastructure: the read-only checks of `infra/prod-smoke/rehearsal-check.sh`,
+the tenant, owner and admin journeys, privacy and deletion (including the
+avatar leaving the bucket and the audit P0-1 recovery attempt), failure
+injection, the alert drill below, and the first restore drill that sets the
+RTO. Each row has a place for the date, the result and the operator. Re-run
+`rehearsal-check.sh` after any change to the load balancer, CDN or web
+headers.
+
 ### Production smoke stack
 
 Run this local, throwaway production-profile check before a release. It is not
