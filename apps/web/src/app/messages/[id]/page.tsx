@@ -194,6 +194,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         } catch (cause) {
           // The anchor is no longer a visible message: start over from the newest page.
           if (requestedAfter && cause instanceof ApiError && cause.code === ErrorCode.INVALID_CURSOR) {
+            fetched.delete(requestedAfter);
             anchor = null;
             continueFrom = null;
             continue;
@@ -203,7 +204,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         if (!isCurrent) return;
         const added = page.items.filter((message) => !fetched.has(message.id));
         for (const message of page.items) fetched.set(message.id, message.sentAt);
-        if (page.items.length > 0) {
+        if (added.length > 0) {
           setMessages((prev) => mergeMessages(prev ?? [], page.items, 'newer'));
         }
         if (added.length > 0) {

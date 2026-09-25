@@ -134,13 +134,18 @@ export default function ConversationScreen() {
           page = await apiFetch<CursorPage<Message>>(`${threadPath}/messages${requestedAfter ? `?after=${encodeURIComponent(requestedAfter)}` : ''}`, { token });
         } catch (cause) {
           // The anchor is no longer a visible message: start over from the newest page.
-          if (requestedAfter && cause instanceof ApiError && cause.code === 'INVALID_CURSOR') { anchor = null; continueFrom = null; continue; }
+          if (requestedAfter && cause instanceof ApiError && cause.code === 'INVALID_CURSOR') {
+            fetched.delete(requestedAfter);
+            anchor = null;
+            continueFrom = null;
+            continue;
+          }
           throw cause;
         }
         if (!isCurrent) return;
         const added = page.items.filter((message) => !fetched.has(message.id));
         for (const message of page.items) fetched.set(message.id, message.sentAt);
-        if (page.items.length > 0) {
+        if (added.length > 0) {
           setMessages((previous) => mergeMessages(previous ?? [], page.items, 'newer'));
         }
         if (added.length > 0) {

@@ -37,10 +37,10 @@ export function mergeMessages(current: readonly Message[], incoming: readonly Me
  * can commit just after it, so a poll asking only for what is newer than the
  * message it already has would skip it for good. Reading this window again on
  * every poll catches it, and the merge by id drops what the thread already
- * holds. A send is a few statements, each cut off by the API's 30 s statement
- * timeout (`DARI_DB_STATEMENT_TIMEOUT`), so a commit landing more than a minute
- * after its stamp is not expected. The cost is re-reading, each poll, the
- * messages of the thread's last minute.
+ * holds. The one-minute bound is an assumption: each statement is cut off by
+ * the API's 30 s statement timeout (`DARI_DB_STATEMENT_TIMEOUT`), but the send
+ * transaction as a whole has no timeout. The cost is re-reading, each poll,
+ * the messages of the thread's last minute.
  */
 export const POLL_OVERLAP_MS = 60_000;
 
