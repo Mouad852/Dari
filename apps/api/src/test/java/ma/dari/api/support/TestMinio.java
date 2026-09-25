@@ -19,8 +19,13 @@ import java.util.UUID;
  */
 public final class TestMinio implements AutoCloseable {
 
-    /** Keep equal to the minio image tag in infra/prod-smoke/docker-compose.yml. */
-    public static final String IMAGE = "minio/minio:RELEASE.2025-04-08T15-41-24Z";
+    /**
+     * Keep equal to the minio image tag in infra/prod-smoke/docker-compose.yml.
+     * A community build of MinIO with the same entrypoint and {@code mc}:
+     * the minio/minio repository is gone from Docker Hub, so a runner without
+     * a cached copy could not pull it and every S3 test failed on CI.
+     */
+    public static final String IMAGE = "pgsty/minio:RELEASE.2026-08-04T00-00-00Z";
     public static final String ACCESS_KEY = "test-access-key";
     public static final String SECRET_KEY = "test-secret-key-not-a-secret";
     public static final String REGION = "us-east-1";
