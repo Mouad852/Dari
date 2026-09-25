@@ -20,7 +20,7 @@ import { apiFetch, ApiError, errorMessage, reportUnexpected } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { hasNetwork } from '@/lib/network';
 import { clockTime, dayLabel } from '@/lib/format';
-import { mergeMessages } from '@/lib/messages';
+import { mergeMessages, newestFetched, pollAnchor } from '@/lib/messages';
 import { color, font, radius } from '@/theme/tokens';
 import type { Conversation, CursorPage, Message } from '@/types/api';
 
@@ -54,8 +54,9 @@ export default function ConversationScreen() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
-  // The newest message this screen has *fetched*. Never one it just sent: see the poll.
-  const anchorRef = useRef<string | null>(null);
+  // Id → sentAt of every message the newest page and the polls *fetched*.
+  // Never one this screen just sent: see the poll.
+  const fetchedRef = useRef(new Map<string, string>());
   const sendingRef = useRef(false);
   const atBottomRef = useRef(true);
   // Scroll to the end on the next content change: on opening, after sending,
@@ -82,7 +83,7 @@ export default function ConversationScreen() {
         setToken(idToken);
         setMyId(me.id);
         setConversation(thread);
-        anchorRef.current = page.items.at(-1)?.id ?? null;
+        fetchedRef.current = new Map(page.items.map((message) => [message.id, message.sentAt]));
         followRef.current = true;
         setMessages(page.items);
         setNextCursor(page.nextCursor ?? null);
@@ -99,9 +100,11 @@ export default function ConversationScreen() {
 
   /**
    * The thread's poll, every 5 s while the app is in the foreground, and at
-   * once when it comes back: messages `after=` the newest one this screen has
-   * fetched, then the conversation summary for "Vu". Nothing runs while the
-   * app is in the background.
+   * once when it comes back: messages `after=` a message a minute behind the
+   * newest one this screen has fetched (`pollAnchor`), then the conversation
+   * summary for "Vu". Nothing runs while the app is in the background. The
+   * overlap catches a message that committed after a newer one was already
+   * fetched; only ids not fetched before count as new.
    *
    * The anchor is only ever a message that came from a GET, never one just
    * sent: a reply written a moment before one's own message is newer than the
@@ -120,7 +123,9 @@ export default function ConversationScreen() {
     const threadPath = `/conversations/${encodeURIComponent(id)}`;
 
     const fetchNewer = async (token: string) => {
-      let anchor = anchorRef.current;
+      const fetched = fetchedRef.current;
+      let anchor = pollAnchor(fetched);
+      let continueFrom = newestFetched(fetched);
       // Bounded: each round is one page at most.
       for (let round = 0; round < 5; round += 1) {
         const requestedAfter = anchor;
@@ -129,23 +134,34 @@ export default function ConversationScreen() {
           page = await apiFetch<CursorPage<Message>>(`${threadPath}/messages${requestedAfter ? `?after=${encodeURIComponent(requestedAfter)}` : ''}`, { token });
         } catch (cause) {
           // The anchor is no longer a visible message: start over from the newest page.
-          if (requestedAfter && cause instanceof ApiError && cause.code === 'INVALID_CURSOR') { anchor = null; continue; }
+          if (requestedAfter && cause instanceof ApiError && cause.code === 'INVALID_CURSOR') { anchor = null; continueFrom = null; continue; }
           throw cause;
         }
         if (!isCurrent) return;
-        const last = page.items.at(-1);
-        if (last) {
-          anchor = last.id;
-          anchorRef.current = last.id;
-          followRef.current = atBottomRef.current;
+        const added = page.items.filter((message) => !fetched.has(message.id));
+        for (const message of page.items) fetched.set(message.id, message.sentAt);
+        if (page.items.length > 0) {
           setMessages((previous) => mergeMessages(previous ?? [], page.items, 'newer'));
+        }
+        if (added.length > 0) {
+          followRef.current = atBottomRef.current;
           // Seen on an open thread in the foreground: read, as on opening it.
-          if (page.items.some((message) => message.senderId !== myId)) {
+          if (added.some((message) => message.senderId !== myId)) {
             void apiFetch(`${threadPath}/read`, { method: 'PATCH', token }).catch(() => {});
           }
         }
-        // Without an anchor this was the newest page, whose hasMore means *older*.
-        if (!requestedAfter || !page.hasMore) return;
+        if (!requestedAfter) {
+          // The newest page, whose hasMore means *older*. If it reaches back to
+          // a message already fetched, nothing is missing; otherwise go on from
+          // the newest one fetched before.
+          if (!page.hasMore || added.length < page.items.length || !continueFrom) return;
+          anchor = continueFrom;
+          continueFrom = null;
+          continue;
+        }
+        const last = page.items.at(-1);
+        if (!page.hasMore || !last) return;
+        anchor = last.id;
       }
     };
 

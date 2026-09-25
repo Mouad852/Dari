@@ -1,4 +1,4 @@
-import { confirmPending, mergeMessages, PENDING_PREFIX } from '../messages';
+import { confirmPending, mergeMessages, newestFetched, PENDING_PREFIX, pollAnchor, POLL_OVERLAP_MS } from '../messages';
 import type { Message } from '@/types/api';
 
 function message(id: string, minute: number, extra: Partial<Message> = {}): Message {
@@ -69,5 +69,36 @@ describe('confirmPending', () => {
     const pending = message(`${PENDING_PREFIX}1`, 5, { senderId: 'me' });
     const sent = message('sent', 5, { senderId: 'me' });
     expect(ids(confirmPending([message('a', 1), sent, pending], pending.id, sent))).toEqual(['a', 'sent']);
+  });
+});
+
+describe('pollAnchor', () => {
+  const fetchedOf = (...messages: Message[]) => new Map(messages.map((item) => [item.id, item.sentAt]));
+
+  it('anchors a full overlap window behind the newest fetched message', () => {
+    const fetched = fetchedOf(message('a', 1), message('b', 2), message('c', 3), message('d', 4));
+    expect(POLL_OVERLAP_MS).toBe(60_000);
+    expect(pollAnchor(fetched)).toBe('c');
+    expect(newestFetched(fetched)).toBe('d');
+  });
+
+  it('reads the newest page when no fetched message is old enough', () => {
+    expect(pollAnchor(fetchedOf(message('a', 1)))).toBeNull();
+    expect(pollAnchor(new Map())).toBeNull();
+    expect(newestFetched(new Map())).toBeNull();
+  });
+
+  it('still brings in a message stamped before one already polled but committed after it', () => {
+    // a and c were fetched; b was stamped 30 s before c and committed only after c was polled.
+    const a = message('a', 1);
+    const c = message('c', 3);
+    const b = message('b', 2, { sentAt: new Date(Date.parse(c.sentAt) - 30_000).toISOString() });
+    const fetched = fetchedOf(a, c);
+    const anchor = pollAnchor(fetched);
+    expect(anchor).toBe('a');
+    // What after=a returns now, in the API's (sentAt, id) order: b, then c again.
+    const page = [b, c].filter((item) => Date.parse(item.sentAt) > Date.parse(fetched.get(anchor!)!));
+    expect(ids(page)).toEqual(['b', 'c']);
+    expect(ids(mergeMessages([a, c], page, 'newer'))).toEqual(['a', 'b', 'c']);
   });
 });
