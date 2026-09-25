@@ -30,6 +30,16 @@ for (const route of ['/', '/listings', '/sign-in', '/legal/privacy']) {
   });
 }
 
+test('the skip link moves keyboard focus to the main content', async ({ page }) => {
+  await page.goto('/listings');
+  const skipLink = page.getByRole('link', { name: 'Aller au contenu principal' });
+
+  await page.keyboard.press('Tab');
+  await expect(skipLink).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('main')).toBeFocused();
+});
+
 test('an authenticated page hydrates without a mismatch', async ({ authenticatedPage: page }) => {
   const errors = hydrationErrors(page);
   await page.goto('/account');
