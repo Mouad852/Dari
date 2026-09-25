@@ -27,7 +27,7 @@ Dari has two roles: `USER` and `ADMIN` (`db/V2`, line 3). There is no separate m
 |---|---|---|---|---|
 | `users.id` | Account UUID | Identifies the account | Public (profile URL, conversations) | `db/V2` |
 | `users.firebase_uid` | Link to the Firebase Authentication identity | Sign-in | Nobody through the API (not in any DTO) | `db/V2`; `api/user/User.java:35-36` |
-| `users.email`, `email_verified` | Email address from the Firebase token, copied once at profile creation | Account, notification emails, ban enforcement | The person (`GET /users/me`, `api/user/dto/UserResponse.java`); admins (`api/moderation/dto/AdminUserResponse.java`) | `db/V2`; `api/user/UserService.java:199-215` |
+| `users.email`, `email_verified` | Email address from the Firebase token, copied once at profile creation | Account, notification emails, ban enforcement | The person (`GET /users/me`, `api/user/dto/UserResponse.java`); admins (`api/moderation/AdminUserResponse.java`) | `db/V2`; `api/user/UserService.java:199-215` |
 | `users.phone`, `phone_verified` | Phone number | Reserved; **nothing writes it** (`POST /users/me/phone-verification` is unimplemented, `api/user/UserController.java:105-110`) | The person | `db/V2` |
 | `users.first_name` | Private first name | Profile | The person; admins | `db/V2` |
 | `users.display_name` | Public name | Profile, conversations | Public | `db/V2` |
@@ -44,7 +44,7 @@ Dari has two roles: `USER` and `ADMIN` (`db/V2`, line 3). There is no separate m
 | `favorites` (`user_id`, `listing_id`) | Which annonces a person saved | Favorites | The person | `db/V13` |
 | `conversations` (participants, listing) | Who talks to whom about which annonce | Messaging | The two participants | `db/V10` |
 | `messages.body`, `sender_id`, `sent_at`, `read_at` | Message text (≤ 4000 chars) and read receipt | Messaging | The two participants; **not** exposed to admins by any endpoint | `db/V10` |
-| `reports.reporter_id`, `target_id`, `reason`, `details` | Who reported what or whom, with free text (≤ 2000 chars) | Moderation | The reporter (`GET /reports/me`); admins see the details and reporter **counts**, not reporter ids (`api/moderation/dto/AdminReportQueueItem.java`) | `db/V9` |
+| `reports.reporter_id`, `target_id`, `reason`, `details` | Who reported what or whom, with free text (≤ 2000 chars) | Moderation | The reporter (`GET /reports/me`); admins see the details and reporter **counts**, not reporter ids (`api/moderation/AdminReportQueueItem.java`) | `db/V9` |
 | `banned_identities.email_lower`, `phone`, `user_id` | Email of a banned person | Block re-registration | Nobody through the API | `db/V9`; `api/user/UserService.java:209-210` |
 | `admin_actions.admin_id`, `target_id`, `reason` | Moderation log with the admin's free text. `metadata JSONB` exists but is never written (`api/moderation/AdminAction.java`) | Accountability | Nobody through the API | `db/V9` |
 | `notification_outbox.recipient_id`, `payload`, `last_error` | Pending and sent emails; the payload is the email body, which may be a moderator's free text. The email address is looked up at send time, not stored | Email delivery | Nobody through the API | `db/V17`, `db/V19` |
@@ -59,7 +59,7 @@ reads `User-Agent`).
 |---|---|---|
 | Object storage (S3 behind CloudFront in production) | Listing photos and avatars, re-encoded JPEG | Until deleted (§1.3); CDN and browsers may keep a copy up to `max-age=3600` s after deletion (`apps/api/src/main/resources/application.yml:169`; `docs/PRODUCTION_OPERATIONS.md`, "Storage keys, erasure and cache lifetime") |
 | API process memory (rate limiter) | Client IP (IPv6 cut to /64) and Firebase uid as counter keys | Minutes to one hour, swept every 5 minutes; never written to disk or logs (`api/common/ratelimit/RateLimitService.java`, `RateLimitEvictionJob.java`; limits in `application.yml:210-239`) |
-| API logs (stdout → CloudWatch Logs in production) | Only the catch-all error handler logs, with the request path (may contain a user or listing UUID) and the full exception, whose message **can contain personal data** (`api/common/error/GlobalExceptionHandler.java:164`). No request bodies, IPs or emails are logged deliberately | CloudWatch log group retention is **not configured anywhere in the repository**: **Cannot verify** |
+| API logs (stdout → CloudWatch Logs in production) | The only log line carrying request data is `api/common/error/GlobalExceptionHandler.java:164`: it includes the request path (which may contain a user or listing UUID) and the full exception, whose message **can contain personal data**. No request bodies, IPs or emails are logged deliberately | CloudWatch log group retention is **not configured anywhere in the repository**: **Cannot verify** |
 | Load balancer and CDN logs | IPs, URLs, user agents, if access logging is enabled | Not configured in the repository: **Cannot verify** |
 | Sentry (error tracking) | See §2 and §9 | Per the Sentry plan: **Cannot verify** |
 | Firebase Authentication | Email, password hash, sign-in metadata | Managed by Google: **Cannot verify** |
@@ -120,7 +120,7 @@ obligations in mind". This is a decision for the owner and counsel.
 
 | Processor | Service | Data it receives | Country |
 |---|---|---|---|
-| Google (Firebase Authentication) | Sign-in, email verification emails | Email, password (hashed by Firebase), uid, sign-in metadata, the IP of each sign-in request | Google's documentation places Firebase Authentication processing in the United States; not configurable in this project and **not verifiable** from the repository |
+| Google (Firebase Authentication) | Sign-in, email verification emails | Email, password (hashed by Firebase), uid, sign-in metadata, the IP of each sign-in request | Firebase Authentication processing location: **not verifiable from the repository** |
 | AWS — RDS | Database | Everything in §1.1 | Region undecided |
 | AWS — ECS Fargate | Runs the API and the web server | All request data in transit, application logs | Region undecided |
 | AWS — S3 | Photo and avatar storage | Images | Region undecided |
@@ -132,7 +132,7 @@ obligations in mind". This is a decision for the owner and counsel.
 | Google (Maps SDK for Android) | Map on the Android app | Device IP, device and app identifiers used by the SDK, the map viewport (`apps/mobile/app/(tabs)/index.tsx`; key injected in `apps/mobile/app.config.ts`) | Google: **Cannot verify** |
 | Apple (MapKit) | Map on the iOS app (no `provider` set, so Apple Maps) | Device IP and map viewport | Apple: **Cannot verify** |
 | Expo / EAS (650 Industries) | Builds the mobile binaries | Source code and signing credentials, **no user data**: the app uses neither `expo-updates` nor push notifications (`apps/mobile/package.json`; `docs/MOBILE_RELEASE.md`) | **Cannot verify** |
-| GitHub | Source hosting and CI | Source code and synthetic test data only | Not a processor of user data |
+| GitHub | Source hosting and CI | Receives no user data; only source code and synthetic test data | Not a processor of user data |
 | Domain registrar, DNS | Not chosen | — | **Not decided** |
 
 ---
@@ -193,7 +193,7 @@ eleven are set (`legal.ts:30`; privacy page line 11).
 |---|---|---|
 | Information | The three legal pages | Eight of eleven legal values not displayed (§3.1) |
 | Access | The person can see, in the UI, their profile (`GET /users/me`), annonces, conversations, favorites and own reports (`GET /reports/me`) | **No export** of the whole record; `firebase_uid`, admin actions, outbox emails and reports about them are not visible to them; no contact channel for a manual request |
-| Rectification | Profile edit (`PATCH /users/me`, `api/user/UserController.java:70`), annonce edit, avatar replace | The email is copied from Firebase once at profile creation and never updated, so an email changed in Firebase stays stale in `users.email` (`api/user/UserService.java:199-215`; no other writer of `setEmail`) |
+| Rectification | Profile edit (`PATCH /users/me`, `api/user/UserController.java:70`), annonce edit, avatar replace | The email is copied from Firebase once at profile creation and is never updated from Firebase, so an email changed in Firebase stays stale in `users.email` (`api/user/UserService.java:199-215`) |
 | Erasure | Account deletion on web (`apps/web/src/app/account/profile/page.tsx:146-152`) and mobile (`apps/mobile/src/components/DeleteAccountModal.tsx`) | Scope limits in §1.3; backups up to 12 months |
 | Objection / restriction | None | No marketing processing exists; all emails are transactional moderation or listing notices (`api/notification/OutboxNotificationService.java`) and cannot be turned off |
 | Portability | None | No machine-readable export |
@@ -251,8 +251,10 @@ lifts the suspension; the annonce owner is then emailed, the user is not
 `api/config/ProductionConfigValidator.java:70-72`) gives an angle and a distance uniform over a
 **200 m** disc (`application.yml:180`). The offset is the same on every request, so averaging
 repeated requests does not help. Public search, map, detail, featured and favorites all return
-the fuzzed point; only the owner's own views and the admin review queue return the exact one
-(`api/listing/dto/ListingResponse.java`). The unkeyed version (audit P0-1) was replaced on 2026-09-21 (commit `2037102`);
+the fuzzed point (`api/listing/PublicListingResponse.java`,
+`api/listing/PublicListingDetailResponse.java`); the owner's own views and the admin review queue
+return the exact point (`api/listing/dto/ListingResponse.java`). The unkeyed version (audit P0-1)
+was replaced on 2026-09-21 (commit `2037102`);
 `infra/prod-smoke/rehearsal-check.sh` replays that old attack against production.
 
 **Inference gap, found while preparing this packet:** radius search filters and sorts on the
