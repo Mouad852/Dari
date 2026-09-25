@@ -8,7 +8,7 @@ import { DeleteAccountModal } from '@/components/DeleteAccountModal';
 import { LegalLinks } from '@/components/LegalLinks';
 import { TextField } from '@/components/TextField';
 import { TopBar } from '@/components/TopBar';
-import { apiFetch, apiOrigin, apiUpload, errorMessage, reportUnexpected } from '@/lib/api';
+import { apiFetch, ApiError, apiOrigin, apiUpload, errorMessage, reportUnexpected } from '@/lib/api';
 import { getIdToken, onAuthChange, signOut } from '@/lib/firebase';
 import type { Me } from '@/types/api';
 import { color, layout, radius, type } from '@/theme/tokens';
@@ -43,7 +43,11 @@ export default function ProfileScreen() {
         const value = await apiFetch<Me>('/users/me', { token });
         if (!current) return;
         setProfile(value); setFirstName(value.firstName ?? ''); setDisplayName(value.displayName); setCity(value.city ?? ''); setBio(value.bio ?? ''); setError(null);
-      } catch (cause) { if (current) setError(errorMessage(cause, 'Impossible de charger votre profil.')); reportUnexpected(cause, 'profile'); }
+      } catch (cause) {
+        // Signed in to Firebase with no Dari profile yet: finish it rather than show an error.
+        if (cause instanceof ApiError && cause.isMissingProfile) { if (current) router.replace('/profile-recovery'); return; }
+        if (current) setError(errorMessage(cause, 'Impossible de charger votre profil.')); reportUnexpected(cause, 'profile');
+      }
       finally { if (current) setLoading(false); }
     })();
     return () => { current = false; };

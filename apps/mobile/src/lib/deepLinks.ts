@@ -2,8 +2,8 @@
  * Where a `dari://` link opens, named after the web app's routes so the same
  * path works on both: `listings/{id}` (web /listings/[id]; the singular
  * `listing` is kept as an alias), `messages/{id}` or `conversation/{id}`, and
- * `profile-recovery`, the web's page for finishing a profile. The app has no
- * such screen, so that link opens sign-in, where a session starts.
+ * `profile-recovery`, where a signed-in account with no profile finishes it
+ * (same screen name on both; without a session it moves on to sign-in).
  *
  * A plain function rather than expo-linking's parse, so it can be tested
  * without the Expo runtime. It reads `dari://listings/x` (kind in the host),
@@ -14,7 +14,7 @@
 export type DeepLinkTarget =
   | { pathname: '/listing/[id]'; params: { id: string } }
   | { pathname: '/messages/[id]'; params: { id: string } }
-  | { pathname: '/sign-in' };
+  | { pathname: '/profile-recovery' };
 
 const LINK = /^(dari|exps?):\/\/([^/?#]*)([^?#]*)/i;
 const ID = /^[A-Za-z0-9-]{1,64}$/;
@@ -38,7 +38,7 @@ export function parseDeepLink(value: string): DeepLinkTarget | null {
 
   const [kind, id, ...rest] = segments;
   if (rest.length > 0) return null;
-  if (kind === 'profile-recovery') return id === undefined ? { pathname: '/sign-in' } : null;
+  if (kind === 'profile-recovery') return id === undefined ? { pathname: '/profile-recovery' } : null;
   if (!id || !ID.test(id)) return null;
   if (kind === 'listings' || kind === 'listing') return { pathname: '/listing/[id]', params: { id } };
   if (kind === 'messages' || kind === 'conversation') return { pathname: '/messages/[id]', params: { id } };
@@ -49,6 +49,6 @@ export function parseDeepLink(value: string): DeepLinkTarget | null {
 export function deepLinkPath(value: string): string | null {
   const target = parseDeepLink(value);
   if (!target) return null;
-  if (target.pathname === '/sign-in') return '/sign-in';
+  if (target.pathname === '/profile-recovery') return '/profile-recovery';
   return target.pathname.replace('[id]', encodeURIComponent(target.params.id));
 }

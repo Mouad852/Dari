@@ -7,11 +7,11 @@ import { Button, TextButton } from '@/components/Button';
 import { LegalLinks } from '@/components/LegalLinks';
 import { Icon } from '@/components/Icon';
 import { TextField } from '@/components/TextField';
-import { apiFetch, ApiError } from '@/lib/api';
-import { getFirebaseAuth, getIdToken } from '@/lib/firebase';
+import { getFirebaseAuth } from '@/lib/firebase';
+import { sendVerificationEmail } from '@/lib/profile';
 import { color, font, layout, radius, ramp, type } from '@/theme/tokens';
 
-/** Ported from apps/web/src/app/sign-up/page.tsx -- same fields, same POST /users call to create the backend profile row right after the Firebase account. */
+/** Ported from apps/web/src/app/sign-up/page.tsx -- same fields. The backend profile is created on profile-recovery once the email is verified. */
 export default function SignUpScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -25,23 +25,16 @@ export default function SignUpScreen() {
     setSubmitting(true);
     setError(null);
     try {
-      await createUserWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
-      const token = await getIdToken();
-      if (!token) throw new Error('Firebase did not return an ID token');
-      await apiFetch('/users', {
-        method: 'POST',
-        token,
-        body: {
-          displayName: `${firstName.trim()} ${lastName.trim()}`.trim(),
-          firstName: firstName.trim(),
-          city: city.trim() || null,
-        },
+      const credential = await createUserWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
+      // The API creates the profile only for a verified email, which a new
+      // account never has yet: send the link, then finish on profile-recovery.
+      await sendVerificationEmail(credential.user).catch(() => {});
+      router.replace({
+        pathname: '/profile-recovery',
+        params: { displayName: `${firstName.trim()} ${lastName.trim()}`.trim(), firstName: firstName.trim(), city: city.trim() },
       });
-      router.replace('/');
     } catch (cause) {
-      if (cause instanceof ApiError) {
-        setError(cause.message);
-      } else if (cause instanceof Error && cause.message.includes('email-already-in-use')) {
+      if (cause instanceof Error && cause.message.includes('email-already-in-use')) {
         setError('Cette adresse e-mail est déjà utilisée.');
       } else {
         setError('Inscription impossible. Vérifiez vos informations et réessayez.');

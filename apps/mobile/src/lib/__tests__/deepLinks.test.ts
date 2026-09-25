@@ -20,16 +20,16 @@ describe('parseDeepLink', () => {
     expect(parseDeepLink(url)).toEqual({ pathname: '/messages/[id]', params: { id: ID } });
   });
 
-  it('sends the web’s profile-recovery link to sign-in', () => {
-    expect(parseDeepLink('dari://profile-recovery')).toEqual({ pathname: '/sign-in' });
-    expect(parseDeepLink('dari:///profile-recovery')).toEqual({ pathname: '/sign-in' });
+  it('opens the web’s profile-recovery link on the same screen', () => {
+    expect(parseDeepLink('dari://profile-recovery')).toEqual({ pathname: '/profile-recovery' });
+    expect(parseDeepLink('dari:///profile-recovery')).toEqual({ pathname: '/profile-recovery' });
   });
 
   it('rewrites a link to the app route expo-router should open', () => {
     expect(deepLinkPath(`dari://listings/${ID}`)).toBe(`/listing/${ID}`);
     expect(deepLinkPath(`/listings/${ID}`)).toBe(`/listing/${ID}`);
     expect(deepLinkPath(`dari://conversation/${ID}`)).toBe(`/messages/${ID}`);
-    expect(deepLinkPath('dari://profile-recovery')).toBe('/sign-in');
+    expect(deepLinkPath('dari://profile-recovery')).toBe('/profile-recovery');
     expect(deepLinkPath('exp://192.168.1.20:8081')).toBeNull();
     expect(deepLinkPath('/some/other/route')).toBeNull();
   });

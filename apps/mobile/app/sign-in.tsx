@@ -6,7 +6,8 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 import { Button, TextButton } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { TextField } from '@/components/TextField';
-import { getFirebaseAuth, sendPasswordReset } from '@/lib/firebase';
+import { apiFetch, ApiError } from '@/lib/api';
+import { getFirebaseAuth, getIdToken, sendPasswordReset } from '@/lib/firebase';
 import { color, font, layout, radius, ramp, type } from '@/theme/tokens';
 
 /**
@@ -18,6 +19,20 @@ import { color, font, layout, radius, ramp, type } from '@/theme/tokens';
  * as much -- so the layout follows the same card-on-gradient-background
  * shape the web version uses, in RN primitives.
  */
+/**
+ * Whether the signed-in account has a Dari profile. Only a definite
+ * PROFILE_NOT_FOUND sends the person to profile-recovery; any other failure
+ * lets the app open as before, where each screen reports its own error.
+ */
+async function hasProfile(): Promise<boolean> {
+  try {
+    await apiFetch('/users/me', { token: (await getIdToken()) ?? undefined });
+    return true;
+  } catch (cause) {
+    return !(cause instanceof ApiError && cause.isMissingProfile);
+  }
+}
+
 export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -54,7 +69,7 @@ export default function SignInScreen() {
     setError(null);
     try {
       await signInWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
-      router.replace('/');
+      router.replace((await hasProfile()) ? '/' : '/profile-recovery');
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : '';
       setError(
