@@ -183,7 +183,6 @@ export default function AdminUsersPage() {
 
   return (
     <main
-      id="main-content"
       tabIndex={-1}
       style={{
         minHeight: '100vh',

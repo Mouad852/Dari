@@ -50,7 +50,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <SkipLink />
         <SiteNav />
-        {children}
+        {/* The skip link's target, rendered on the server so the client has nothing to add to the page's HTML. */}
+        <div id="main-content">{children}</div>
         <SiteFooter />
       </body>
     </html>
