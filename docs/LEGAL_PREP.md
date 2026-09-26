@@ -132,7 +132,7 @@ obligations in mind". This is a decision for the owner and counsel.
 | Google (Maps SDK for Android) | Map on the Android app | Device IP, device and app identifiers used by the SDK, the map viewport (`apps/mobile/app/(tabs)/index.tsx`; key injected in `apps/mobile/app.config.ts`) | Google: **Cannot verify** |
 | Apple (MapKit) | Map on the iOS app (no `provider` set, so Apple Maps) | Device IP and map viewport | Apple: **Cannot verify** |
 | Expo / EAS (650 Industries) | Builds the mobile binaries | Source code and signing credentials, **no user data**: the app uses neither `expo-updates` nor push notifications (`apps/mobile/package.json`; `docs/MOBILE_RELEASE.md`) | **Cannot verify** |
-| GitHub | Source hosting and CI | Receives no user data; only source code and synthetic test data | Not a processor of user data |
+| GitHub | Source hosting and CI | Receives no user data; only source code and synthetic test data | — |
 | Domain registrar, DNS | Not chosen | — | **Not decided** |
 
 ---
