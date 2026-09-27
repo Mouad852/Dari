@@ -52,9 +52,11 @@ jobs:
         uses: actions/cache@v5
         with:
           path: apps/api/.dependency-check-data
-          key: dependency-check-nvd-v13-${{ runner.os }}
+          # A unique suffix saves the refreshed NVD delta; the stable prefix restores the newest prior cache.
+          key: dependency-check-nvd-v13-${{ runner.os }}-${{ hashFiles('apps/api/pom.xml') }}-${{ github.run_id }}
           restore-keys: |
-            dependency-check-nvd-v13-
+            dependency-check-nvd-v13-${{ runner.os }}-${{ hashFiles('apps/api/pom.xml') }}-
+            dependency-check-nvd-v13-${{ runner.os }}-
       - name: Require NVD API key
         run: |
           if [ -z "$NVD_API_KEY" ]; then

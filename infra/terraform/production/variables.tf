@@ -65,3 +65,13 @@ variable "web_task_memory" {
   default     = 1024
 }
 
+variable "service_desired_count" {
+  type        = number
+  description = "ECS desired count; set to 0 only for the reviewed first apply before images exist, then restore to 1."
+  default     = 1
+  validation {
+    condition     = var.service_desired_count >= 0 && var.service_desired_count <= 1
+    error_message = "Option A supports zero for dependency-only first apply or one task per service in production."
+  }
+}
+

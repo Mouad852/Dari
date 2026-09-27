@@ -6,6 +6,7 @@ alert_email               = "alerts@example.invalid"
 monthly_budget_amount     = 60
 api_image_tag             = "replace-with-api-git-sha"
 web_image_tag             = "replace-with-web-git-sha"
+service_desired_count     = 1
 backup_account_id         = "000000000000"
 log_retention_days        = 30
 enable_cross_account_backup_copy = false

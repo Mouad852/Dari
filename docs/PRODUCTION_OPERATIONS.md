@@ -782,9 +782,10 @@ The owner performs these steps, in order:
    placeholder-only SSM values, the daily Backup rule, and no unexpected
    public security-group rule.
 4. Apply the first plan with `api_image_tag` and `web_image_tag` set to
-   placeholders and both ECS services scaled to zero in a temporary reviewed
-   plan (or before images exist). This creates the dependencies without a
-   failing deployment. Restore desired count to one only after images exist.
+   placeholders and `service_desired_count=0` in a temporary reviewed plan.
+   This creates the dependencies without asking ECS to pull missing images.
+   Restore `service_desired_count=1` only after both images exist; the normal
+   Option A invariant is exactly one task per service.
 5. Set every SSM SecureString value out of band, including the Firebase JSON,
    and run `sql/bootstrap.sql` as the RDS master user. The application then
    connects only as role `dari`.

@@ -229,7 +229,6 @@ resource "aws_db_instance" "dari" {
   max_allocated_storage         = 100
   storage_encrypted             = true
   kms_key_id                    = aws_kms_key.data.arn
-  db_name                       = "dari"
   username                      = "bootstrap"
   manage_master_user_password   = true
   master_user_secret_kms_key_id = aws_kms_key.data.arn
@@ -442,7 +441,7 @@ resource "aws_iam_user" "ses_smtp" {
 resource "aws_iam_user_policy" "ses_smtp" {
   #checkov:skip=CKV_AWS_40:The documented SES integration requires a narrowly scoped user policy and no keys.
   user   = aws_iam_user.ses_smtp.name
-  policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Action = ["ses:SendRawEmail"], Resource = "*", Condition = { StringLike = { "ses:FromAddress" = "*@${var.web_domain}" } } }] })
+  policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Action = ["ses:SendRawEmail"], Resource = "arn:aws:ses:${var.region}:${data.aws_caller_identity.current.account_id}:identity/${var.web_domain}", Condition = { StringLike = { "ses:FromAddress" = "*@${var.web_domain}" } } }] })
 }
 
 #checkov:skip=CKV_AWS_91:ALB access logging requires a separate log bucket outside the exact Option A resource shape.
@@ -637,7 +636,7 @@ resource "aws_ecs_service" "api" {
   name                               = "dari-api"
   cluster                            = aws_ecs_cluster.main.id
   task_definition                    = aws_ecs_task_definition.api.arn
-  desired_count                      = 1
+  desired_count                      = var.service_desired_count
   launch_type                        = "FARGATE"
   deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200
@@ -663,7 +662,7 @@ resource "aws_ecs_service" "web" {
   name                               = "dari-web"
   cluster                            = aws_ecs_cluster.main.id
   task_definition                    = aws_ecs_task_definition.web.arn
-  desired_count                      = 1
+  desired_count                      = var.service_desired_count
   launch_type                        = "FARGATE"
   deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200
