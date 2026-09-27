@@ -107,6 +107,14 @@ run "production_invariants" {
     error_message = "The default plan must run one web task."
   }
   assert {
+    condition     = local.db_bootstrap_image == "postgres:16.11"
+    error_message = "The database bootstrap image must use an exact PostgreSQL version tag."
+  }
+  assert {
+    condition     = strcontains(file("${path.module}/sql/bootstrap.sql"), "GRANT dari TO CURRENT_USER;") && !strcontains(file("${path.module}/sql/bootstrap.sql"), "\\set dari_password")
+    error_message = "Bootstrap must grant its owner role to the master and avoid a psql password meta-command."
+  }
+  assert {
     condition     = jsondecode(aws_iam_role_policy.api_metrics.policy).Statement[0].Action == ["cloudwatch:PutMetricData"]
     error_message = "The API task policy must allow only PutMetricData."
   }

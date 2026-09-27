@@ -12,8 +12,9 @@ locals {
     "DARI_MEDIA_S3_SECRET_KEY", "SMTP_USERNAME", "SMTP_PASSWORD",
     "DARI_NOTIFICATIONS_FROM", "FIREBASE_SERVICE_ACCOUNT_JSON", "SENTRY_DSN"
   ])
-  placeholder = "SET_OUT_OF_BAND_BY_OWNER"
-  alarm_files = fileset("${path.module}/../../../infra/aws/alarms", "[0-9][0-9]-*.json")
+  placeholder        = "SET_OUT_OF_BAND_BY_OWNER"
+  alarm_files        = fileset("${path.module}/../../../infra/aws/alarms", "[0-9][0-9]-*.json")
+  db_bootstrap_image = "postgres:16.11"
   alarm_definitions = {
     for f in local.alarm_files : f => jsondecode(
       replace(
@@ -685,16 +686,18 @@ resource "aws_ecs_task_definition" "db_bootstrap" {
   execution_role_arn       = aws_iam_role.execution.arn
 
   container_definitions = jsonencode([{
-    name       = "db-bootstrap"
-    image      = "postgres:16"
+    name = "db-bootstrap"
+    # Exact major/minor tag: a floating `postgres:16` can change the client
+    # used to bootstrap a production database between otherwise identical runs.
+    image      = local.db_bootstrap_image
     essential  = true
     entryPoint = ["sh", "-ec"]
     environment = [
       { name = "DB_HOST", value = aws_db_instance.dari.address },
       { name = "DB_PORT", value = "5432" }
     ]
-    # ECS injects these only at container startup. The password for `dari` is
-    # written to psql's standard input, never into an argument or task log.
+    # ECS injects these only at container startup. psql reads the application
+    # password from its environment, never from an argument or task log.
     secrets = [
       { name = "DB_MASTER_USERNAME", valueFrom = "${aws_db_instance.dari.master_user_secret[0].secret_arn}:username::" },
       { name = "DB_MASTER_PASSWORD", valueFrom = "${aws_db_instance.dari.master_user_secret[0].secret_arn}:password::" },
@@ -703,12 +706,9 @@ resource "aws_ecs_task_definition" "db_bootstrap" {
     command = [format(<<-EOT
       set -eu
       export PGPASSWORD="$DB_MASTER_PASSWORD"
-      {
-        printf '\\set dari_password %%s\\n' "$DARI_ROLE_PASSWORD"
-        cat <<'SQL'
+      cat <<'SQL' | psql "host=$DB_HOST port=$DB_PORT dbname=postgres user=$DB_MASTER_USERNAME sslmode=require" --set=ON_ERROR_STOP=1
       %s
       SQL
-      } | psql "host=$DB_HOST port=$DB_PORT dbname=postgres user=$DB_MASTER_USERNAME sslmode=require" --set=ON_ERROR_STOP=1
       unset PGPASSWORD DB_MASTER_PASSWORD DARI_ROLE_PASSWORD
       EOT
     , file("${path.module}/sql/bootstrap.sql"))]

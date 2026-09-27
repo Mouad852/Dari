@@ -787,10 +787,22 @@ The owner performs these steps, in order:
    Restore `service_desired_count=1` only after both images exist; the normal
    Option A invariant is exactly one task per service.
 5. Set every SSM SecureString value out of band, including the Firebase JSON.
-   Then run the one-off `db-bootstrap` task below. It reads the RDS-managed
+   Generate `POSTGRES_PASSWORD` with `openssl rand -hex 32`; this avoids
+   shell-escaping mistakes while still providing a 256-bit password. The
+   bootstrap accepts any password value (including spaces and quotes), because
+   psql reads it from `DARI_ROLE_PASSWORD` in its environment rather than a
+   `\set` command. Then run the one-off `db-bootstrap` task below. It reads the RDS-managed
    master secret and the `POSTGRES_PASSWORD` SSM parameter, runs the
    idempotent `sql/bootstrap.sql` with TLS required, and creates or updates
-   the application-only `dari` role. Do not run the SQL from an operator
+   the application-only `dari` role. The task image is pinned to PostgreSQL
+   16.11 so its client cannot change between identical task definitions. It
+   grants `dari` to the RDS master before `CREATE DATABASE ... OWNER dari`:
+   RDS's `rds_superuser` has `CREATEROLE`/`CREATEDB` but is not a PostgreSQL
+   superuser, so it cannot otherwise SET ROLE to the new owner. RDS permits
+   its allow-listed `postgis` and `pgcrypto` extensions to that master; the
+   offline proof differs by installing those extensions in `template1` as the
+   container superuser before it switches to a non-superuser master. Do not
+   run the SQL from an operator
    machine and do not give the application the master credentials.
    ```bash
    cd infra/terraform/production
@@ -807,8 +819,10 @@ The owner performs these steps, in order:
    second run is the idempotence check and should only report already-existing
    extensions. The API subsequently connects only as `dari`.
    The offline equivalent is `bash infra/prod-smoke/bootstrap-check.sh`; it
-   starts and removes its own throwaway PostGIS container, runs the script
-   twice, then verifies that `dari` can perform Flyway-style DDL.
+   starts and removes its own throwaway PostGIS container, proves the old
+   owner assignment fails under a non-superuser master, runs the script twice,
+   then verifies that `dari` can perform Flyway-style DDL with a password
+   containing a space and quote.
 6. Add the ACM and SES DKIM records from Terraform outputs when no Route 53
    zone was supplied. Request SES production access and create SPF/DMARC
    records manually.
