@@ -36,48 +36,46 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
     private ListingSearchRepository search;
 
     private User owner;
+    private String testCity;
+    private double testLatitude;
+    private double testLongitude;
 
     @BeforeEach
     void setUp() {
-        // The integration container is shared across test classes; isolate the
-        // public search dataset without touching drafts or other lifecycle states.
-        jdbc.update("""
-                DELETE FROM listings
-                WHERE status = 'PUBLISHED'
-                  AND availability_state = 'AVAILABLE'
-                  AND deleted_at IS NULL
-                """);
-
         String uid = "uid-opt-" + UUID.randomUUID().toString().substring(0, 8);
         owner = users.save(new User(uid, uid + "@example.ma", true, "Opt Owner"));
+        testCity = "Optimization-" + uid;
+        // This test shares its database with the whole suite. Its data must be
+        // distinguishable without deleting published listings created elsewhere.
+        int coordinateOffset = Math.floorMod(UUID.randomUUID().hashCode(), 10_000);
+        testLatitude = 20.0 + coordinateOffset / 1_000_000.0;
+        testLongitude = -20.0 - coordinateOffset / 1_000_000.0;
     }
 
     @Test
     @DisplayName("radius search returns listings within distance")
     void radiusSearchReturnsWithinDistance() {
-        // Seed listings around Rabat
+        // Seed listings around this test's isolated search origin.
         seedListingsAroundRabat(20);
 
-        // Execute radius search: 5km around city center
-        double rabatLat = 34.0209;  // Rabat center
-        double rabatLng = -6.8416;
+        // Execute radius search: 5km around the isolated origin.
         int radiusM = 5000;
 
         List<RadiusListingProjection> radiusRows = search.searchByRadiusPaginated(
-                rabatLat, rabatLng, radiusM,
+                testLatitude, testLongitude, radiusM,
                 null, null,
                 null, null, null, null, null, null, null, 0,
                 21
         );
 
-        List<Listing> results = hydrate(radiusRows);
+        List<Listing> results = ownListings(hydrate(radiusRows));
         // Verify results are within radius
         assertThat(results).isNotEmpty();
         assertThat(results.size()).isLessThanOrEqualTo(20);
         
         // Verify all results are closer than the radius
         for (Listing l : results) {
-            double distance = haversineMiles(rabatLat, rabatLng, l.getLatitude(), l.getLongitude()) * 1609.344;
+            double distance = haversineMiles(testLatitude, testLongitude, l.getLatitude(), l.getLongitude()) * 1609.344;
             assertThat(distance).isLessThanOrEqualTo(radiusM + 100);  // Allow small tolerance
         }
     }
@@ -90,7 +88,7 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
             Listing l = new Listing(
                     owner,
                     "Listing Rabat " + i,
-                    "Rabat",
+                    testCity,
                     "Agdal",
                     34.0209 + (i * 0.001),
                     -6.8416 + (i * 0.001),
@@ -105,7 +103,7 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
         Listing casablanca = new Listing(
                 owner,
                 "Listing Casablanca",
-                "Casablanca",
+                testCity + "-Other",
                 "Maarif",
                 33.5731,
                 -7.5898,
@@ -115,13 +113,13 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
         );
         listings.saveAndFlush(casablanca);
 
-        // Search Rabat only
+        // Search only the city created for this test.
         List<Listing> rabatResults = search.searchByLocationPaginated(
-                "Rabat", null, null, null, null, null, null, null, null, 0, 100
+                testCity, null, null, null, null, null, null, null, null, 0, 100
         );
 
         assertThat(rabatResults.size()).isEqualTo(15);
-        assertThat(rabatResults).allMatch(l -> l.getCity().equals("Rabat"));
+        assertThat(rabatResults).allMatch(l -> l.getCity().equals(testCity));
     }
 
     @Test
@@ -132,7 +130,7 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
             Listing l = new Listing(
                     owner,
                     "Stable Listing " + i,
-                    "Rabat",
+                    testCity,
                     "Agdal",
                     34.0209 + (i * 0.0001),
                     -6.8416 + (i * 0.0001),
@@ -145,14 +143,14 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
 
         // Get first page
         List<Listing> page1 = search.searchByLocationPaginated(
-                "Rabat", null, null, null, null, null, null, null, null, 0, 11
+                testCity, null, null, null, null, null, null, null, null, 0, 11
         );
         assertThat(page1).hasSize(11);
 
         // Get second page using cursor
         var lastListing = page1.get(10);
         List<Listing> page2 = search.searchByLocationWithCursor(
-                "Rabat", null, null, null, null, null, null, null, null, 0,
+                testCity, null, null, null, null, null, null, null, null, 0,
                 java.time.OffsetDateTime.ofInstant(lastListing.getCreatedAt(), java.time.ZoneId.systemDefault()), 
                 lastListing.getId(),
                 11
@@ -175,7 +173,7 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
             Listing l = new Listing(
                     owner,
                     "Price " + price,
-                    "Rabat",
+                    testCity,
                     "Agdal",
                     34.0209,
                     -6.8416,
@@ -188,7 +186,7 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
 
         // Filter by price range
         List<Listing> expensive = search.searchByLocationPaginated(
-                "Rabat", null,
+                testCity, null,
                 BigDecimal.valueOf(3000), null,
                 null, null, null,
                 null, null, 0,
@@ -205,8 +203,8 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
         // Seed listings around Rabat
         seedListingsAroundRabat(10);
 
-        double centerLat = 34.0209;
-        double centerLng = -6.8416;
+        double centerLat = testLatitude;
+        double centerLng = testLongitude;
 
         // Get distance-sorted results
         List<RadiusListingProjection> radiusRows = search.searchByRadiusPaginated(
@@ -217,7 +215,7 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
                 100
         );
 
-        List<Listing> results = hydrate(radiusRows);
+        List<Listing> results = ownListings(hydrate(radiusRows));
         // Verified against ST_Distance itself, not a Java reimplementation of it.
         //
         // This used to recompute distance with the haversineMiles helper below,
@@ -268,19 +266,25 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
         return rows.stream().map(row -> byId.get(row.getListingId())).toList();
     }
 
+    private List<Listing> ownListings(List<Listing> listingsToFilter) {
+        return listingsToFilter.stream()
+                .filter(listing -> listing.getOwner().getId().equals(owner.getId()))
+                .toList();
+    }
+
     private void seedListingsAroundRabat(int count) {
-        double baseLat = 34.0209;
-        double baseLng = -6.8416;
+        double baseLat = testLatitude;
+        double baseLng = testLongitude;
 
         for (int i = 0; i < count; i++) {
-            // Distribute listings within ~10km radius
-            double offsetLat = (Math.random() - 0.5) * 0.15;  // ~0-15km north/south
-            double offsetLng = (Math.random() - 0.5) * 0.15;  // ~0-15km east/west
+            // A deterministic grid stays within the 5km test radius.
+            double offsetLat = (i % 5 - 2) * 0.005;
+            double offsetLng = (i / 5 - 2) * 0.005;
 
             Listing l = new Listing(
                     owner,
                     "Listing Rabat " + i,
-                    "Rabat",
+                    testCity,
                     "Agdal",
                     baseLat + offsetLat,
                     baseLng + offsetLng,
