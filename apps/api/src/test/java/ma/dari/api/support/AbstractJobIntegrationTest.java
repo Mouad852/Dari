@@ -44,12 +44,21 @@ public abstract class AbstractJobIntegrationTest extends AbstractIntegrationTest
      * Works off every cleanup row other test classes left due, with the real
      * worker, so the 50-row batch a test asserts on is never crowded out by
      * someone else's backlog. Rows that fail are rescheduled into the future
-     * and stop being due, so this terminates.
+     * and stop being due, so this terminates. Do not cap this loop: the shared
+     * database can contain more than 20 batches when test classes run in a
+     * different filesystem order.
      */
     @BeforeEach
     void drainDueMediaCleanup() {
-        for (int run = 0; run < 20 && dueCleanups() > 0; run++) {
+        long due = dueCleanups();
+        while (due > 0) {
             mediaCleanupService.processDue();
+            long remaining = dueCleanups();
+            if (remaining >= due) {
+                throw new IllegalStateException("Media cleanup test isolation made no progress: "
+                        + remaining + " due rows remain");
+            }
+            due = remaining;
         }
     }
 
