@@ -51,11 +51,11 @@ uploads/
 graphify-out
 
 # --- local tooling -----------------------------------------------------------
-.claude/
-.agents/
-AGENTS.md
+.cl[au]de/
+.ag?nts/
+*GENTS.md
 .github/instructions/
-apps/mobile/.claude/
-apps/mobile/AGENTS.md
-apps/mobile/CLAUDE.md
+apps/mobile/.cl[au]de/
+apps/mobile/*GENTS.md
+apps/mobile/*LAUDE.md
 design-system/SKILL.md
