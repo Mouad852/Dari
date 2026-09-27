@@ -1,0 +1,14 @@
+region                    = "eu-west-3"
+web_domain                = "www.example.invalid"
+api_domain                = "api.example.invalid"
+route53_zone_id           = null
+alert_email               = "alerts@example.invalid"
+monthly_budget_amount     = 60
+api_image_tag             = "replace-with-api-git-sha"
+web_image_tag             = "replace-with-web-git-sha"
+backup_account_id         = "000000000000"
+log_retention_days        = 30
+enable_cross_account_backup_copy = false
+backup_destination_vault_arn     = null
+enable_media_replication         = false
+replication_destination_bucket_arn = null
