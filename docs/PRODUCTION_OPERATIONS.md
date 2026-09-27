@@ -759,9 +759,49 @@ Nothing served to browsers (HTML, RSC payloads, sitemap, robots,
 
 ### Build and first deployment
 
-Authenticate Docker to ECR using an AWS CLI profile that the operator has
-already configured, then build and push an immutable image tag derived from
-the checked-out commit. Never retag an already released SHA.
+The reviewed infrastructure is `infra/terraform/bootstrap` followed by
+`infra/terraform/production`. Terraform owns the network, certificates, ALB,
+RDS, ECR, ECS, media CDN, SSM placeholders, IAM, Backup, budgets, Route 53,
+SES identity and all six CloudWatch alarms. Never run `terraform destroy` in
+production; deletion protection and the versioned state bucket are deliberate
+recovery controls.
+
+The owner performs these steps, in order:
+
+1. Choose the AWS region after the counsel/data-residency decision, create the
+   AWS account budget, and configure an operator profile. AWS account access,
+   DNS registrar access, SES production access and the backup account are
+   manual prerequisites.
+2. Apply `infra/terraform/bootstrap` once with `bootstrap.tfvars`; initialize
+   the production stack with the resulting bucket, region and
+   `use_lockfile=true` backend. Keep state-bucket access limited to operators.
+3. Copy `production.tfvars.example`, set the owner values and run
+   `terraform plan`. Review that there are two public and two private
+   subnets, no NAT gateway, one task per service, public ALB-only ingress,
+   private RDS, 35-day retention, deletion protection, immutable ECR tags,
+   placeholder-only SSM values, the daily Backup rule, and no unexpected
+   public security-group rule.
+4. Apply the first plan with `api_image_tag` and `web_image_tag` set to
+   placeholders and both ECS services scaled to zero in a temporary reviewed
+   plan (or before images exist). This creates the dependencies without a
+   failing deployment. Restore desired count to one only after images exist.
+5. Set every SSM SecureString value out of band, including the Firebase JSON,
+   and run `sql/bootstrap.sql` as the RDS master user. The application then
+   connects only as role `dari`.
+6. Add the ACM and SES DKIM records from Terraform outputs when no Route 53
+   zone was supplied. Request SES production access and create SPF/DMARC
+   records manually.
+7. Build and push both images under the checked-out git SHA. For the web image,
+   pass public/legal values as build arguments and `DARI_SSR_SHARED_SECRET`
+   only as a BuildKit secret; never put the secret in an ARG, ENV or image
+   layer. Apply Terraform again with both SHA tags.
+8. Check ALB target readiness, `/actuator/health/liveness`, `/actuator/info`,
+   the web manifest, CloudWatch logs, and a real media upload. Run
+   `infra/prod-smoke/rehearsal-check.sh` against the production endpoints.
+9. Confirm the six alarms and SNS subscriptions, perform the alert drill, and
+   complete every row in `docs/LAUNCH_REHEARSAL.md` before opening traffic.
+
+The image build and push command is:
 
 ```bash
 git_sha="$(git rev-parse --verify HEAD)"
@@ -769,33 +809,28 @@ aws ecr get-login-password --region "$AWS_REGION" | \
   docker login --username AWS --password-stdin "$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com"
 docker build -t "$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/dari-api:$git_sha" apps/api
 docker push "$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com/dari-api:$git_sha"
+# Build apps/web with the Dockerfile's --secret mount and push the same SHA.
 ```
 
-Provision the network, ACM certificate, ALB, RDS, S3/CloudFront, ECR,
-Parameter Store entries, IAM permissions, ECS cluster, task definition, and
-service using reviewed infrastructure configuration. Register the image SHA in
-a new task-definition revision, with `DARI_RELEASE_VERSION` set to the **same**
-`$git_sha` in its environment, and deploy the service. The version is not baked
-into the image, and production refuses to start without it (or with `latest`
-or `development`); every error report is tagged with it and
-`/actuator/info` shows it (`{"release":{"version":"<sha>"}}`), so after a
-deploy or rollback `curl -fsS https://<api domain>/actuator/info` says which
-image is serving. The API applies Flyway
-migrations on startup; take a verified backup first and allow the new task to
-become ready before draining the old task. Never run `flyway clean` in any
-environment holding production data.
+The API applies Flyway migrations on startup; take a verified backup first and
+allow the new task to become ready before draining the old task. The release
+SHA is not baked into the API image: Terraform sets `DARI_RELEASE_VERSION` and
+the web task sets `NEXT_PUBLIC_RELEASE_VERSION`. Never run `flyway clean` in
+any environment holding production data.
 
 ### Routine deploy and rollback
 
-For each release, build and push a new SHA tag, register a new task-definition
-revision with that exact image and `DARI_RELEASE_VERSION` set to the same SHA,
-update the ECS service, and wait for its deployment to stabilize. Check the ALB readiness target, liveness endpoint,
+For each release, build and push new immutable API and web SHA tags, update the
+two tag variables, run and review `terraform plan`, then apply. Wait for ECS
+deployment stabilization and check the ALB readiness target, liveness endpoint,
 application logs, and a real media upload before declaring the release good.
 
-If the release fails, select the previous known-good ECS task-definition
-revision and update the service back to it. Confirm target health and user
-flows after rollback. Database migrations are forward-only: do not use
-`flyway clean`, and do not roll back schema by deleting migration history.
+If the release fails, set both image-tag variables to the previous known-good
+SHA, review the plan, and apply. Confirm target health and user flows after
+rollback. Database migrations are forward-only: do not use `flyway clean`, and
+do not roll back schema by deleting migration history. Never delete or replace
+the production state bucket; restore state only through the owner's reviewed
+backend recovery process.
 Prepare a compensating migration only when a rollback cannot safely run
 against the migrated schema.
 
