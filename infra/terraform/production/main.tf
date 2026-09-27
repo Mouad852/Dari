@@ -163,11 +163,7 @@ resource "aws_security_group" "web" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-#checkov:skip=CKV_AWS_23:The RDS ingress is restricted to the API security group; egress is required by the managed service.
-#checkov:skip=CKV_AWS_382:RDS security-group egress follows the managed-service default in Option A.
 resource "aws_security_group" "rds" {
-  #checkov:skip=CKV_AWS_23:The RDS ingress is restricted to the API security group; egress is required by the managed service.
-  #checkov:skip=CKV_AWS_382:RDS security-group egress follows the managed-service default in Option A.
   name   = "${local.name}-rds"
   vpc_id = aws_vpc.main.id
   ingress {
@@ -176,12 +172,55 @@ resource "aws_security_group" "rds" {
     protocol        = "tcp"
     security_groups = [aws_security_group.api.id]
   }
+  # RDS security groups are stateful. The database never initiates a connection,
+  # so this deliberately removes the AWS default unrestricted egress rule.
+  egress = []
+}
+
+resource "aws_security_group" "db_bootstrap" {
+  name   = "${local.name}-db-bootstrap"
+  vpc_id = aws_vpc.main.id
+
+  # The task needs a public HTTPS path only for image pull, secret injection and
+  # CloudWatch Logs in the no-NAT Option A layout. Database traffic is separately
+  # limited to the private RDS security group.
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "AWS service endpoints"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  egress {
+    description     = "Private RDS bootstrap connection"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.rds.id]
+  }
+  egress {
+    description = "VPC DNS"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+  egress {
+    description = "VPC DNS over TCP"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "rds_db_bootstrap" {
+  description                  = "One-off database bootstrap task"
+  security_group_id            = aws_security_group.rds.id
+  referenced_security_group_id = aws_security_group.db_bootstrap.id
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
 }
 
 resource "aws_kms_key" "data" {
@@ -389,6 +428,11 @@ resource "aws_cloudwatch_log_group" "web" {
   retention_in_days = var.log_retention_days
   kms_key_id        = aws_kms_key.data.arn
 }
+resource "aws_cloudwatch_log_group" "db_bootstrap" {
+  name              = "/ecs/dari-db-bootstrap"
+  retention_in_days = var.log_retention_days
+  kms_key_id        = aws_kms_key.data.arn
+}
 #checkov:skip=CKV_AWS_65:Container Insights is disabled to keep the single-task Option A footprint minimal.
 resource "aws_ecs_cluster" "main" {
   #checkov:skip=CKV_AWS_65:Container Insights is disabled to keep the single-task Option A footprint minimal.
@@ -408,8 +452,9 @@ resource "aws_iam_role_policy" "execution" {
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["ecr:GetAuthorizationToken"], Resource = "*" },
     { Effect = "Allow", Action = ["ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"], Resource = [aws_ecr_repository.api.arn, aws_ecr_repository.web.arn] },
-    { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = ["${aws_cloudwatch_log_group.api.arn}:*", "${aws_cloudwatch_log_group.web.arn}:*"] },
+    { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = ["${aws_cloudwatch_log_group.api.arn}:*", "${aws_cloudwatch_log_group.web.arn}:*", "${aws_cloudwatch_log_group.db_bootstrap.arn}:*"] },
     { Effect = "Allow", Action = ["ssm:GetParameters"], Resource = [for p in aws_ssm_parameter.secret : p.arn] },
+    { Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = aws_db_instance.dari.master_user_secret[0].secret_arn },
     { Effect = "Allow", Action = ["kms:Decrypt"], Resource = aws_kms_key.data.arn }
   ] })
 }
@@ -629,6 +674,53 @@ resource "aws_ecs_task_definition" "web" {
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = aws_iam_role.execution.arn
   container_definitions    = jsonencode([{ name = "web", image = "${aws_ecr_repository.web.repository_url}:${var.web_image_tag}", essential = true, portMappings = [{ containerPort = 3000, protocol = "tcp" }], environment = local.web_environment, secrets = [{ name = "DARI_SSR_SHARED_SECRET", valueFrom = aws_ssm_parameter.secret["DARI_SSR_SHARED_SECRET"].arn }], stopTimeout = 75, healthCheck = { command = ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/manifest.webmanifest').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""], interval = 30, timeout = 5, retries = 3, startPeriod = 120 }, logConfiguration = { logDriver = "awslogs", options = { "awslogs-group" = aws_cloudwatch_log_group.web.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "web" } } }])
+}
+
+resource "aws_ecs_task_definition" "db_bootstrap" {
+  family                   = "dari-db-bootstrap"
+  cpu                      = 256
+  memory                   = 512
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  execution_role_arn       = aws_iam_role.execution.arn
+
+  container_definitions = jsonencode([{
+    name       = "db-bootstrap"
+    image      = "postgres:16"
+    essential  = true
+    entryPoint = ["sh", "-ec"]
+    environment = [
+      { name = "DB_HOST", value = aws_db_instance.dari.address },
+      { name = "DB_PORT", value = "5432" }
+    ]
+    # ECS injects these only at container startup. The password for `dari` is
+    # written to psql's standard input, never into an argument or task log.
+    secrets = [
+      { name = "DB_MASTER_USERNAME", valueFrom = "${aws_db_instance.dari.master_user_secret[0].secret_arn}:username::" },
+      { name = "DB_MASTER_PASSWORD", valueFrom = "${aws_db_instance.dari.master_user_secret[0].secret_arn}:password::" },
+      { name = "DARI_ROLE_PASSWORD", valueFrom = aws_ssm_parameter.secret["POSTGRES_PASSWORD"].arn }
+    ]
+    command = [format(<<-EOT
+      set -eu
+      export PGPASSWORD="$DB_MASTER_PASSWORD"
+      {
+        printf '\\set dari_password %%s\\n' "$DARI_ROLE_PASSWORD"
+        cat <<'SQL'
+      %s
+      SQL
+      } | psql "host=$DB_HOST port=$DB_PORT dbname=postgres user=$DB_MASTER_USERNAME sslmode=require" --set=ON_ERROR_STOP=1
+      unset PGPASSWORD DB_MASTER_PASSWORD DARI_ROLE_PASSWORD
+      EOT
+    , file("${path.module}/sql/bootstrap.sql"))]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.db_bootstrap.name
+        "awslogs-region"        = var.region
+        "awslogs-stream-prefix" = "bootstrap"
+      }
+    }
+  }])
 }
 #checkov:skip=CKV_AWS_333:Option A intentionally assigns public IPs to Fargate tasks because there is no NAT gateway.
 resource "aws_ecs_service" "api" {

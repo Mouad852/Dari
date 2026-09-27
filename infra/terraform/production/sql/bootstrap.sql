@@ -1,9 +1,13 @@
--- Run once by the owner as the RDS master user, before the API starts.
--- Passwords are intentionally omitted; set the role password out of band and
--- put the same value in the POSTGRES_PASSWORD SSM parameter.
--- RDS is provisioned without db_name so this owner-run script can create it.
-CREATE ROLE dari LOGIN;
-CREATE DATABASE dari OWNER dari;
+-- Standard input supplies psql variable `dari_password`; it is never logged.
+-- RDS is provisioned without db_name so this master-user script creates it.
+SELECT format('CREATE ROLE dari LOGIN PASSWORD %L', :'dari_password')
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'dari')
+\gexec
+SELECT format('ALTER ROLE dari LOGIN PASSWORD %L', :'dari_password')
+\gexec
+SELECT 'CREATE DATABASE dari OWNER dari'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'dari')
+\gexec
 \connect dari
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;

@@ -786,9 +786,29 @@ The owner performs these steps, in order:
    This creates the dependencies without asking ECS to pull missing images.
    Restore `service_desired_count=1` only after both images exist; the normal
    Option A invariant is exactly one task per service.
-5. Set every SSM SecureString value out of band, including the Firebase JSON,
-   and run `sql/bootstrap.sql` as the RDS master user. The application then
-   connects only as role `dari`.
+5. Set every SSM SecureString value out of band, including the Firebase JSON.
+   Then run the one-off `db-bootstrap` task below. It reads the RDS-managed
+   master secret and the `POSTGRES_PASSWORD` SSM parameter, runs the
+   idempotent `sql/bootstrap.sql` with TLS required, and creates or updates
+   the application-only `dari` role. Do not run the SQL from an operator
+   machine and do not give the application the master credentials.
+   ```bash
+   cd infra/terraform/production
+   cluster="$(terraform output -raw ecs_cluster_arn)"
+   task="$(terraform output -raw db_bootstrap_task_definition_arn)"
+   subnets="$(terraform output -json db_bootstrap_public_subnet_ids | jq -r 'join(",")')"
+   security_group="$(terraform output -raw db_bootstrap_security_group_id)"
+   aws ecs run-task --cluster "$cluster" --task-definition "$task" --launch-type FARGATE \
+     --count 1 --started-by db-bootstrap \
+     --network-configuration "awsvpcConfiguration={subnets=[$subnets],securityGroups=[$security_group],assignPublicIp=ENABLED}"
+   aws logs tail "$(terraform output -raw db_bootstrap_log_group_name)" --follow
+   ```
+   Wait for the task to stop with exit code 0, then run it a second time; the
+   second run is the idempotence check and should only report already-existing
+   extensions. The API subsequently connects only as `dari`.
+   The offline equivalent is `bash infra/prod-smoke/bootstrap-check.sh`; it
+   starts and removes its own throwaway PostGIS container, runs the script
+   twice, then verifies that `dari` can perform Flyway-style DDL.
 6. Add the ACM and SES DKIM records from Terraform outputs when no Route 53
    zone was supplied. Request SES production access and create SPF/DMARC
    records manually.
