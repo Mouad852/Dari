@@ -36,7 +36,9 @@ jobs:
 
   java-dependency-check:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # A cold NVD cache is deliberately allowed to complete once; later runs
+    # restore the local data directory and download only the NVD delta.
+    timeout-minutes: 60
     env:
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
@@ -46,6 +48,13 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      - name: Cache OWASP Dependency-Check data
+        uses: actions/cache@v5
+        with:
+          path: apps/api/.dependency-check-data
+          key: dependency-check-nvd-v13-${{ runner.os }}
+          restore-keys: |
+            dependency-check-nvd-v13-
       - name: Require NVD API key
         run: |
           if [ -z "$NVD_API_KEY" ]; then
@@ -58,6 +67,7 @@ jobs:
           ./mvnw -B -ntp org.owasp:dependency-check-maven:13.0.0:check
           -Dformat=HTML,JSON
           -DoutputDirectory=target/dependency-check
+          -DdataDirectory=.dependency-check-data
           -DfailBuildOnCVSS=7
           -DnvdApiKey="$NVD_API_KEY"
           -DskipTestScope=true
