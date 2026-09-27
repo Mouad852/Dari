@@ -67,8 +67,8 @@ jobs:
         working-directory: apps/api
         run: >-
           ./mvnw -B -ntp org.owasp:dependency-check-maven:13.0.0:check
-          -Dformat=HTML,JSON
-          -DoutputDirectory=target/dependency-check
+          -Dformats=HTML,JSON
+          -DoutputDirectory=target/dependency-check-reports
           -DdataDirectory=.dependency-check-data
           -DfailBuildOnCVSS=7
           -DnvdApiKey="$NVD_API_KEY"
@@ -78,7 +78,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: java-dependency-check-report
-          path: apps/api/target/dependency-check/
+          path: apps/api/target/dependency-check-reports/**
           if-no-files-found: warn
 
   dependency-review:

@@ -57,7 +57,7 @@ public class SecurityConfig {
                         .httpStrictTransportSecurity(hsts -> hsts
                                 .includeSubDomains(true)
                                 .maxAgeInSeconds(31536000))
-                        .permissionsPolicy(permissions -> permissions
+                        .permissionsPolicyHeader(permissions -> permissions
                                 .policy("camera=(), microphone=(), geolocation=()")))
                 // Chain-level rejections must carry the same envelope as every
                 // other error. The defaults are a bodyless 403 for both cases.

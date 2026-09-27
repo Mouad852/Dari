@@ -13,7 +13,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.6</version>
+        <version>3.5.16</version>
         <relativePath/>
     </parent>
 
@@ -28,7 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Versions the Boot parent does not manage. -->
-        <firebase-admin.version>9.4.3</firebase-admin.version>
+        <firebase-admin.version>9.11.0</firebase-admin.version>
         <jts.version>1.20.0</jts.version>
         <shedlock.version>6.3.0</shedlock.version>
         <archunit.version>1.4.0</archunit.version>
