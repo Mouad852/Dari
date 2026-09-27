@@ -2,6 +2,13 @@ import path from 'node:path';
 
 import { defineConfig, devices } from '@playwright/test';
 
+const developmentWebPort = Number(process.env.E2E_WEB_PORT ?? 3110);
+const developmentMockPort = Number(process.env.E2E_MOCK_PORT ?? 4110);
+const productionWebPort = Number(process.env.E2E_PRODUCTION_WEB_PORT ?? 3111);
+const productionMockPort = Number(process.env.E2E_PRODUCTION_MOCK_PORT ?? 4443);
+const developmentWeb = `http://127.0.0.1:${developmentWebPort}`;
+const developmentMock = `http://127.0.0.1:${developmentMockPort}`;
+
 const legalPlaceholders = {
   DARI_LEGAL_ENTITY_NAME: 'Dari E2E',
   DARI_LEGAL_ADDRESS: 'E2E only',
@@ -17,10 +24,10 @@ const legalPlaceholders = {
 };
 
 const safeCiEnv = {
-  API_BASE_URL: 'http://127.0.0.1:4110/api/v1',
-  NEXT_PUBLIC_API_BASE_URL: 'http://127.0.0.1:4110/api/v1',
-  NEXT_PUBLIC_SITE_URL: 'http://127.0.0.1:3110',
-  NEXT_PUBLIC_MEDIA_ORIGINS: 'http://127.0.0.1:4110',
+  API_BASE_URL: `${developmentMock}/api/v1`,
+  NEXT_PUBLIC_API_BASE_URL: `${developmentMock}/api/v1`,
+  NEXT_PUBLIC_SITE_URL: developmentWeb,
+  NEXT_PUBLIC_MEDIA_ORIGINS: developmentMock,
   DARI_SSR_SHARED_SECRET: 'e2e-only-ssr-shared-secret-placeholder-value',
   NEXT_PUBLIC_FIREBASE_API_KEY: 'e2e-public-key',
   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: 'e2e.firebaseapp.com',
@@ -46,8 +53,8 @@ const safeCiEnv = {
  *   the browser context sets ignoreHTTPSErrors, to accept that certificate.
  * - The build goes to its own distDir so it can run beside `next dev`'s .next.
  */
-const PRODUCTION_WEB = 'http://127.0.0.1:3111';
-const PRODUCTION_MOCK_PORT = 4443;
+const PRODUCTION_WEB = `http://127.0.0.1:${productionWebPort}`;
+const PRODUCTION_MOCK_PORT = productionMockPort;
 const PRODUCTION_MEDIA = `https://media.example.invalid:${PRODUCTION_MOCK_PORT}`;
 const PRODUCTION_CDN = `https://cdn.example.invalid:${PRODUCTION_MOCK_PORT}`;
 // The mock API also plays the error-tracking ingest endpoint; the key is a placeholder.
@@ -82,7 +89,7 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI ? [['line'], ['html', { outputFolder: 'playwright-report', open: 'never' }]] : 'list',
   use: {
-    baseURL: 'http://127.0.0.1:3110',
+    baseURL: developmentWeb,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -116,14 +123,15 @@ export default defineConfig({
     {
       command: 'node e2e/mock-api.mjs',
       cwd: '..',
-      url: 'http://127.0.0.1:4110/health',
+      url: `${developmentMock}/health`,
       reuseExistingServer: false,
       timeout: 30_000,
+      env: { E2E_MOCK_PORT: String(developmentMockPort) },
     },
     {
-      command: 'npm run dev -- --hostname 127.0.0.1 --port 3110',
+      command: `npm run dev -- --hostname 127.0.0.1 --port ${developmentWebPort}`,
       cwd: '..',
-      url: 'http://127.0.0.1:3110',
+      url: developmentWeb,
       reuseExistingServer: false,
       timeout: 120_000,
       env: safeCiEnv,
@@ -143,7 +151,7 @@ export default defineConfig({
       },
     },
     {
-      command: 'npm run build && npm run start -- --hostname 127.0.0.1 --port 3111',
+      command: `npm run build && npm run start -- --hostname 127.0.0.1 --port ${productionWebPort}`,
       cwd: '..',
       url: PRODUCTION_WEB,
       reuseExistingServer: false,
