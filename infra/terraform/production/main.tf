@@ -15,15 +15,22 @@ locals {
   placeholder = "SET_OUT_OF_BAND_BY_OWNER"
   alarm_files = fileset("${path.module}/../../../infra/aws/alarms", "[0-9][0-9]-*.json")
   alarm_definitions = {
-    for f in local.alarm_files : f => jsondecode(templatefile("${path.module}/../../../infra/aws/alarms/${f}", {
-      SNS_TOPIC_ARN           = aws_sns_topic.alerts.arn
-      SNS_TOPIC_ARN_US_EAST_1 = aws_sns_topic.alerts_us_east_1.arn
-      API_HEALTH_CHECK_ID     = aws_route53_health_check.api.id
-      ALB_ARN_SUFFIX          = "app/dari/${aws_lb.main.id}"
-      BACKUP_VAULT_NAME       = aws_backup_vault.production.name
-      FIVE_XX_RATE_PERCENT    = 5
-      FIVE_XX_MIN_REQUESTS    = 20
-    }))
+    for f in local.alarm_files : f => jsondecode(
+      replace(
+        replace(
+          replace(
+            replace(
+              replace(
+                replace(
+                  replace(templatefile("${path.module}/../../../infra/aws/alarms/${f}", {}), "__SNS_TOPIC_ARN__", aws_sns_topic.alerts.arn),
+                "__SNS_TOPIC_ARN_US_EAST_1__", aws_sns_topic.alerts_us_east_1.arn),
+              "__API_HEALTH_CHECK_ID__", aws_route53_health_check.api.id),
+            "__ALB_ARN_SUFFIX__", aws_lb.main.arn_suffix),
+          "__BACKUP_VAULT_NAME__", aws_backup_vault.production.name),
+        "__FIVE_XX_RATE_PERCENT__", "5"),
+        "__FIVE_XX_MIN_REQUESTS__", "20"
+      )
+    )
   }
 }
 
@@ -880,84 +887,42 @@ resource "aws_cloudwatch_metric_alarm" "api_unreachable" {
   alarm_actions       = [aws_sns_topic.alerts_us_east_1.arn]
   ok_actions          = [aws_sns_topic.alerts_us_east_1.arn]
 }
-resource "aws_cloudwatch_metric_alarm" "database_unreachable" {
-  alarm_name          = local.alarm_definitions["03-database-unreachable.json"].AlarmName
-  alarm_description   = local.alarm_definitions["03-database-unreachable.json"].AlarmDescription
-  namespace           = "Dari/Api"
-  metric_name         = "dari.database.reachable.value"
-  statistic           = "Minimum"
-  period              = 60
-  evaluation_periods  = 5
-  datapoints_to_alarm = 5
-  threshold           = local.alarm_definitions["03-database-unreachable.json"].Threshold
-  comparison_operator = "LessThanThreshold"
-  treat_missing_data  = "breaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
-  ok_actions          = [aws_sns_topic.alerts.arn]
-}
-resource "aws_cloudwatch_metric_alarm" "daily_backup_missing" {
-  alarm_name          = local.alarm_definitions["06-daily-backup-missing.json"].AlarmName
-  alarm_description   = local.alarm_definitions["06-daily-backup-missing.json"].AlarmDescription
-  namespace           = "AWS/Backup"
-  metric_name         = "NumberOfBackupJobsCompleted"
-  dimensions          = { BackupVaultName = aws_backup_vault.production.name, ResourceType = "RDS" }
-  statistic           = "Sum"
-  period              = 3600
-  evaluation_periods  = 26
-  datapoints_to_alarm = 26
-  threshold           = local.alarm_definitions["06-daily-backup-missing.json"].Threshold
-  comparison_operator = "LessThanThreshold"
-  treat_missing_data  = "breaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
-  ok_actions          = [aws_sns_topic.alerts.arn]
-}
+resource "aws_cloudwatch_metric_alarm" "regional" {
+  for_each            = { for key, definition in local.alarm_definitions : key => definition if key != "01-api-unreachable.json" }
+  alarm_name          = each.value.AlarmName
+  alarm_description   = each.value.AlarmDescription
+  actions_enabled     = try(each.value.ActionsEnabled, true)
+  alarm_actions       = each.value.AlarmActions
+  ok_actions          = each.value.OKActions
+  namespace           = try(each.value.Namespace, null)
+  metric_name         = try(each.value.MetricName, null)
+  dimensions          = { for dimension in try(each.value.Dimensions, []) : dimension.Name => dimension.Value }
+  statistic           = try(each.value.Statistic, null)
+  period              = try(each.value.Period, null)
+  evaluation_periods  = each.value.EvaluationPeriods
+  datapoints_to_alarm = try(each.value.DatapointsToAlarm, null)
+  threshold           = each.value.Threshold
+  comparison_operator = each.value.ComparisonOperator
+  treat_missing_data  = each.value.TreatMissingData
 
-resource "aws_cloudwatch_metric_alarm" "elevated_5xx" {
-  alarm_name          = local.alarm_definitions["02-elevated-5xx.json"].AlarmName
-  alarm_description   = local.alarm_definitions["02-elevated-5xx.json"].AlarmDescription
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 2
-  datapoints_to_alarm = 2
-  threshold           = 1
-  treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
-  ok_actions          = [aws_sns_topic.alerts.arn]
-  metric_query {
-    id          = "breach"
-    expression  = "IF(MAX([FILL(requests, 0), FILL(target_5xx, 0) + FILL(alb_5xx, 0)]) >= 20 AND 100 * (FILL(target_5xx, 0) + FILL(alb_5xx, 0)) >= 5 * MAX([FILL(requests, 0), FILL(target_5xx, 0) + FILL(alb_5xx, 0)]), 1, 0)"
-    return_data = true
-  }
-}
-resource "aws_cloudwatch_metric_alarm" "outbox_stuck" {
-  alarm_name          = local.alarm_definitions["04-notification-outbox-stuck.json"].AlarmName
-  alarm_description   = local.alarm_definitions["04-notification-outbox-stuck.json"].AlarmDescription
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 1
-  datapoints_to_alarm = 1
-  threshold           = 1
-  treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
-  ok_actions          = [aws_sns_topic.alerts.arn]
-  metric_query {
-    id          = "stuck"
-    expression  = "IF(1 > 0, 1, 0)"
-    return_data = true
-  }
-}
-resource "aws_cloudwatch_metric_alarm" "media_cleanup" {
-  alarm_name          = local.alarm_definitions["05-media-cleanup-failing.json"].AlarmName
-  alarm_description   = local.alarm_definitions["05-media-cleanup-failing.json"].AlarmDescription
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 1
-  datapoints_to_alarm = 1
-  threshold           = 1
-  treat_missing_data  = "notBreaching"
-  alarm_actions       = [aws_sns_topic.alerts.arn]
-  ok_actions          = [aws_sns_topic.alerts.arn]
-  metric_query {
-    id          = "failing"
-    expression  = "IF(1 > 0, 1, 0)"
-    return_data = true
+  dynamic "metric_query" {
+    for_each = try(each.value.Metrics, [])
+    content {
+      id          = metric_query.value.Id
+      label       = try(metric_query.value.Label, null)
+      return_data = metric_query.value.ReturnData
+      expression  = try(metric_query.value.Expression, null)
+      dynamic "metric" {
+        for_each = try(metric_query.value.MetricStat, null) == null ? [] : [metric_query.value.MetricStat]
+        content {
+          metric_name = metric.value.Metric.MetricName
+          namespace   = metric.value.Metric.Namespace
+          period      = metric.value.Period
+          stat        = metric.value.Stat
+          dimensions  = { for dimension in try(metric.value.Metric.Dimensions, []) : dimension.Name => dimension.Value }
+        }
+      }
+    }
   }
 }
 
