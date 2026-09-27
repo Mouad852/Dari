@@ -1,7 +1,7 @@
 package ma.dari.api.support;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import ma.dari.api.support.CapturingCloudWatchClient.PublishedMetric;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -127,7 +127,7 @@ class AlarmDefinitionsTest {
 
     private static List<String> shapeProblems(JsonNode alarm) {
         List<String> problems = new ArrayList<>();
-        alarm.fieldNames().forEachRemaining(field -> {
+        alarm.propertyNames().forEach(field -> {
             if (!PARAMETERS.contains(field)) problems.add("unknown parameter " + field);
         });
 
@@ -183,7 +183,7 @@ class AlarmDefinitionsTest {
         Set<Integer> periods = new HashSet<>();
         int returned = 0;
         for (JsonNode query : queries) {
-            query.fieldNames().forEachRemaining(field -> {
+            query.propertyNames().forEach(field -> {
                 if (!QUERY_FIELDS.contains(field)) problems.add("unknown MetricDataQuery field " + field);
             });
             if (!QUERY_ID.matcher(query.path("Id").asText()).matches()) problems.add("bad query Id");

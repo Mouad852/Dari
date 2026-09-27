@@ -1,7 +1,7 @@
 package ma.dari.api.common.pagination;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import ma.dari.api.common.error.ApiException;
 import ma.dari.api.common.error.ErrorCode;
 

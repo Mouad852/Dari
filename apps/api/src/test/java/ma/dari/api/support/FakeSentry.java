@@ -1,7 +1,7 @@
 package ma.dari.api.support;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -147,11 +147,7 @@ public final class FakeSentry implements AutoCloseable {
     }
 
     private static JsonNode parse(String line) {
-        try {
-            return JSON.readTree(line);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return JSON.readTree(line);
     }
 
     @Override

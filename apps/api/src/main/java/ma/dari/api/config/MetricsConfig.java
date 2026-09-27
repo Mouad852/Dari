@@ -11,9 +11,9 @@ import ma.dari.api.moderation.ReportRepository;
 import ma.dari.api.moderation.ReportStatus;
 import ma.dari.api.notification.NotificationOutboxRepository;
 import ma.dari.api.notification.NotificationOutboxStatus;
-import org.springframework.boot.actuate.health.HealthContributorRegistry;
-import org.springframework.boot.actuate.health.HealthIndicator;
-import org.springframework.boot.actuate.health.Status;
+import org.springframework.boot.health.contributor.HealthIndicator;
+import org.springframework.boot.health.contributor.Status;
+import org.springframework.boot.health.registry.HealthContributorRegistry;
 import org.springframework.context.annotation.Configuration;
 
 /**

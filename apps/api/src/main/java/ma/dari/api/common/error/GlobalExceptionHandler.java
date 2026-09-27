@@ -1,6 +1,6 @@
 package ma.dari.api.common.error;
 
-import com.fasterxml.jackson.databind.JsonMappingException;
+import tools.jackson.core.JacksonException;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -77,8 +77,8 @@ public class GlobalExceptionHandler {
     ResponseEntity<ErrorResponse> handleUnreadableRequest(HttpMessageNotReadableException e) {
         Map<String, String> fields = new LinkedHashMap<>();
         Throwable cause = e.getMostSpecificCause();
-        if (cause instanceof JsonMappingException mappingException && !mappingException.getPath().isEmpty()) {
-            String field = mappingException.getPath().get(0).getFieldName();
+        if (cause instanceof JacksonException mappingException && !mappingException.getPath().isEmpty()) {
+            String field = mappingException.getPath().get(0).getPropertyName();
             if (field != null) {
                 fields.put(field, "Valeur invalide");
             }

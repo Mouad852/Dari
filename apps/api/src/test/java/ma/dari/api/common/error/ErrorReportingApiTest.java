@@ -1,6 +1,6 @@
 package ma.dari.api.common.error;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import com.google.firebase.auth.FirebaseToken;
 import io.restassured.response.Response;
 import ma.dari.api.support.AbstractIntegrationTest;
@@ -203,7 +203,7 @@ class ErrorReportingApiTest extends AbstractIntegrationTest {
 
     private static List<String> fieldNames(JsonNode node) {
         List<String> names = new ArrayList<>();
-        node.fieldNames().forEachRemaining(names::add);
+        node.propertyNames().forEach(names::add);
         return names;
     }
 

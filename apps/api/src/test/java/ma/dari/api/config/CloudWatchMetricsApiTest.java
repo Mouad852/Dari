@@ -9,7 +9,7 @@ import ma.dari.api.support.CapturingCloudWatchClient;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
+import org.springframework.boot.micrometer.metrics.test.autoconfigure.AutoConfigureMetrics;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.convention.TestBean;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
@@ -21,11 +21,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * The running application with the production metrics path switched on, and
  * CloudWatch replaced by an in-memory client: what would actually be sent.
  *
- * <p>{@code @AutoConfigureObservability} because Boot's test support otherwise
+ * <p>{@code @AutoConfigureMetrics} because Boot's test support otherwise
  * turns metrics export off, which removes the Prometheus registry; production
  * has both registries behind a composite, and so must this test.
  */
-@AutoConfigureObservability(tracing = false)
+@AutoConfigureMetrics
 @TestPropertySource(properties = {
         "dari.metrics.cloudwatch.enabled=true",
         "dari.metrics.cloudwatch.region=eu-west-3"

@@ -3,7 +3,7 @@ package ma.dari.api.support;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.actuate.health.HealthEndpointGroups;
+import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroups;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
