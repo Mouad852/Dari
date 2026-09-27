@@ -340,7 +340,7 @@ static final List<Hood> HOODS = List.of(
 );
 ```
 
-Take the neighborhood names from `flows/listing-creation/Listing Wizard.dc.html` — the `HOODS` constant there is the product's current list.
+Take the neighborhood names from `design-system/prototypes/listing-creation/Listing Wizard.dc.html` — the `HOODS` constant there is the product's current list.
 
 Target distribution across 10 000 rows: roughly 60% `PUBLISHED`+`AVAILABLE`, 15% `PENDING_REVIEW`, 10% `PUBLISHED`+`ROOM_FOUND`, 8% `DRAFT`, 5% `SUSPENDED`, 2% soft-deleted. The non-searchable 40% is the point — it is what proves the invariant holds.
 

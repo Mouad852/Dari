@@ -8,7 +8,7 @@ It comes after the risk spikes because it is **breadth, not risk**. It is a larg
 
 It comes before moderation because moderation needs something to moderate. After this phase, listings can reach `PENDING_REVIEW` — and then stop, because nothing can approve them yet. That is the correct seam: phase 06 opens the gate.
 
-This phase has an unusual advantage: **the wizard already exists as a working prototype**, at desktop and mobile widths, with real state logic. `flows/listing-creation/Listing Wizard.dc.html` is a specification, not a sketch — it defines all 8 steps, the field-level behavior and the responsive transformations. Read it before writing the API, because it encodes product decisions the design doc does not.
+This phase has an unusual advantage: **the wizard already exists as a working prototype**, at desktop and mobile widths, with real state logic. `design-system/prototypes/listing-creation/Listing Wizard.dc.html` is a specification, not a sketch — it defines all 8 steps, the field-level behavior and the responsive transformations. Read it before writing the API, because it encodes product decisions the design doc does not.
 
 ## Tasks
 
@@ -36,7 +36,7 @@ This phase has an unusual advantage: **the wizard already exists as a working pr
 - [x] Lifecycle actions ignore soft-deleted listings: submit, mark-room-found, and reopen now use the same active-owner lookup as other listing mutations.
 
 **Frontend**
-- [ ] Port the wizard from prototype to production React, all 8 steps — **the live wizard has 6 condensed steps** (`Annonce`, `Pièces`, `Chambre`, `Règles`, `Photos`, `Validation`), not the prototype's 8. It has never been checked against `flows/listing-creation/Listing Wizard.dc.html` for full parity, though two steps do match the prototype's own fields closely: Règles (added 2026-09-06 — smoking/pets/guests switches, quiet-hours range, free-text other rules) and Pièces (added 2026-09-08 — a card per room with type select, an "offered" toggle that is mutually exclusive across rooms exactly like the prototype's `setOffered`, a shared-space switch, and a free-text description, plus quick-add chips per room type).
+- [ ] Port the wizard from prototype to production React, all 8 steps — **the live wizard has 6 condensed steps** (`Annonce`, `Pièces`, `Chambre`, `Règles`, `Photos`, `Validation`), not the prototype's 8. It has never been checked against `design-system/prototypes/listing-creation/Listing Wizard.dc.html` for full parity, though two steps do match the prototype's own fields closely: Règles (added 2026-09-06 — smoking/pets/guests switches, quiet-hours range, free-text other rules) and Pièces (added 2026-09-08 — a card per room with type select, an "offered" toggle that is mutually exclusive across rooms exactly like the prototype's `setOffered`, a shared-space switch, and a free-text description, plus quick-add chips per room type).
 - [x] Draft persistence — the wizard loads the owner's latest active draft from `GET /listings/draft`, creates it on the first step transition, and updates it with `PATCH /listings/{id}` before later transitions and final submission. Final publication still uses the existing `POST /listings/{id}/submit` lifecycle action.
 - [x] Map pin drop, centred on the chosen city; **coordinates are never typed** (§3) — `LocationPicker.tsx` is wired into the "Annonce" step (not Leaflet/MapLibre as originally scoped, but the raw lat/long inputs are gone; a manual pair remains collapsed inside the picker for keyboard access).
 - [x] Repeatable room list, with the salon-as-bedroom case working (2026-09-08) — the wizard's new "Pièces" step (step 2 of 6, between Annonce and Chambre) lets an owner add/remove rooms by type, mark exactly one as the room actually offered (a SALON can be it — that's the salon-as-bedroom case, and the toggle enforces the exclusivity client-side the same way the prototype's `setOffered` does), mark a room shared, and add a free-text description. Verified end to end against a real published listing, not just the API: three rooms saved (one offered/not shared, two shared, one with a real description), confirmed in the database, and confirmed to reload correctly when the listing is reopened in the wizard.
@@ -66,7 +66,7 @@ The public detail page now consumes the richer `PublicListingDetailResponse`, in
 
 - Phases 01–03; phase 02's lifecycle machine especially
 - Design doc §3 (all listing tables), §4 editing rules, §7 Listings
-- **`flows/listing-creation/` — the wizard prototype, in full**, including the responsive sheet and the `HOODS`, `ROOM_TYPES` and `AMENITIES` constants
+- **`design-system/prototypes/listing-creation/` — the wizard prototype, in full**, including the responsive sheet and the `HOODS`, `ROOM_TYPES` and `AMENITIES` constants
 - Design system: `forms/`, `core/`, `listings/ListingCard`
 
 ## Done looks like

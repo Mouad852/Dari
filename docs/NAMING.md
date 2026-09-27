@@ -224,7 +224,7 @@ Found while writing this. Where two sources disagree, the design doc wins,
 because it is the one the schema is built from.
 
 **1. The wizard prototype uses French keys.**
-`flows/listing-creation/Listing Wizard.dc.html` has room types keyed
+`design-system/prototypes/listing-creation/Listing Wizard.dc.html` has room types keyed
 `'chambre'`, `'salon'`, `'cuisine'`, `'sdb'`, `'terrasse'`, `'rangement'`, and
 amenities keyed `'lave'`, `'menage'`, `'entree'`, `'meuble'`, `'gardien'`.
 

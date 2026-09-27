@@ -4,7 +4,7 @@ Implementation guide for [`05-listing-creation.md`](../05-listing-creation.md).
 
 The largest phase. If it needs splitting, the seam is **backend write model first, wizard second** — the API is testable without the wizard, the wizard is useless without the API.
 
-**Read `flows/listing-creation/Listing Wizard.dc.html` before writing the API.** It is a working prototype, not a sketch, and it encodes product decisions the design doc never states. Its `HOODS`, `ROOM_TYPES` and `AMENITIES` constants are the current product taxonomy.
+**Read `design-system/prototypes/listing-creation/Listing Wizard.dc.html` before writing the API.** It is a working prototype, not a sketch, and it encodes product decisions the design doc never states. Its `HOODS`, `ROOM_TYPES` and `AMENITIES` constants are the current product taxonomy.
 
 ---
 
@@ -301,7 +301,7 @@ Two different response types, not one with conditional fields. A single DTO with
 
 ## 6. The wizard
 
-Port from `flows/listing-creation/Listing Wizard.dc.html`. The prototype's `Component` class holds the complete state shape — read it as the specification.
+Port from `design-system/prototypes/listing-creation/Listing Wizard.dc.html`. The prototype's `Component` class holds the complete state shape — read it as the specification.
 
 ### Step map
 

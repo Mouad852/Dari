@@ -39,7 +39,7 @@ There is a second reason to keep it here. The mobile UI kit is the **most comple
 ## Depends on
 
 - **A stable API** — phases 01–09 substantially complete
-- Mockups: all six screens in `ui_kits/mobile_app/`, plus the wizard's 375px mode in `flows/listing-creation/Listing Wizard Responsive.dc.html`
+- Mockups: all six screens in `ui_kits/mobile_app/`, plus the wizard's 375px mode in `design-system/prototypes/listing-creation/Listing Wizard Responsive.dc.html`
 - Design system tokens and the component visual specifications
 - Design doc §2 mobile rationale
 

@@ -67,7 +67,7 @@ promoted over it:
 All other tokens were byte-identical between the two sessions — the color, spacing, radius,
 elevation, motion and font tokens never drifted.
 
-`flows/listing-creation/` is session 2's wizard with its ten vendored
+`design-system/prototypes/listing-creation/` is session 2's wizard with its ten vendored
 `_ds/dari-design-system-d1bbe248…/` paths per file rewritten to `../../design-system/`.
 No other edit was made to the wizard.
 
