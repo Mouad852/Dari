@@ -51,11 +51,11 @@ uploads/
 graphify-out
 
 # --- local tooling -----------------------------------------------------------
-.cl[au]de/
+.cl[au]ude/
 .ag?nts/
 *GENTS.md
 .github/instructions/
-apps/mobile/.cl[au]de/
+apps/mobile/.cl[au]ude/
 apps/mobile/*GENTS.md
 apps/mobile/*LAUDE.md
 design-system/SKILL.md
