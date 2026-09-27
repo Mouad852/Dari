@@ -122,6 +122,30 @@
             <groupId>com.google.firebase</groupId>
             <artifactId>firebase-admin</artifactId>
             <version>${firebase-admin.version}</version>
+            <exclusions>
+                <!-- Dari only verifies Firebase Auth tokens and never uses these clients. -->
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>google-cloud-storage</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>google-cloud-firestore</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- FirebaseOptions requires Jackson-backed Google HTTP JSON support. It
+             was previously an accidental transitive dependency of Cloud Storage. -->
+        <dependency>
+            <groupId>com.google.http-client</groupId>
+            <artifactId>google-http-client-jackson2</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+        <!-- FirebaseAuth itself exposes paged management APIs backed by GAX. -->
+        <dependency>
+            <groupId>com.google.api</groupId>
+            <artifactId>gax</artifactId>
+            <version>2.85.0</version>
         </dependency>
 
 
