@@ -13,7 +13,8 @@ hosts: `API_BASE_URL=https://api.internal.example.invalid:4443/api/v1`,
 `NEXT_PUBLIC_API_BASE_URL=https://api.public.example.invalid:4443/api/v1`,
 `NEXT_PUBLIC_MEDIA_ORIGINS=https://media.example.invalid:4443,https://cdn.example.invalid:4443`.
 The test-only name resolution and certificate handling are described in
-`apps/web/e2e/playwright.config.ts`. Probe: `node e2e/csp-reproduction.mjs`.
+`apps/web/e2e/playwright.config.ts`. Historical probe:
+`node docs/archive/csp-reproduction.mjs`.
 
 ## Before: per-request nonce with `'strict-dynamic'` (middleware.ts)
 

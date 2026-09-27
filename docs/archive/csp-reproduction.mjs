@@ -7,7 +7,7 @@
  * is the `production` Playwright project; this script is the one-off probe
  * whose output is recorded in docs/archive/phase1-csp-reproduction.md.
  *
- *   node e2e/csp-reproduction.mjs [baseUrl] [comma-separated routes]
+ *   node docs/archive/csp-reproduction.mjs [baseUrl] [comma-separated routes]
  *
  * Test-only: accepts the mock API's self-signed certificate and maps
  * *.example.invalid to loopback, exactly like the production e2e project.
