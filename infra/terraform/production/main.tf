@@ -165,9 +165,11 @@ resource "aws_security_group" "web" {
   }
 }
 resource "aws_security_group" "rds" {
-  name   = "${local.name}-rds"
-  vpc_id = aws_vpc.main.id
+  name        = "${local.name}-rds"
+  description = "Private PostgreSQL access from the Dari API and one-off bootstrap task"
+  vpc_id      = aws_vpc.main.id
   ingress {
+    description     = "PostgreSQL from the API security group"
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
@@ -179,8 +181,10 @@ resource "aws_security_group" "rds" {
 }
 
 resource "aws_security_group" "db_bootstrap" {
-  name   = "${local.name}-db-bootstrap"
-  vpc_id = aws_vpc.main.id
+  #checkov:skip=CKV2_AWS_5:This group is attached by the one-off ECS bootstrap task's awsvpc network configuration.
+  name        = "${local.name}-db-bootstrap"
+  description = "One-off RDS bootstrap task egress"
+  vpc_id      = aws_vpc.main.id
 
   # The task needs a public HTTPS path only for image pull, secret injection and
   # CloudWatch Logs in the no-NAT Option A layout. Database traffic is separately
