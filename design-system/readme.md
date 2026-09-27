@@ -9,18 +9,19 @@ Design system for **Dari**, a colocation / room-rental platform for Morocco (Rab
 | Written brand brief (company description, palette direction, typography direction, mobile-first constraint) | **the only source** — pasted into chat, reproduced below |
 | Codebase / repository | none provided |
 | Figma file | none provided |
-| Logo, photography, icon set, font binaries | none provided |
+| Logo | `apps/web/public/logo-mark.png` is the active transparent raster mark |
+| Photography, icon set, font binaries | none provided |
 | Slide deck / template | none provided |
 
 Brief verbatim: *"colocation/room-rental platform in Morocco (Rabat, Casablanca, Marrakech, Tangier). Tone: warm, trustworthy, modern — think Badi (room rental app) restyled with a Moroccan palette instead of cool European fintech tones. Primary palette: warm terracotta/sand as the accent color, off-white/cream background, deep charcoal for text (not pure black). Clean modern sans-serif typography, generous spacing, rounded corners on cards. Mobile-first."*
 
 ### Invented, and awaiting your confirmation
 Because no product source existed, the following are **proposals, not recreations**:
-- **The name "Dari"** (Moroccan Arabic *dar*, "house" → *dari*, "my home"). Swap it if the real brand name differs — it appears in `thumbnail.html`, `ui_kits/website/SiteChrome.jsx`, `guidelines/brand-wordmark.card.html`, `SKILL.md`.
+- **The name "Dari"** (Moroccan Arabic *dar*, "house" → *dari*, "my home"). The supplied mark confirms the name; it also appears in `ui_kits/website/SiteChrome.jsx` and `guidelines/brand-wordmark.card.html`.
 - **Exact hex values, type scale, spacing and radii** — derived from the palette direction, not sampled from a design.
 - **Fonts**: Plus Jakarta Sans (UI + display) and IBM Plex Mono (numerals/refs), both from Google Fonts, standing in for unsupplied binaries.
 - **Icons**: Lucide via CDN.
-- **No logo exists.** The brand is set in plain type wherever a mark would go. Nothing was drawn from memory.
+- **Logo treatment.** The active product mark is the transparent raster at `apps/web/public/logo-mark.png`; vector source artwork has not been supplied.
 - **Copy language is French**, the dominant interface language for Moroccan urban rental products. Arabic / RTL is not yet designed.
 - **No photography.** Every image slot renders a warm `sable-200` placeholder labelled PHOTO.
 
@@ -107,8 +108,6 @@ Because no product source existed, the following are **proposals, not recreation
 | `components/` | Reusable primitives, grouped — see below |
 | `ui_kits/mobile_app/` | Click-through phone app (feed → filters → listing → messages → profile) |
 | `ui_kits/website/` | Desktop marketing site (homepage → results → contact dialog) |
-| `thumbnail.html` | Homepage tile for this design system |
-| `SKILL.md` | Agent-skill front matter for use outside this project |
 
 ### Components
 
