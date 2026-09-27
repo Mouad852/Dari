@@ -597,7 +597,7 @@ locals {
   api_secrets = [for key in ["POSTGRES_USER", "POSTGRES_PASSWORD", "DARI_LOCATION_FUZZ_SECRET", "DARI_SSR_SHARED_SECRET", "DARI_MEDIA_S3_ACCESS_KEY", "DARI_MEDIA_S3_SECRET_KEY", "SMTP_USERNAME", "SMTP_PASSWORD", "DARI_NOTIFICATIONS_FROM", "SENTRY_DSN"] : { name = key, valueFrom = aws_ssm_parameter.secret[key].arn }]
   web_environment = [
     { name = "NEXT_PUBLIC_API_BASE_URL", value = "https://${var.api_domain}/api/v1" },
-    { name = "API_BASE_URL", value = "http://dari-api.internal:8080/api/v1" },
+    { name = "API_BASE_URL", value = "https://${var.api_domain}/api/v1" },
     { name = "NEXT_PUBLIC_SITE_URL", value = "https://${var.web_domain}" },
     { name = "NEXT_PUBLIC_MEDIA_ORIGINS", value = "https://${aws_cloudfront_distribution.media.domain_name}" },
     { name = "NEXT_PUBLIC_RELEASE_VERSION", value = var.web_image_tag },

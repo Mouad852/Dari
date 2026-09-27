@@ -727,7 +727,7 @@ lists them with placeholders.
 | Variable | Exposure | Purpose |
 | --- | --- | --- |
 | `NEXT_PUBLIC_API_BASE_URL` | public, inlined into browser JS | browser → API |
-| `API_BASE_URL` | server only; may be an internal address | Next.js server → API; never used for anything rendered |
+| `API_BASE_URL` | server only; Option A uses the API HTTPS hostname through the ALB because no Cloud Map service is provisioned | Next.js server → API; never used for anything rendered |
 | `NEXT_PUBLIC_MEDIA_ORIGINS` | public | comma-separated HTTPS media origins; the first prefixes root-relative `/uploads/...` paths, absolute S3/CloudFront URLs pass through and their origin must be listed; feeds the CSP `img-src` |
 | `NEXT_PUBLIC_SITE_URL` | public | canonicals, Open Graph, sitemap, robots |
 | `NEXT_PUBLIC_FIREBASE_*` | public by design | Firebase web config; the auth domain feeds CSP `connect-src`/`frame-src` |
@@ -752,8 +752,8 @@ lists is a separate decision for the domain owner and hard to undo. Fonts are
 self-hosted by `next/font`; no font host is allowed or contacted.
 
 `.next/cache/fetch-cache` (Next's server-side data cache) stores the upstream
-URL of each server fetch, so it contains the internal `API_BASE_URL` host. It is
-never served over HTTP; do not publish the `.next` directory as static files.
+URL of each server fetch, so it contains the server-only `API_BASE_URL` host.
+It is never served over HTTP; do not publish the `.next` directory as static files.
 Nothing served to browsers (HTML, RSC payloads, sitemap, robots,
 `.next/static`) contains that host; the production-build e2e project checks it.
 
