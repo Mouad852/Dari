@@ -1,4 +1,14 @@
+#checkov:skip=CKV_AWS_144:Bootstrap state bucket is single-region by design; cross-region replication is a manual recovery decision.
+#checkov:skip=CKV_AWS_145:Bootstrap uses provider-managed AES256 encryption before production KMS exists.
+#checkov:skip=CKV_AWS_18:Bootstrap has no separate log bucket; access is audited through AWS account logs.
+#checkov:skip=CKV2_AWS_61:State history is retained by versioning; a lifecycle expiry would undermine recovery.
+#checkov:skip=CKV2_AWS_62:Terraform state has no event-processing requirement.
 resource "aws_s3_bucket" "terraform_state" {
+  #checkov:skip=CKV_AWS_144:Bootstrap state bucket is single-region by design; cross-region replication is a manual recovery decision.
+  #checkov:skip=CKV_AWS_145:Bootstrap uses provider-managed AES256 encryption before production KMS exists.
+  #checkov:skip=CKV_AWS_18:Bootstrap has no separate log bucket; access is audited through AWS account logs.
+  #checkov:skip=CKV2_AWS_61:State history is retained by versioning; a lifecycle expiry would undermine recovery.
+  #checkov:skip=CKV2_AWS_62:Terraform state has no event-processing requirement.
   bucket = var.state_bucket_name
 }
 
