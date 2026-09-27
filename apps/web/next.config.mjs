@@ -102,6 +102,7 @@ function contentSecurityPolicy() {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: 'standalone',
 
   // Test-only override: the production-build e2e project builds into its own
   // directory so it can run beside the `next dev` project's .next.
