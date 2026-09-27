@@ -27,7 +27,7 @@ This phase has an unusual advantage: **the wizard already exists as a working pr
 - [x] Image validation: type (`jpeg`/`png`/`webp`), size (5 MB max), dimensions (200px min). EXIF is stripped for real — every upload is decoded and re-encoded into a fresh `BufferedImage`, which drops all metadata, not just GPS.
 - [x] `POST /listings/{id}/submit` enforces a non-blank description and at least one active photo before the legal `DRAFT`/`REJECTED` -> `PENDING_REVIEW` transition, with French `VALIDATION_FAILED` responses.
 - [x] **Editing a `PUBLISHED` listing returns it to review** — rule reversed 2026-09-02 at the product
-  owner's direction; `docs/colocation-platform-design.md` §4 updated to match rather than left
+  owner's direction; `docs/product/colocation-platform-design.md` §4 updated to match rather than left
   contradicting the code. `ListingService.update` moves `PUBLISHED` to `PENDING_REVIEW` and leaves every
   other status alone — a `DRAFT` must not be swept into the queue, since the create wizard PATCHes on
   every step. Covered by `ListingApiTest.editingPublishedListingReturnsItToReview`, which asserts both

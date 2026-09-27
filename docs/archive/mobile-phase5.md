@@ -10,7 +10,7 @@
 | Owner listing/photos | Implemented with API constraints | Native draft/edit form, server validation, unsaved-change guard, camera/library permissions, multipart upload progress, photo cover/delete actions, and submit-to-review. Location is entered by the owner; exact coordinates never enter public DTOs. |
 | Profile/account/reporting | Implemented | Profile update/avatar, sign-out, irreversible account deletion confirmation, listing reporting with duplicate-submit protection, and French recovery/error states. |
 | Deep links/offline | Implemented, not run on a device | `dari://listings/{id}` and `dari://messages/{id}` routing, offline detection, and typed timeout/offline/network errors. Push notifications do not exist: the permission prompt and `expo-notifications` were removed in Phase 6 because the API has no device-token contract. |
-| Release readiness | Not built yet | The repository side is in place (production build gate, EAS environments, versioning, splash, crash reporting, legal links); no binary has been built and nothing has run on a device. See [MOBILE_RELEASE.md](MOBILE_RELEASE.md) for the owner steps. |
+| Release readiness | Not built yet | The repository side is in place (production build gate, EAS environments, versioning, splash, crash reporting, legal links); no binary has been built and nothing has run on a device. See the [mobile release guide](../mobile/mobile-release.md) for the owner steps. |
 
 ## Backend gaps intentionally not invented
 
@@ -21,4 +21,4 @@
 
 ## Release/operator checklist
 
-Superseded by [MOBILE_RELEASE.md](MOBILE_RELEASE.md): the account-bound steps in order, the real-device matrix, and draft store declarations. The earlier list here said "Prepared" and told the operator to run `eas build`, which could not work before `eas init`, the EAS environment variables and the Maps key existed.
+Superseded by the [mobile release guide](../mobile/mobile-release.md): the account-bound steps in order, the real-device matrix, and draft store declarations. The earlier list here said "Prepared" and told the operator to run `eas build`, which could not work before `eas init`, the EAS environment variables and the Maps key existed.

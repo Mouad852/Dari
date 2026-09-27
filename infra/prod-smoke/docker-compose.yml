@@ -24,7 +24,7 @@
 #   curl -fsS http://localhost:18080/actuator/health/readiness
 #   docker compose -f infra/prod-smoke/docker-compose.yml down -v
 #
-# See docs/PRODUCTION_OPERATIONS.md, "Production smoke stack".
+# See docs/operations/production-operations.md, "Production smoke stack".
 name: dari-prod-smoke
 
 services:

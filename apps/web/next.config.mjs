@@ -57,7 +57,7 @@ validateProductionConfiguration();
  * A per-request nonce cannot work here: ISR/static HTML is served from cache
  * and cannot carry a fresh nonce, so with 'strict-dynamic' the browser blocked
  * every Next bootstrap script on those routes and they never hydrated
- * (reproduced in Chromium, docs/PHASE1_CSP_REPRODUCTION.md).
+ * (reproduced in Chromium, docs/archive/phase1-csp-reproduction.md).
  *
  * 'unsafe-inline' in script-src is required, not a shortcut: every App Router
  * page carries its flight data in inline <script>self.__next_f.push(...)

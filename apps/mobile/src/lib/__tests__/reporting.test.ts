@@ -11,7 +11,7 @@ jest.mock('@sentry/react-native', () => ({
  * never pass through scrub(), so these options are all that limits them:
  * native capture stays on, no personal data by default, no breadcrumbs, no
  * sessions, no screenshots or view hierarchy, and no user set by Dari. What
- * the native SDKs still add on their own is listed in docs/LEGAL_PREP.md §9.
+ * the native SDKs still add on their own is listed in docs/legal/legal-prep.md §9.
  */
 function startWithDsn(): typeof import('../reporting') {
   process.env.EXPO_PUBLIC_SENTRY_DSN = 'https://publickey@errors.example.invalid/1';

@@ -12,7 +12,7 @@
 #     and a restore that races them can have the server restart under it.
 #   - It drops the extensions the image preinstalls, so the archive recreates
 #     the source database's exact extension state.
-# and adds the checks from docs/PRODUCTION_OPERATIONS.md: row counts for users,
+# and adds the checks from docs/operations/production-operations.md: row counts for users,
 # listings and flyway_schema_history, the published_listings view, one
 # ST_DWithin query, postgis_full_version(), and elapsed seconds per phase. The
 # first real drill's total is the measured RTO for a logical restore.

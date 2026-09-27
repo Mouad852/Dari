@@ -19,7 +19,7 @@ Product terms kept in French: *annonce* (listing), *colocation* (flat share), *p
 
 Dari has two roles: `USER` and `ADMIN` (`db/V2`, line 3). There is no separate moderator role;
 "moderators" below means admins. All tables live in one PostgreSQL 16 + PostGIS database
-(planned: AWS RDS, `docs/PRODUCTION_OPERATIONS.md`, "Target architecture").
+(planned: AWS RDS, `docs/operations/production-operations.md`, "Target architecture").
 
 ### 1.1 Tables and columns holding personal data
 
@@ -57,7 +57,7 @@ reads `User-Agent`).
 
 | Where | What | How long today |
 |---|---|---|
-| Object storage (S3 behind CloudFront in production) | Listing photos and avatars, re-encoded JPEG | Until deleted (§1.3); CDN and browsers may keep a copy up to `max-age=3600` s after deletion (`apps/api/src/main/resources/application.yml:169`; `docs/PRODUCTION_OPERATIONS.md`, "Storage keys, erasure and cache lifetime") |
+| Object storage (S3 behind CloudFront in production) | Listing photos and avatars, re-encoded JPEG | Until deleted (§1.3); CDN and browsers may keep a copy up to `max-age=3600` s after deletion (`apps/api/src/main/resources/application.yml:169`; `docs/operations/production-operations.md`, "Storage keys, erasure and cache lifetime") |
 | API process memory (rate limiter) | Client IP (IPv6 cut to /64) and Firebase uid as counter keys | Minutes to one hour, swept every 5 minutes; never written to disk or logs (`api/common/ratelimit/RateLimitService.java`, `RateLimitEvictionJob.java`; limits in `application.yml:210-239`) |
 | API logs (stdout → CloudWatch Logs in production) | The only log line carrying request data is `api/common/error/GlobalExceptionHandler.java:164`: it includes the request path (which may contain a user or listing UUID) and the full exception, whose message **can contain personal data**. No request bodies, IPs or emails are logged deliberately | CloudWatch log group retention is **not configured anywhere in the repository**: **Cannot verify** |
 | Load balancer and CDN logs | IPs, URLs, user agents, if access logging is enabled | Not configured in the repository: **Cannot verify** |
@@ -102,7 +102,7 @@ soft-deleted, the email written to `banned_identities`, a ban email sent. **Phot
 are not queued for deletion**, so in S3 mode they stay reachable at their URLs, and the person's
 profile data is not scrubbed.
 
-**Backups** (planned, not provisioned; `docs/PRODUCTION_OPERATIONS.md`, "Database backups"): RDS
+**Backups** (planned, not provisioned; `docs/operations/production-operations.md`, "Database backups"): RDS
 automated backups and point-in-time recovery for **35 days**; weekly snapshots kept 12 weeks and
 monthly snapshots kept 12 months, copied to a separate AWS account under Vault Lock; logical dumps
 before each deploy, retention by lifecycle rule. A deleted or scrubbed record therefore survives
@@ -114,7 +114,7 @@ those versions is **not decided**.
 
 ## 2. Processors and international transfers
 
-The AWS region is **not decided**. `docs/PRODUCTION_OPERATIONS.md` ("Production deployment")
+The AWS region is **not decided**. `docs/operations/production-operations.md` ("Production deployment")
 suggests `eu-west-3` (Paris) or `eu-south-2` (Spain) "with the business's data-residency
 obligations in mind". This is a decision for the owner and counsel.
 
@@ -131,7 +131,7 @@ obligations in mind". This is a decision for the owner and counsel.
 | OpenStreetMap Foundation (tile servers) | Map tiles on the web search map and the publish location picker | The visitor's IP, user agent, the origin as referrer, and which tiles are viewed. On the publish picker, tiles at zoom 16 around the owner's exact pin reveal the approximate area of the home (`apps/web/src/components/LocationPicker.tsx:114-116`; `apps/web/src/app/listings/SearchResults.tsx:84-86`) | United Kingdom / OSMF infrastructure: **not verified** |
 | Google (Maps SDK for Android) | Map on the Android app | Device IP, device and app identifiers used by the SDK, the map viewport (`apps/mobile/app/(tabs)/index.tsx`; key injected in `apps/mobile/app.config.ts`) | Google: **Cannot verify** |
 | Apple (MapKit) | Map on the iOS app (no `provider` set, so Apple Maps) | Device IP and map viewport | Apple: **Cannot verify** |
-| Expo / EAS (650 Industries) | Builds the mobile binaries | Source code and signing credentials, **no user data**: the app uses neither `expo-updates` nor push notifications (`apps/mobile/package.json`; `docs/MOBILE_RELEASE.md`) | **Cannot verify** |
+| Expo / EAS (650 Industries) | Builds the mobile binaries | Source code and signing credentials, **no user data**: the app uses neither `expo-updates` nor push notifications (`apps/mobile/package.json`; `docs/mobile/mobile-release.md`) | **Cannot verify** |
 | GitHub | Source hosting and CI | Receives no user data; only source code and synthetic test data | — |
 | Domain registrar, DNS | Not chosen | — | **Not decided** |
 
@@ -214,7 +214,7 @@ For counsel and the owner to choose. Each option notes what it would take in cod
 | Reports and reporter identity | (a) keep (today); (b) anonymise `reporter_id` and `details` N months after resolution | A nightly job; `reviewed_at` already exists (`db/V9`) |
 | Admin actions | (a) keep (today); (b) keep N years as an accountability log | A nightly job on `created_at` |
 | Banned identities | (a) keep indefinitely (today); (b) N years | A nightly job; shortening it lets a banned person re-register sooner |
-| Notification outbox | (a) keep (today); (b) delete `SENT` rows after N days, `DEAD` rows after investigation | A nightly job; the alert on DEAD rows (`docs/PRODUCTION_OPERATIONS.md`, alert 4) must still see them first |
+| Notification outbox | (a) keep (today); (b) delete `SENT` rows after N days, `DEAD` rows after investigation | A nightly job; the alert on DEAD rows (`docs/operations/production-operations.md`, alert 4) must still see them first |
 | Media cleanup rows | (a) keep (today); (b) delete `DELETED` rows after N days | A nightly job; `DEAD` rows are an alert signal and must stay until handled |
 | Banned users' photos | (a) stay reachable (today); (b) queue them for deletion at ban time like account deletion does | A few lines in `AdminService.banUser` |
 | Backups | 35 days RDS, 12 weeks weekly, 12 months monthly (planned policy) | AWS configuration only; shortening is a policy decision with a recovery trade-off |
@@ -274,7 +274,7 @@ Admins approve or reject annonces, dismiss reports, warn, suspend, unsuspend and
 (`api/moderation/AdminService.java`, `AdminController.java`). Every admin action writes an
 `admin_actions` row with the admin's id and free-text reason. Rejection and warning reasons are
 emailed verbatim to the person (`api/notification/OutboxNotificationService.java`). The moderator
-runbook is `docs/MODERATOR_RUNBOOK.md`.
+runbook is `docs/operations/moderator-runbook.md`.
 
 ---
 
@@ -300,7 +300,7 @@ One per line; each with the code fact that raises it.
 
 1. Does Dari's processing require a CNDP declaration or authorisation, and under which lawful basis per purpose? — `DARI_LEGAL_LAWFUL_BASES` is free text and is not displayed (§3.1).
 2. What does Law 09-08 require for transfers to Google (Firebase Authentication, likely US), AWS (region undecided), Sentry (region undecided) and the OpenStreetMap tile servers? — §2.
-3. Should the AWS region be in a particular jurisdiction? — `docs/PRODUCTION_OPERATIONS.md` leaves it open (§2).
+3. Should the AWS region be in a particular jurisdiction? — `docs/operations/production-operations.md` leaves it open (§2).
 4. Must the eight legal values that are required but not displayed (contact, address, registration, jurisdiction, authority, retention, processors, lawful bases) appear on the pages? — `apps/web/src/lib/legal.ts` vs the page files (§3.1).
 5. Is keeping message bodies after one party deletes their account defensible, and for how long? — `api/user/UserController.java:94-98`.
 6. Is keeping reporter identity and report text indefinitely defensible, and for how long? — `reports` has no expiry (§1.3).
@@ -360,4 +360,4 @@ From the upstream sources at those versions:
   the native SDK, `RNSentryModuleImpl.java:263-264`).
 
 None of this has been observed on a real device: the mobile app has not yet been built or run on
-hardware (`docs/MOBILE_RELEASE.md`, "Not verified").
+hardware (`docs/mobile/mobile-release.md`, "Not verified").

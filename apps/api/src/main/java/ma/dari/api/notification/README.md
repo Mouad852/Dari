@@ -12,7 +12,7 @@ The Dari notification delivery system is a **transactional outbox worker** that 
 Delivery is **opt-in in development** (`DARI_NOTIFICATIONS_ENABLED` defaults to `false` in
 `application.yml`) and **opt-out in production** (`application-production.yml` defaults it to `true`,
 and the production startup check refuses to start with it set to `false`). See
-[SMTP_CONFIGURATION.md](../../../../../../../../../SMTP_CONFIGURATION.md) for production setup.
+[docs/operations/smtp-configuration.md](../../../../../../../../../docs/operations/smtp-configuration.md) for production setup.
 
 ## Architecture
 
@@ -160,7 +160,7 @@ SMTP settings live in `application-production.yml`, which maps `SMTP_HOST`, `SMT
 587), `SMTP_USERNAME` and `SMTP_PASSWORD` onto `spring.mail.*`, requires STARTTLS, and bounds the
 connection, read and write timeouts to 10 s each.
 
-See [SMTP_CONFIGURATION.md](../../../../../../../../../SMTP_CONFIGURATION.md) for provider-specific examples.
+See [docs/operations/smtp-configuration.md](../../../../../../../../../docs/operations/smtp-configuration.md) for provider-specific examples.
 
 ## Copy and Content
 

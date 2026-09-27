@@ -3,7 +3,7 @@
 Independent audit of the Dari codebase as it actually runs, not as documentation describes it.
 Conducted against `apps/api`, `apps/web`, `apps/mobile`, the live local PostgreSQL/PostGIS
 database, Flyway migration history, and the existing test suites. TODO.md, README.md,
-ARCHITECTURE.md and the `plans/` guides were used only to understand intent and terminology —
+ARCHITECTURE.md and the `docs/archive/plans/` guides were used only to understand intent and terminology —
 every claim below is backed by a file path, method, route, SQL query, or a command actually run
 during this audit, not by what those documents assert.
 

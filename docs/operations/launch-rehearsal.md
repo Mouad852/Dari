@@ -1,7 +1,7 @@
 # Launch rehearsal
 
 The owner runs this on the **production infrastructure**, before real users arrive, after the
-first deployment described in `docs/PRODUCTION_OPERATIONS.md`. It turns audit sections M.1–M.7,
+first deployment described in `docs/operations/production-operations.md`. It turns audit sections M.1–M.7,
 the alert drill and the first restore drill into one checklist with a place to record each
 result. Nothing here has been run against AWS yet; every row starts empty.
 
@@ -17,7 +17,7 @@ Prerequisites:
   the operator). Use real mailboxes you can read.
 - One published test annonce by the owner, **with a photo**, whose exact coordinates you entered
   yourself (you need them for section 5).
-- The alarms applied ("Applying the alarms (Owner)" in `docs/PRODUCTION_OPERATIONS.md`).
+- The alarms applied ("Applying the alarms (Owner)" in `docs/operations/production-operations.md`).
 
 ---
 
@@ -147,11 +147,11 @@ Before launch or in an announced window: these disturb production.
 | 7.4 | Screen reader (NVDA or VoiceOver): the sort control | Not announced as a tab | | | |
 | 7.5 | Screen reader: receive a message in an open thread | The new message is announced | | | |
 
-`docs/ACCESSIBILITY_MANUAL_CHECKLIST.md` has the longer manual list.
+`docs/product/accessibility-manual-checklist.md` has the longer manual list.
 
 ## 8. Alert drill
 
-Follow "Alert drill" in `docs/PRODUCTION_OPERATIONS.md` for how to cause and clear each one.
+Follow "Alert drill" in `docs/operations/production-operations.md` for how to cause and clear each one.
 Record the three times for each.
 
 | # | Alarm | Triggered at | ALARM email at | OK email at | Operator |
@@ -165,7 +165,7 @@ Record the three times for each.
 
 ## 9. First restore drill (sets the RTO)
 
-The RTO is not measured yet (`docs/PRODUCTION_OPERATIONS.md`, "Restore verification and
+The RTO is not measured yet (`docs/operations/production-operations.md`, "Restore verification and
 disaster recovery"). This drill measures it. Never restore over the running database.
 
 | # | Step | Expected | Date | Result | Operator |
@@ -173,7 +173,7 @@ disaster recovery"). This drill measures it. Never restore over the running data
 | 9.1 | Take a pre-deploy dump (`infra/scripts/backup.sh`, "Pre-deploy dump") and upload it to the backup bucket | Archive and `.sha256` in the bucket, encrypted, under retention | | | |
 | 9.2 | `infra/scripts/restore-drill.sh <archive>` on the operations host | All checks pass; record each phase's seconds | | | |
 | 9.3 | RDS: restore to a point in time into a **new** private instance; run the SQL checks from the same section; delete the instance | Counts match production at that time; record the minutes from request to usable | | | |
-| 9.4 | Copy both measured times into the RTO table in `docs/PRODUCTION_OPERATIONS.md` | Table filled, with date, source size and operator | | | |
+| 9.4 | Copy both measured times into the RTO table in `docs/operations/production-operations.md` | Table filled, with date, source size and operator | | | |
 | 9.5 | Confirm a weekly snapshot copy exists in the backup account's vault | Present, locked | | | |
 
 ## 10. Sign-off
@@ -181,6 +181,6 @@ disaster recovery"). This drill measures it. Never restore over the running data
 | Item | Date | Operator |
 |---|---|---|
 | Sections 1–9 all `PASS` or justified `N/A` | | |
-| Legal packet (`docs/LEGAL_PREP.md`) answered by counsel; the eleven `DARI_LEGAL_*` values are final | | |
+| Legal packet (`docs/legal/legal-prep.md`) answered by counsel; the eleven `DARI_LEGAL_*` values are final | | |
 | Audit §R launch gate reviewed item by item | | |
 | Someone is watching the alerts for the first hour after launch | | |

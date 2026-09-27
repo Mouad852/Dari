@@ -42,7 +42,7 @@ The project has already crossed the foundational backend and product UI mileston
 - notification delivery is implemented as an opt-in SMTP worker with durable claiming, bounded retries, sent/dead states, and the existing French outbox copy preserved
 - abuse-path rate limits cover report creation, messaging, listing creation, photo/avatar uploads, and profile signup with identity/source-address windows and 429 `Retry-After` responses
 - CORS is restricted to an explicit configured web origin, API responses carry browser security headers, production requires explicit origin and Firebase credential settings, and the web client sends refreshed Firebase ID tokens only as bearer headers
-- the web app serves one static Content-Security-Policy, `Strict-Transport-Security: max-age=31536000; includeSubDomains` (no preload) and the other security headers from `next.config.mjs`, identically on prerendered, dynamic and prefetch responses. The earlier per-request nonce blocked every script on cached routes (reproduced, see `docs/PHASE1_CSP_REPRODUCTION.md`); `script-src` is `'self' 'unsafe-inline'` because App Router pages carry their flight data in inline scripts that a static policy cannot hash. A production-build Playwright project fails on any console error or CSP violation
+- the web app serves one static Content-Security-Policy, `Strict-Transport-Security: max-age=31536000; includeSubDomains` (no preload) and the other security headers from `next.config.mjs`, identically on prerendered, dynamic and prefetch responses. The earlier per-request nonce blocked every script on cached routes (reproduced, see `docs/archive/phase1-csp-reproduction.md`); `script-src` is `'self' 'unsafe-inline'` because App Router pages carry their flight data in inline scripts that a static policy cannot hash. A production-build Playwright project fails on any console error or CSP violation
 - public photo and avatar URLs are built by `resolveMediaUrl`: root-relative `/uploads/...` paths resolve against the first `NEXT_PUBLIC_MEDIA_ORIGINS` entry and absolute S3/CloudFront URLs pass through; nothing rendered for the browser is built from the server-only (possibly internal) `API_BASE_URL`. The CSP's `img-src`/`connect-src` come from the same origin source, so they cannot drift
 - profile-backed mutating API routes have explicit method-security role guards in addition to service-level ownership/target checks; the regression suite covers cross-user listing, photo, favorite, conversation, and profileless-write attempts
 - search filters for neighborhood, property type, room type, and rent bounds persist in the URL
@@ -79,11 +79,11 @@ The important remaining work is still phase-oriented and should be driven from t
 - Phase 07 search filters and map: filters, map view and URL state are built. Sorting is now real — price ascending/descending, recency and recently-updated all order correctly with sort-aware keyset cursors; previously `sort` was parsed and discarded on non-radius searches, so three of the four options in the UI returned identical results. A genuine "recommended" ranking is still open, and the default is labelled "Plus récentes" rather than implying one exists
 - account sub-pages (notifications, payments, security) are still frontend-only mocks with no API calls — notification delivery exists for email, but no in-app notification screen or contract is planned for launch; profile is now wired (see above)
 - account deletion and avatar upload are built: `POST /users/me/avatar` reuses the listing photo pipeline (so profile photos are EXIF-stripped too), and `DELETE /users/me` removes the Firebase identity, soft-deletes the row and the person's listings, and retains messages. Both are wired on `/account/profile`
-- account deletion also clears personal data from the row, not just its `deleted_at` flag: email, phone, first name, city, bio and the avatar are cleared; `displayName` becomes a fixed "Utilisateur supprimé" placeholder since the column can't be null. The avatar and listing photos are revoked in the same transaction and deleted from storage (disk or S3 bucket) by the `media_cleanup` worker, in both storage modes; in S3 mode a CDN or browser may keep a cached copy for up to the one-hour `Cache-Control` lifetime (`docs/PRODUCTION_OPERATIONS.md`). This applies only to self-deletion, not to a banned or suspended account, whose data remains legitimate moderator audit material
+- account deletion also clears personal data from the row, not just its `deleted_at` flag: email, phone, first name, city, bio and the avatar are cleared; `displayName` becomes a fixed "Utilisateur supprimé" placeholder since the column can't be null. The avatar and listing photos are revoked in the same transaction and deleted from storage (disk or S3 bucket) by the `media_cleanup` worker, in both storage modes; in S3 mode a CDN or browser may keep a cached copy for up to the one-hour `Cache-Control` lifetime (`docs/operations/production-operations.md`). This applies only to self-deletion, not to a banned or suspended account, whose data remains legitimate moderator audit material
 - any missing path under `/uploads/**` (a deleted avatar or photo) now returns a real 404 instead of a raw 500 — the global exception handler was swallowing Spring's not-found signal for static resources
 - production metrics are exposed at `/actuator/prometheus`: search latency, moderation queue depth, notification outbox depth, report volume, job outcomes, and unhandled-error rate all have real meters. A hosted error-tracking/APM service (Sentry or similar) is deliberately not wired in — that needs the user's own account, and unhandled exceptions are already logged with full context and now counted, which is the signal such a service would consume later
 - real neighborhood reference data exists for the four launch cities: `GET /neighborhoods?city=` returns 8-12 well-known names per city from a new seeded table. Not yet enforced anywhere — a listing's neighborhood field stays free text, since rejecting a name missing from the seed list would risk locking out a real owner over a launch-week gap; that enforcement decision is separate from having the data available
-- the search path has been load tested at 50,000 seeded listings under 50 concurrent users: search, count, radius, and map all hold p95 latency under 250ms. The map endpoint did not until this pass — it had no result cap at all, so an unfiltered city request serialized every published listing in it (p95 1.79s, multi-gigabyte payloads under load); it is now capped at 1,000 rows ordered by recency. Full methodology, findings, and recorded acceptance thresholds are in `docs/PRODUCTION_OPERATIONS.md`
+- the search path has been load tested at 50,000 seeded listings under 50 concurrent users: search, count, radius, and map all hold p95 latency under 250ms. The map endpoint did not until this pass — it had no result cap at all, so an unfiltered city request serialized every published listing in it (p95 1.79s, multi-gigabyte payloads under load); it is now capped at 1,000 rows ordered by recency. Full methodology, findings, and recorded acceptance thresholds are in `docs/operations/production-operations.md`
 - messaging has unread badges (per-conversation and a global nav count), read receipts ("Vu", polled every 5s while a thread is open), and optimistic sending (the composer's bubble appears instantly, rolled back on failure)
 - owners can edit any of their listings: `/account/listings` has a "Modifier" link that opens the wizard on that listing, backed by a new owner-scoped `GET /listings/mine/{id}` which returns **true** coordinates (the public `GET /listings/{id}` fuzzes them even for the owner, so an edit form fed by it would drift the listing's location on every save)
 - **editing a `PUBLISHED` listing returns it to `PENDING_REVIEW`** and removes it from public search until re-approved. This reverses the original design-doc §4 rule, at the product owner's direction; the doc was updated to match
@@ -112,16 +112,16 @@ The important remaining work is still phase-oriented and should be driven from t
 | --- | --- |
 | `apps/api/` | Spring Boot API monolith. Owns business logic and the database boundary. |
 | `apps/web/` | Next.js App Router frontend. Renders products and product flows. |
-| `apps/mobile/` | Expo/React Native client (Priority 3, started 2026-09-14). Own project, hand-ports `apps/web`'s API client/types rather than sharing a package; see `plans/11-mobile-react-native.md` and TODO.md's Priority 3 section. |
+| `apps/mobile/` | Expo/React Native client (Priority 3, started 2026-09-14). Own project, hand-ports `apps/web`'s API client/types rather than sharing a package; see `docs/archive/plans/11-mobile-react-native.md` and TODO.md's Priority 3 section. |
 | `design-system/` | The visual source of truth: tokens, guidelines, UI kits, and brand language. |
 | `flows/` | Product flow prototypes and design exports. |
 | `infra/` | Compose services, DB bootstrap, Firebase notes, local dev scripts. |
-| `plans/` | The phase plan and implementation guides. |
+| `docs/archive/plans/` | The phase plan and implementation guides. |
 | `docs/` | Design specification, naming rules, and project handoff docs. |
 | `ARCHITECTURE.md` | How the system fits together and why. |
-| `docs/NAMING.md` | English vs French boundary, naming conventions, and glossary. |
-| `docs/PRODUCTION_OPERATIONS.md` | Production backup retention, restore verification, deployment, rollback, and search load-testing runbook. |
-| `docs/MODERATOR_RUNBOOK.md` | Queue triage, action criteria, and escalation guidance for moderators. |
+| `docs/product/naming.md` | English vs French boundary, naming conventions, and glossary. |
+| `docs/operations/production-operations.md` | Production backup retention, restore verification, deployment, rollback, and search load-testing runbook. |
+| `docs/operations/moderator-runbook.md` | Queue triage, action criteria, and escalation guidance for moderators. |
 | `TODO.md` | The source-verified completion checklist; update it every coding session. |
 
 ## Core principles
@@ -214,7 +214,7 @@ has no exception while the account is suspended.
 
 The selected deployment target is AWS managed services (ECS Fargate, ALB,
 RDS PostgreSQL/PostGIS, S3 with CloudFront, SES SMTP, and Firebase). See
-[the production deployment procedure](docs/PRODUCTION_OPERATIONS.md#production-deployment-aws-managed-services)
+[the production deployment procedure](docs/operations/production-operations.md#production-deployment-aws-managed-services)
 for the required configuration, immutable ECR image releases, deployment and
 rollback steps, costs, and local production smoke check.
 
@@ -228,4 +228,4 @@ rollback steps, costs, and local production smoke check.
 
 Dari is warm, trustworthy, and modern. The product uses a terracotta/sand/cream palette with charcoal text, soft card surfaces, pill buttons, and generous spacing. Copy remains French and user-facing; code and technical identifiers stay English.
 
-See `design-system/readme.md` and `docs/NAMING.md` for the non-negotiable rules.
+See `design-system/readme.md` and `docs/product/naming.md` for the non-negotiable rules.

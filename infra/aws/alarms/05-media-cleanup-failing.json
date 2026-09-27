@@ -1,6 +1,6 @@
 {
   "AlarmName": "dari-05-media-cleanup-failing",
-  "AlarmDescription": "Alert 5 of 6. Deleted photos and avatars may still be public: for the whole last hour at least one media cleanup row kept failing (dari.media.cleanup_failures > 0), or at least one row is DEAD (the worker gave up; in S3 mode the object may still be readable). Evaluated every minute over a sliding hour. Runbook: docs/PRODUCTION_OPERATIONS.md, Monitoring > First response > Storage failing, and Dead media cleanup rows.",
+  "AlarmDescription": "Alert 5 of 6. Deleted photos and avatars may still be public: for the whole last hour at least one media cleanup row kept failing (dari.media.cleanup_failures > 0), or at least one row is DEAD (the worker gave up; in S3 mode the object may still be readable). Evaluated every minute over a sliding hour. Runbook: docs/operations/production-operations.md, Monitoring > First response > Storage failing, and Dead media cleanup rows.",
   "ActionsEnabled": true,
   "AlarmActions": ["__SNS_TOPIC_ARN__"],
   "OKActions": ["__SNS_TOPIC_ARN__"],

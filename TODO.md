@@ -19,12 +19,12 @@ Last verified: 2026-09-27
 
 - [x] API client, Firebase auth, Explorer/detail, favourites, inbox/threads, reporting and account actions
 - [x] Release configuration, typed network failures, error boundary, Sentry safeguards, deep links and Jest coverage
-- [ ] Real device/simulator matrix, native Firebase persistence and native UX verification — see `docs/MOBILE_RELEASE.md`
+- [ ] Real device/simulator matrix, native Firebase persistence and native UX verification — see `docs/mobile/mobile-release.md`
 
 ## Open before launch
 
-- [ ] Owner launch execution: `docs/PRODUCTION_OPERATIONS.md`, then `docs/LAUNCH_REHEARSAL.md`
-- [ ] Legal owner inputs and review: `docs/LEGAL_PREP.md`
-- [ ] Mobile store assets, declarations, builds and submissions: `docs/MOBILE_RELEASE.md`
+- [ ] Owner launch execution: `docs/operations/production-operations.md`, then `docs/operations/launch-rehearsal.md`
+- [ ] Legal owner inputs and review: `docs/legal/legal-prep.md`
+- [ ] Mobile store assets, declarations, builds and submissions: `docs/mobile/mobile-release.md`
 - [ ] Branding sign-off: favicon, Open Graph image, PWA 192/512 and maskable icons, final logo
 - [ ] Post-launch P2 work listed in section F of `PRODUCTION_READINESS_AUDIT.md`

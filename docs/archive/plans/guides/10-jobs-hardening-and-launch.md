@@ -246,7 +246,7 @@ validation message, and focused regression test together.
 ## 6. Operations
 
 **Backups.** The production backup, retention, restore-drill, and incident
-ownership policy is documented in [`docs/PRODUCTION_OPERATIONS.md`](../../docs/PRODUCTION_OPERATIONS.md).
+ownership policy is documented in [`docs/operations/production-operations.md`](../../../operations/production-operations.md).
 Daily `pg_dump` archives are offsite and encrypted, with 35 daily, 12 weekly,
 and 12 monthly copies. Use the custom format so the archive can be checked with
 `pg_restore` before it is needed:
@@ -294,7 +294,7 @@ credentials outside the repository. Firestore mirror work is out of scope for th
 
 **Load test the search path** — it is the busiest and most complex query in the system. Realistic filter mixes at 100k listings. Verify the phase 02 and 07 query plans hold under concurrency, not just in isolation.
 
-**Deployment.** Follow [`docs/PRODUCTION_OPERATIONS.md`](../../docs/PRODUCTION_OPERATIONS.md):
+**Deployment.** Follow [`docs/operations/production-operations.md`](../../../operations/production-operations.md):
 deploy immutable artifacts, take a verified pre-deploy backup, run
 backward-compatible Flyway migrations, and keep the previous release available
 for fast application rollback. Expand-then-contract for column changes: add,

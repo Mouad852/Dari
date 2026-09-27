@@ -1,6 +1,6 @@
 {
   "AlarmName": "dari-04-notification-outbox-stuck",
-  "AlarmDescription": "Alert 4 of 6. Email notifications are not going out: over the last hour the outbox never drained to zero PENDING rows (delivery stopped or cannot keep up), or at least one row is DEAD (gave up after its retries). Evaluated every minute over a sliding hour, so a DEAD row alerts within minutes; the alarm returns to OK an hour after the last DEAD row is re-queued. Runbook: docs/PRODUCTION_OPERATIONS.md, Monitoring > First response > Notification outbox stuck.",
+  "AlarmDescription": "Alert 4 of 6. Email notifications are not going out: over the last hour the outbox never drained to zero PENDING rows (delivery stopped or cannot keep up), or at least one row is DEAD (gave up after its retries). Evaluated every minute over a sliding hour, so a DEAD row alerts within minutes; the alarm returns to OK an hour after the last DEAD row is re-queued. Runbook: docs/operations/production-operations.md, Monitoring > First response > Notification outbox stuck.",
   "ActionsEnabled": true,
   "AlarmActions": ["__SNS_TOPIC_ARN__"],
   "OKActions": ["__SNS_TOPIC_ARN__"],

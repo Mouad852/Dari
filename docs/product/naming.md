@@ -54,7 +54,7 @@ crossed deliberately, once, through a module built for it.
 | Email and notification bodies | **French** | *"Votre annonce n'a pas été publiée"* |
 | Log messages, exception messages *for developers* | **English** | `"Unhandled exception on {} {}"` |
 | Code comments, commit messages, branch names | **English** | |
-| Documentation in `docs/` and `plans/` | **English** | |
+| Documentation in `docs/` and `docs/archive/plans/` | **English** | |
 | CSS custom properties | **frozen** — see below | `--sable-900` |
 
 ### The two-message rule for errors
@@ -73,7 +73,7 @@ Never branch on the French message, and never show the English code to a user.
 
 ## Spelling: US English
 
-Not a preference — a coin already flipped. `docs/colocation-platform-design.md`
+Not a preference — a coin already flipped. `docs/product/colocation-platform-design.md`
 writes `neighborhood`, CSS writes `color`, and the npm ecosystem is US
 throughout. Fighting that means `neighbourhood` in your code sitting next to
 `neighborhood` in the schema.

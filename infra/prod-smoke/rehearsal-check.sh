@@ -23,7 +23,7 @@
 #   CA_FILE            a PEM file to trust in addition to the system store (a
 #                      staging certificate); passed to curl as --cacert
 #
-# docs/LAUNCH_REHEARSAL.md says when to run it and where to record the result.
+# docs/operations/launch-rehearsal.md says when to run it and where to record the result.
 set -uo pipefail
 
 : "${API_ORIGIN:?set API_ORIGIN, e.g. https://api.example.ma}"

@@ -744,7 +744,7 @@ media and public API origins (plus the error-tracking origin when a DSN is set),
 `Permissions-Policy`, `X-Frame-Options: DENY`, `X-Content-Type-Options:
 nosniff` and `Referrer-Policy`. There is no middleware and no nonce: cached HTML
 cannot carry a per-request nonce, which previously stopped every prerendered
-page from hydrating (`docs/PHASE1_CSP_REPRODUCTION.md`). `'unsafe-inline'` in
+page from hydrating (`docs/archive/phase1-csp-reproduction.md`). `'unsafe-inline'` in
 `script-src` is required by the App Router's inline flight-data scripts; a
 stricter policy would mean rendering every route per request with a nonce.
 HSTS deliberately omits `preload`; submitting the domain to browser preload
@@ -834,7 +834,7 @@ The owner performs these steps, in order:
    the web manifest, CloudWatch logs, and a real media upload. Run
    `infra/prod-smoke/rehearsal-check.sh` against the production endpoints.
 9. Confirm the six alarms and SNS subscriptions, perform the alert drill, and
-   complete every row in `docs/LAUNCH_REHEARSAL.md` before opening traffic.
+   complete every row in `docs/operations/launch-rehearsal.md` before opening traffic.
 
 The image build and push command is:
 
@@ -871,7 +871,7 @@ against the migrated schema.
 
 ### Launch rehearsal
 
-Before real users arrive, run `docs/LAUNCH_REHEARSAL.md` on this
+Before real users arrive, run `docs/operations/launch-rehearsal.md` on this
 infrastructure: the read-only checks of `infra/prod-smoke/rehearsal-check.sh`,
 the tenant, owner and admin journeys, privacy and deletion (including the
 avatar leaving the bucket and the audit P0-1 recovery attempt), failure

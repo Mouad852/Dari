@@ -6,10 +6,10 @@
 
 | What you asked for | What I actually read |
 | --- | --- |
-| `docs/design-doc.md` | `docs/colocation-platform-design.md` — the only design doc present |
+| `docs/design-doc.md` | `docs/product/colocation-platform-design.md` — the only design doc present |
 | `design-reference/` | `design-system/` (tokens, 16 components, guidelines, 2 UI kits) and `design-system/prototypes/listing-creation/` (the 8-step wizard) |
 
-Neither of your paths exists under those names; both map unambiguously onto what is on disk. See `docs/ANALYSIS.md` for how the design material got into its current shape.
+Neither of your paths exists under those names; both map unambiguously onto what is on disk. See `docs/archive/analysis.md` for how the design material got into its current shape.
 
 ---
 

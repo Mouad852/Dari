@@ -25,7 +25,7 @@ Plus two files that are not ports and say so in their own header comment:
 
 **Port from the `.jsx` sources, not from `_ds_bundle.js`.** The bundle is a
 prototype runtime that resolves components off a global; it must never ship.
-Note the hazard recorded in `docs/ANALYSIS.md`: the bundle is *newer* than the
+Note the hazard recorded in `docs/archive/analysis.md`: the bundle is *newer* than the
 sources, so take its one genuine improvement deliberately — `Icon` inlining SVG
 children rather than using a CSS mask — and nothing else from it by accident.
 

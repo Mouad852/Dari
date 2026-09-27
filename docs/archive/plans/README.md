@@ -100,17 +100,17 @@ Phase 02 (PostGIS search optimization) is now complete:
 - **Soft-delete read-path review completed (2026-09-05)**: public listing search/detail, owner listings, favorites and favorite-id membership, profiles, conversations, report targets, and moderation queues now exclude deleted rows where appropriate. Account-deletion cascades, moderation history, notification delivery, and authentication-token rejection retain deliberate historical-row access. Backup creation/restore and a future Firestore mirror remain open.
 - **`/favorites` frontend is now wired to the real backend**, closing the loop on the favorites work above: the list page fetches/paginates/removes for real, and the listing detail page's heart button (previously decorative) now calls the real endpoints with optimistic update. `npm run typecheck` and `npm run build` both pass.
 - **Both gaps from that step closed the same day**: added `GET /api/v1/favorites/ids` (unpaginated listing-id set, for cheap membership checks) on the backend; the `/listings` search-results feed cards now have the same favorite toggle as the detail page, and the detail page itself now checks real favorited state on load instead of always starting unfilled.
-- **Also fixed in passing, found while touching the same file**: search-result cards on `/listings` had no link to the listing detail page at all — clicking one did nothing. Every card now links to `/listings/{id}`, and the map popup got a "Voir l'annonce" link too. See `plans/07-search-filters-and-map.md`'s 2026-09-02 status note.
-- **Messaging (phase 04) frontend is now wired to the real backend**, closing the last major mock-vs-real gap the docs flagged earlier this session: `/messages` and `/messages/[id]` fetch real conversations and messages, sending works, and the "Contacter" button on the listing detail page — previously a dead button with no `onClick` — now actually starts a conversation and navigates to it. Added `GET /api/v1/conversations/{id}` on the backend to support the thread header (37 backend tests passing; `npm run typecheck`/`npm run build` clean on the frontend). Real gaps, not silently glossed over: no unread badges (no backend data to back them honestly), no read receipts in the UI, sending isn't optimistic, and a suspended/expired listing's context card just disappears rather than showing an explicit "unavailable" state. See `plans/04-vertical-slice-messaging.md`'s 2026-09-02 entry for the exact list.
+- **Also fixed in passing, found while touching the same file**: search-result cards on `/listings` had no link to the listing detail page at all — clicking one did nothing. Every card now links to `/listings/{id}`, and the map popup got a "Voir l'annonce" link too. See `docs/archive/plans/07-search-filters-and-map.md`'s 2026-09-02 status note.
+- **Messaging (phase 04) frontend is now wired to the real backend**, closing the last major mock-vs-real gap the docs flagged earlier this session: `/messages` and `/messages/[id]` fetch real conversations and messages, sending works, and the "Contacter" button on the listing detail page — previously a dead button with no `onClick` — now actually starts a conversation and navigates to it. Added `GET /api/v1/conversations/{id}` on the backend to support the thread header (37 backend tests passing; `npm run typecheck`/`npm run build` clean on the frontend). Real gaps, not silently glossed over: no unread badges (no backend data to back them honestly), no read receipts in the UI, sending isn't optimistic, and a suspended/expired listing's context card just disappears rather than showing an explicit "unavailable" state. See `docs/archive/plans/04-vertical-slice-messaging.md`'s 2026-09-02 entry for the exact list.
 - **Also removed while in the messaging code**: `ConversationResponse.from(Conversation, User)` was dead code — never called anywhere — and buggy (hardcoded `lastMessage`/`lastMessageAt` to null). Deleted rather than fixed, since nothing used it and the real construction path (`ConversationService#toConversationResponse`) already does this correctly.
-- **Owner listing management (`/account/listings`) is now wired to the real backend**, closing another mock-vs-real gap. Added `GET /api/v1/listings/mine` (paginated, every status, since public search only ever shows PUBLISHED+AVAILABLE). The dashboard shows real status/rejection reasons and supports submit/mark-room-found/reopen/delete. **Editing is explicitly not built** — the publish wizard has no edit mode, so there is no "Modifier" button pointing nowhere; see `plans/05-listing-creation.md`'s 2026-09-02 note. 38 backend tests passing; frontend `typecheck`/`build` clean.
+- **Owner listing management (`/account/listings`) is now wired to the real backend**, closing another mock-vs-real gap. Added `GET /api/v1/listings/mine` (paginated, every status, since public search only ever shows PUBLISHED+AVAILABLE). The dashboard shows real status/rejection reasons and supports submit/mark-room-found/reopen/delete. **Editing is explicitly not built** — the publish wizard has no edit mode, so there is no "Modifier" button pointing nowhere; see `docs/archive/plans/05-listing-creation.md`'s 2026-09-02 note. 38 backend tests passing; frontend `typecheck`/`build` clean.
 - **Listing submission preconditions are now enforced**: `POST /api/v1/listings/{id}/submit` rejects blank descriptions and listings with no active photos using the normal `VALIDATION_FAILED` French error envelope, while preserving `DRAFT`/`REJECTED` -> `PENDING_REVIEW`.
-- **The admin console (phase 06) is now wired end to end**, and it turned out most of its backend was already done by an earlier session and simply never checked off in `plans/06-moderation-and-admin.md` — verified by reading `AdminController`/`AdminService` directly rather than assumed. What was actually new this session: a role-gated `/admin` layout (client-side redirect, on top of the `ADMIN`-only server-side gate that already existed on every `/api/v1/admin/**` route), all 4 admin pages (dashboard, listings review, reports, users) wired to real data, and a real bug fix — `GET /listings/{id}` 404'd for an admin viewing any non-owned, non-published listing, which is every listing the review queue exists to review; `ListingSearchService.getPublicOrOwnerListing` now also allows an `ADMIN` viewer through. Real gaps disclosed, not hidden: only the `DISMISS` report action is implemented server-side (no warn/suspend-listing/reject-listing-as-a-report-action); there is no reporter dismissal-history; report-queue target names for `USER` targets can't be resolved at all (no single-user lookup endpoint) and for `LISTING` targets are best-effort (a soft-deleted listing falls back to a truncated id). 39 backend tests passing; frontend `typecheck`/`build` clean. See `plans/06-moderation-and-admin.md`'s 2026-09-02 entries for the full accounting.
-- **Public profile (`/profile/[id]`) and profile editing (`/account/profile`) are now wired**, and — same pattern as the admin console — the backend for both (`GET /users/{id}`, `PATCH /users/me`) turned out to already exist since phase 01, just never checked off in `plans/09-profiles-favorites-account.md`. No backend changes needed. Dropped every fabricated field the mocks invented (search preferences, review counts, a fake second profile card, a settings-visibility toggle, an avatar-upload icon that isn't built) rather than keep them for visual completeness. `npm run typecheck`/`npm run build` clean. See that plan doc's 2026-09-02 entry for the full accounting, including what's still genuinely open (profile-completion prompt, delete account, sign out).
+- **The admin console (phase 06) is now wired end to end**, and it turned out most of its backend was already done by an earlier session and simply never checked off in `docs/archive/plans/06-moderation-and-admin.md` — verified by reading `AdminController`/`AdminService` directly rather than assumed. What was actually new this session: a role-gated `/admin` layout (client-side redirect, on top of the `ADMIN`-only server-side gate that already existed on every `/api/v1/admin/**` route), all 4 admin pages (dashboard, listings review, reports, users) wired to real data, and a real bug fix — `GET /listings/{id}` 404'd for an admin viewing any non-owned, non-published listing, which is every listing the review queue exists to review; `ListingSearchService.getPublicOrOwnerListing` now also allows an `ADMIN` viewer through. Real gaps disclosed, not hidden: only the `DISMISS` report action is implemented server-side (no warn/suspend-listing/reject-listing-as-a-report-action); there is no reporter dismissal-history; report-queue target names for `USER` targets can't be resolved at all (no single-user lookup endpoint) and for `LISTING` targets are best-effort (a soft-deleted listing falls back to a truncated id). 39 backend tests passing; frontend `typecheck`/`build` clean. See `docs/archive/plans/06-moderation-and-admin.md`'s 2026-09-02 entries for the full accounting.
+- **Public profile (`/profile/[id]`) and profile editing (`/account/profile`) are now wired**, and — same pattern as the admin console — the backend for both (`GET /users/{id}`, `PATCH /users/me`) turned out to already exist since phase 01, just never checked off in `docs/archive/plans/09-profiles-favorites-account.md`. No backend changes needed. Dropped every fabricated field the mocks invented (search preferences, review counts, a fake second profile card, a settings-visibility toggle, an avatar-upload icon that isn't built) rather than keep them for visual completeness. `npm run typecheck`/`npm run build` clean. See that plan doc's 2026-09-02 entry for the full accounting, including what's still genuinely open (profile-completion prompt, delete account, sign out).
 - **Small follow-on fixes to `/account` itself, same day**: its "Se déconnecter" button had no `onClick` at all — added a `signOut()` export to `lib/firebase.ts` and wired it up to redirect home. Its verification badge always read "Vérifié" regardless of the real `VerificationTier`. Its three stat tiles ("3 actives", "12 en cours", "8 sauvegardés") were fully fabricated — now computed from real `GET /listings/mine`/`GET /conversations`/`GET /favorites/ids` calls, best-effort (a failure there doesn't block the page). No backend changes needed.
-- **Scoped "listing edit mode" and found it was bigger than expected.** Before building it, checked the create wizard (`/publish`) it would be built on top of, and found: (1) a silent data-corruption bug — the "Type" dropdown was never wired to state, so every listing was published as hardcoded `PRIVATE`/`APARTMENT` regardless of the owner's actual selection; (2) amenities are collected in the wizard UI but never sent, because **there is no backend endpoint anywhere that writes to `listing_amenities`** — search can filter by amenity, but nothing can ever assign one. Asked the user how to scope this rather than silently expanding the step; they chose "fix the create-flow bug now, defer amenities-backend and edit-mode as separate future steps." Fixed the type-selection bug (two real selects — property type and room type — replacing the fictional single dropdown); left amenities-write and edit-mode explicitly open. See `plans/05-listing-creation.md`'s 2026-09-02 entry.
+- **Scoped "listing edit mode" and found it was bigger than expected.** Before building it, checked the create wizard (`/publish`) it would be built on top of, and found: (1) a silent data-corruption bug — the "Type" dropdown was never wired to state, so every listing was published as hardcoded `PRIVATE`/`APARTMENT` regardless of the owner's actual selection; (2) amenities are collected in the wizard UI but never sent, because **there is no backend endpoint anywhere that writes to `listing_amenities`** — search can filter by amenity, but nothing can ever assign one. Asked the user how to scope this rather than silently expanding the step; they chose "fix the create-flow bug now, defer amenities-backend and edit-mode as separate future steps." Fixed the type-selection bug (two real selects — property type and room type — replacing the fictional single dropdown); left amenities-write and edit-mode explicitly open. See `docs/archive/plans/05-listing-creation.md`'s 2026-09-02 entry.
 - **Amenities backend write support, built the same day as a follow-on.** Added `Amenity`/`ListingAmenity` entities (the join-row pattern mirrors `Favorite`'s composite key), wired `POST`/`PATCH /listings` to accept and validate `amenityCodes` (full replace on update, 400 on an unknown code), and exposed the set on `ListingResponse`. `GET /amenities` now reads the real `amenities` table instead of a hardcoded duplicate list. The publish wizard fetches real codes and sends them; the fictional French-string amenity list is gone, and its duplicate label map (previously inlined in both `publish/page.tsx` and `listings/page.tsx`) is now one shared `AMENITY_LABELS` in `lib/labels.ts`. New test: `ListingApiTest.amenitiesRoundTripOnCreateAndUpdate`. 45 backend tests, 43 passing (the 2 failures are the pre-existing `ListingSearchOptimizationTest` isolation flakiness, unchanged by this work); frontend `typecheck`/`build` clean. Deliberately not touched: `PublicListingResponse` (the public search/detail DTO) — amenities are round-tripped for the owner/write side only.
-- **New finding while doing that work, not yet fixed**: the listing detail page (`/listings/[id]`) turned out to still be mostly fabricated content, despite an earlier session's summary describing it as "wired" — only the favorite toggle and "Contacter" button actually touch the backend. The description, the amenities row, an entire "Colocataires" tab (two invented people with fake verified badges), an entire "Règles" tab, the owner card (fabricated name and 4.8 rating), the "Annonce vérifiée" and availability-date badges, and the photo counter are all hardcoded placeholder content left over from the original mock. Fixing it properly needs a backend change first — `PublicListingResponse` doesn't even return `description` today, let alone photos/amenities/house rules — so it wasn't folded into this step; see `plans/05-listing-creation.md`'s 2026-09-02 note for the full list and suggested shape of the fix.
+- **New finding while doing that work, not yet fixed**: the listing detail page (`/listings/[id]`) turned out to still be mostly fabricated content, despite an earlier session's summary describing it as "wired" — only the favorite toggle and "Contacter" button actually touch the backend. The description, the amenities row, an entire "Colocataires" tab (two invented people with fake verified badges), an entire "Règles" tab, the owner card (fabricated name and 4.8 rating), the "Annonce vérifiée" and availability-date badges, and the photo counter are all hardcoded placeholder content left over from the original mock. Fixing it properly needs a backend change first — `PublicListingResponse` doesn't even return `description` today, let alone photos/amenities/house rules — so it wasn't folded into this step; see `docs/archive/plans/05-listing-creation.md`'s 2026-09-02 note for the full list and suggested shape of the fix.
 - Everything else in the 2026-08-31 status entry above still holds.
 
 ### Track 0 — unblock and secure (2026-09-02)
@@ -131,7 +131,7 @@ product cannot publish a listing and the Firebase key was unprotected).
   landing there is a key until proven otherwise rather than relying on someone guessing a filename.
   The name-based patterns were kept as a first line and `service-account*.json` added. Both the
   ignore rules and the README now say the same thing.
-- **`plans/` was in `.gitignore`** and would have been excluded from the first commit — the
+- **`docs/archive/plans/` was in `.gitignore`** and would have been excluded from the first commit — the
   authoritative status log, untracked. Removed; 25 plan files are in the initial commit.
 - Verified before committing rather than after: `git ls-files` shows no key, no `node_modules`, no
   `target/`, no `uploads/`, and a grep across every staged file finds no `BEGIN PRIVATE KEY`.
@@ -290,7 +290,7 @@ instead of assuming, and corrected them to `--shadow-sheet` and `--radius-md` (t
 every other form control in the app already uses). An invented custom property fails silently — it
 renders as no shadow and square corners, with nothing in the console.
 
-**Plan-doc corrections:** `plans/06-moderation-and-admin.md` listed the reports migration,
+**Plan-doc corrections:** `docs/archive/plans/06-moderation-and-admin.md` listed the reports migration,
 `POST /reports`, the one-pending-report rule, and the 3-reporter auto-suspension as unchecked. All
 four were built and tested well before this session. Ticked with a note, rather than left implying
 work that does not exist.
@@ -345,7 +345,7 @@ button that opened a blank wizard would have silently produced a duplicate draft
 
 **Product rule reversed, at the product owner's explicit direction.** Editing a `PUBLISHED` listing
 now returns it to `PENDING_REVIEW`. The design doc §4 said the opposite — that an edit leaves the
-listing published, with reporting covering the gap — so `docs/colocation-platform-design.md` was
+listing published, with reporting covering the gap — so `docs/product/colocation-platform-design.md` was
 updated rather than left contradicting the code. The accepted trade-off, stated so it is a decision
 and not a surprise: **an owner correcting a typo takes their own listing out of public search until a
 moderator approves it again**, and every edit adds moderation queue volume. A refinement worth
@@ -421,7 +421,7 @@ a browser.
 
 **T1.5 account stubs (avatar upload, account deletion) — done (2026-09-02).**
 
-Both were `NotImplementedYetException`. `plans/09` warned that deletion "is not specified anywhere in
+Both were `NotImplementedYetException`. `docs/archive/plans/09` warned that deletion "is not specified anywhere in
 the design doc" and said not to let it be decided by whatever the delete button happens to do — but
 the policy *was* written down, on `UserController#deleteMe`'s own javadoc, with a rationale. Read it
 and implemented it rather than re-deciding: Firebase identity removed, row and listings
@@ -460,7 +460,7 @@ confirm *and* a typed SUPPRIMER, since it is irreversible and cascades.
 
 **Still open, and it is a GDPR question rather than a functional one:** a soft-deleted row keeps the
 person's email, display name and bio. Defensible as an audit trail, indefensible as erasure —
-recorded in `plans/09` for a deliberate answer before launch rather than settled quietly here.
+recorded in `docs/archive/plans/09` for a deliberate answer before launch rather than settled quietly here.
 
 Suite: **89 tests, 0 failures** (was 86; +3 — avatar upload and its rejection of a non-image, the
 deletion cascade including Firebase identity removal and immediate token refusal, and re-registration
@@ -471,7 +471,7 @@ with a deleted email). Frontend `typecheck` and `build` clean. Not verified in a
 **T2.2 sorting made real — done (2026-09-02).**
 
 Audited the search surface before starting, because the phase docs have understated what exists more
-than once. Most of what `plans/07` lists as open is already built: property/room/furnishing
+than once. Most of what `docs/archive/plans/07` lists as open is already built: property/room/furnishing
 multi-select, amenity AND-matching, availability dates, and city/neighborhood-versus-radius as
 mutually exclusive modes with a clear 400 all work, and the Leaflet map has been live for a while.
 
@@ -499,7 +499,7 @@ did nothing at all.
 exist, so the default is named "Plus récentes" until one does. "Prix" was ambiguous about direction
 and is now two options, since the API supports both.
 
-**Deliberately not built: a real "recommended" ranking.** `plans/07` asks for one and the design doc
+**Deliberately not built: a real "recommended" ranking.** `docs/archive/plans/07` asks for one and the design doc
 §5 says "recency plus basic quality signals", which is not a specification. Inventing a scoring
 formula here would be a product decision made by whoever was writing SQL that afternoon, and a
 keyset-paginated ranking over a computed score is materially harder than the four orderings above.
@@ -538,7 +538,7 @@ a top-N heapsort, growing linearly with the city. It also extends the price inde
 price_rent, id)` so a price page resumes straight off the index in both directions instead of needing
 an incremental sort for the `(price_rent, id)` tiebreaker.
 
-**The real find: the amenity filter, exactly where `plans/07` predicted it.** The worst realistic
+**The real find: the amenity filter, exactly where `docs/archive/plans/07` predicted it.** The worst realistic
 query — city + price range + property type + availability date + two amenities AND-matched + price
 sort — ran at **88 ms**. The `l.id IN (SELECT ... GROUP BY ... HAVING COUNT(*) = n)` form is evaluated
 **globally**: it scanned 40,054 amenity rows across the entire table, sorted 3.2 MB of them and
@@ -565,7 +565,7 @@ Suite: **92 tests, 0 failures**. No frontend change in this step.
 
 **T2.4 result counts — settled and built (2026-09-02).**
 
-This was flagged as a conflict between `plans/07` asking for "Voir 32 annonces" and a no-total-counts
+This was flagged as a conflict between `docs/archive/plans/07` asking for "Voir 32 annonces" and a no-total-counts
 rule. **The conflict was not real.** "No total counts" appears only in
 `TODO.md` — the source-verified completion checklist for every coding session
 sessions. The authoritative documents say something narrower: `ARCHITECTURE.md` says the codebase
@@ -690,7 +690,7 @@ reflow, and this project's own quality floor asks for no layout shift.
   text. The design system reserves the brand colour for the primary action, and a terracotta chip
   competes with the apply button sitting directly beneath it.
 - **The apply button carries the count**: "Voir 5 annonces", falling back to "Appliquer les filtres"
-  before the count arrives. This is the `plans/07` copy requirement, now real — watched live going
+  before the count arrives. This is the `docs/archive/plans/07` copy requirement, now real — watched live going
   from 7 to 5 when an amenity filter was applied. **Réinitialiser** appears only when there is
   something to undo, and clears every narrowing filter while keeping the city, since the city is the
   search rather than a refinement of it.
@@ -1131,7 +1131,7 @@ number below was measured, not estimated, and then re-measured in a real browser
 The brand shift is not a brand override: `design-system/assets/README.md` records this palette as an
 unconfirmed proposal, not client-supplied identity. The old hex was propagated out of `--shadow-brand`,
 the design system's own readme and swatch card, and the React Native theme sketch in
-`plans/guides/11-mobile-react-native.md`, so the two clients cannot start out disagreeing.
+`docs/archive/plans/guides/11-mobile-react-native.md`, so the two clients cannot start out disagreeing.
 
 **Terracotta is an action colour, not a text colour.** At `#B55535` it clears AA as text on white
 (4.87:1) but not on its own tint (4.40:1). 27 call sites put brand text on `--brand-subtle`; they now

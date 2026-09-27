@@ -73,7 +73,7 @@ Then override the two family tokens to point at the loaded faces, leaving every 
 
 `design-system/components/**/*.jsx` are the sources. `_ds_bundle.js` is a prototype runtime that resolves components off a global — never ship that.
 
-This is also where the v1-sources / v2-bundle inconsistency from `docs/ANALYSIS.md` gets settled. **Port from the `.jsx` sources**, since they are the only sources that exist, and take one deliberate improvement from the v2 bundle: its `Icon` inlines SVG children instead of using a CSS mask.
+This is also where the v1-sources / v2-bundle inconsistency from `docs/archive/analysis.md` gets settled. **Port from the `.jsx` sources**, since they are the only sources that exist, and take one deliberate improvement from the v2 bundle: its `Icon` inlines SVG children instead of using a CSS mask.
 
 ```
 src/components/ds/

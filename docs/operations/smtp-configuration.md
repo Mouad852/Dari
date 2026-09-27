@@ -145,7 +145,7 @@ Align SPF, DKIM and DMARC for the `DARI_NOTIFICATIONS_FROM` domain before launch
 
 ### Production-like, locally
 
-The production smoke stack (`infra/prod-smoke/`, see `docs/PRODUCTION_OPERATIONS.md`) runs the real
+The production smoke stack (`infra/prod-smoke/`, see `docs/operations/production-operations.md`) runs the real
 image under the `production` profile against Mailpit with STARTTLS required, so it exercises the
 exact configuration above. Read captured mail at http://localhost:18025.
 

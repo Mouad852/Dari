@@ -44,13 +44,13 @@ There is a real risk that this phase gets compressed under launch pressure. The 
 - [x] Structured logging with correlation ids (pre-existing); error tracking via counted+logged unhandled exceptions (see below — a hosted APM/error-tracking service remains the user's own account decision)
 - [x] Metrics on the things that indicate trouble: search latency, moderation queue depth, report volume, notification delivery outcomes, job outcomes
 - [x] Database backup creation and restore validation in a clean PostGIS environment
-- [x] Deployment pipeline, migration strategy, rollback plan documented in `docs/PRODUCTION_OPERATIONS.md`
-- [x] Load test on the search path, which is the busiest and most complex query in the system — see "Search load testing" in `docs/PRODUCTION_OPERATIONS.md` for methodology, the map-endpoint finding and fix, and recorded acceptance thresholds
+- [x] Deployment pipeline, migration strategy, rollback plan documented in `docs/operations/production-operations.md`
+- [x] Load test on the search path, which is the busiest and most complex query in the system — see "Search load testing" in `docs/operations/production-operations.md` for methodology, the map-endpoint finding and fix, and recorded acceptance thresholds
 - [x] Seed the production amenity lookup and neighborhood lists as real reference data (`V20__neighborhoods.sql`, `GET /neighborhoods?city=`)
 
 **Launch readiness**
 - [ ] End-to-end pass over the whole journey, twice: as a seeker and as an owner
-- [x] Moderator runbook — documented in `docs/MODERATOR_RUNBOOK.md`
+- [x] Moderator runbook — documented in `docs/operations/moderator-runbook.md`
 - [x] Legal pages: terms, privacy, and location-data explanation are available under `/legal/*`; legal identity and contact details remain a pre-publication release gate
 - [ ] Accessibility pass to the standard already set: 360px, visible focus, WCAG AA contrast, `prefers-reduced-motion`
 
@@ -118,7 +118,7 @@ authentication-token rejection intentionally retain historical-row access. No
 Firestore mirror exists; backup creation and restore validation are complete and remain
 independent of any future mirror work.
 
-Production SMTP configuration is documented in `SMTP_CONFIGURATION.md` with:
+Production SMTP configuration is documented in `docs/operations/smtp-configuration.md` with:
 - Safe configuration examples for Gmail, Outlook, and Moroccan ISP providers
 - Environment variable reference and security best practices
 - Local testing with MailHog or other fake SMTP servers
@@ -216,7 +216,7 @@ unbounded endpoint had been consuming a disproportionate share of
 connection-pool and CPU capacity under concurrent load. Error rate was 0%
 throughout both runs — a latency and payload problem, not a correctness one.
 Full methodology, the before/after table, and the recorded acceptance
-thresholds are in `docs/PRODUCTION_OPERATIONS.md`'s "Search load testing"
+thresholds are in `docs/operations/production-operations.md`'s "Search load testing"
 section; the thresholds are also encoded in the k6 script's own
 `thresholds` block so a future regression run fails loudly rather than
 needing a human to read a number. Load-test data and the local dev API
@@ -243,7 +243,7 @@ running.
 
 Production backup storage and retention, restore verification, immutable release
 handling, migration compatibility, and the fast rollback procedure are now
-documented in `docs/PRODUCTION_OPERATIONS.md`. The policy uses encrypted,
+documented in `docs/operations/production-operations.md`. The policy uses encrypted,
 versioned offsite object storage with 35 daily, 12 weekly, and 12 monthly
 retention, plus a weekly isolated restore drill. Firestore mirror work remains
 out of scope.
@@ -251,5 +251,5 @@ out of scope.
 - **Compression risk.** This is the phase most likely to be cut short, and its contents are the ones that matter most when things go wrong. Consider pulling the fuzzing review and rate limits forward if the schedule tightens.
 - **The expiry window is a range, not a decision.** 60 versus 90 days is a product judgement about listing freshness.
 - **Notification infrastructure may need to be earlier.** Phase 06 needs owner notifications to be genuinely usable; if that phase ships without them, moderation decisions land silently on owners. Stubbing there and completing here is fine — forgetting is not.
-- **SMTP provider still needs production selection and deliverability testing.** Use `SMTP_CONFIGURATION.md` to configure `spring.mail.*`, `DARI_NOTIFICATIONS_FROM`, and `DARI_NOTIFICATIONS_ENABLED=true`; test Gmail, Outlook, and at least one Moroccan ISP before launch.
+- **SMTP provider still needs production selection and deliverability testing.** Use `docs/operations/smtp-configuration.md` to configure `spring.mail.*`, `DARI_NOTIFICATIONS_FROM`, and `DARI_NOTIFICATIONS_ENABLED=true`; test Gmail, Outlook, and at least one Moroccan ISP before launch.
 - **Restoring backups is the classic untested assumption.** Test it.

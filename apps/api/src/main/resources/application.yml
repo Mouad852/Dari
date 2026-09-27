@@ -29,7 +29,7 @@ spring:
         # plan for every value. The sorted search's `:city IS NULL OR` filter
         # and `CASE WHEN :sort` ordering only reach the V15 indexes when the
         # values are known at plan time. The price is one planning pass per
-        # execution (docs/PRODUCTION_OPERATIONS.md, "Query plans").
+        # execution (docs/operations/production-operations.md, "Query plans").
         options: -c statement_timeout=${DARI_DB_STATEMENT_TIMEOUT:30s} -c plan_cache_mode=force_custom_plan
 
   jpa:

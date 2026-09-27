@@ -46,7 +46,7 @@ The monolith is still the correct tradeoff for this stage. The project is intent
 
 The frontend remains a second runtime, not because the business logic lives there, but because discovery and the public listing surface rely on crawler-visible pages and route-level SEO. The app is not a pure SPA; it is a product app with real route pages and a design system shaped to the product.
 
-URLs stay English. User-facing copy stays French. See `docs/NAMING.md` for the exact boundary and examples.
+URLs stay English. User-facing copy stays French. See `docs/product/naming.md` for the exact boundary and examples.
 
 ---
 
@@ -63,7 +63,7 @@ design-system/    Visual source of truth: tokens, guidelines, and UI kits.
 docs/             Design docs, naming rules, handoff documents.
 flows/            UI and flow prototypes.
 infra/            Compose services, database bootstrap, Firebase notes, local runners.
-plans/            Phased build plan and implementation guides.
+docs/archive/plans/            Phased build plan and implementation guides.
 ```
 
 Not a build-tooled monorepo. The API and web app each own their own toolchain, while `infra/scripts/dev.ps1` remains a thin wrapper for running the local stack consistently.

@@ -9,7 +9,7 @@ import type { ErrorEvent } from '@sentry/react-native';
  * device contexts) never leaves the phone. Events raised by the native SDKs
  * themselves — native crashes, ANRs and app hangs — do not pass through this
  * function; they carry device details and no scrubbing (see
- * docs/MOBILE_RELEASE.md). Exception messages are dropped
+ * docs/mobile/mobile-release.md). Exception messages are dropped
  * too: they can quote a server body, an email address or a message someone
  * wrote. What remains is the exception type, its stack frames, the release
  * and these tags. The one addition over the web is the OS name and version,

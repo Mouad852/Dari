@@ -14,7 +14,7 @@ It is not, however, zero-value: favorites are the main reason a seeker returns, 
 - Added `GET /api/v1/favorites/ids` (unpaginated, just the listing ids) so a client can cheaply answer "is this one favorited?" without paying for the full paginated list. Covered by a new `FavoriteApiTest` case.
 - The feed cards in `/listings` now have the same heart toggle as the detail page, backed by that endpoint (fetched once on page load into a `Set`, checked per card).
 - The listing detail page no longer always starts unfilled — it checks `/favorites/ids` on load and reflects a prior favorite for real.
-- Found and fixed in passing, same file, unrelated to favorites: **search-result cards had no link to the listing detail page at all** — clicking one did nothing. Now wrapped in a real link. See `plans/07-search-filters-and-map.md`'s 2026-09-02 status note.
+- Found and fixed in passing, same file, unrelated to favorites: **search-result cards had no link to the listing detail page at all** — clicking one did nothing. Now wrapped in a real link. See `docs/archive/plans/07-search-filters-and-map.md`'s 2026-09-02 status note.
 
 **Status (2026-09-05): public profile and profile editing are wired end to end.** Both backend endpoints (`GET /users/{id}` and `PATCH /users/me`) are covered by the passing user API tests. `/profile/[id]` shows only real profile fields and its contact action starts a real conversation. `/account/profile` updates only the fields in `UpdateUserRequest`; Firebase-owned email and phone remain read-only. Avatar upload and account deletion are also implemented and covered by `UserApiTest`. The remaining account gaps are notifications, payments, security settings, and the undecided profile-completion prompt.
 

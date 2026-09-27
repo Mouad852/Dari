@@ -1,7 +1,7 @@
 /**
  * The only place an English enum value becomes French.
  *
- * See docs/NAMING.md. Enum values are identifiers and stay English everywhere —
+ * See docs/product/naming.md. Enum values are identifiers and stay English everywhere —
  * schema, API, TypeScript. They become French exactly here, on the way to a
  * screen. A label written inline at a call site is how one concept ends up with
  * three slightly different French words across three screens.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Logical backup of one PostgreSQL database: pg_dump -Fc, verified before it
 # is trusted. Its job in the release contract is the pre-deploy dump taken
-# before migrations run (docs/PRODUCTION_OPERATIONS.md). Daily backups and
+# before migrations run (docs/operations/production-operations.md). Daily backups and
 # point-in-time recovery are RDS automated backups, not this script.
 #
 # The target is given only by the standard libpq variables, and there are no

@@ -5,7 +5,7 @@
  *
  * Written to reproduce audit P0-10 before changing the CSP. The regression gate
  * is the `production` Playwright project; this script is the one-off probe
- * whose output is recorded in docs/PHASE1_CSP_REPRODUCTION.md.
+ * whose output is recorded in docs/archive/phase1-csp-reproduction.md.
  *
  *   node e2e/csp-reproduction.mjs [baseUrl] [comma-separated routes]
  *

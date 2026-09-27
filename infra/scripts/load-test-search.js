@@ -47,7 +47,7 @@ export const options = {
     },
   },
   thresholds: {
-    // Recorded thresholds live in docs/PRODUCTION_OPERATIONS.md alongside the
+    // Recorded thresholds live in docs/operations/production-operations.md alongside the
     // measured numbers this run produced -- these are deliberately loose so the
     // script itself keeps working as a regression check without needing to be
     // hand-tuned every time the dataset or hardware changes.
