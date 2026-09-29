@@ -23,6 +23,7 @@ Last verified: 2026-09-27
 
 ## Open before launch
 
+- [ ] Launch-readiness fixes (P0/P1 from the 2026-09-29 audit), worked phase by phase: `docs/launch/launch-fix-todo.md`
 - [ ] Owner launch execution: `docs/operations/production-operations.md`, then `docs/operations/launch-rehearsal.md`
 - [ ] Legal owner inputs and review: `docs/legal/legal-prep.md`
 - [ ] Mobile store assets, declarations, builds and submissions: `docs/mobile/mobile-release.md`
