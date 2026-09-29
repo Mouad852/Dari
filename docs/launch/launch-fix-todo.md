@@ -308,8 +308,10 @@ number when the task lands (3.1 and 5.3 both add one).
 - [ ] **4.1c** P1-12 — `/account/security`: "Changer mon mot de passe" sends a reset email via
   `sendPasswordReset(me.email)`; drop "Niveau élevé" and the Firebase copy. Files:
   `account/security/page.tsx`, a spec using the e2e auth seam. Verify: Web + spec.
-- [ ] **4.1d** P1-12 — drop "Téléphone" from `PROFILE_COMPLETION_CHECKS`. Files:
-  `account/page.tsx`. Verify: Web typecheck/build.
+- [x] **4.1d** P1-12 — drop "Téléphone" from `PROFILE_COMPLETION_CHECKS` (four checks, a quarter
+  each). Files: `account/page.tsx`, `account-pages.spec.ts`. Verify: Web typecheck +
+  `account-pages` (3/3) — a complete profile without a phone hides the completion card.
+  (2026-09-29)
 - [ ] **4.2a** P1-5 — `lib/image.ts`: draw to canvas, export JPEG ≤ 2560 px long edge at 0.85
   (fixes orientation, size, WebP); used by the wizard and profile avatar upload; formats copy
   corrected. Files: new `apps/web/src/lib/image.ts`, `publish/page.tsx`, `account/profile/page.tsx`.

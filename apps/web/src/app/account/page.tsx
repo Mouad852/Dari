@@ -27,18 +27,21 @@ const SECTIONS = [
 
 /**
  * What "complete" means here, replacing a hardcoded "85%" that was never
- * connected to anything. Five fields that make a profile more trustworthy to
- * a stranger deciding whether to reply -- a photo, a bio, a city, a phone
- * number, and a confirmed email -- each worth an equal fifth. Not a product
- * spec handed down elsewhere in the app; a defensible default computed from
- * fields `/users/me` already returns, same spirit as every other "stop
- * inventing numbers" fix this session.
+ * connected to anything. Four fields that make a profile more trustworthy to
+ * a stranger deciding whether to reply -- a photo, a bio, a city and a
+ * confirmed email -- each worth an equal quarter. Not a product spec handed
+ * down elsewhere in the app; a defensible default computed from fields
+ * `/users/me` already returns, same spirit as every other "stop inventing
+ * numbers" fix this session.
+ *
+ * A phone number used to count too, but nothing in the product can set one
+ * (phone verification is post-launch), so the card could never reach 100%.
+ * Put it back with the feature.
  */
 const PROFILE_COMPLETION_CHECKS: Array<{ label: string; met: (me: Me) => boolean }> = [
   { label: 'Photo de profil', met: (me) => Boolean(me.avatarUrl) },
   { label: 'Biographie', met: (me) => Boolean(me.bio && me.bio.trim().length > 0) },
   { label: 'Ville', met: (me) => Boolean(me.city) },
-  { label: 'Téléphone', met: (me) => Boolean(me.phone) },
   { label: 'E-mail vérifié', met: (me) => me.emailVerified },
 ];
 
