@@ -218,14 +218,15 @@ sides (at least 32 characters; the API's startup check, the validation
 scripts and the web build gate all enforce it). **Rotation:** change it on the
 API and the web service in the same deploy. During a mismatch nothing breaks
 outright, but server renders fall back to the web host's per-address `SEARCH`
-quota (120/minute by default) and start returning 429 under load.
+quota (600/minute by default) and start returning 429 under load.
 
 Known limits, deliberately deferred: per-visitor fairness for anonymous SSR
 traffic does not exist — anyone who can drive many page renders can still
 spend the shared SSR budget, bounded only by the web host's edge and by ISR
 caching. Mobile and browser callers share the per-address `SEARCH` limit, which
-can be tight behind carrier-grade NAT; `DARI_RATE_LIMIT_SEARCH_MAX` stays
-tunable for that reason.
+can be tight behind carrier-grade NAT; it defaults to 600/minute (raised from
+120 on 2026-09-29 for that reason) and `DARI_RATE_LIMIT_SEARCH_MAX` stays
+tunable.
 
 Production uses Tomcat's native `RemoteIpValve`, not Spring's framework
 forwarded-header transformer. `DARI_TRUSTED_PROXY_IPS` is required and must be
@@ -526,7 +527,7 @@ changes against.
    row they touch (a dedicated `load-test-owner` user, a `Load test listing #`
    title prefix) so cleanup can never catch real data.
 2. Start the API against that data with the search rate limit raised — the
-   120/minute default exists to stop abuse, not to cap a deliberate
+   600/minute default exists to stop abuse, not to cap a deliberate
    benchmark of the query/app path, which is a different concern already
    covered by `RateLimitInterceptorTest`:
    ```powershell

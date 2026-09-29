@@ -232,7 +232,7 @@ dari:
       max: ${DARI_RATE_LIMIT_SIGNUP_MAX:5}
       window: ${DARI_RATE_LIMIT_SIGNUP_WINDOW:PT1H}
     search:
-      max: ${DARI_RATE_LIMIT_SEARCH_MAX:120}
+      max: ${DARI_RATE_LIMIT_SEARCH_MAX:600}
       window: ${DARI_RATE_LIMIT_SEARCH_WINDOW:PT1M}
     # The one shared bucket for reads carrying the SSR key (dari.ssr above):
     # Next.js renders all share the web runtime's source IP. A deliberate

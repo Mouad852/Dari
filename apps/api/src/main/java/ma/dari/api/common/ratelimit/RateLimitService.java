@@ -51,7 +51,7 @@ public class RateLimitService {
             @Value("${dari.rate-limits.upload.window:PT1H}") Duration uploadWindow,
             @Value("${dari.rate-limits.signup.max:5}") int signupMax,
             @Value("${dari.rate-limits.signup.window:PT1H}") Duration signupWindow,
-            @Value("${dari.rate-limits.search.max:120}") int searchMax,
+            @Value("${dari.rate-limits.search.max:600}") int searchMax,
             @Value("${dari.rate-limits.search.window:PT1M}") Duration searchWindow,
             @Value("${dari.rate-limits.ssr-read.max:10000}") int ssrReadMax,
             @Value("${dari.rate-limits.ssr-read.window:PT1M}") Duration ssrReadWindow,

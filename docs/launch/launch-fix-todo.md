@@ -113,9 +113,11 @@ next to the decision.
   `RateLimitInterceptorTest`. Verify: API `-Dtest=RateLimitInterceptorTest,RateLimitServiceTest,
   SsrSharedSecretRateLimitIntegrationTest,TomcatForwardedRateLimitIntegrationTest` — 10 users
   from one IP each sign up; one user's 6th → 429; the address ceiling still binds. (2026-09-29)
-- [ ] **1.4b** P1-6 — raise `search` to ~600/min per IP in `dari.rate-limits`. Files:
-  `apps/api/src/main/resources/application.yml` (+ any test asserting the old value). Verify: API
-  `-Dtest=RateLimitServiceTest,RateLimitInterceptorTest`.
+- [x] **1.4b** P1-6 — raise `search` to 600/min per IP in `dari.rate-limits`. Files:
+  `application.yml`, `RateLimitService.java` default, `.env.example`, `production-operations.md`,
+  `infra/scripts/load-test-search.js` comment. Verify: API `-Dtest=RateLimitServiceTest,
+  RateLimitInterceptorTest,SsrSharedSecretRateLimitIntegrationTest,TomcatForwardedRateLimitIntegrationTest,
+  ProductionConfigValidatorTest`. (2026-09-29)
 - [ ] **1.5** Phase 1 gate — full API suite green. Verify: `cd apps/api && ./mvnw test`.
 
 ## Phase 2 — Broken/incomplete functionality (P0 first)

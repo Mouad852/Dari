@@ -6,7 +6,7 @@
 //
 // Requires infra/scripts/seed-load-test-data.sql already applied (50,000 listings
 // across the four launch cities), and the API running with a raised search rate
-// limit -- the default 120/minute exists to stop abuse, not to cap a deliberate
+// limit -- the default 600/minute exists to stop abuse, not to cap a deliberate
 // benchmark of the query/app path itself, which is a different concern already
 // covered by RateLimitInterceptorTest. Example:
 //
