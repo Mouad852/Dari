@@ -136,10 +136,13 @@ next to the decision.
   names the sender/listing, body links to the thread, no message text). Files:
   `SmtpNotificationSender.java`, `NotificationDeliveryServiceTest`. Verify: API
   `-Dtest=NotificationDeliveryServiceTest`; manual Mailpit check of one email.
-- [ ] **2.2a** P0-2 — wizard "Chambre" step collects `roomFurnishing` (select) and `availableFrom`
-  (date, min today); both added to `missingForSubmit`, `draftPayload()` and `loadDraft`. Files:
-  `apps/web/src/app/publish/page.tsx`, `e2e/mock-api.mjs`, `keyboard-publish.spec.ts`. Verify: Web
-  + `keyboard-publish` spec asserts the PATCH payload contains both fields.
+- [x] **2.2a** P0-2 — wizard "Chambre" step collects `roomFurnishing` (select) and `availableFrom`
+  (date, min today); both added to `missingForSubmit`, `draftPayload()`, `loadDraft` and the
+  Validation summary; an unchanged loaded date is not re-sent (the API refuses past dates).
+  Files: `apps/web/src/app/publish/page.tsx`, `types/api.ts`, `lib/labels.ts`, `ds/Input.tsx`
+  (date `min`), `e2e/mock-api.mjs` (PATCH null = unchanged), `keyboard-publish.spec.ts`,
+  `account-journeys.spec.ts`. Verify: Web typecheck + `keyboard-publish account-journeys` specs —
+  payload contains both fields. (2026-09-29)
 - [ ] **2.2b** P0-2 — wizard collects the optional fields: `minStayMonths`, `priceDeposit`,
   `wifiIncluded`/`electricityIncluded`/`waterIncluded`, `numBedrooms`, `numBathrooms`,
   `currentRoommatesCount`, `maxRoommates`; round-trips through `loadDraft`. Files:

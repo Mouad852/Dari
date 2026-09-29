@@ -362,7 +362,8 @@ async function handle(request, response) {
   }
   if (path === '/listings/draft' && method === 'GET') return error(response, 404, 'NOT_FOUND', 'Brouillon introuvable');
   if (path === '/listings/listing-new' && method === 'PATCH') {
-    const body = await readBody(request);
+    // Like the API's PATCH: a null field means "leave it unchanged".
+    const body = Object.fromEntries(Object.entries(await readBody(request)).filter(([, value]) => value !== null));
     state.draft = { ...(state.draft ?? detail('listing-new', 'DRAFT')), ...body, id: 'listing-new' };
     return sendJson(response, 200, state.draft);
   }

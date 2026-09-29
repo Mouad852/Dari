@@ -52,6 +52,15 @@ async function typeInto(page: Page, name: RegExp, value: string): Promise<void> 
 
 test('the publish wizard can be completed without a mouse', async ({ authenticatedPage: page }) => {
   test.slow();
+  // Every listing write the wizard makes, merged the way the API applies them.
+  const written: Record<string, unknown> = {};
+  page.on('request', (request) => {
+    if (/\/api\/v1\/listings(\/listing-new)?$/.test(request.url()) && ['POST', 'PATCH'].includes(request.method())) {
+      for (const [key, value] of Object.entries(request.postDataJSON() ?? {})) {
+        if (value !== null) written[key] = value;
+      }
+    }
+  });
   await page.goto('/publish');
   await expect(page.getByLabel('Titre de l’annonce')).toBeVisible();
 
@@ -73,6 +82,10 @@ test('the publish wizard can be completed without a mouse', async ({ authenticat
   await next(); // Annonce -> Pièces
   await next(); // Pièces -> Chambre
   await typeInto(page, /Loyer mensuel/, '3200');
+  // Typeahead on a native select: "Meu" picks "Meublée".
+  await typeInto(page, /Aménagement de la chambre/, 'Meu');
+  // A date input takes its segments typed in order (en-US: month, day, year).
+  await typeInto(page, /Disponible à partir du/, '12312030');
   await next(); // Chambre -> Règles
   await next(); // Règles -> Photos
 
@@ -90,4 +103,6 @@ test('the publish wizard can be completed without a mouse', async ({ authenticat
   await page.keyboard.press('Enter');
 
   await expect(page.getByRole('status')).toContainText('envoyée pour validation');
+  // Search filters on both; a listing saved without them never matches.
+  expect(written).toMatchObject({ roomFurnishing: 'FULLY_FURNISHED', availableFrom: '2030-12-31' });
 });

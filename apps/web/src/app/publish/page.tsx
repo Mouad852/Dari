@@ -17,8 +17,8 @@ import { LocationPicker } from '@/components/LocationPicker';
 import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
 import { CITIES } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
-import { AMENITY_LABELS, LISTING_ROOM_TYPE_LABELS, PROPERTY_TYPE_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
-import type { HouseRules, ListingPhoto, ListingRoom, ListingRoomType, ListingStatus, PropertyType, RoomType } from '@/types/api';
+import { AMENITY_LABELS, LISTING_ROOM_TYPE_LABELS, PROPERTY_TYPE_LABELS, ROOM_FURNISHING_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
+import type { HouseRules, ListingPhoto, ListingRoom, ListingRoomType, ListingStatus, PropertyType, RoomFurnishing, RoomType } from '@/types/api';
 
 const HOURS = ['20:00', '21:00', '22:00', '23:00', '00:00', '06:00', '07:00', '08:00', '09:00'];
 
@@ -42,11 +42,19 @@ type DraftListing = {
   description: string | null;
   propertyType: PropertyType | null;
   roomType: RoomType | null;
+  roomFurnishing: RoomFurnishing | null;
+  /** ISO date, "2026-10-01". */
+  availableFrom: string | null;
   amenityCodes: string[];
   houseRules: HouseRules | null;
   rooms: ListingRoom[];
   status: ListingStatus;
 };
+
+/** Today in the browser's zone, as the ISO date a date input uses. */
+function todayIso(): string {
+  return new Date().toLocaleDateString('en-CA');
+}
 
 /** A room row while it's being edited in the wizard. `key` is client-only, never sent to the API. */
 type WizardRoom = {
@@ -128,6 +136,14 @@ function PublishWizard() {
   }, [rooms.length]);
   const [propertyType, setPropertyType] = useState<PropertyType>('STUDIO');
   const [roomType, setRoomType] = useState<RoomType>('PRIVATE');
+  // No default for these two: both feed search filters ("Meublé", "Disponible
+  // à partir du"), and a guessed value would put the listing under a filter
+  // the owner never chose.
+  const [roomFurnishing, setRoomFurnishing] = useState<RoomFurnishing | ''>('');
+  const [availableFrom, setAvailableFrom] = useState('');
+  // The date as loaded. The API refuses a past availableFrom, and a listing
+  // saved months ago holds one, so an unchanged date is not sent back.
+  const loadedAvailableFrom = useRef('');
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -255,6 +271,9 @@ function PublishWizard() {
         setDescription(draft.description ?? '');
         setPropertyType(draft.propertyType ?? 'STUDIO');
         setRoomType(draft.roomType ?? 'PRIVATE');
+        setRoomFurnishing(draft.roomFurnishing ?? '');
+        setAvailableFrom(draft.availableFrom ?? '');
+        loadedAvailableFrom.current = draft.availableFrom ?? '';
         setSelectedAmenities(draft.amenityCodes);
         setSmokingAllowed(draft.houseRules?.smokingAllowed ?? false);
         setPetsAllowed(draft.houseRules?.petsAllowed ?? false);
@@ -359,6 +378,9 @@ function PublishWizard() {
     description: description.trim(),
     roomType,
     propertyType,
+    // null leaves the stored value alone on a PATCH.
+    roomFurnishing: roomFurnishing || null,
+    availableFrom: availableFrom && availableFrom !== loadedAvailableFrom.current ? availableFrom : null,
     amenityCodes: selectedAmenities,
     houseRules: {
       smokingAllowed,
@@ -417,6 +439,7 @@ function PublishWizard() {
       options,
     );
     if (!draftId) setDraftId(draft.id);
+    loadedAvailableFrom.current = draft.availableFrom ?? '';
     return draft;
   };
 
@@ -613,13 +636,18 @@ function PublishWizard() {
    * cannot actually be empty here; they are listed because the server checks
    * them and this function is meant to be a mirror of that gate, not a subset
    * that happens to pass today.
+   *
+   * Furnishing and the availability date are required here because search
+   * filters on both, and a listing without them never matches those filters.
    */
   const missingForSubmit = (): string | null =>
     missingRequired() ??
     (!description.trim() ? 'Ajoutez une description avant de publier.' : null) ??
     (missingPhotos ? 'Ajoutez au moins une photo avant de publier.' : null) ??
     (!propertyType ? 'Choisissez un type de bien avant de publier.' : null) ??
-    (!roomType ? 'Choisissez un type de chambre avant de publier.' : null);
+    (!roomType ? 'Choisissez un type de chambre avant de publier.' : null) ??
+    (!roomFurnishing ? 'Indiquez si la chambre est meublée avant de publier.' : null) ??
+    (!availableFrom ? 'Indiquez la date de disponibilité avant de publier.' : null);
 
   const submitBlocker = isLastStep ? missingForSubmit() : null;
 
@@ -930,6 +958,25 @@ function PublishWizard() {
                 }))}
               />
 
+              <div className="wizard-pair">
+                <Select
+                  label="Aménagement de la chambre"
+                  value={roomFurnishing}
+                  onChange={(event) => setRoomFurnishing(event.target.value as RoomFurnishing | '')}
+                  options={(Object.keys(ROOM_FURNISHING_LABELS) as RoomFurnishing[]).map((value) => ({
+                    value,
+                    label: ROOM_FURNISHING_LABELS[value],
+                  }))}
+                />
+                <Input
+                  label="Disponible à partir du"
+                  type="date"
+                  value={availableFrom}
+                  onChange={(event) => setAvailableFrom(event.target.value)}
+                  min={todayIso()}
+                />
+              </div>
+
               <fieldset style={{ border: 'none', margin: 0, padding: 0, minWidth: 0 }}>
                 <legend style={{ padding: 0, font: 'var(--type-label)', color: 'var(--text-heading)' }}>
                   Équipements
@@ -1188,6 +1235,12 @@ function PublishWizard() {
                 <SummaryRow required label="Loyer" value={monthlyRent.trim() ? `${monthlyRent.trim()} MAD` : undefined} />
                 <SummaryRow label="Type de bien" value={PROPERTY_TYPE_LABELS[propertyType]} />
                 <SummaryRow label="Type de chambre" value={ROOM_TYPE_LABELS[roomType]} />
+                <SummaryRow required label="Aménagement" value={roomFurnishing ? ROOM_FURNISHING_LABELS[roomFurnishing] : undefined} />
+                <SummaryRow
+                  required
+                  label="Disponible à partir du"
+                  value={availableFrom ? new Intl.DateTimeFormat('fr-MA').format(new Date(`${availableFrom}T00:00:00`)) : undefined}
+                />
                 {/* Required: submit() refuses a listing with a blank description. */}
                 <SummaryRow required label="Description" value={description.trim() ? 'Rédigée' : undefined} />
                 <SummaryRow

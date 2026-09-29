@@ -109,6 +109,9 @@ export interface HouseRules {
 
 export type ListingRoomType = 'BEDROOM' | 'SALON' | 'KITCHEN' | 'BATHROOM' | 'TERRACE' | 'STORAGE';
 
+/** How the offered room is furnished. Mirrors RoomFurnishing on the server. */
+export type RoomFurnishing = 'FULLY_FURNISHED' | 'PARTIALLY_FURNISHED' | 'UNFURNISHED';
+
 /** Mirrors ListingRoomResponse. One physical room in the listing's apartment (§3). */
 export interface ListingRoom {
   id: string;
@@ -128,7 +131,7 @@ export interface PublicListingDetail extends PublicListing {
   numBedrooms: number | null;
   numBathrooms: number | null;
   roomType: RoomType | null;
-  roomFurnishing: 'FULLY_FURNISHED' | 'PARTIALLY_FURNISHED' | 'UNFURNISHED' | null;
+  roomFurnishing: RoomFurnishing | null;
   commonAreasFurnished: boolean | null;
   availableFrom: string | null;
   minStayMonths: number | null;

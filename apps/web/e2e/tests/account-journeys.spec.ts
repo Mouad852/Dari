@@ -50,6 +50,8 @@ test('listing publication covers the wizard, photo upload, and moderation handof
 
   for (let i = 0; i < 2; i += 1) await page.getByRole('button', { name: 'Suivant' }).click();
   await page.getByLabel('Loyer mensuel').fill('3200');
+  await page.getByLabel('Aménagement de la chambre').selectOption('PARTIALLY_FURNISHED');
+  await page.getByLabel('Disponible à partir du').fill('2030-10-01');
   await page.getByRole('button', { name: 'Suivant' }).click();
   await page.getByRole('button', { name: 'Suivant' }).click();
 

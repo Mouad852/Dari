@@ -32,8 +32,9 @@ export interface InputProps {
   disabled?: boolean;
   required?: boolean;
   size?: 'sm' | 'md' | 'lg';
-  min?: number;
-  max?: number;
+  /** A number, or an ISO date ("2026-10-01") for `type="date"`. */
+  min?: number | string;
+  max?: number | string;
   step?: number;
   inputMode?: 'text' | 'numeric' | 'decimal' | 'email' | 'tel' | 'search';
   autoComplete?: string;
