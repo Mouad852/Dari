@@ -254,8 +254,12 @@ number when the task lands (3.1 and 5.3 both add one).
   `e2e/mock-api.mjs` (other-user has a photo), `listing-host.spec.ts`. Verify: Web typecheck +
   `listing-host account-journeys` specs — the photo loads (naturalWidth > 0), axe clean.
   (2026-09-29)
-- [ ] **3.2e** P1-8 — mobile detail host card linking to the profile/report path. Files:
-  `apps/mobile/app/listing/[id].tsx`, mobile `types/api.ts`. Verify: Mobile `npm test`.
+- [x] **3.2e** P1-8 — mobile detail "Proposé par" card (photo or initial, name, verification,
+  member since) with "Signaler ce profil" through the existing report screen (mobile has no
+  public-profile screen). Labels in a tested `src/lib/host.ts`. Files:
+  `apps/mobile/app/listing/[id].tsx`, mobile `types/api.ts`, `src/lib/host.ts`,
+  `src/lib/__tests__/host.test.ts`. Verify: Mobile `npm test` (80/80) + typecheck. On-device look
+  not checked. (2026-09-29)
 - [ ] **3.3a** P1-11 — case/accent/whitespace-insensitive neighborhood match with an expression
   index (immutable `unaccent` wrapper or a stored `neighborhood_key`) across the live search
   copies. Files: new migration, `ListingSearchRepository.java`, `ListingApiTest`,

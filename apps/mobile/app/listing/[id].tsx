@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button } from '@/components/Button';
+import { Button, TextButton } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { TopBar } from '@/components/TopBar';
 import { apiFetch, errorMessage, mediaUrl, reportUnexpected } from '@/lib/api';
+import { memberSinceLabel, verificationLabel } from '@/lib/host';
 import { hasNetwork } from '@/lib/network';
 import { getIdToken } from '@/lib/firebase';
 import { amount } from '@/lib/format';
@@ -265,6 +266,31 @@ export default function ListingDetailScreen() {
           </View>
         )}
 
+        {/* Who the seeker is about to contact; verification is the anti-scam signal. */}
+        <View style={styles.section}>
+          <Text style={type.h3}>Proposé par</Text>
+          <View style={styles.hostCard}>
+            <View style={styles.hostAvatar}>
+              {listing.owner.avatarUrl ? (
+                <Image source={{ uri: mediaUrl(listing.owner.avatarUrl) }} style={styles.hostAvatarImg} accessibilityIgnoresInvertColors />
+              ) : (
+                <Text style={styles.hostInitial}>{listing.owner.displayName.charAt(0).toUpperCase()}</Text>
+              )}
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={[type.body, { fontFamily: font.uiMedium }]}>{listing.owner.displayName}</Text>
+              <Text style={[type.caption, { color: color.textMuted }]}>
+                {verificationLabel(listing.owner.verification)} · {memberSinceLabel(listing.owner)}
+              </Text>
+            </View>
+          </View>
+          <TextButton
+            onPress={() => router.push({ pathname: '/report' as never, params: { targetType: 'USER', targetId: listing.owner.id, label: listing.owner.displayName } })}
+          >
+            Signaler ce profil
+          </TextButton>
+        </View>
+
         <View style={{ marginTop: 24, gap: 8 }}>
         {contactError && (
             <Text style={[type.bodySm, { color: color.danger }]} accessibilityLiveRegion="assertive">
@@ -324,4 +350,26 @@ const styles = StyleSheet.create({
   section: { marginTop: 20 },
   factsGrid: { marginTop: 8, gap: 8 },
   factRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  hostCard: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: radius.card,
+    backgroundColor: color.surfaceCard,
+    borderWidth: 1,
+    borderColor: color.borderHairline,
+  },
+  hostAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+    backgroundColor: color.bgInset,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hostAvatarImg: { width: '100%', height: '100%' },
+  hostInitial: { fontFamily: font.uiMedium, fontSize: 18, color: color.textMuted },
 });

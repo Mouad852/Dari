@@ -115,6 +115,16 @@ export interface ListingRoom {
   description: string | null;
 }
 
+/** Who offers a listing: the public-profile subset, no contact data. Mirrors ListingHostResponse. */
+export interface ListingHost {
+  id: string;
+  displayName: string;
+  /** Absolute (S3/CDN) or root-relative; pass it through `mediaUrl`. */
+  avatarUrl: string | null;
+  verification: VerificationTier;
+  memberSince: string;
+}
+
 export interface PublicListingDetail extends PublicListing {
   priceDeposit: number | null;
   description: string | null;
@@ -133,6 +143,7 @@ export interface PublicListingDetail extends PublicListing {
   photos: ListingPhoto[];
   houseRules: HouseRules | null;
   rooms: ListingRoom[];
+  owner: ListingHost;
 }
 
 /**
