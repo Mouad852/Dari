@@ -105,11 +105,14 @@ next to the decision.
   `profileUpdateBody`. Files: `apps/mobile/app/(tabs)/profile.tsx`, `src/lib/profile.ts`,
   `src/lib/__tests__/profile.test.ts`. Verify: Mobile `npm test` + `npm run typecheck`.
   (2026-09-29)
-- [ ] **1.4a** P1-6 — authenticated mutation types (SIGNUP, LISTING, UPLOAD, MESSAGE, REPORT) are
-  limited per user; the IP bucket for them becomes a ceiling at a multiple (15×) of the per-user
-  limit. Anonymous reads stay IP-limited. Files: `apps/api/.../common/ratelimit/RateLimitInterceptor.java`,
-  `RateLimitInterceptorTest`. Verify: API `-Dtest=RateLimitInterceptorTest` — 10 users from one
-  IP each create a profile → all 201; one user's 6th creation → 429.
+- [x] **1.4a** P1-6 — authenticated mutation types (SIGNUP, LISTING, UPLOAD, MESSAGE, REPORT) are
+  limited per user; the IP bucket for them becomes a ceiling at a multiple (15×,
+  `DARI_RATE_LIMIT_SHARED_ADDRESS_MULTIPLIER`) of the per-user limit. Reads and anonymous calls
+  stay IP-limited. Files: `apps/api/.../common/ratelimit/RateLimitInterceptor.java`,
+  `RateLimitService.java`, `application.yml`, `.env.example`, `production-operations.md`,
+  `RateLimitInterceptorTest`. Verify: API `-Dtest=RateLimitInterceptorTest,RateLimitServiceTest,
+  SsrSharedSecretRateLimitIntegrationTest,TomcatForwardedRateLimitIntegrationTest` — 10 users
+  from one IP each sign up; one user's 6th → 429; the address ceiling still binds. (2026-09-29)
 - [ ] **1.4b** P1-6 — raise `search` to ~600/min per IP in `dari.rate-limits`. Files:
   `apps/api/src/main/resources/application.yml` (+ any test asserting the old value). Verify: API
   `-Dtest=RateLimitServiceTest,RateLimitInterceptorTest`.

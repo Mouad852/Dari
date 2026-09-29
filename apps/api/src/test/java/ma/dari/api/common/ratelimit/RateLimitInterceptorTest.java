@@ -74,6 +74,63 @@ class RateLimitInterceptorTest {
     }
 
     @Test
+    void signedInUsersBehindOneAddressEachKeepTheirOwnQuota() throws Exception {
+        // signup.max = 5: ten students on one campus address all create a profile.
+        RateLimitService service = new RateLimitService(
+                5, Duration.ofHours(1), 30, Duration.ofMinutes(1), 5, Duration.ofHours(1),
+                20, Duration.ofHours(1), 5, Duration.ofHours(1), 120, Duration.ofMinutes(1));
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service, SSR_SECRET);
+        HandlerMethod signup = new HandlerMethod(new SignupEndpoint(), SignupEndpoint.class.getMethod("signup"));
+
+        for (int student = 0; student < 10; student++) {
+            signIn("uid-campus-" + student);
+            assertThatCode(() -> interceptor.preHandle(request("198.51.100.20"), new MockHttpServletResponse(), signup))
+                    .doesNotThrowAnyException();
+        }
+
+        // One of them still has only their own five.
+        signIn("uid-campus-0");
+        for (int attempt = 1; attempt < 5; attempt++) {
+            interceptor.preHandle(request("198.51.100.20"), new MockHttpServletResponse(), signup);
+        }
+        assertThatThrownBy(() -> interceptor.preHandle(request("198.51.100.20"), new MockHttpServletResponse(), signup))
+                .isInstanceOf(RateLimitExceededException.class);
+    }
+
+    @Test
+    void oneAddressStillCapsSignedInWritesAtSeveralUsersWorth() throws Exception {
+        // signup.max = 2 with a multiplier of 3: six signed-in signups per address.
+        RateLimitService service = new RateLimitService(
+                5, Duration.ofHours(1), 30, Duration.ofMinutes(1), 5, Duration.ofHours(1),
+                20, Duration.ofHours(1), 2, Duration.ofHours(1), 120, Duration.ofMinutes(1));
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service, SSR_SECRET, 3);
+        HandlerMethod signup = new HandlerMethod(new SignupEndpoint(), SignupEndpoint.class.getMethod("signup"));
+
+        for (int identity = 0; identity < 6; identity++) {
+            signIn("uid-farm-" + identity);
+            interceptor.preHandle(request("203.0.113.90"), new MockHttpServletResponse(), signup);
+        }
+        signIn("uid-farm-6");
+        assertThatThrownBy(() -> interceptor.preHandle(request("203.0.113.90"), new MockHttpServletResponse(), signup))
+                .isInstanceOf(RateLimitExceededException.class);
+        assertThatCode(() -> interceptor.preHandle(request("203.0.113.91"), new MockHttpServletResponse(), signup))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void signedInSearchKeepsThePlainPerAddressLimit() throws Exception {
+        RateLimitService service = serviceWithSearchMax(2);
+        RateLimitInterceptor interceptor = new RateLimitInterceptor(service, SSR_SECRET);
+
+        signIn("uid-search-a");
+        interceptor.preHandle(request("192.0.2.70"), new MockHttpServletResponse(), search());
+        interceptor.preHandle(request("192.0.2.70"), new MockHttpServletResponse(), search());
+        signIn("uid-search-b");
+        assertThatThrownBy(() -> interceptor.preHandle(request("192.0.2.70"), new MockHttpServletResponse(), search()))
+                .isInstanceOf(RateLimitExceededException.class);
+    }
+
+    @Test
     void groupsIpv6PrivacyAddressesIntoOneSlash64Bucket() throws Exception {
         RateLimitService service = new RateLimitService(
                 5, Duration.ofHours(1), 30, Duration.ofMinutes(1), 5, Duration.ofHours(1),
@@ -207,6 +264,11 @@ class RateLimitInterceptorTest {
         return new RateLimitService(
                 5, Duration.ofHours(1), 30, Duration.ofMinutes(1), 5, Duration.ofHours(1),
                 20, Duration.ofHours(1), 5, Duration.ofHours(1), searchMax, Duration.ofMinutes(1));
+    }
+
+    private static void signIn(String uid) {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                new AuthenticatedUser(uid, uid + "@example.ma", true, null), null));
     }
 
     private static MockHttpServletRequest request(String remoteAddress) {

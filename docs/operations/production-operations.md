@@ -188,7 +188,11 @@ with the server-only shared secret `DARI_SSR_SHARED_SECRET`, sent in the
   Cities, amenities and neighborhoods are browser/mobile reference routes and
   are annotated `SEARCH`.
 - **Mutation policies** (signup, upload, report, message, listing) ignore the
-  header entirely.
+  header entirely. A signed-in mutation is limited per Firebase user at the
+  policy's limit; its source address only carries
+  `DARI_RATE_LIMIT_SHARED_ADDRESS_MULTIPLIER` users' worth (15 by default), so
+  people behind one carrier-grade NAT or campus network do not share one
+  quota. An unauthenticated call keeps the plain per-address limit.
 
 Every server-side API call the web app makes (verified against a production
 build and `next start`, 2026-09-22; all go through `apiFetch`, so all carry the

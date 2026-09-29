@@ -2,6 +2,7 @@ package ma.dari.api.common.ratelimit;
 
 import ma.dari.api.common.auth.AuthenticatedUser;
 import ma.dari.api.common.error.RateLimitExceededException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,16 +29,30 @@ public class RateLimitInterceptor implements HandlerInterceptor {
      */
     static final String SSR_KEY_HEADER = "X-Dari-Ssr-Key";
 
+    static final int DEFAULT_SHARED_ADDRESS_MULTIPLIER = 15;
+
     private final RateLimitService rateLimitService;
     /** Null when unconfigured: then no request is ever a trusted SSR call. */
     private final byte[] ssrSharedSecret;
+    /** How many users' worth of signed-in writes one source address may carry. */
+    private final int sharedAddressMultiplier;
 
+    @Autowired
     public RateLimitInterceptor(RateLimitService rateLimitService,
-                                @Value("${dari.ssr.shared-secret:}") String ssrSharedSecret) {
+                                @Value("${dari.ssr.shared-secret:}") String ssrSharedSecret,
+                                @Value("${dari.rate-limits.shared-address-multiplier:15}") int sharedAddressMultiplier) {
+        if (sharedAddressMultiplier < 1) {
+            throw new IllegalArgumentException("Rate-limit shared-address multiplier must be positive");
+        }
         this.rateLimitService = rateLimitService;
         this.ssrSharedSecret = ssrSharedSecret == null || ssrSharedSecret.isBlank()
                 ? null
                 : ssrSharedSecret.getBytes(StandardCharsets.UTF_8);
+        this.sharedAddressMultiplier = sharedAddressMultiplier;
+    }
+
+    RateLimitInterceptor(RateLimitService rateLimitService, String ssrSharedSecret) {
+        this(rateLimitService, ssrSharedSecret, DEFAULT_SHARED_ADDRESS_MULTIPLIER);
     }
 
     @Override
@@ -71,10 +86,17 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         // SEARCH, so an unkeyed caller can neither spend the shared SSR budget
         // nor enumerate outside a per-address quota.
         RateLimitType effective = type == RateLimitType.SSR_READ ? RateLimitType.SEARCH : type;
+        String address = "ip:" + sourceAddress(request.getRemoteAddr());
         if (identity != null) {
-            check(effective, "user:" + identity);
+            check(effective, "user:" + identity, 1);
         }
-        check(effective, "ip:" + sourceAddress(request.getRemoteAddr()));
+        // A signed-in write is the user's own quota to spend. Mobile carriers
+        // (CGNAT) and campus or residence Wi-Fi put many people behind one
+        // address, so for them the address is only a ceiling of several users'
+        // worth -- still bounding identity farming from one host. Reads and
+        // anonymous calls keep the plain per-address limit.
+        int addressMultiplier = identity != null && !isRead(effective) ? sharedAddressMultiplier : 1;
+        check(effective, address, addressMultiplier);
         return true;
     }
 
@@ -92,7 +114,11 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     }
 
     private void check(RateLimitType type, String dimension) {
-        RateLimitService.Decision decision = rateLimitService.tryAcquire(type, dimension);
+        check(type, dimension, 1);
+    }
+
+    private void check(RateLimitType type, String dimension, int maxMultiplier) {
+        RateLimitService.Decision decision = rateLimitService.tryAcquire(type, dimension, maxMultiplier);
         if (!decision.allowed()) {
             throw new RateLimitExceededException(decision.retryAfterSeconds());
         }

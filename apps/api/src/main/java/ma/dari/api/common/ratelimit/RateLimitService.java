@@ -16,9 +16,10 @@ import java.util.function.LongSupplier;
 /**
  * Fixed-window limiter for the single API instance.
  *
- * <p>Each write is limited both by authenticated Firebase identity and source
- * address. This protects a real account from a shared-IP burst and makes
- * creating many Firebase identities from one address expensive. A distributed
+ * <p>Each write is limited by authenticated Firebase identity, and its source
+ * address carries a much higher ceiling (see {@link RateLimitInterceptor}), so
+ * people behind one carrier-grade NAT or campus network do not share one quota
+ * while creating many Firebase identities from one address stays bounded. A distributed
  * store can replace this service when the API is scaled horizontally. Expired
  * windows are swept locally so this process-owned map remains bounded.
  */
@@ -114,10 +115,19 @@ public class RateLimitService {
     }
 
     public Decision tryAcquire(RateLimitType type, String dimension) {
+        return tryAcquire(type, dimension, 1);
+    }
+
+    /**
+     * As {@link #tryAcquire(RateLimitType, String)}, with the policy's maximum
+     * multiplied: a ceiling for a dimension many legitimate callers share.
+     */
+    public Decision tryAcquire(RateLimitType type, String dimension, int maxMultiplier) {
         Policy policy = policies.get(type);
-        if (policy == null || dimension == null || dimension.isBlank()) {
+        if (policy == null || dimension == null || dimension.isBlank() || maxMultiplier < 1) {
             throw new IllegalArgumentException("Rate-limit policy and dimension are required");
         }
+        long max = (long) policy.max() * maxMultiplier;
 
         long now = monotonicNanos.getAsLong();
         synchronized (allocationLock) {
@@ -126,7 +136,7 @@ public class RateLimitService {
                 window.startedAtNanos = now;
                 window.count = 0;
             }
-            if (window.count >= policy.max()) {
+            if (window.count >= max) {
                 long remainingNanos = policy.window().toNanos() - (now - window.startedAtNanos);
                 long retryAfterSeconds = Math.max(1, (remainingNanos + 999_999_999L) / 1_000_000_000L);
                 return new Decision(false, retryAfterSeconds);

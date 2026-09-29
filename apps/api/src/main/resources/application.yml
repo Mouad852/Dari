@@ -212,6 +212,10 @@ dari:
     # At capacity, new clients share a fixed overflow bucket rather than
     # allocating more memory or bypassing enforcement.
     max-tracked-keys: ${DARI_RATE_LIMIT_MAX_TRACKED_KEYS:100000}
+    # Signed-in writes (report, message, listing, upload, signup) are limited
+    # per user; their source address only carries this many users' worth, so
+    # carrier-grade NAT and campus Wi-Fi do not share one person's quota.
+    shared-address-multiplier: ${DARI_RATE_LIMIT_SHARED_ADDRESS_MULTIPLIER:15}
     report:
       max: ${DARI_RATE_LIMIT_REPORT_MAX:5}
       window: ${DARI_RATE_LIMIT_REPORT_WINDOW:PT1H}
