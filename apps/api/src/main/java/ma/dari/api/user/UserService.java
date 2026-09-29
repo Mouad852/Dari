@@ -220,13 +220,28 @@ public class UserService {
         return users.save(user);
     }
 
+    /**
+     * A PATCH: an absent ({@code null}) field is left unchanged, a blank one
+     * clears it. Clients send {@code ""} for a field the person emptied, so
+     * deleting a bio or city from the public profile actually removes it.
+     * {@code displayName} is required and cannot be cleared.
+     */
     @Transactional
     public User update(User user, UpdateUserRequest request) {
-        if (request.displayName() != null) user.setDisplayName(request.displayName());
-        if (request.firstName() != null) user.setFirstName(request.firstName());
-        if (request.city() != null) user.setCity(request.city());
-        if (request.bio() != null) user.setBio(request.bio());
+        if (request.displayName() != null) {
+            if (request.displayName().isBlank()) {
+                throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Nom affiché requis");
+            }
+            user.setDisplayName(request.displayName().trim());
+        }
+        if (request.firstName() != null) user.setFirstName(blankToNull(request.firstName()));
+        if (request.city() != null) user.setCity(blankToNull(request.city()));
+        if (request.bio() != null) user.setBio(blankToNull(request.bio()));
         return users.save(user);
+    }
+
+    private static String blankToNull(String value) {
+        return value.isBlank() ? null : value.trim();
     }
 
     /**

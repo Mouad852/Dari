@@ -92,10 +92,11 @@ next to the decision.
 - [x] **1.2b** P1-1 — `DataIntegrityViolationException` → 409 `CONFLICT`, logged at warn (constraint
   name only), not reported. Files: `GlobalExceptionHandler.java`, `GlobalExceptionHandlerTest`.
   Verify: API `-Dtest=GlobalExceptionHandlerTest,ArchitectureTest`. (2026-09-29)
-- [ ] **1.3a** P1-9 — `UserService.update` maps a blank `bio`/`city`/`firstName`/`lastName` to
-  `null` (cleared); `displayName` stays required. Files: `apps/api/.../user/UserService.java`, new
-  test class (not `UserApiTest`, see rules). Verify: API — PATCH `{bio:""}` → `GET /users/me`
-  `bio: null` and the public profile has no bio.
+- [x] **1.3a** P1-9 — `UserService.update` maps a blank `bio`/`city`/`firstName` to `null`
+  (cleared), trims values; a blank `displayName` → 400. Files: `apps/api/.../user/UserService.java`,
+  new `UserProfileClearingApiTest` (not `UserApiTest`, see rules). Verify: API
+  `-Dtest=UserProfileClearingApiTest,UserApiTest` — PATCH `{bio:""}` → `GET /users/me` `bio: null`
+  and the public profile has no bio. (2026-09-29)
 - [ ] **1.3b** P1-9 — web profile form sends `""` for cleared fields instead of `null`. Files:
   `apps/web/src/app/account/profile/page.tsx` (+ mock API if needed). Verify: Web typecheck/build +
   `account-journeys` spec.
