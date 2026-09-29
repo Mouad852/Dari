@@ -89,9 +89,9 @@ next to the decision.
   `GlobalExceptionHandlerTest`, `ErrorReportingApiTest` (real PUT `/listings`, text/plain POST
   `/conversations`, multipart without `file`). Verify: API
   `-Dtest=GlobalExceptionHandlerTest,ErrorReportingApiTest`. (2026-09-29)
-- [ ] **1.2b** P1-1 — `DataIntegrityViolationException` → 409 `CONFLICT`, logged at warn, not
-  reported. Files: `GlobalExceptionHandler.java`, `GlobalExceptionHandlerTest`. Verify: API
-  `-Dtest=GlobalExceptionHandlerTest`.
+- [x] **1.2b** P1-1 — `DataIntegrityViolationException` → 409 `CONFLICT`, logged at warn (constraint
+  name only), not reported. Files: `GlobalExceptionHandler.java`, `GlobalExceptionHandlerTest`.
+  Verify: API `-Dtest=GlobalExceptionHandlerTest,ArchitectureTest`. (2026-09-29)
 - [ ] **1.3a** P1-9 — `UserService.update` maps a blank `bio`/`city`/`firstName`/`lastName` to
   `null` (cleared); `displayName` stays required. Files: `apps/api/.../user/UserService.java`, new
   test class (not `UserApiTest`, see rules). Verify: API — PATCH `{bio:""}` → `GET /users/me`

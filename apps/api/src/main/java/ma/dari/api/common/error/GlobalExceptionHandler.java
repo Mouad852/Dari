@@ -5,9 +5,11 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.hibernate.exception.ConstraintViolationException;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -196,6 +198,25 @@ public class GlobalExceptionHandler {
         fields.put(name, "Requis");
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse(ErrorCode.VALIDATION_FAILED.name(), "Données invalides", fields));
+    }
+
+    /**
+     * A write that lost a race against a database constraint -- two concurrent
+     * first uploads both claiming the cover ({@code idx_listing_photos_active_cover}),
+     * for instance. The client can retry, so it is a 409, not a server fault.
+     *
+     * <p>Logged at warn with the constraint name only: the driver message
+     * carries the conflicting values ({@code (email)=(...)}), which can name a
+     * person. A steady stream of these for one constraint is a missing
+     * validation, not a race; the log line is what shows it.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ErrorResponse> handleConstraintViolation(DataIntegrityViolationException e, HttpServletRequest req) {
+        String constraint = e.getCause() instanceof ConstraintViolationException violation
+                && violation.getConstraintName() != null ? violation.getConstraintName() : "unknown";
+        log.warn("Constraint violation on {} {} (constraint {})", req.getMethod(), routePattern(req), constraint);
+        return ResponseEntity.status(409)
+                .body(ErrorResponse.of(ErrorCode.CONFLICT, "Conflit avec une autre modification, veuillez réessayer"));
     }
 
     /**

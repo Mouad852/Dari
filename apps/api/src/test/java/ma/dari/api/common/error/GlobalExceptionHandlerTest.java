@@ -1,7 +1,9 @@
 package ma.dari.api.common.error;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -9,6 +11,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +52,25 @@ class GlobalExceptionHandlerTest {
         var missingParam = handler.handleMissingParameter(new MissingServletRequestParameterException("city", "String"));
         assertThat(missingParam.getStatusCode().value()).isEqualTo(400);
         assertThat(missingParam.getBody().fields()).containsEntry("city", "Requis");
+    }
+
+    @Test
+    void aLostConstraintRaceIsAConflictAndIsNotReported() {
+        List<ErrorReporter.SafeErrorContext> reported = new ArrayList<>();
+        var registry = new SimpleMeterRegistry();
+        var handler = new GlobalExceptionHandler(registry, (error, context) -> reported.add(context), "test");
+        var violation = new DataIntegrityViolationException("could not execute statement",
+                new ConstraintViolationException("duplicate key (email)=(a@example.ma)",
+                        new SQLException("duplicate key"), "idx_listing_photos_active_cover"));
+
+        var response = handler.handleConstraintViolation(violation,
+                new MockHttpServletRequest("POST", "/api/v1/listings/x/photos"));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(409);
+        assertThat(response.getBody()).isEqualTo(new ErrorResponse(
+                "CONFLICT", "Conflit avec une autre modification, veuillez réessayer", null));
+        assertThat(reported).isEmpty();
+        assertThat(registry.find("dari.errors.unhandled").counter()).isNull();
     }
 
     @Test
