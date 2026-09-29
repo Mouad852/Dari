@@ -2,10 +2,16 @@ package ma.dari.api.common.error;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,6 +25,30 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getHeaders().getFirst("Retry-After")).isEqualTo("42");
         assertThat(response.getBody()).isEqualTo(new ErrorResponse(
                 "RATE_LIMITED", "Trop de demandes, veuillez réessayer plus tard", null));
+    }
+
+    @Test
+    void protocolMistakesAreClientErrorsInTheStandardEnvelope() {
+        var handler = new GlobalExceptionHandler(new SimpleMeterRegistry());
+
+        var wrongVerb = handler.handleMethodNotSupported(
+                new HttpRequestMethodNotSupportedException("PUT", List.of("GET", "POST")));
+        assertThat(wrongVerb.getStatusCode().value()).isEqualTo(405);
+        assertThat(wrongVerb.getHeaders().getAllow()).containsExactlyInAnyOrder(HttpMethod.GET, HttpMethod.POST);
+        assertThat(wrongVerb.getBody().code()).isEqualTo("METHOD_NOT_ALLOWED");
+
+        var wrongType = handler.handleMediaTypeNotSupported(new HttpMediaTypeNotSupportedException("text/plain"));
+        assertThat(wrongType.getStatusCode().value()).isEqualTo(415);
+        assertThat(wrongType.getBody().code()).isEqualTo("UNSUPPORTED_MEDIA_TYPE");
+
+        var missingPart = handler.handleMissingPart(new MissingServletRequestPartException("file"));
+        assertThat(missingPart.getStatusCode().value()).isEqualTo(400);
+        assertThat(missingPart.getBody()).isEqualTo(new ErrorResponse(
+                "VALIDATION_FAILED", "Données invalides", Map.of("file", "Requis")));
+
+        var missingParam = handler.handleMissingParameter(new MissingServletRequestParameterException("city", "String"));
+        assertThat(missingParam.getStatusCode().value()).isEqualTo(400);
+        assertThat(missingParam.getBody().fields()).containsEntry("city", "Requis");
     }
 
     @Test

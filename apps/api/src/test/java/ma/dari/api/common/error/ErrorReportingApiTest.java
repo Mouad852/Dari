@@ -2,6 +2,7 @@ package ma.dari.api.common.error;
 
 import tools.jackson.databind.JsonNode;
 import com.google.firebase.auth.FirebaseToken;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.restassured.response.Response;
 import ma.dari.api.support.AbstractIntegrationTest;
 import ma.dari.api.support.FakeSentry;
@@ -68,6 +69,9 @@ class ErrorReportingApiTest extends AbstractIntegrationTest {
 
     @Autowired
     UserRepository users;
+
+    @Autowired
+    MeterRegistry meterRegistry;
 
     @BeforeEach
     void signedInUser() throws Exception {
@@ -144,6 +148,24 @@ class ErrorReportingApiTest extends AbstractIntegrationTest {
                 .when().post("/reports")
                 .then().statusCode(400);
 
+        // Protocol mistakes Spring rejects before any controller runs.
+        given().header("Authorization", "Bearer " + BEARER).header("X-Correlation-Id", "corr-405")
+                .when().put("/listings")
+                .then().statusCode(405)
+                .header("Allow", org.hamcrest.Matchers.containsString("GET"))
+                .body("code", equalTo("METHOD_NOT_ALLOWED"));
+        given().header("Authorization", "Bearer " + BEARER).header("X-Correlation-Id", "corr-415")
+                .contentType("text/plain").body("bonjour")
+                .when().post("/conversations")
+                .then().statusCode(415)
+                .body("code", equalTo("UNSUPPORTED_MEDIA_TYPE"));
+        given().header("Authorization", "Bearer " + BEARER).header("X-Correlation-Id", "corr-400-part")
+                .multiPart("caption", "sans fichier")
+                .when().post("/listings/{id}/photos", UUID.randomUUID())
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"))
+                .body("fields.file", equalTo("Requis"));
+
         // One sender drains one queue in order: once this 500 has arrived,
         // anything queued before it would have arrived too.
         explode(UUID.randomUUID().toString(), "corr-after-4xx").then().statusCode(500);
@@ -151,7 +173,12 @@ class ErrorReportingApiTest extends AbstractIntegrationTest {
                 event -> "corr-after-4xx".equals(event.path("tags").path("correlation_id").asText()),
                 Duration.ofSeconds(10))).isPresent();
         assertThat(SENTRY.events()).extracting(event -> event.path("tags").path("correlation_id").asText())
-                .doesNotContain("corr-404", "corr-400");
+                .doesNotContain("corr-404", "corr-400", "corr-405", "corr-415", "corr-400-part");
+        for (String exception : new String[] {"HttpRequestMethodNotSupportedException",
+                "HttpMediaTypeNotSupportedException", "MissingServletRequestPartException"}) {
+            assertThat(meterRegistry.find("dari.errors.unhandled").tag("exception", exception).counter())
+                    .as("%s is not counted as unhandled", exception).isNull();
+        }
     }
 
     @Test

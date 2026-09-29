@@ -8,21 +8,27 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.BindException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -148,6 +154,48 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     ResponseEntity<ErrorResponse> handleMissingResource(NoResourceFoundException e) {
         return ResponseEntity.status(404).body(ErrorResponse.of(ErrorCode.NOT_FOUND, "Ressource introuvable"));
+    }
+
+    /**
+     * Protocol mistakes Spring MVC rejects before a controller runs: the wrong
+     * verb, the wrong Content-Type, a missing multipart file or query parameter.
+     *
+     * <p>Without these they fell through to the catch-all below, so anyone could
+     * produce 500s, error-tracking events and {@code dari.errors.unhandled}
+     * increments at will ({@code curl -X PUT /api/v1/listings}). They are client
+     * errors and are answered as such, unreported.
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(405);
+        Set<HttpMethod> supported = e.getSupportedHttpMethods();
+        if (supported != null && !supported.isEmpty()) {
+            response.allow(supported.toArray(HttpMethod[]::new));
+        }
+        return response.body(ErrorResponse.of(ErrorCode.METHOD_NOT_ALLOWED, "Méthode non autorisée"));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    ResponseEntity<ErrorResponse> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException e) {
+        return ResponseEntity.status(415)
+                .body(ErrorResponse.of(ErrorCode.UNSUPPORTED_MEDIA_TYPE, "Type de contenu non pris en charge"));
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    ResponseEntity<ErrorResponse> handleMissingPart(MissingServletRequestPartException e) {
+        return missingInput(e.getRequestPartName());
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    ResponseEntity<ErrorResponse> handleMissingParameter(MissingServletRequestParameterException e) {
+        return missingInput(e.getParameterName());
+    }
+
+    private static ResponseEntity<ErrorResponse> missingInput(String name) {
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put(name, "Requis");
+        return ResponseEntity.badRequest()
+                .body(new ErrorResponse(ErrorCode.VALIDATION_FAILED.name(), "Données invalides", fields));
     }
 
     /**

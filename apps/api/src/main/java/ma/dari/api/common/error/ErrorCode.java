@@ -31,6 +31,8 @@ public enum ErrorCode {
     INVALID_CURSOR,
     ILLEGAL_TRANSITION,
     RATE_LIMITED,
+    METHOD_NOT_ALLOWED,
+    UNSUPPORTED_MEDIA_TYPE,
 
     // --- server --------------------------------------------------------------
     INTERNAL_ERROR,

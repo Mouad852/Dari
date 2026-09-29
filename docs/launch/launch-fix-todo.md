@@ -81,12 +81,14 @@ next to the decision.
   (400 "Une annonce publiée doit garder au moins une photo"). Files: `ListingService.java`,
   `ListingApiTest`. Verify: API `-Dtest=ListingApiTest` — deleting the only photo of a published
   listing → 400, photo still present. (2026-09-29)
-- [ ] **1.2a** P1-1 — handlers for `HttpRequestMethodNotSupportedException` (405 + `Allow`),
+- [x] **1.2a** P1-1 — handlers for `HttpRequestMethodNotSupportedException` (405 + `Allow`),
   `HttpMediaTypeNotSupportedException` (415), `MissingServletRequestPartException` and
   `MissingServletRequestParameterException` (400), all in the standard envelope, no Sentry report,
-  no `dari.errors.unhandled` increment. Files: `apps/api/.../common/error/GlobalExceptionHandler.java`,
-  `GlobalExceptionHandlerTest`. Verify: API `-Dtest=GlobalExceptionHandlerTest`; manual
-  `curl -X PUT http://localhost:8055/api/v1/listings` → 405 envelope.
+  no `dari.errors.unhandled` increment. New codes `METHOD_NOT_ALLOWED`, `UNSUPPORTED_MEDIA_TYPE`.
+  Files: `apps/api/.../common/error/GlobalExceptionHandler.java`, `ErrorCode.java`,
+  `GlobalExceptionHandlerTest`, `ErrorReportingApiTest` (real PUT `/listings`, text/plain POST
+  `/conversations`, multipart without `file`). Verify: API
+  `-Dtest=GlobalExceptionHandlerTest,ErrorReportingApiTest`. (2026-09-29)
 - [ ] **1.2b** P1-1 — `DataIntegrityViolationException` → 409 `CONFLICT`, logged at warn, not
   reported. Files: `GlobalExceptionHandler.java`, `GlobalExceptionHandlerTest`. Verify: API
   `-Dtest=GlobalExceptionHandlerTest`.
