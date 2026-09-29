@@ -162,22 +162,7 @@ public class ListingService {
         validateCity(request.city());
         validateQuietHours(request.houseRules());
         applyUpdate(request, listing);
-
-        // Editing a live listing returns it to the moderation queue.
-        //
-        // This reverses the original design-doc §4 rule ("editing a PUBLISHED
-        // listing does not send it back to review", mitigated by reporting) at
-        // the product owner's explicit direction. The trade-off it accepts: a
-        // published listing leaves public search the moment its owner touches
-        // it, including for a typo, and only returns once a moderator approves
-        // it again.
-        //
-        // Only PUBLISHED moves. A DRAFT stays a DRAFT -- the create wizard
-        // PATCHes on every step, and sending drafts to review would submit them
-        // before the owner ever pressed publish.
-        if (listing.getStatus() == ListingStatus.PUBLISHED) {
-            listing.setStatus(ListingStatus.PENDING_REVIEW);
-        }
+        returnToReviewIfLive(listing);
 
         listing = listings.save(listing);
 
@@ -191,6 +176,30 @@ public class ListingService {
             replaceRooms(listing, request.rooms());
         }
         return listing;
+    }
+
+    /**
+     * Returns a live listing to the moderation queue after an owner change.
+     *
+     * <p>This reverses the original design-doc §4 rule ("editing a PUBLISHED
+     * listing does not send it back to review", mitigated by reporting) at the
+     * product owner's explicit direction. The trade-off it accepts: a published
+     * listing leaves public search the moment its owner touches it, including
+     * for a typo, and only returns once a moderator approves it again.
+     *
+     * <p>Photo uploads and cover changes go through here too, so an unreviewed
+     * image can never go public on an already approved listing. Reordering and
+     * deleting photos do not: they cannot show anything a moderator has not seen.
+     *
+     * <p>Only PUBLISHED moves. A DRAFT stays a DRAFT -- the create wizard
+     * PATCHes on every step, and sending drafts to review would submit them
+     * before the owner ever pressed publish.
+     */
+    private void returnToReviewIfLive(Listing listing) {
+        if (listing.getStatus() == ListingStatus.PUBLISHED) {
+            listing.setStatus(ListingStatus.PENDING_REVIEW);
+            listings.save(listing);
+        }
     }
 
     private void validateRoommatesCount(Short current, Short maximum) {
@@ -361,7 +370,9 @@ public class ListingService {
                 nextSortOrder,
                 isCover
         );
-        return listingPhotos.save(photo);
+        photo = listingPhotos.save(photo);
+        returnToReviewIfLive(listing);
+        return photo;
     }
 
     @Transactional
@@ -378,6 +389,9 @@ public class ListingService {
                         "L'ordre de tri doit être positif ou nul");
             }
             photo.setSortOrder(sortOrder);
+        }
+        if (isCover != null && isCover != photo.isCover()) {
+            returnToReviewIfLive(listing);
         }
         if (isCover != null) {
             if (Boolean.TRUE.equals(isCover)) {

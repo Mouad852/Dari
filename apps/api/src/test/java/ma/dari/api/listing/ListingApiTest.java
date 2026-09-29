@@ -1226,6 +1226,74 @@ class ListingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("adding a photo to a published listing returns it to review")
+    void photoUploadOnPublishedListingReturnsItToReview() throws Exception {
+        String uid = "uid-photo-review-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        User owner = users.saveAndFlush(new User(uid, email, true, "Photo Review"));
+
+        Listing published = new Listing(
+                owner, "Studio photographié", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE);
+        published.setDescription("Description publiée.");
+        published = listings.saveAndFlush(published);
+        listingPhotos.saveAndFlush(new ListingPhoto(published, uid + "-reviewed.jpg", "image/jpeg", 320, 240, 0, true));
+
+        given().when().get("/listings/{id}", published.getId())
+                .then().statusCode(200);
+
+        given().header("Authorization", "Bearer photo-review-token")
+                .multiPart("file", "unreviewed.jpg", generateJpeg(320, 240), "image/jpeg")
+                .when().post("/listings/{id}/photos", published.getId())
+                .then().statusCode(201);
+
+        assertThat(listings.findById(published.getId()).orElseThrow().getStatus())
+                .isEqualTo(ListingStatus.PENDING_REVIEW);
+        given().when().get("/listings/{id}", published.getId())
+                .then().statusCode(404);
+    }
+
+    @Test
+    @DisplayName("changing the cover of a published listing returns it to review; reordering does not")
+    void coverChangeOnPublishedListingReturnsItToReview() throws Exception {
+        String uid = "uid-cover-review-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        User owner = users.saveAndFlush(new User(uid, email, true, "Cover Review"));
+
+        Listing published = new Listing(
+                owner, "Studio à deux photos", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE);
+        published.setDescription("Description publiée.");
+        published = listings.saveAndFlush(published);
+        ListingPhoto cover = listingPhotos.saveAndFlush(
+                new ListingPhoto(published, uid + "-cover.jpg", "image/jpeg", 320, 240, 0, true));
+        ListingPhoto second = listingPhotos.saveAndFlush(
+                new ListingPhoto(published, uid + "-second.jpg", "image/jpeg", 320, 240, 1, false));
+
+        // Reordering and re-asserting the current cover show nothing new.
+        given().header("Authorization", "Bearer cover-review-token")
+                .queryParam("sortOrder", 5)
+                .when().patch("/listings/{id}/photos/{photoId}", published.getId(), second.getId())
+                .then().statusCode(200);
+        given().header("Authorization", "Bearer cover-review-token")
+                .queryParam("isCover", true)
+                .when().patch("/listings/{id}/photos/{photoId}", published.getId(), cover.getId())
+                .then().statusCode(200);
+        assertThat(listings.findById(published.getId()).orElseThrow().getStatus())
+                .isEqualTo(ListingStatus.PUBLISHED);
+
+        given().header("Authorization", "Bearer cover-review-token")
+                .queryParam("isCover", true)
+                .when().patch("/listings/{id}/photos/{photoId}", published.getId(), second.getId())
+                .then().statusCode(200)
+                .body("isCover", equalTo(true));
+        assertThat(listings.findById(published.getId()).orElseThrow().getStatus())
+                .isEqualTo(ListingStatus.PENDING_REVIEW);
+    }
+
+    @Test
     @DisplayName("price sorts actually order by price, in both directions")
     void priceSortsOrderByPrice() throws Exception {
         String uid = "uid-sort-" + System.nanoTime();

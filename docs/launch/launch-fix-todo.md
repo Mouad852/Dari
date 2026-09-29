@@ -71,11 +71,12 @@ next to the decision.
 
 ## Phase 1 — Security and data-integrity blockers
 
-- [ ] **1.1a** P1-2 — photo add, cover change and photo delete on a PUBLISHED listing return it to
-  PENDING_REVIEW. Extract `returnToReviewIfLive(listing)` and call it from `update`, `addPhoto`,
-  `updatePhoto` (cover change) and `deletePhoto`. Files: `apps/api/.../listing/ListingService.java`,
-  `ListingApiTest`. Verify: API `-Dtest=ListingApiTest` — approve → add photo → anonymous
-  `GET /listings/{id}` 404 and listing listed in `/admin/listings`.
+- [x] **1.1a** P1-2 — photo add and cover change on a PUBLISHED listing return it to
+  PENDING_REVIEW via `returnToReviewIfLive(listing)`, shared with `update`. Reorder and delete do
+  not (they show nothing unreviewed; 1.1b stops a live listing losing its last photo). Files:
+  `apps/api/.../listing/ListingService.java`, `ListingApiTest`. Verify: API
+  `-Dtest=ListingApiTest` — published → add photo → anonymous `GET /listings/{id}` 404, status
+  PENDING_REVIEW. (2026-09-29)
 - [ ] **1.1b** P1-2 — `deletePhoto` refuses the last photo of a PUBLISHED or PENDING_REVIEW listing
   (400 "Une annonce publiée doit garder au moins une photo"). Files: `ListingService.java`,
   `ListingApiTest`. Verify: API `-Dtest=ListingApiTest` — deleting the only photo of a published
