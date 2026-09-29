@@ -291,7 +291,8 @@ number when the task lands (3.1 and 5.3 both add one).
   unchanged save → no request; changed save → exactly one PATCH. Same commit repairs two
   `getByLabel('Ville')` selectors made ambiguous by 3.3c's header select (scoped to `main`).
   (2026-09-29)
-- [ ] **3.5** Phase 3 gate — API full suite, web full Playwright, mobile jest green.
+- [x] **3.5** Phase 3 gate — API full suite 325/325; web full Playwright (dev + production) 64
+  passed + 1 intentional skip; mobile jest 80/80 + typecheck. (2026-09-29)
 
 ## Phase 4 — UI/UX and responsiveness
 
