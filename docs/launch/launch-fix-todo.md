@@ -118,7 +118,8 @@ next to the decision.
   `infra/scripts/load-test-search.js` comment. Verify: API `-Dtest=RateLimitServiceTest,
   RateLimitInterceptorTest,SsrSharedSecretRateLimitIntegrationTest,TomcatForwardedRateLimitIntegrationTest,
   ProductionConfigValidatorTest`. (2026-09-29)
-- [ ] **1.5** Phase 1 gate — full API suite green. Verify: `cd apps/api && ./mvnw test`.
+- [x] **1.5** Phase 1 gate — full API suite green. Verify: `cd apps/api && ./mvnw test` → 317/317,
+  BUILD SUCCESS. (2026-09-29)
 
 ## Phase 2 — Broken/incomplete functionality (P0 first)
 
