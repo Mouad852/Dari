@@ -77,10 +77,10 @@ next to the decision.
   `apps/api/.../listing/ListingService.java`, `ListingApiTest`. Verify: API
   `-Dtest=ListingApiTest` — published → add photo → anonymous `GET /listings/{id}` 404, status
   PENDING_REVIEW. (2026-09-29)
-- [ ] **1.1b** P1-2 — `deletePhoto` refuses the last photo of a PUBLISHED or PENDING_REVIEW listing
+- [x] **1.1b** P1-2 — `deletePhoto` refuses the last photo of a PUBLISHED or PENDING_REVIEW listing
   (400 "Une annonce publiée doit garder au moins une photo"). Files: `ListingService.java`,
   `ListingApiTest`. Verify: API `-Dtest=ListingApiTest` — deleting the only photo of a published
-  listing → 400, photo still present.
+  listing → 400, photo still present. (2026-09-29)
 - [ ] **1.2a** P1-1 — handlers for `HttpRequestMethodNotSupportedException` (405 + `Allow`),
   `HttpMediaTypeNotSupportedException` (415), `MissingServletRequestPartException` and
   `MissingServletRequestParameterException` (400), all in the standard envelope, no Sentry report,

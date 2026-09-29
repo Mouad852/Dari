@@ -1294,6 +1294,39 @@ class ListingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("a published or pending listing keeps at least one photo")
+    void liveListingCannotLoseItsLastPhoto() throws Exception {
+        String uid = "uid-last-photo-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        User owner = users.saveAndFlush(new User(uid, email, true, "Last Photo"));
+
+        for (ListingStatus status : new ListingStatus[] {ListingStatus.PUBLISHED, ListingStatus.PENDING_REVIEW}) {
+            Listing listing = listings.saveAndFlush(new Listing(
+                    owner, "Studio " + status, "Rabat", "Agdal", 33.9716, -6.8498,
+                    new BigDecimal("2500.00"), status, AvailabilityState.AVAILABLE));
+            ListingPhoto first = listingPhotos.saveAndFlush(
+                    new ListingPhoto(listing, uid + "-" + status + "-1.jpg", "image/jpeg", 320, 240, 0, true));
+            ListingPhoto second = listingPhotos.saveAndFlush(
+                    new ListingPhoto(listing, uid + "-" + status + "-2.jpg", "image/jpeg", 320, 240, 1, false));
+
+            given().header("Authorization", "Bearer last-photo-token")
+                    .when().delete("/listings/{id}/photos/{photoId}", listing.getId(), first.getId())
+                    .then().statusCode(204);
+
+            given().header("Authorization", "Bearer last-photo-token")
+                    .when().delete("/listings/{id}/photos/{photoId}", listing.getId(), second.getId())
+                    .then().statusCode(400)
+                    .body("code", equalTo("VALIDATION_FAILED"))
+                    .body("message", equalTo("Une annonce publiée doit garder au moins une photo"));
+
+            assertThat(listingPhotos.findById(second.getId()).orElseThrow().getDeletedAt()).isNull();
+            assertThat(listingPhotos.findById(second.getId()).orElseThrow().isCover()).isTrue();
+            assertThat(listings.findById(listing.getId()).orElseThrow().getStatus()).isEqualTo(status);
+        }
+    }
+
+    @Test
     @DisplayName("price sorts actually order by price, in both directions")
     void priceSortsOrderByPrice() throws Exception {
         String uid = "uid-sort-" + System.nanoTime();

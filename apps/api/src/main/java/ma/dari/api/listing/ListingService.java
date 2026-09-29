@@ -429,6 +429,15 @@ public class ListingService {
         ListingPhoto photo = listingPhotos.findByIdAndListingIdAndDeletedAtIsNull(photoId, listingId)
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Photo introuvable"));
 
+        // Submission requires a photo; a listing that is live or awaiting a
+        // moderator must not be able to shed its last one afterwards.
+        boolean live = listing.getStatus() == ListingStatus.PUBLISHED
+                || listing.getStatus() == ListingStatus.PENDING_REVIEW;
+        if (live && listingPhotos.findByListingIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAsc(listingId).size() <= 1) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED,
+                    "Une annonce publiée doit garder au moins une photo");
+        }
+
         photo.setDeletedAt(Instant.now());
         listingPhotos.save(photo);
         mediaCleanup.enqueue(photo.getStorageKey());
