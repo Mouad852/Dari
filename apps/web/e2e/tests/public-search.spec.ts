@@ -1,5 +1,17 @@
 import { expect, expectAccessible, test } from './fixtures';
 
+test('the header search sends a city with the neighborhood', async ({ page }) => {
+  await page.goto('/legal/privacy');
+  const header = page.getByRole('search').filter({ has: page.getByRole('searchbox', { name: 'Rechercher un quartier' }) });
+  await expect(header.getByRole('combobox', { name: 'Ville' })).toHaveValue('Rabat');
+
+  await header.getByRole('combobox', { name: 'Ville' }).selectOption('Casablanca');
+  await header.getByRole('searchbox', { name: 'Rechercher un quartier' }).fill('maarif');
+  await header.getByRole('searchbox', { name: 'Rechercher un quartier' }).press('Enter');
+
+  await expect(page).toHaveURL(/\/listings\?city=Casablanca&neighborhood=maarif$/);
+});
+
 test('search filters, paginates, and switches to the map', async ({ page }) => {
   await page.goto('/listings?city=Rabat');
   await expect(page.getByRole('heading', { name: /annonces.*rabat/i })).toBeVisible();

@@ -6,6 +6,7 @@ import { Fragment, useEffect, useState, type CSSProperties } from 'react';
 
 import { Icon } from '@/components/ds/Icon';
 import { apiFetch } from '@/lib/api';
+import { CITIES } from '@/lib/cities';
 import { getIdToken, onAuthChange } from '@/lib/firebase';
 import { FULL_SCREEN_ROUTES } from '@/lib/fullScreenRoutes';
 
@@ -370,6 +371,33 @@ export function SiteNav() {
               background: 'var(--surface-card)',
             }}
           >
+            {/*
+              A neighborhood only means something inside a city ("Hassan" is in
+              Rabat, "Maarif" in Casablanca), and the form used to send none.
+              Same default as the homepage hero.
+            */}
+            <select
+              name="city"
+              defaultValue="Rabat"
+              aria-label="Ville"
+              style={{
+                flex: '0 0 auto',
+                maxWidth: 120,
+                border: 'none',
+                borderRight: '1px solid var(--border-hairline)',
+                paddingRight: 6,
+                background: 'transparent',
+                font: 'var(--type-body-sm)',
+                color: 'var(--text-heading)',
+                cursor: 'pointer',
+              }}
+            >
+              {CITIES.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
             <input
               type="search"
               name="neighborhood"

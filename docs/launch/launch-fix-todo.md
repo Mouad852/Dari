@@ -278,8 +278,11 @@ number when the task lands (3.1 and 5.3 both add one).
   `listings/SearchResults.tsx`, `ds/Input.tsx`, new `neighborhood-suggestions.spec.ts`,
   `public-search.spec.ts` / `account-journeys.spec.ts` (combobox role). Verify: Web typecheck +
   `neighborhood-suggestions public-search account-journeys keyboard-publish` (8/8). (2026-09-29)
-- [ ] **3.3c** P1-11 — header search is city-aware. Files: `components/SiteNav.tsx`,
-  `public-search.spec.ts`. Verify: Web + spec.
+- [x] **3.3c** P1-11 — header search is city-aware: a compact `city` select (default Rabat, as
+  the homepage hero) inside the GET form. Files: `components/SiteNav.tsx`,
+  `public-search.spec.ts`. Verify: Web typecheck + `public-search hydration
+  production/accessibility` (14/14) — header sends `city=Casablanca&neighborhood=maarif`.
+  (2026-09-29)
 - [ ] **3.4** P1-3 — editing a PUBLISHED listing keeps edits client-side and PATCHes once on the
   final save; no PATCH when nothing changed; Photos step warns that photo changes re-review.
   Files: `publish/page.tsx`, `keyboard-publish.spec.ts`. Verify: Web + spec — Suivant through all
