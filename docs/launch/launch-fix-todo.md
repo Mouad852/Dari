@@ -226,10 +226,12 @@ number when the task lands (3.1 and 5.3 both add one).
   `Phase2MigrationsFromV25Test` (pinned to 28). Verify: API `-Dtest=MessagingApiTest,
   ConversationActivityMigrationTest,FlywayMigrationSmokeTest,Phase2MigrationsFromV25Test`.
   (2026-09-29)
-- [ ] **3.1b** P1-7 — inbox ordered and paged by `coalesce(last_message_at, created_at)`; cursor
-  carries `lastActivityAt`. Files: `ConversationRepository.java`, `TypedCursors`,
-  `MessagingApiTest`, `TypedCursorsTest`. Verify: API — A↔B then A↔C, B replies → B's thread first;
-  pagination stable across pages.
+- [x] **3.1b** P1-7 — inbox ordered and paged by `last_activity_at desc, id desc`; cursor mode
+  `inbox-activity` carries `lastActivityAt` (an old "conversations" cursor is INVALID_CURSOR).
+  Files: `ConversationRepository.java`, `TypedCursors.java`, `ConversationService.java`,
+  `MessagingApiTest`. Verify: API `-Dtest=MessagingApiTest,TypedCursorsTest` (18/18, 2/2) — A↔B
+  then A↔C, B replies → B's thread first; 21 threads page 20 + 1 with none lost or repeated.
+  (2026-09-29)
 - [ ] **3.2a** P1-8 — `owner: { id, displayName, avatarUrl, verification, memberSince }` on
   `PublicListingDetailResponse`. Files: `listing/PublicListingDetailResponse.java`,
   `ListingSearchService.java`, `JsonWireContractApiTest`. Verify: API — detail has `owner` and no
@@ -388,6 +390,9 @@ number when the task lands (3.1 and 5.3 both add one).
   no billing impact first. Files: `FirebaseAuthFilter.java`. Verify: API full suite.
 - [ ] **7.13** P2-12 — CORS exposes `X-Correlation-Id` and `Retry-After`. Files:
   `SecurityConfig.java`, `SecurityHeadersApiTest`. Verify: API.
+- [ ] **7.14** (from 3.1b) contract step — drop V10's `idx_conversations_participant_a/b`
+  (`created_at` ordering) once no deployed release orders the inbox by `created_at`. Files: new
+  migration, `FlywayMigrationSmokeTest`. Verify: API full suite.
 
 Post-launch backlog (not scheduled in §17): P2-1, P2-16, P2-21, P2-25, P2-27, P2-28 — see audit §7.
 

@@ -36,11 +36,12 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     @Query(value = "update conversations set last_activity_at = now() where id = :id", nativeQuery = true)
     int touchActivity(@Param("id") UUID id);
 
+    /** The inbox: the thread with the newest message first, so a new reply never sinks. */
     @Query("""
             select c from Conversation c
             where c.deletedAt is null
               and (c.participantA.id = :userId or c.participantB.id = :userId)
-            order by c.createdAt desc, c.id desc
+            order by c.lastActivityAt desc, c.id desc
             """)
     List<Conversation> findVisibleByUser(@Param("userId") UUID userId, Pageable pageable);
 
@@ -48,11 +49,11 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             select c from Conversation c
             where c.deletedAt is null
               and (c.participantA.id = :userId or c.participantB.id = :userId)
-              and (c.createdAt < :lastCreatedAt or (c.createdAt = :lastCreatedAt and c.id < :lastId))
-            order by c.createdAt desc, c.id desc
+              and (c.lastActivityAt < :lastActivityAt or (c.lastActivityAt = :lastActivityAt and c.id < :lastId))
+            order by c.lastActivityAt desc, c.id desc
             """)
     List<Conversation> findVisibleByUserAfter(@Param("userId") UUID userId,
-                                              @Param("lastCreatedAt") Instant lastCreatedAt,
+                                              @Param("lastActivityAt") Instant lastActivityAt,
                                               @Param("lastId") UUID lastId,
                                               Pageable pageable);
 

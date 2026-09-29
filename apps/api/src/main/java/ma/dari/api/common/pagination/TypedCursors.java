@@ -16,10 +16,13 @@ public final class TypedCursors {
     private TypedCursors() {
     }
 
+    /** The inbox pages by last activity. A cursor issued before that ("conversations" mode) is invalid. */
+    public static final String INBOX_MODE = "inbox-activity";
+
     public static ConversationCursor conversation(String encoded) {
         ObjectNode payload = requiredPayload(encoded);
-        requireText(payload, "mode", "conversations");
-        return new ConversationCursor(requiredInstant(payload, "lastCreatedAt"), requiredUuid(payload, "lastId"));
+        requireText(payload, "mode", INBOX_MODE);
+        return new ConversationCursor(requiredInstant(payload, "lastActivityAt"), requiredUuid(payload, "lastId"));
     }
 
     /**
@@ -161,7 +164,7 @@ public final class TypedCursors {
         return new ApiException(400, ErrorCode.INVALID_CURSOR, "Pagination invalide");
     }
 
-    public record ConversationCursor(Instant lastCreatedAt, UUID lastId) {
+    public record ConversationCursor(Instant lastActivityAt, UUID lastId) {
     }
 
     public record MessageCursor(Instant lastSentAt, UUID lastId) {

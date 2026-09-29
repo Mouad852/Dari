@@ -46,12 +46,12 @@ public class ConversationService {
     @Transactional(readOnly = true)
     public CursorPage<ConversationResponse> list(User currentUser, String cursor) {
         TypedCursors.ConversationCursor decoded = cursor == null ? null : TypedCursors.conversation(cursor);
-        Instant lastCreatedAt = decoded == null ? null : decoded.lastCreatedAt();
+        Instant lastActivityAt = decoded == null ? null : decoded.lastActivityAt();
         UUID lastId = decoded == null ? null : decoded.lastId();
 
-        List<Conversation> rows = lastCreatedAt == null && lastId == null
+        List<Conversation> rows = lastActivityAt == null && lastId == null
                 ? conversations.findVisibleByUser(currentUser.getId(), PageRequest.of(0, PAGE_SIZE + 1))
-                : conversations.findVisibleByUserAfter(currentUser.getId(), lastCreatedAt, lastId, PageRequest.of(0, PAGE_SIZE + 1));
+                : conversations.findVisibleByUserAfter(currentUser.getId(), lastActivityAt, lastId, PageRequest.of(0, PAGE_SIZE + 1));
 
         boolean hasMore = rows.size() > PAGE_SIZE;
         List<Conversation> pageRows = hasMore ? rows.subList(0, PAGE_SIZE) : rows;
@@ -73,8 +73,8 @@ public class ConversationService {
         if (hasMore && !pageRows.isEmpty()) {
             var last = pageRows.get(pageRows.size() - 1);
             var payloadOut = Cursor.newPayload();
-            payloadOut.put("mode", "conversations");
-            payloadOut.put("lastCreatedAt", last.getCreatedAt().toString());
+            payloadOut.put("mode", TypedCursors.INBOX_MODE);
+            payloadOut.put("lastActivityAt", last.getLastActivityAt().toString());
             payloadOut.put("lastId", last.getId().toString());
             nextCursor = Cursor.encode(payloadOut);
         }

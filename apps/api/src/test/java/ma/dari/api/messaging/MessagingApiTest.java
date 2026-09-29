@@ -159,6 +159,80 @@ class MessagingApiTest extends AbstractIntegrationTest {
         assertThat(afterMessage[1]).isEqualTo(opened[1]);
     }
 
+    @Test
+    @DisplayName("the inbox lists the thread with the newest reply first, not the newest thread")
+    void inboxIsOrderedByLastActivity() throws Exception {
+        String suffix = String.valueOf(System.nanoTime());
+        User amal = users.saveAndFlush(new User("uid-inbox-a-" + suffix, "inbox-a-" + suffix + "@example.ma", true, "Amal"));
+        User badr = users.saveAndFlush(new User("uid-inbox-b-" + suffix, "inbox-b-" + suffix + "@example.ma", true, "Badr"));
+        User chama = users.saveAndFlush(new User("uid-inbox-c-" + suffix, "inbox-c-" + suffix + "@example.ma", true, "Chama"));
+
+        stubToken(amal.getFirebaseUid(), amal.getEmail(), true);
+        String withBadr = openConversationWith(badr);
+        String withChama = openConversationWith(chama);
+        given().header("Authorization", "Bearer test-token")
+                .when().get("/conversations")
+                .then().statusCode(200)
+                .body("items.id", org.hamcrest.Matchers.contains(withChama, withBadr));
+
+        // Badr answers the older thread: it moves above the newer, silent one.
+        stubToken(badr.getFirebaseUid(), badr.getEmail(), true);
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"body\":\"Toujours disponible ?\"}")
+                .when().post("/conversations/" + withBadr + "/messages")
+                .then().statusCode(201);
+
+        stubToken(amal.getFirebaseUid(), amal.getEmail(), true);
+        given().header("Authorization", "Bearer test-token")
+                .when().get("/conversations")
+                .then().statusCode(200)
+                .body("items.id", org.hamcrest.Matchers.contains(withBadr, withChama));
+    }
+
+    @Test
+    @DisplayName("inbox pages follow last activity with no thread lost or repeated")
+    void inboxPagesByLastActivity() throws Exception {
+        String suffix = String.valueOf(System.nanoTime());
+        User owner = users.saveAndFlush(new User("uid-pages-" + suffix, "pages-" + suffix + "@example.ma", true, "Owner"));
+        java.util.List<String> opened = new java.util.ArrayList<>();
+        for (int i = 0; i < 21; i++) {
+            User other = users.saveAndFlush(new User("uid-pages-" + suffix + "-" + i,
+                    "pages-" + suffix + "-" + i + "@example.ma", true, "Contact " + i));
+            opened.add(conversations.saveAndFlush(new Conversation(owner, other)).getId().toString());
+        }
+        stubToken(owner.getFirebaseUid(), owner.getEmail(), true);
+
+        io.restassured.path.json.JsonPath first = given().header("Authorization", "Bearer test-token")
+                .when().get("/conversations")
+                .then().statusCode(200)
+                .extract().jsonPath();
+        String cursor = first.getString("nextCursor");
+        assertThat(cursor).isNotNull();
+        io.restassured.path.json.JsonPath second = given().header("Authorization", "Bearer test-token")
+                .queryParam("cursor", cursor)
+                .when().get("/conversations")
+                .then().statusCode(200)
+                .body("nextCursor", nullValue())
+                .extract().jsonPath();
+
+        java.util.List<String> paged = new java.util.ArrayList<>(first.getList("items.id", String.class));
+        paged.addAll(second.getList("items.id", String.class));
+        assertThat(first.getList("items")).hasSize(20);
+        assertThat(paged).doesNotHaveDuplicates().containsExactlyInAnyOrderElementsOf(opened);
+        // Newest activity first: none of these has a message, so the last opened leads.
+        assertThat(paged.get(0)).isEqualTo(opened.get(opened.size() - 1));
+    }
+
+    private String openConversationWith(User other) {
+        return given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"otherUserId\":\"" + other.getId() + "\"}")
+                .when().post("/conversations")
+                .then().statusCode(201)
+                .extract().path("id");
+    }
+
     /** [last_activity_at, created_at], both stamped by the database. */
     private java.sql.Timestamp[] activityAndCreation(String conversationId) {
         return jdbc.queryForObject(
