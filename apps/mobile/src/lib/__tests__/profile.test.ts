@@ -3,7 +3,7 @@ import { reload } from '@firebase/auth';
 
 import { apiFetch, ApiError } from '../api';
 import { getIdToken } from '../firebase';
-import { completeProfile, hasProfile, PROFILE_FIELDS_REQUIRED, profileBody } from '../profile';
+import { completeProfile, hasProfile, PROFILE_FIELDS_REQUIRED, profileBody, profileUpdateBody } from '../profile';
 
 jest.mock('@firebase/auth', () => ({ reload: jest.fn(), sendEmailVerification: jest.fn() }));
 jest.mock('../firebase', () => ({ getIdToken: jest.fn() }));
@@ -30,6 +30,20 @@ describe('profileBody', () => {
     expect(profileBody({ ...fields, displayName: 'A'.repeat(61) })).toBeNull();
     expect(profileBody({ ...fields, displayName: 'AB' })?.displayName).toBe('AB');
     expect(profileBody({ ...fields, displayName: 'A'.repeat(60) })?.displayName).toHaveLength(60);
+  });
+});
+
+describe('profileUpdateBody', () => {
+  it('sends emptied fields as "" so the API clears them instead of keeping them', () => {
+    expect(profileUpdateBody({ displayName: ' Amina ', firstName: '  ', city: '', bio: '   ' })).toEqual({
+      displayName: 'Amina', firstName: '', city: '', bio: '',
+    });
+  });
+
+  it('trims the values it keeps', () => {
+    expect(profileUpdateBody({ displayName: 'Amina', firstName: ' Amina ', city: ' Rabat ', bio: ' Calme. ' })).toEqual({
+      displayName: 'Amina', firstName: 'Amina', city: 'Rabat', bio: 'Calme.',
+    });
   });
 });
 

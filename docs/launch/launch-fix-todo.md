@@ -101,9 +101,10 @@ next to the decision.
   `apps/web/src/app/account/profile/page.tsx`, `account-journeys.spec.ts` (asserts the PATCH
   payload). Verify: Web typecheck + `account-journeys` spec (its web servers include the
   production `next build`). (2026-09-29)
-- [ ] **1.3c** P1-9 — mobile profile `save()` sends `""` for cleared fields. Files:
-  `apps/mobile/app/(tabs)/profile.tsx` (and `src/lib/profile.ts` if the payload is built there),
-  `src/lib/__tests__/profile.test.ts`. Verify: Mobile `npm test`.
+- [x] **1.3c** P1-9 — mobile profile `save()` sends `""` for cleared fields via a new tested
+  `profileUpdateBody`. Files: `apps/mobile/app/(tabs)/profile.tsx`, `src/lib/profile.ts`,
+  `src/lib/__tests__/profile.test.ts`. Verify: Mobile `npm test` + `npm run typecheck`.
+  (2026-09-29)
 - [ ] **1.4a** P1-6 — authenticated mutation types (SIGNUP, LISTING, UPLOAD, MESSAGE, REPORT) are
   limited per user; the IP bucket for them becomes a ceiling at a multiple (15×) of the per-user
   limit. Anonymous reads stay IP-limited. Files: `apps/api/.../common/ratelimit/RateLimitInterceptor.java`,

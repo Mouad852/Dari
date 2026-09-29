@@ -10,6 +10,7 @@ import { TextField } from '@/components/TextField';
 import { TopBar } from '@/components/TopBar';
 import { apiFetch, ApiError, apiOrigin, apiUpload, errorMessage, reportUnexpected } from '@/lib/api';
 import { getIdToken, onAuthChange, signOut } from '@/lib/firebase';
+import { profileUpdateBody } from '@/lib/profile';
 import type { Me } from '@/types/api';
 import { color, layout, radius, type } from '@/theme/tokens';
 
@@ -57,7 +58,7 @@ export default function ProfileScreen() {
     const token = await getIdToken(); if (!token || saving) return;
     if (displayName.trim().length < 2) { setError('Le nom affiché doit contenir au moins 2 caractères.'); return; }
     setSaving(true); setError(null);
-    try { setProfile(await apiFetch<Me>('/users/me', { method: 'PATCH', token, body: { firstName: firstName.trim() || null, displayName: displayName.trim(), city: city.trim() || null, bio: bio.trim() || null } })); }
+    try { setProfile(await apiFetch<Me>('/users/me', { method: 'PATCH', token, body: profileUpdateBody({ firstName, displayName, city, bio }) })); }
     catch (cause) { setError(errorMessage(cause, 'Impossible d’enregistrer votre profil.')); }
     finally { setSaving(false); }
   }

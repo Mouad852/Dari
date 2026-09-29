@@ -26,6 +26,20 @@ export function profileBody(fields: ProfileFields): { displayName: string; first
 }
 
 /**
+ * The `PATCH /users/me` body. An emptied field is sent as "" because the API
+ * reads null as "unchanged" and "" as "clear it": null would leave a deleted
+ * bio or city on the public profile.
+ */
+export function profileUpdateBody(fields: ProfileFields & { bio: string }): ProfileFields & { bio: string } {
+  return {
+    firstName: fields.firstName.trim(),
+    displayName: fields.displayName.trim(),
+    city: fields.city.trim(),
+    bio: fields.bio.trim(),
+  };
+}
+
+/**
  * Only a definite PROFILE_NOT_FOUND sends the person to profile recovery;
  * other failures let the app open so each screen can report its own error.
  */
