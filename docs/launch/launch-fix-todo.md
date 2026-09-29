@@ -68,6 +68,10 @@ next to the decision.
   **[recommended]**, or a required checkbox. Exact wording and the version string come from the
   owner. Blocks 5.3a–5.3d.
   Answer: _pending_
+- [ ] **P1-13 moderation contact** (added 2026-09-29) — the address owners write to about a
+  suspension (for example a `moderation@` mailbox), shown as "Contacter la modération" on a
+  suspended listing. Blocks 2.6e.
+  Answer: _pending_
 
 ## Phase 1 — Security and data-integrity blockers
 
@@ -195,9 +199,15 @@ next to the decision.
   `apps/web/src/app/admin/listings/page.tsx`, new `admin-moderation.spec.ts` (stubs the suspended
   queue in-spec). Verify: Web typecheck + `admin-moderation account-journeys` specs, axe clean.
   (2026-09-29)
-- [ ] **2.6d** P1-13 — owner dashboard shows `rejectionReason` for SUSPENDED listings with a
-  "Contacter la modération" mailto. Files: `apps/web/src/app/account/listings/page.tsx`,
-  `account-journeys.spec.ts`. Verify: Web + spec.
+- [x] **2.6d** P1-13 — owner dashboard shows `rejectionReason` for SUSPENDED listings (or "après
+  plusieurs signalements" when automatic) and that only moderation can lift it. Files:
+  `apps/web/src/app/account/listings/page.tsx`, `owner-listings.spec.ts`. Verify: Web typecheck +
+  `owner-listings` spec, axe clean. The "Contacter la modération" link is split out as 2.6e.
+  (2026-09-29)
+- [ ] **2.6e** P1-13 **OWNER INPUT (moderation contact)** — "Contacter la modération" link on a
+  suspended listing. No public contact address exists in the app (`DARI_LEGAL_CONTACT` is
+  server-only free text, rendered nowhere). Needs the address that handles appeals, then a
+  `NEXT_PUBLIC_*` value or a server-rendered contact page. Files: `account/listings/page.tsx`.
 - [ ] **2.7** Phase 2 gate — API full suite, web typecheck/build/full Playwright (dev +
   production), mobile jest all green.
 

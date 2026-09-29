@@ -72,6 +72,24 @@ test('a suspended listing cannot be republished from the wizard and claims nothi
  * /listings/mine response, so the rest of the row stays the real shape.
  */
 
+test('a suspended listing tells its owner why and offers no action that cannot work', async ({ authenticatedPage: page }) => {
+  await page.route('**/api/v1/listings/mine', async (route) => {
+    const mine = await (await route.fetch()).json();
+    mine.items = mine.items.map((listing: Record<string, unknown>) => ({
+      ...listing, status: 'SUSPENDED', rejectionReason: 'Photos ne correspondant pas au logement',
+    }));
+    await route.fulfill({ json: mine });
+  });
+
+  await page.goto('/account/listings');
+  await expect(page.getByText('Suspendue par la modération : Photos ne correspondant pas au logement.')).toBeVisible();
+  await expect(page.getByText('seule la modération peut la rétablir')).toBeVisible();
+  for (const action of ['Soumettre', 'Renouveler', 'Chambre trouvée']) {
+    await expect(page.getByRole('button', { name: action })).toHaveCount(0);
+  }
+  await expectAccessible(page);
+});
+
 test('an expired listing can be renewed from the dashboard', async ({ authenticatedPage: page }) => {
   await page.route('**/api/v1/listings/mine', async (route) => {
     const mine = await (await route.fetch()).json();

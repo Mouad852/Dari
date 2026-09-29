@@ -419,6 +419,35 @@ export default function MyListingsPage() {
                           </span>
                         </div>
 
+                        {/*
+                          A suspension used to show nothing but its badge: the
+                          owner never learned why, or that it is moderation's
+                          to lift. The reason is null when the report threshold
+                          suspended it automatically.
+                        */}
+                        {listing.status === 'SUSPENDED' ? (
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: '0.5rem',
+                              borderRadius: 'var(--radius-card-inner)',
+                              background: 'var(--danger-subtle)',
+                              border: '1px solid var(--danger-border)',
+                              color: 'var(--danger)',
+                              padding: '0.75rem 0.8rem',
+                              font: 'var(--type-body-sm)',
+                            }}
+                          >
+                            <MessageSquareText size={14} style={{ flex: '0 0 auto', marginTop: 2 }} />
+                            <span>
+                              Suspendue par la modération
+                              {listing.rejectionReason ? ` : ${listing.rejectionReason}` : ' après plusieurs signalements'}.
+                              {' '}Elle n’est plus visible, et seule la modération peut la rétablir.
+                            </span>
+                          </div>
+                        ) : null}
+
                         {listing.status === 'REJECTED' && listing.rejectionReason ? (
                           <div
                             style={{
