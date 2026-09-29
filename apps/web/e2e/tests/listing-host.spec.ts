@@ -13,6 +13,11 @@ test('a listing says who offers it and leads to their profile and its report act
   await host.getByRole('link', { name: 'Voir le profil' }).click();
   await expect(page).toHaveURL(/\/profile\/other-user$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Amina' })).toBeVisible();
+  // The uploaded photo, not just the initial, and it actually loads from the media origin.
+  const avatar = page.locator('main img[src*="/uploads/avatars/other-user.png"]');
+  await expect(avatar).toBeVisible();
+  await expect.poll(() => avatar.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+  await expectAccessible(page);
 
   await page.getByRole('button', { name: 'Signaler ce profil' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();

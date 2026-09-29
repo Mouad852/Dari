@@ -249,8 +249,11 @@ number when the task lands (3.1 and 5.3 both add one).
   `ReportDialog targetType="USER"` ("Signaler"). Files: `apps/web/src/app/messages/[id]/page.tsx`,
   `message-thread.spec.ts`. Verify: Web typecheck + `message-thread account-journeys` specs — link
   target, report posts `{targetType: USER, targetId: other-user}`. (2026-09-29)
-- [ ] **3.2d** P1-8 — public profile renders `avatarUrl` (initial as fallback). Files:
-  `apps/web/src/app/profile/[id]/page.tsx`. Verify: Web typecheck/build + a spec assertion.
+- [x] **3.2d** P1-8 — public profile renders `avatarUrl` (initial as fallback) through the shared
+  `UserAvatar` and `VerificationBadge`. Files: `apps/web/src/app/profile/[id]/page.tsx`,
+  `e2e/mock-api.mjs` (other-user has a photo), `listing-host.spec.ts`. Verify: Web typecheck +
+  `listing-host account-journeys` specs — the photo loads (naturalWidth > 0), axe clean.
+  (2026-09-29)
 - [ ] **3.2e** P1-8 — mobile detail host card linking to the profile/report path. Files:
   `apps/mobile/app/listing/[id].tsx`, mobile `types/api.ts`. Verify: Mobile `npm test`.
 - [ ] **3.3a** P1-11 — case/accent/whitespace-insensitive neighborhood match with an expression

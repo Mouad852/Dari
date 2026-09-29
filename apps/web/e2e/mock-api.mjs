@@ -385,7 +385,8 @@ async function handle(request, response) {
     response.writeHead(502, { 'content-type': 'text/html' });
     return response.end('<html><body>502 Bad Gateway</body></html>');
   }
-  if (path === '/users/other-user' && method === 'GET') return sendJson(response, 200, { id: 'other-user', displayName: 'Amina', city: 'Rabat', bio: null, avatarUrl: null, verification: 'EMAIL', memberSince: now, activeListingCount: 1 });
+  // With a photo, where the listing's owner block has none: both avatar paths render somewhere.
+  if (path === '/users/other-user' && method === 'GET') return sendJson(response, 200, { id: 'other-user', displayName: 'Amina', city: 'Rabat', bio: null, avatarUrl: '/uploads/avatars/other-user.png', verification: 'EMAIL', memberSince: now, activeListingCount: 1 });
 
   if (path === '/favorites/ids' && method === 'GET') return sendJson(response, 200, [...state.favorites]);
   if (path === '/favorites' && method === 'GET') return sendJson(response, 200, { items: publicListings.filter((item) => state.favorites.has(item.id)), nextCursor: null, hasMore: false });

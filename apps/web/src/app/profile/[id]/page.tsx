@@ -1,14 +1,15 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { MapPin, ShieldCheck } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 
 import { apiFetch, ApiError } from '@/lib/api';
-import { VERIFICATION_LABELS } from '@/lib/labels';
 import type { PublicProfile } from '@/types/api';
 
 import { FocusOnMount } from '@/components/FocusOnMount';
 import { ReportDialog } from '@/components/ReportDialog';
+import { UserAvatar } from '@/components/UserAvatar';
+import { VerificationBadge } from '@/components/VerificationBadge';
 import { ContactButton } from './ContactButton';
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
@@ -72,21 +73,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         </span>
 
         <section style={{ display: 'flex', gap: 'var(--space-5)', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 'var(--radius-avatar)',
-              background: 'linear-gradient(135deg, var(--clay-100), var(--sand-100))',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              font: 'var(--weight-extra) 26px/1 var(--font-display)',
-              color: 'var(--clay-700)',
-            }}
-          >
-            {profile.displayName.charAt(0).toUpperCase()}
-          </span>
+          {/* The photo the member uploaded; it used to be ignored here and only the initial shown. */}
+          <UserAvatar displayName={profile.displayName} avatarUrl={profile.avatarUrl} size={72} />
           <span style={{ flex: 1, minWidth: 200 }}>
             <h1 id="profile-heading" tabIndex={-1} style={{ display: 'block', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>{profile.displayName}</h1>
             {profile.city ? (
@@ -96,21 +84,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
               </span>
             ) : null}
             <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 8, flexWrap: 'wrap' }}>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  borderRadius: 'var(--radius-pill)',
-                  background: profile.verification === 'NONE' ? 'var(--sable-100)' : 'var(--atlas-50)',
-                  color: profile.verification === 'NONE' ? 'var(--text-muted)' : 'var(--atlas-700)',
-                  padding: '0.38rem 0.68rem',
-                  font: 'var(--type-label)',
-                }}
-              >
-                <ShieldCheck size={12} aria-hidden="true" />
-                {VERIFICATION_LABELS[profile.verification]}
-              </span>
+              <VerificationBadge verification={profile.verification} />
               <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Membre depuis {memberSince}</span>
             </span>
           </span>
