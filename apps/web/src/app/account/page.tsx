@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell, ChevronRight, CreditCard, Lock, LogOut, PencilLine, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
+import { Bell, ChevronRight, Lock, LogOut, PencilLine, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { apiFetch, ApiError, type CursorPage } from '@/lib/api';
@@ -23,7 +23,6 @@ const SECTIONS = [
   { label: 'Profil public', detail: 'Mettre à jour votre photo et votre bio', icon: UserRound, href: '/account/profile' },
   { label: 'Notifications', detail: 'Nouvelles réponses, visites et rappels', icon: Bell, href: '/account/notifications' },
   { label: 'Sécurité', detail: 'Mot de passe et vérification de compte', icon: Lock, href: '/account/security' },
-  { label: 'Paiements', detail: 'Moyens de paiement et factures', icon: CreditCard, href: '/account/payments' },
 ] as const;
 
 /**

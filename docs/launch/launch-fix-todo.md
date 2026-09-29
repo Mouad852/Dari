@@ -296,8 +296,9 @@ number when the task lands (3.1 and 5.3 both add one).
 
 ## Phase 4 — UI/UX and responsiveness
 
-- [ ] **4.1a** P1-12 — remove `/account/payments` (redirect to `/account`) and its hub link.
-  Files: `apps/web/src/app/account/payments/*`, `account/page.tsx`. Verify: Web + visual QA.
+- [x] **4.1a** P1-12 — remove `/account/payments` (now a server redirect to `/account`) and its
+  hub link. Files: `apps/web/src/app/account/payments/page.tsx`, `account/page.tsx`, new
+  `account-pages.spec.ts`. Verify: Web typecheck + `account-pages hydration` (7/7). (2026-09-29)
 - [ ] **4.1b** P1-12 — `/account/notifications` lists only real events (messages once 2.1 lands;
   report "reçu", not "traité"). Files: `account/notifications/page.tsx`. Verify: Web + visual QA.
 - [ ] **4.1c** P1-12 — `/account/security`: "Changer mon mot de passe" sends a reset email via
