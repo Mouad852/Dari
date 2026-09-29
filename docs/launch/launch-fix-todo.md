@@ -165,11 +165,12 @@ next to the decision.
   `apps/web/src/app/account/listings/page.tsx`, new `owner-listings.spec.ts` (stubs the status
   in-spec, so the shared mock is unchanged). Verify: Web typecheck + `owner-listings` spec —
   renew call made, status label updates, action gone. (2026-09-29)
-- [ ] **2.3b** P0-3 — wizard `publish()`: EXPIRED → calls `/renew`; SUSPENDED → shows "Cette
+- [x] **2.3b** P0-3 — wizard `publish()`: EXPIRED → calls `/renew`; SUSPENDED → shows "Cette
   annonce est suspendue par la modération" and disables publish; success copy follows the resulting
-  status (never "envoyée pour validation" unless it was). Files: `publish/page.tsx`,
-  `e2e/mock-api.mjs`, `account-journeys.spec.ts`. Verify: Web + spec — edit EXPIRED → renew call;
-  edit SUSPENDED → no success message.
+  status ("envoyée pour validation" / "toujours en attente de validation" / "Modifications
+  enregistrées"). Files: `publish/page.tsx`, `owner-listings.spec.ts`. Verify: Web typecheck +
+  `owner-listings keyboard-publish account-journeys` specs — edit EXPIRED → renew call, past date
+  not re-sent; edit SUSPENDED → publish disabled, no success message. (2026-09-29)
 - [ ] **2.4** P0-4 **DECISION** — (a) hide "Publier une annonce" in `apps/mobile/app/(tabs)/profile.tsx`
   and link to the web wizard, or (b) parity rewrite (split into sub-tasks once chosen). Verify:
   Mobile `npm test` (+ for (b) a jest test on the request body and a device check).

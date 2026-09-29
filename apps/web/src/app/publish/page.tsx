@@ -181,6 +181,9 @@ function PublishWizard() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // What the final save did: sent it for review, saved changes to a listing
+  // already awaiting review, or only saved.
+  const [savedOutcome, setSavedOutcome] = useState<'sent' | 'still-pending' | 'saved'>('sent');
 
   /**
    * The `disabled={<async state>}` focus-loss bug found and fixed elsewhere in
@@ -380,6 +383,9 @@ function PublishWizard() {
   // "Live" in the sense that matters here: currently reachable by the public,
   // so an edit has a visible cost.
   const wasLive = editingStatus === 'PUBLISHED';
+  // Only moderation lifts a suspension; the owner can neither submit nor renew it.
+  const isSuspended = editingStatus === 'SUSPENDED';
+  const SUSPENDED_MESSAGE = 'Cette annonce est suspendue par la modération et ne peut pas être republiée d’ici.';
 
   const progress = ((stepIndex + 1) / STEPS.length) * 100;
   const step = STEPS[stepIndex];
@@ -643,6 +649,7 @@ function PublishWizard() {
   };
 
   const publish = async () => {
+    if (isSuspended) return;
     armSubmitRefocus();
     setSubmitting(true);
     setError(null);
@@ -653,17 +660,28 @@ function PublishWizard() {
         return;
       }
 
+      const statusBefore = editingStatus;
       const draft = await persistDraft(token);
 
-      // Only a DRAFT or a REJECTED listing can be submitted. Editing a live one
-      // is already a submission: the PATCH above moves PUBLISHED back to
-      // PENDING_REVIEW server-side, so calling /submit here would be an illegal
-      // transition and 409.
-      const needsExplicitSubmit = draft.status === 'DRAFT' || draft.status === 'REJECTED';
-      if (needsExplicitSubmit) {
+      // Only a DRAFT or a REJECTED listing can be submitted, and only an
+      // EXPIRED one renewed. Editing a live one is already a submission: the
+      // PATCH above moves PUBLISHED back to PENDING_REVIEW server-side, so
+      // calling /submit here would be an illegal transition and 409.
+      let resultingStatus = draft.status;
+      if (draft.status === 'DRAFT' || draft.status === 'REJECTED') {
         await apiFetch(`/listings/${draft.id}/submit`, { method: 'POST', token });
+        resultingStatus = 'PENDING_REVIEW';
+      } else if (draft.status === 'EXPIRED') {
+        await apiFetch(`/listings/${draft.id}/renew`, { method: 'POST', token });
+        resultingStatus = 'PENDING_REVIEW';
       }
-      setEditingStatus(needsExplicitSubmit ? 'PENDING_REVIEW' : draft.status);
+      // Claim a submission only when this save made one. The copy used to say
+      // "envoyée pour validation" for every status, including an expired
+      // listing that the PATCH had left expired.
+      setSavedOutcome(
+        resultingStatus !== 'PENDING_REVIEW' ? 'saved' : statusBefore === 'PENDING_REVIEW' ? 'still-pending' : 'sent',
+      );
+      setEditingStatus(resultingStatus);
       setSaved(true);
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'Publication impossible. Vérifiez vos informations.');
@@ -695,6 +713,7 @@ function PublishWizard() {
    * filters on both, and a listing without them never matches those filters.
    */
   const missingForSubmit = (): string | null =>
+    (isSuspended ? SUSPENDED_MESSAGE : null) ??
     missingRequired() ??
     (!description.trim() ? 'Ajoutez une description avant de publier.' : null) ??
     (missingPhotos ? 'Ajoutez au moins une photo avant de publier.' : null) ??
@@ -1388,7 +1407,7 @@ function PublishWizard() {
 
               {submitBlocker && (
                 <p role="alert" style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--danger)' }}>
-                  {submitBlocker} Revenez à l’étape concernée pour la compléter.
+                  {isSuspended ? submitBlocker : `${submitBlocker} Revenez à l’étape concernée pour la compléter.`}
                 </p>
               )}
 
@@ -1414,7 +1433,18 @@ function PublishWizard() {
         </Card>
 
         {error ? <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
-        {saved ? <p role="status" style={{ margin: 0, color: 'var(--success)', font: 'var(--type-body-sm)' }}>Annonce envoyée pour validation.</p> : null}
+        {saved ? (
+          <p role="status" style={{ margin: 0, color: 'var(--success)', font: 'var(--type-body-sm)' }}>
+            {savedOutcome === 'sent'
+              ? 'Annonce envoyée pour validation.'
+              : savedOutcome === 'still-pending'
+                ? 'Modifications enregistrées. L’annonce est toujours en attente de validation.'
+                : 'Modifications enregistrées.'}
+          </p>
+        ) : null}
+        {isEditing && isSuspended ? (
+          <p style={{ margin: 0, color: 'var(--text-body)', font: 'var(--type-body-sm)' }}>{SUSPENDED_MESSAGE}</p>
+        ) : null}
         {/*
           Stated up front, not discovered after saving: an edit to a live
           listing takes it out of public search until a moderator approves it
@@ -1453,7 +1483,7 @@ function PublishWizard() {
             {submitting
               ? 'Enregistrement…'
               : saved
-                ? 'Annonce envoyée'
+                ? (savedOutcome === 'sent' ? 'Annonce envoyée' : 'Modifications enregistrées')
                 : isLastStep
                   ? (isEditing ? 'Enregistrer les modifications' : 'Publier l’annonce')
                   : 'Suivant'}
