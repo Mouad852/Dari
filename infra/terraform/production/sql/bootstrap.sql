@@ -21,4 +21,7 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'dari')
 \connect dari
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- Flyway V30 (neighborhood search). Trusted, so V30 could create it as the
+-- database owner too; installing it here keeps every extension in one place.
+CREATE EXTENSION IF NOT EXISTS unaccent;
 GRANT CONNECT ON DATABASE dari TO dari;

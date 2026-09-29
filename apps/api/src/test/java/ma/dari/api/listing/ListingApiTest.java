@@ -1369,6 +1369,34 @@ class ListingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("the neighborhood filter ignores case, accents and stray spaces")
+    void neighborhoodFilterIsForgiving() throws Exception {
+        String suffix = String.valueOf(System.nanoTime());
+        String stored = "Médina Nord " + suffix;
+        User owner = users.saveAndFlush(new User("uid-fold-" + suffix, "fold-" + suffix + "@example.ma", true, "Fold Owner"));
+        Listing listing = listings.saveAndFlush(new Listing(
+                owner, "Chambre à la médina", "Rabat", stored, 34.0250, -6.8350,
+                new BigDecimal("1800.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE));
+
+        for (String typed : new String[] {stored, "medina nord " + suffix, "  MÉDINA   Nord " + suffix + " "}) {
+            given().queryParam("city", "Rabat").queryParam("neighborhood", typed)
+                    .when().get("/listings")
+                    .then().statusCode(200)
+                    .body("items.id", org.hamcrest.Matchers.contains(listing.getId().toString()));
+            given().queryParam("city", "Rabat").queryParam("neighborhood", typed)
+                    .when().get("/listings/count")
+                    .then().statusCode(200)
+                    .body("count", equalTo(1));
+        }
+
+        // Folding is not fuzzy matching: a different name still finds nothing.
+        given().queryParam("city", "Rabat").queryParam("neighborhood", "Medina Sud " + suffix)
+                .when().get("/listings")
+                .then().statusCode(200)
+                .body("items.size()", equalTo(0));
+    }
+
+    @Test
     @DisplayName("price sorts actually order by price, in both directions")
     void priceSortsOrderByPrice() throws Exception {
         String uid = "uid-sort-" + System.nanoTime();

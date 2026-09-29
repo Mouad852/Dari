@@ -13,7 +13,8 @@ master_password="bootstrap-master-proof"
 role_password="dari role's proof"
 
 cleanup() {
-  docker rm -f "$container" >/dev/null 2>&1 || true
+  # -v: the image declares a data VOLUME, which would otherwise leak per run.
+  docker rm -f -v "$container" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -23,6 +24,12 @@ docker run -d --name "$container" \
   -e POSTGRES_DB=postgres \
   postgis/postgis:16-3.4 >/dev/null
 
+# The image serves a temporary server while it initializes, then restarts it;
+# pg_isready alone can pass on the temporary one and the next psql then hits
+# "the database system is shutting down". Wait for the real start first.
+until docker logs "$container" 2>&1 | grep -q 'PostgreSQL init process complete; ready for start up.'; do
+  sleep 1
+done
 until docker exec "$container" pg_isready -U postgres -d postgres >/dev/null 2>&1; do
   sleep 1
 done
@@ -32,7 +39,7 @@ done
 # database created by the non-superuser master has the same extension surface.
 docker exec -e PGPASSWORD="$superuser_password" "$container" \
   psql -U postgres -d template1 --set=ON_ERROR_STOP=1 \
-  -c 'CREATE EXTENSION postgis; CREATE EXTENSION pgcrypto;' >/dev/null
+  -c 'CREATE EXTENSION postgis; CREATE EXTENSION pgcrypto; CREATE EXTENSION unaccent;' >/dev/null
 docker exec -e PGPASSWORD="$superuser_password" "$container" \
   psql -U postgres -d postgres --set=ON_ERROR_STOP=1 \
   -c "CREATE ROLE rds_master LOGIN CREATEROLE CREATEDB PASSWORD '$master_password';" >/dev/null

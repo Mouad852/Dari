@@ -3,3 +3,4 @@
 -- still works; this exists so a fresh `docker compose up` is usable immediately.
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS unaccent;

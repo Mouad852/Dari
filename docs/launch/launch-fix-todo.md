@@ -260,11 +260,18 @@ number when the task lands (3.1 and 5.3 both add one).
   `apps/mobile/app/listing/[id].tsx`, mobile `types/api.ts`, `src/lib/host.ts`,
   `src/lib/__tests__/host.test.ts`. Verify: Mobile `npm test` (80/80) + typecheck. On-device look
   not checked. (2026-09-29)
-- [ ] **3.3a** P1-11 — case/accent/whitespace-insensitive neighborhood match with an expression
-  index (immutable `unaccent` wrapper or a stored `neighborhood_key`) across the live search
-  copies. Files: new migration, `ListingSearchRepository.java`, `ListingApiTest`,
-  `ListingSearchIndexUsageTest`. Verify: API — "Agdal" found by `neighborhood=agdal` and
-  `neighborhood= Agdal`; index used.
+- [x] **3.3a** P1-11 — case/accent/whitespace-insensitive neighborhood match: V30 adds the
+  `unaccent` extension and an IMMUTABLE `dari_fold(text)`; all six search SQL copies compare
+  `dari_fold(l.neighborhood) = dari_fold(:neighborhood)`. No expression index: the filter always
+  rides a city-scoped, sort-indexed scan (LIMIT 21), and `ListingSearchIndexUsageTest` confirms
+  those plans are unchanged; `dari_fold` is indexable if a measurement ever says otherwise.
+  `unaccent` also added to the RDS bootstrap, local init and bootstrap proof (whose init wait
+  and volume cleanup were fixed so it runs here). Files: `V30__neighborhood_fold.sql`,
+  `ListingSearchRepository.java`, `ListingApiTest`, `FlywayMigrationSmokeTest` (30),
+  `infra/terraform/production/sql/bootstrap.sql`, `infra/db/init/00-extensions.sql`,
+  `infra/prod-smoke/bootstrap-check.sh`. Verify: API `-Dtest=ListingApiTest,
+  FlywayMigrationSmokeTest,ListingSearchIndexUsageTest,ListingSearchOptimizationTest`;
+  `bash infra/prod-smoke/bootstrap-check.sh`. (2026-09-29)
 - [ ] **3.3b** P1-11 — wizard and search filter offer `GET /neighborhoods?city=` suggestions
   (`<datalist>`). Files: `publish/page.tsx`, `listings/SearchResults.tsx`, `e2e/mock-api.mjs`.
   Verify: Web + spec (suggestions for Rabat).

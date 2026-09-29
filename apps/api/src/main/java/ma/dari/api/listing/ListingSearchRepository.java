@@ -66,7 +66,7 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
             SELECT l.* FROM published_listings l
             WHERE 1 = 1
               AND (:city IS NULL OR l.city = :city)
-              AND (:neighborhood IS NULL OR l.neighborhood = :neighborhood)
+              AND (CAST(:neighborhood AS text) IS NULL OR dari_fold(l.neighborhood) = dari_fold(CAST(:neighborhood AS text)))
               AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
               AND (:maxPrice IS NULL OR l.price_rent <= :maxPrice)
               AND (CAST(:propertyTypes AS property_type[]) IS NULL OR l.property_type = ANY(CAST(:propertyTypes AS property_type[])))
@@ -126,7 +126,7 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
             SELECT l.* FROM published_listings l
             WHERE 1 = 1
               AND (:city IS NULL OR l.city = :city)
-              AND (:neighborhood IS NULL OR l.neighborhood = :neighborhood)
+              AND (CAST(:neighborhood AS text) IS NULL OR dari_fold(l.neighborhood) = dari_fold(CAST(:neighborhood AS text)))
               AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
               AND (:maxPrice IS NULL OR l.price_rent <= :maxPrice)
               AND (CAST(:propertyTypes AS property_type[]) IS NULL OR l.property_type = ANY(CAST(:propertyTypes AS property_type[])))
@@ -166,7 +166,7 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
             FROM published_listings l
             WHERE 1 = 1
               AND (:city IS NULL OR l.city = :city)
-              AND (:neighborhood IS NULL OR l.neighborhood = :neighborhood)
+              AND (CAST(:neighborhood AS text) IS NULL OR dari_fold(l.neighborhood) = dari_fold(CAST(:neighborhood AS text)))
               AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
               AND (:maxPrice IS NULL OR l.price_rent <= :maxPrice)
               AND (CAST(:propertyTypes AS property_type[]) IS NULL OR l.property_type = ANY(CAST(:propertyTypes AS property_type[])))
@@ -218,7 +218,7 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
             FROM published_listings l
             WHERE 1 = 1
               AND (:city IS NULL OR l.city = :city)
-              AND (:neighborhood IS NULL OR l.neighborhood = :neighborhood)
+              AND (CAST(:neighborhood AS text) IS NULL OR dari_fold(l.neighborhood) = dari_fold(CAST(:neighborhood AS text)))
               AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
               AND (:maxPrice IS NULL OR l.price_rent <= :maxPrice)
               AND (CAST(:propertyTypes AS property_type[]) IS NULL OR l.property_type = ANY(CAST(:propertyTypes AS property_type[])))
@@ -283,7 +283,7 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
             SELECT l.* FROM published_listings l
             WHERE 1 = 1
               AND (:city IS NULL OR l.city = :city)
-              AND (:neighborhood IS NULL OR l.neighborhood = :neighborhood)
+              AND (CAST(:neighborhood AS text) IS NULL OR dari_fold(l.neighborhood) = dari_fold(CAST(:neighborhood AS text)))
               AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
               AND (:maxPrice IS NULL OR l.price_rent <= :maxPrice)
               AND (CAST(:propertyTypes AS property_type[]) IS NULL OR l.property_type = ANY(CAST(:propertyTypes AS property_type[])))
@@ -333,7 +333,7 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
             SELECT l.* FROM published_listings l
             WHERE 1 = 1
               AND (:city IS NULL OR l.city = :city)
-              AND (:neighborhood IS NULL OR l.neighborhood = :neighborhood)
+              AND (CAST(:neighborhood AS text) IS NULL OR dari_fold(l.neighborhood) = dari_fold(CAST(:neighborhood AS text)))
               AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
               AND (:maxPrice IS NULL OR l.price_rent <= :maxPrice)
               AND (CAST(:propertyTypes AS property_type[]) IS NULL OR l.property_type = ANY(CAST(:propertyTypes AS property_type[])))
