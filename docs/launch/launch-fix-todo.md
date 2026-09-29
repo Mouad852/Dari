@@ -239,9 +239,12 @@ number when the task lands (3.1 and 5.3 both add one).
   `ListingSearchService.java`, `JsonWireContractApiTest`. Verify: API
   `-Dtest=JsonWireContractApiTest,ArchitectureTest,ListingApiTest` — exact host fields, no
   email/uid/status. (2026-09-29)
-- [ ] **3.2b** P1-8 — web "Proposé par" card on the listing detail linking to `/profile/{id}`.
-  Files: `ListingDetailContent.tsx`, web `types/api.ts`, `e2e/mock-api.mjs`, a spec. Verify: Web +
-  spec (detail → host card → profile).
+- [x] **3.2b** P1-8 — web "Proposé par" card (avatar, name, verification, member since, "Voir le
+  profil") above the contact button. New shared `components/UserAvatar.tsx` and
+  `components/VerificationBadge.tsx`. Files: `ListingDetailContent.tsx`, web `types/api.ts`
+  (`ListingHost`), `e2e/mock-api.mjs` (owner = other-user), new `listing-host.spec.ts`. Verify:
+  Web typecheck + `listing-host listing-gallery json-ld media-origin hydration` (dev + production,
+  15/15) — detail → host card → profile → report dialog. (2026-09-29)
 - [ ] **3.2c** P1-8 — web thread header links the name to `/profile/{otherUserId}` and offers
   `ReportDialog targetType="USER"`. Files: `apps/web/src/app/messages/[id]/page.tsx`,
   `message-thread.spec.ts`. Verify: Web + spec (report dialog opens).

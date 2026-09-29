@@ -88,6 +88,8 @@ const detail = (id = 'listing-1', status = 'PENDING_REVIEW') => ({
   photos: [],
   houseRules: { smokingAllowed: false, petsAllowed: true, guestsAllowed: true, quietHoursStart: null, quietHoursEnd: null, otherRules: null },
   rooms: [],
+  // The same person as /users/other-user and the messaging thread.
+  owner: { id: 'other-user', displayName: 'Amina', avatarUrl: null, verification: 'EMAIL', memberSince: now },
 });
 
 /** The signed-in owner's dashboard (/listings/mine); deleting removes a row. */

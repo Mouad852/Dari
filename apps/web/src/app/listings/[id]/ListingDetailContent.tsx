@@ -1,7 +1,10 @@
 import { MapPin } from 'lucide-react';
+import Link from 'next/link';
 
 import { FocusOnMount } from '@/components/FocusOnMount';
 import { ReportDialog } from '@/components/ReportDialog';
+import { UserAvatar } from '@/components/UserAvatar';
+import { VerificationBadge } from '@/components/VerificationBadge';
 import { amount } from '@/lib/format';
 import { AMENITY_LABELS, PROPERTY_TYPE_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
 import { resolveMediaUrl } from '@/lib/api';
@@ -177,6 +180,44 @@ export function ListingDetailContent({ listing }: { listing: PublicListingDetail
             </div>
           </section>
         )}
+
+        {/*
+          Who the seeker is about to contact, right above the button that
+          contacts them. Verification is this product's anti-scam signal, and
+          the public profile (with its own report action) was unreachable
+          without this link.
+        */}
+        <section aria-labelledby="listing-host-heading">
+          <h2 id="listing-host-heading" style={sectionHeadingStyle}>Proposé par</h2>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-4)',
+              flexWrap: 'wrap',
+              background: 'var(--surface-card)',
+              border: '1px solid var(--border-hairline)',
+              borderRadius: 'var(--radius-card)',
+              padding: 'var(--space-4)',
+            }}
+          >
+            <UserAvatar displayName={listing.owner.displayName} avatarUrl={listing.owner.avatarUrl} size={56} />
+            <div style={{ flex: '1 1 200px', minWidth: 0, display: 'grid', gap: 6 }}>
+              <span style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)', overflowWrap: 'anywhere' }}>
+                {listing.owner.displayName}
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                <VerificationBadge verification={listing.owner.verification} />
+                <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
+                  Membre depuis {new Date(listing.owner.memberSince).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                </span>
+              </span>
+            </div>
+            <Link href={`/profile/${listing.owner.id}`} style={{ font: 'var(--type-body-sm)', color: 'var(--brand)' }}>
+              Voir le profil
+            </Link>
+          </div>
+        </section>
 
         <ContactOwnerButton listingId={listing.id} />
 
