@@ -22,24 +22,28 @@ import type { Me } from '@/types/api';
  * saying plainly instead of dressing it up as a settings page nothing on it
  * actually changes. Per-channel/per-type control is real future work — a
  * migration + endpoint + frontend feature, not a nearby cheap fix — so it's
- * named as "coming soon" rather than faked, same pattern already used on
- * /account/payments and /account/security.
+ * named as "coming soon" rather than faked.
+ *
+ * The list mirrors NotificationDeliveryService.EVENT_TYPES and nothing else
+ * (launch audit P1-12). It claimed emails for new messages, which no code
+ * sends yet (P0-1), and said a report "est traité" when the reporter is only
+ * told it was received, by design (§6). Add a kind here only with its event.
  */
 const NOTIFICATION_KINDS = [
   {
-    icon: Bell,
-    title: 'Nouveaux messages',
-    description: 'Un locataire ou un propriétaire vous répond.',
-  },
-  {
     icon: Mail,
     title: 'Mises à jour de vos annonces',
-    description: 'Une annonce est validée, rejetée, suspendue ou arrive à expiration.',
+    description: 'Une annonce est validée, refusée, suspendue, rétablie, arrive à expiration ou expire.',
   },
   {
     icon: ShieldCheck,
-    title: 'Modération',
-    description: 'Un signalement que vous avez envoyé est traité.',
+    title: 'Votre compte',
+    description: 'La modération vous adresse un avertissement, suspend ou ferme votre compte.',
+  },
+  {
+    icon: Bell,
+    title: 'Vos signalements',
+    description: 'Votre signalement est bien reçu. La suite donnée n’est pas communiquée, pour protéger chacun.',
   },
 ];
 
@@ -106,6 +110,9 @@ export default function AccountNotificationsPage() {
           <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
             Vous recevez un e-mail à {email ?? 'votre adresse'} pour chacun de ces événements. Il n’existe pas
             encore de réglage pour les activer ou les désactiver individuellement.
+          </p>
+          <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            Les nouveaux messages ne sont pas encore envoyés par e-mail : ils apparaissent dans Messages.
           </p>
 
           {NOTIFICATION_KINDS.map(({ icon: Icon, title, description }) => (

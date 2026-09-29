@@ -138,7 +138,9 @@ next to the decision.
   window gives none; after B reads, the next message enqueues again.
 - [ ] **2.1b** P0-1 — email subject/body for `NEW_MESSAGE` in `SmtpNotificationSender` (subject
   names the sender/listing, body links to the thread, no message text). Files:
-  `SmtpNotificationSender.java`, `NotificationDeliveryServiceTest`. Verify: API
+  `SmtpNotificationSender.java`, `NotificationDeliveryServiceTest`, and
+  `apps/web/src/app/account/notifications/page.tsx` (add "Nouveaux messages", drop the "pas encore
+  envoyés" line, update `account-pages.spec.ts`). Verify: API
   `-Dtest=NotificationDeliveryServiceTest`; manual Mailpit check of one email.
 - [x] **2.2a** P0-2 — wizard "Chambre" step collects `roomFurnishing` (select) and `availableFrom`
   (date, min today); both added to `missingForSubmit`, `draftPayload()`, `loadDraft` and the
@@ -299,8 +301,10 @@ number when the task lands (3.1 and 5.3 both add one).
 - [x] **4.1a** P1-12 — remove `/account/payments` (now a server redirect to `/account`) and its
   hub link. Files: `apps/web/src/app/account/payments/page.tsx`, `account/page.tsx`, new
   `account-pages.spec.ts`. Verify: Web typecheck + `account-pages hydration` (7/7). (2026-09-29)
-- [ ] **4.1b** P1-12 — `/account/notifications` lists only real events (messages once 2.1 lands;
-  report "reçu", not "traité"). Files: `account/notifications/page.tsx`. Verify: Web + visual QA.
+- [x] **4.1b** P1-12 — `/account/notifications` lists only real events (listing updates, account
+  moderation, report "reçu" not "traité") and says new messages are not emailed yet. Files:
+  `account/notifications/page.tsx`, `account-pages.spec.ts`. Verify: Web typecheck +
+  `account-pages` (2/2). When 2.1 lands, add "Nouveaux messages" back (see 2.1b). (2026-09-29)
 - [ ] **4.1c** P1-12 — `/account/security`: "Changer mon mot de passe" sends a reset email via
   `sendPasswordReset(me.email)`; drop "Niveau élevé" and the Firebase copy. Files:
   `account/security/page.tsx`, a spec using the e2e auth seam. Verify: Web + spec.
