@@ -18,6 +18,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -413,6 +414,8 @@ public class ListingSearchService {
         throw new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable");
     }
 
+    // Read-only transaction: the host block reads the lazily loaded owner.
+    @Transactional(readOnly = true)
     public PublicListingDetailResponse getPublicOrOwnerListingDetail(UUID listingId, User viewer) {
         Listing listing = listings.findByIdAndDeletedAtIsNull(listingId)
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
@@ -443,7 +446,13 @@ public class ListingSearchService {
                 new HashSet<>(listingAmenities.findAmenityCodesByListingId(listingId)),
                 photos,
                 houseRulesResponse,
-                roomResponses);
+                roomResponses,
+                host(listing.getOwner()));
+    }
+
+    private ListingHostResponse host(User owner) {
+        String avatarKey = owner.getAvatarStorageKey();
+        return ListingHostResponse.from(owner, avatarKey == null ? null : imageStore.publicUrl(avatarKey));
     }
 
     public ListingResponse submit(UUID listingId, User owner) {

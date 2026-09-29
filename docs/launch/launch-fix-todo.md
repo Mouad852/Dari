@@ -232,10 +232,13 @@ number when the task lands (3.1 and 5.3 both add one).
   `MessagingApiTest`. Verify: API `-Dtest=MessagingApiTest,TypedCursorsTest` (18/18, 2/2) — A↔B
   then A↔C, B replies → B's thread first; 21 threads page 20 + 1 with none lost or repeated.
   (2026-09-29)
-- [ ] **3.2a** P1-8 — `owner: { id, displayName, avatarUrl, verification, memberSince }` on
-  `PublicListingDetailResponse`. Files: `listing/PublicListingDetailResponse.java`,
-  `ListingSearchService.java`, `JsonWireContractApiTest`. Verify: API — detail has `owner` and no
-  email/phone/uid.
+- [x] **3.2a** P1-8 — `owner: { id, displayName, avatarUrl, verification, memberSince }` on
+  `PublicListingDetailResponse` (new `ListingHostResponse`; the detail read is now
+  `@Transactional(readOnly = true)` because it reads the lazy owner). Files:
+  `listing/ListingHostResponse.java`, `PublicListingDetailResponse.java`,
+  `ListingSearchService.java`, `JsonWireContractApiTest`. Verify: API
+  `-Dtest=JsonWireContractApiTest,ArchitectureTest,ListingApiTest` — exact host fields, no
+  email/uid/status. (2026-09-29)
 - [ ] **3.2b** P1-8 — web "Proposé par" card on the listing detail linking to `/profile/{id}`.
   Files: `ListingDetailContent.tsx`, web `types/api.ts`, `e2e/mock-api.mjs`, a spec. Verify: Web +
   spec (detail → host card → profile).

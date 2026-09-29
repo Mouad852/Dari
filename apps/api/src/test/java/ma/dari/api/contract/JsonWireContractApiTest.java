@@ -38,7 +38,10 @@ class JsonWireContractApiTest extends AbstractIntegrationTest {
             "wifiIncluded", "electricityIncluded", "waterIncluded", "propertyType", "numBedrooms",
             "numBathrooms", "roomType", "roomFurnishing", "commonAreasFurnished", "availableFrom",
             "minStayMonths", "latitude", "longitude", "availabilityState", "createdAt", "updatedAt",
-            "amenityCodes", "photos", "houseRules", "rooms");
+            "amenityCodes", "photos", "houseRules", "rooms", "owner");
+    /** The host block: the public-profile subset, and nothing that could contact or identify them further. */
+    private static final List<String> LISTING_HOST_FIELDS = List.of(
+            "id", "displayName", "avatarUrl", "verification", "memberSince");
     private static final List<String> SEARCH_PAGE_FIELDS = List.of("items", "nextCursor", "hasMore");
     private static final List<String> PUBLIC_LISTING_FIELDS = List.of(
             "id", "title", "city", "neighborhood", "priceRent", "latitude", "longitude",
@@ -85,6 +88,17 @@ class JsonWireContractApiTest extends AbstractIntegrationTest {
         assertThat(detail.path("photos").size()).isZero();
         assertThat(detail.path("houseRules").isNull()).isTrue();
         assertThat(detail.path("createdAt").asText()).matches("\\d{4}-\\d{2}-\\d{2}T.*Z");
+        JsonNode host = detail.path("owner");
+        assertThat(fieldNames(host)).containsExactlyElementsOf(LISTING_HOST_FIELDS);
+        assertThat(host.path("id").asText()).isEqualTo(owner.getId().toString());
+        assertThat(host.path("displayName").asText()).isEqualTo("Contract Owner");
+        assertThat(host.path("avatarUrl").isNull()).isTrue();
+        assertThat(host.path("verification").asText()).isEqualTo("EMAIL");
+        assertThat(host.path("memberSince").asText()).matches("\\d{4}-\\d{2}-\\d{2}T.*Z");
+        assertThat(host.toString())
+                .doesNotContain(owner.getEmail())
+                .doesNotContain(owner.getFirebaseUid())
+                .doesNotContain("ACTIVE");
 
         JsonNode search = read(given().queryParam("city", city).queryParam("sort", "recent")
                 .when().get("/listings").then().statusCode(200).extract().asString());

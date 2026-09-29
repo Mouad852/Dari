@@ -38,7 +38,8 @@ public record PublicListingDetailResponse(
         Set<String> amenityCodes,
         List<ListingPhotoResponse> photos,
         HouseRulesResponse houseRules,
-        List<ListingRoomResponse> rooms) {
+        List<ListingRoomResponse> rooms,
+        ListingHostResponse owner) {
 
     public static PublicListingDetailResponse from(
             Listing listing,
@@ -46,7 +47,8 @@ public record PublicListingDetailResponse(
             Set<String> amenityCodes,
             List<ListingPhotoResponse> photos,
             HouseRulesResponse houseRules,
-            List<ListingRoomResponse> rooms) {
+            List<ListingRoomResponse> rooms,
+            ListingHostResponse owner) {
         return new PublicListingDetailResponse(
                 listing.getId(),
                 listing.getTitle(),
@@ -74,6 +76,7 @@ public record PublicListingDetailResponse(
                 amenityCodes,
                 photos,
                 houseRules,
-                rooms);
+                rooms,
+                owner);
     }
 }
