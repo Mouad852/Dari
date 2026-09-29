@@ -8,6 +8,7 @@ import { Button } from '@/components/ds/Button';
 import { Card } from '@/components/ds/Card';
 import { Dialog } from '@/components/ds/Dialog';
 import { Icon } from '@/components/ds/Icon';
+import { Tag } from '@/components/ds/Tag';
 import { Textarea } from '@/components/ds/Textarea';
 import { ListingThumb } from '@/components/ListingThumb';
 import { apiFetch, ApiError } from '@/lib/api';
@@ -16,7 +17,11 @@ import { rentPerMonth } from '@/lib/format';
 import { LISTING_STATUS_LABELS } from '@/lib/labels';
 import type { ListingDetail } from '@/types/api';
 
+/** The two moderation queues: awaiting review, and suspended (reinstatable). */
+type QueueView = 'PENDING_REVIEW' | 'SUSPENDED';
+
 export default function AdminListingsQueuePage() {
+  const [view, setView] = useState<QueueView>('PENDING_REVIEW');
   const [queue, setQueue] = useState<ListingDetail[] | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -74,6 +79,8 @@ export default function AdminListingsQueuePage() {
 
   useEffect(() => {
     let isCurrent = true;
+    setQueue(null);
+    setError(null);
 
     void (async () => {
       // Inside the try: getIdToken rejects rather than resolving null when the
@@ -85,7 +92,8 @@ export default function AdminListingsQueuePage() {
           if (isCurrent) setError('Connectez-vous avec un compte administrateur.');
           return;
         }
-        const result = await apiFetch<ListingDetail[]>('/admin/listings', { token: idToken });
+        const path = view === 'SUSPENDED' ? '/admin/listings?status=SUSPENDED' : '/admin/listings';
+        const result = await apiFetch<ListingDetail[]>(path, { token: idToken });
         if (isCurrent) {
           setToken(idToken);
           setQueue(result);
@@ -98,7 +106,25 @@ export default function AdminListingsQueuePage() {
     return () => {
       isCurrent = false;
     };
-  }, []);
+  }, [view]);
+
+  /** SUSPENDED -> the listing's prior status. The owner is notified by the API. */
+  const handleReinstate = (id: string) => {
+    if (pendingId || !token) return;
+    armActionRefocus(id);
+    setPendingId(id);
+    setError(null);
+    void (async () => {
+      try {
+        await apiFetch(`/admin/listings/${encodeURIComponent(id)}/reinstate`, { method: 'POST', token });
+        setQueue((prev) => (prev ?? []).filter((item) => item.id !== id));
+      } catch (cause) {
+        setError(cause instanceof ApiError ? cause.message : 'Impossible de réintégrer cette annonce.');
+      } finally {
+        setPendingId(null);
+      }
+    })();
+  };
 
   const handleApprove = (id: string) => {
     if (pendingId || !token) return;
@@ -186,10 +212,21 @@ export default function AdminListingsQueuePage() {
           */}
           {queue ? (
             <Badge tone={queue.length > 0 ? 'brand' : 'neutral'}>
-              {queue.length} en attente
+              {view === 'SUSPENDED'
+                ? `${queue.length} suspendue${queue.length > 1 ? 's' : ''}`
+                : `${queue.length} en attente`}
             </Badge>
           ) : null}
         </header>
+
+        <div role="group" aria-label="File affichée" style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <Tag selected={view === 'PENDING_REVIEW'} onClick={() => setView('PENDING_REVIEW')}>
+            En attente de validation
+          </Tag>
+          <Tag selected={view === 'SUSPENDED'} onClick={() => setView('SUSPENDED')}>
+            Suspendues
+          </Tag>
+        </div>
 
         {error ? <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
 
@@ -200,7 +237,7 @@ export default function AdminListingsQueuePage() {
             <Icon name="check-circle-2" size={28} color="var(--success)" />
             <p style={{ margin: 0, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>File vide</p>
             <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-body)' }}>
-              Aucune annonce n’attend de validation.
+              {view === 'SUSPENDED' ? 'Aucune annonce n’est suspendue.' : 'Aucune annonce n’attend de validation.'}
             </p>
           </Card>
         ) : (
@@ -254,6 +291,13 @@ export default function AdminListingsQueuePage() {
                         here and nowhere else, and a moderator was being asked to
                         decide without reading it.
                       */}
+                      {view === 'SUSPENDED' ? (
+                        <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-body)' }}>
+                          <strong style={{ color: 'var(--text-heading)' }}>Motif de la suspension : </strong>
+                          {item.rejectionReason ?? 'Suspendue automatiquement après plusieurs signalements.'}
+                        </p>
+                      ) : null}
+
                       {item.description ? (
                         <p
                           // Longhand, not the `font` shorthand -- see ReportDialog.tsx for why.
@@ -283,29 +327,41 @@ export default function AdminListingsQueuePage() {
                           <Button variant="ghost" size="sm" iconLeft="eye">Voir l’annonce</Button>
                         </Link>
 
-                        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                        {view === 'SUSPENDED' ? (
                           <Button
                             variant="primary"
                             size="sm"
                             iconLeft="check"
                             loading={isPending}
-                            onClick={() => handleApprove(item.id)}
+                            onClick={() => handleReinstate(item.id)}
                           >
-                            Valider
+                            Réintégrer
                           </Button>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            iconLeft="x"
-                            disabled={isPending}
-                            onClick={() => {
-                              setReason('');
-                              setRejecting(item);
-                            }}
-                          >
-                            Rejeter
-                          </Button>
-                        </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              iconLeft="check"
+                              loading={isPending}
+                              onClick={() => handleApprove(item.id)}
+                            >
+                              Valider
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              iconLeft="x"
+                              disabled={isPending}
+                              onClick={() => {
+                                setReason('');
+                                setRejecting(item);
+                              }}
+                            >
+                              Rejeter
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </article>

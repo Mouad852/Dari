@@ -190,8 +190,11 @@ next to the decision.
   of filtering the pending list; only PENDING_REVIEW (default) and SUSPENDED are queues, anything
   else is a 400. Files: `AdminController.java`, `AdminService.java` (`moderationQueue`),
   `AdminApiTest`. Verify: API `-Dtest=AdminApiTest` (20/20). (2026-09-29)
-- [ ] **2.6c** P1-13 — web admin "Suspendues" tab with a "Réintégrer" action. Files:
-  `apps/web/src/app/admin/listings/page.tsx`, `e2e/mock-api.mjs`, a spec. Verify: Web + spec.
+- [x] **2.6c** P1-13 — web admin "Suspendues" queue (toggle next to "En attente de validation")
+  showing the suspension reason and a "Réintégrer" action. Files:
+  `apps/web/src/app/admin/listings/page.tsx`, new `admin-moderation.spec.ts` (stubs the suspended
+  queue in-spec). Verify: Web typecheck + `admin-moderation account-journeys` specs, axe clean.
+  (2026-09-29)
 - [ ] **2.6d** P1-13 — owner dashboard shows `rejectionReason` for SUSPENDED listings with a
   "Contacter la modération" mailto. Files: `apps/web/src/app/account/listings/page.tsx`,
   `account-journeys.spec.ts`. Verify: Web + spec.
