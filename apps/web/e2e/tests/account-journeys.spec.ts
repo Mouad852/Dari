@@ -19,6 +19,26 @@ test('signup provisions the profile through the API-owned boundary', async ({ au
   await expectAccessible(page);
 });
 
+test('clearing profile fields sends empty strings, which the API reads as "clear"', async ({ authenticatedPage: page }) => {
+  let patchBody: Record<string, unknown> | null = null;
+  await page.route('**/api/v1/users/me', async (route) => {
+    if (route.request().method() !== 'PATCH') return route.continue();
+    patchBody = route.request().postDataJSON() as Record<string, unknown>;
+    const current = await (await route.fetch({ method: 'GET' })).json();
+    await route.fulfill({ json: { ...current, firstName: null, city: null, bio: null } });
+  });
+
+  await page.goto('/account/profile');
+  await page.getByLabel('Prénom').fill('');
+  await page.getByLabel('Ville').fill('');
+  await page.getByLabel('Biographie').fill('');
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+
+  await expect(page.getByRole('status')).toContainText('Profil enregistré');
+  // null would mean "unchanged" to the API and leave the old values public.
+  expect(patchBody).toMatchObject({ firstName: '', city: '', bio: '' });
+});
+
 test('listing publication covers the wizard, photo upload, and moderation handoff', async ({ authenticatedPage: page }) => {
   await page.goto('/publish');
   await page.getByLabel("Titre de l’annonce").fill('Chambre test E2E');

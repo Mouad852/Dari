@@ -173,11 +173,13 @@ export default function AccountProfilePage() {
           token,
           // Email and phone are Firebase's, not this form's — the API ignores
           // them in the body even if sent, but they are simply never included.
+          // An emptied field is sent as "" -- the API reads null as "unchanged"
+          // and "" as "clear it", so null would leave a deleted bio public.
           body: {
-            firstName: firstName.trim() || null,
+            firstName: firstName.trim(),
             displayName: displayName.trim(),
-            city: city.trim() || null,
-            bio: bio.trim() || null,
+            city: city.trim(),
+            bio: bio.trim(),
           },
         });
         setProfile(updated);

@@ -97,9 +97,10 @@ next to the decision.
   new `UserProfileClearingApiTest` (not `UserApiTest`, see rules). Verify: API
   `-Dtest=UserProfileClearingApiTest,UserApiTest` — PATCH `{bio:""}` → `GET /users/me` `bio: null`
   and the public profile has no bio. (2026-09-29)
-- [ ] **1.3b** P1-9 — web profile form sends `""` for cleared fields instead of `null`. Files:
-  `apps/web/src/app/account/profile/page.tsx` (+ mock API if needed). Verify: Web typecheck/build +
-  `account-journeys` spec.
+- [x] **1.3b** P1-9 — web profile form sends `""` for cleared fields instead of `null`. Files:
+  `apps/web/src/app/account/profile/page.tsx`, `account-journeys.spec.ts` (asserts the PATCH
+  payload). Verify: Web typecheck + `account-journeys` spec (its web servers include the
+  production `next build`). (2026-09-29)
 - [ ] **1.3c** P1-9 — mobile profile `save()` sends `""` for cleared fields. Files:
   `apps/mobile/app/(tabs)/profile.tsx` (and `src/lib/profile.ts` if the payload is built there),
   `src/lib/__tests__/profile.test.ts`. Verify: Mobile `npm test`.
