@@ -180,10 +180,12 @@ next to the decision.
   `src/types/api.ts`. Test in `src/lib/__tests__/api.test.ts` (relative, absolute,
   protocol-relative). Verify: Mobile `npm test` (78/78) + `npm run typecheck`. A device build
   against S3/MinIO is still an owner check (audit §18). (2026-09-29)
-- [ ] **2.6a** P1-13 — `POST /admin/listings/{id}/reinstate`: SUSPENDED → prior public status (or
-  PUBLISHED), writes an `AdminAction`, notifies the owner. Files: `moderation/AdminService.java`,
-  `AdminController.java`, notification service, `AdminApiTest`. Verify: API `-Dtest=AdminApiTest`
-  — suspend → reinstate → public detail 200, audit row exists.
+- [x] **2.6a** P1-13 — `POST /admin/listings/{id}/reinstate`: SUSPENDED → prior status (or
+  PUBLISHED), clears the moderator reason, writes a `REINSTATE_LISTING` `AdminAction`, notifies the
+  owner (existing `LISTING_REINSTATED`); 409 when not suspended, 404 when deleted. Files:
+  `moderation/AdminService.java`, `AdminController.java`, `AdminApiTest`. Verify: API
+  `-Dtest=AdminApiTest` (19/19) — suspend → reinstate → public detail 200, audit row, outbox row.
+  (2026-09-29)
 - [ ] **2.6b** P1-13 — `/admin/listings?status=SUSPENDED` queries the repository by status instead
   of filtering the pending list. Files: `AdminController.java`, `AdminService.java`, repository,
   `AdminApiTest`. Verify: API `-Dtest=AdminApiTest`.

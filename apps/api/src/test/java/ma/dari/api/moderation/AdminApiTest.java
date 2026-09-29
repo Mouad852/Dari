@@ -399,6 +399,55 @@ class AdminApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("a moderator can reinstate a listing they suspended, and it is recorded")
+    void reinstateSuspendedListing() throws Exception {
+        User owner = users.saveAndFlush(new User(
+                "uid-reinst-owner-" + System.nanoTime(), "reinst-owner-" + System.nanoTime() + "@example.ma",
+                true, "Owner"));
+        Listing listing = listingFor(owner, ListingStatus.PUBLISHED);
+        User reporter = users.saveAndFlush(new User(
+                "uid-reinst-rep-" + System.nanoTime(), "reinst-rep-" + System.nanoTime() + "@example.ma",
+                true, "Reporter"));
+        reports.saveAndFlush(Report.create(reporter, new CreateReportRequest(
+                ReportTarget.LISTING, listing.getId(), ReportReason.SUSPECTED_SCAM, "Arnaque")));
+
+        admin("reinstate");
+        given().header("Authorization", "Bearer admin-token")
+                .contentType("application/json")
+                .body("{\"action\":\"SUSPEND\",\"reason\":\"Photos douteuses\"}")
+                .when().post("/admin/reports/{type}/{id}/action", "LISTING", listing.getId())
+                .then().statusCode(200);
+        given().when().get("/listings/{id}", listing.getId()).then().statusCode(404);
+
+        long auditBefore = adminActions.count();
+        given().header("Authorization", "Bearer admin-token")
+                .when().post("/admin/listings/{id}/reinstate", listing.getId())
+                .then().statusCode(200)
+                .body("status", equalTo("PUBLISHED"));
+
+        given().when().get("/listings/{id}", listing.getId()).then().statusCode(200);
+        Listing reinstated = listings.findById(listing.getId()).orElseThrow();
+        assertThat(reinstated.getPriorStatus()).isNull();
+        assertThat(reinstated.getRejectionReason()).isNull();
+        assertThat(adminActions.count()).isEqualTo(auditBefore + 1);
+        assertThat(adminActions.findAll().stream()
+                .anyMatch(action -> "REINSTATE_LISTING".equals(action.getAction())
+                        && listing.getId().equals(action.getTargetId())))
+                .isTrue();
+        assertThat(notificationOutbox.findAll().stream()
+                .anyMatch(event -> "LISTING_REINSTATED".equals(event.getEventType())
+                        && event.getAggregateId().equals(listing.getId())
+                        && event.getRecipientId().equals(owner.getId())))
+                .isTrue();
+
+        // Only a suspended listing can be reinstated.
+        given().header("Authorization", "Bearer admin-token")
+                .when().post("/admin/listings/{id}/reinstate", listing.getId())
+                .then().statusCode(409)
+                .body("code", equalTo("ILLEGAL_TRANSITION"));
+    }
+
+    @Test
     @DisplayName("BAN is refused on a listing target, and WARN notifies its owner")
     void banOnListingRefusedAndWarnNotifiesOwner() throws Exception {
         User owner = users.saveAndFlush(new User(

@@ -85,6 +85,12 @@ public class AdminController {
         return adminService.rejectListing(admin, id, request.reason());
     }
 
+    /** SUSPENDED -> prior status. Notifies the owner and records the decision. */
+    @PostMapping("/listings/{id}/reinstate")
+    public ListingResponse reinstate(@CurrentUser User admin, @PathVariable UUID id) {
+        return adminService.reinstateListing(admin, id);
+    }
+
     // --- reports -------------------------------------------------------------
 
     /**

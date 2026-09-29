@@ -354,6 +354,33 @@ public class AdminService {
         notifications.listingSuspended(listing);
     }
 
+    /**
+     * SUSPENDED -> the status the listing had before it was suspended.
+     *
+     * <p>The way back from a moderator's own suspension: a DISMISS only undoes
+     * the automatic one ({@code autoFlagged}), and the owner cannot submit or
+     * renew a suspended listing, so without this a mistaken suspension was
+     * permanent. Like the automatic restore, {@code expires_at} is left alone.
+     */
+    @Transactional
+    public ListingResponse reinstateListing(User admin, UUID listingId) {
+        Listing listing = listings.findById(listingId)
+                .filter(l -> l.getDeletedAt() == null)
+                .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
+        if (listing.getStatus() != ListingStatus.SUSPENDED) {
+            throw new ApiException(409, ErrorCode.ILLEGAL_TRANSITION, "Transition illégale: SUSPENDED -> PUBLISHED");
+        }
+        listing.setStatus(listing.getPriorStatus() != null ? listing.getPriorStatus() : ListingStatus.PUBLISHED);
+        listing.setPriorStatus(null);
+        listing.setAutoFlagged(false);
+        listing.setRejectionReason(null);
+        listings.save(listing);
+        notifications.listingReinstated(listing);
+        adminActions.save(AdminAction.of(admin, "REINSTATE_LISTING", ReportTarget.LISTING, listingId, null));
+        return ListingResponse.from(listing, amenityCodesFor(listing.getId()), covers.forListing(listing.getId()),
+                houseRulesFor(listing.getId()), roomsFor(listing.getId()));
+    }
+
     @Transactional(readOnly = true)
     public AdminUserResponse getUser(UUID userId) {
         User user = users.findById(userId)
