@@ -160,10 +160,11 @@ next to the decision.
   and `mapPinsByLocationAndRadius`. Files: `listing/ListingSearchRepository.java`,
   `ListingApiTest`. Verify: API — a listing with NULL `available_from` behaves per the chosen rule
   in list, count and map.
-- [ ] **2.3a** P0-3 — "Renouveler" action on `/account/listings` for `status === 'EXPIRED'`
+- [x] **2.3a** P0-3 — "Renouveler" action on `/account/listings` for `status === 'EXPIRED'`
   (`POST /listings/{id}/renew`, card moves to PENDING_REVIEW). Files:
-  `apps/web/src/app/account/listings/page.tsx`, `e2e/mock-api.mjs`, `account-journeys.spec.ts`.
-  Verify: Web + `account-journeys` spec — renew call made, status label updates.
+  `apps/web/src/app/account/listings/page.tsx`, new `owner-listings.spec.ts` (stubs the status
+  in-spec, so the shared mock is unchanged). Verify: Web typecheck + `owner-listings` spec —
+  renew call made, status label updates, action gone. (2026-09-29)
 - [ ] **2.3b** P0-3 — wizard `publish()`: EXPIRED → calls `/renew`; SUSPENDED → shows "Cette
   annonce est suspendue par la modération" and disables publish; success copy follows the resulting
   status (never "envoyée pour validation" unless it was). Files: `publish/page.tsx`,

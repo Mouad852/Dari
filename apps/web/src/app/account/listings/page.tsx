@@ -197,6 +197,11 @@ export default function MyListingsPage() {
   const handleReopen = (listingId: string) =>
     runAction(listingId, `/listings/${encodeURIComponent(listingId)}/reopen`, 'POST', { availabilityState: 'AVAILABLE' });
 
+  // Every listing expires after 60 days, and the expiry email tells the owner
+  // to renew it: this is that action. It goes back through moderation.
+  const handleRenew = (listingId: string) =>
+    runAction(listingId, `/listings/${encodeURIComponent(listingId)}/renew`, 'POST', { status: 'PENDING_REVIEW' });
+
   /*
    * The confirmation used to be window.confirm, with the same defects the
    * account deletion had (see account/profile/page.tsx): unstylable, outside
@@ -343,6 +348,7 @@ export default function MyListingsPage() {
                   const canSubmit = listing.status === 'DRAFT' || listing.status === 'REJECTED';
                   const canMarkRoomFound = listing.status === 'PUBLISHED' && listing.availabilityState === 'AVAILABLE';
                   const canReopen = listing.status === 'PUBLISHED' && listing.availabilityState === 'ROOM_FOUND';
+                  const canRenew = listing.status === 'EXPIRED';
 
                   return (
                     <article
@@ -486,6 +492,11 @@ export default function MyListingsPage() {
                             {canReopen ? (
                               <button type="button" disabled={isPending} onClick={() => handleReopen(listing.id)} style={actionButtonStyle}>
                                 Remettre disponible
+                              </button>
+                            ) : null}
+                            {canRenew ? (
+                              <button type="button" disabled={isPending} onClick={() => handleRenew(listing.id)} style={actionButtonStyle}>
+                                Renouveler
                               </button>
                             ) : null}
                             <button
