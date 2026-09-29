@@ -148,9 +148,11 @@ next to the decision.
   `currentRoommatesCount`, `maxRoommates`; round-trips through `loadDraft`. Files:
   `publish/page.tsx`, `e2e/mock-api.mjs`, `keyboard-publish.spec.ts`. Verify: Web +
   `keyboard-publish` spec payload assertion.
-- [ ] **2.2c** P0-2 — `ListingSearchService.submit` requires `roomFurnishing` and `availableFrom`
-  (400 with field messages). Files: `listing/ListingSearchService.java`, `ListingApiTest` (and any
-  test fixtures that submit without them). Verify: API `-Dtest=ListingApiTest`, then full suite.
+- [x] **2.2c** P0-2 — `ListingSearchService.submit` requires `roomFurnishing` and `availableFrom`
+  (400 "Aménagement de la chambre requis" / "Date de disponibilité requise"; a past date is
+  accepted). Files: `listing/ListingSearchService.java`, `ListingApiTest`. Verify: API
+  `-Dtest=ListingApiTest` (57/57); full suite at the Phase 2 gate. Mobile publish (already unable
+  to submit, P0-4) now also needs these fields if option (b) is chosen. (2026-09-29)
 - [ ] **2.2d** P0-2 **DECISION (NULL date rule)** — one date-filter rule across
   `searchByLocationSorted`, `searchByRadiusPaginated`, `searchByRadiusWithCursor`, the count query
   and `mapPinsByLocationAndRadius`. Files: `listing/ListingSearchRepository.java`,

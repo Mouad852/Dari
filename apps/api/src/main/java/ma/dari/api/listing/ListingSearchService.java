@@ -464,6 +464,15 @@ public class ListingSearchService {
         if (listing.getRoomType() == null) {
             throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Type de chambre requis");
         }
+        // Search filters on both; a listing published without them never
+        // matches "Meublé" or a move-in date, so it is invisible to exactly the
+        // seekers who narrow their search.
+        if (listing.getRoomFurnishing() == null) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Aménagement de la chambre requis");
+        }
+        if (listing.getAvailableFrom() == null) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Date de disponibilité requise");
+        }
 
         listing.setStatus(ListingStatus.PENDING_REVIEW);
         // A lifecycle confirmation, not a card: the client already has the

@@ -936,6 +936,8 @@ class ListingApiTest extends AbstractIntegrationTest {
         draft.setDescription("Description du brouillon.");
         draft.setPropertyType(PropertyType.STUDIO);
         draft.setRoomType(RoomType.PRIVATE);
+        draft.setRoomFurnishing(RoomFurnishing.FULLY_FURNISHED);
+        draft.setAvailableFrom(java.time.LocalDate.now().plusDays(7));
         draft = listings.saveAndFlush(draft);
         listingPhotos.saveAndFlush(new ListingPhoto(draft, "submit-draft.jpg", "image/jpeg", 320, 240, 0, true));
 
@@ -945,6 +947,9 @@ class ListingApiTest extends AbstractIntegrationTest {
         rejected.setDescription("Description corrigée.");
         rejected.setPropertyType(PropertyType.STUDIO);
         rejected.setRoomType(RoomType.PRIVATE);
+        rejected.setRoomFurnishing(RoomFurnishing.UNFURNISHED);
+        // A date already past means "available now" and must not block resubmission.
+        rejected.setAvailableFrom(java.time.LocalDate.now().minusDays(30));
         rejected = listings.saveAndFlush(rejected);
         listingPhotos.saveAndFlush(new ListingPhoto(rejected, "submit-rejected.jpg", "image/jpeg", 320, 240, 0, true));
 
@@ -987,6 +992,43 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .then().statusCode(400)
                 .body("code", equalTo("VALIDATION_FAILED"))
                 .body("message", equalTo("Type de chambre requis"));
+    }
+
+    @Test
+    @DisplayName("submission requires the furnishing and the availability date search filters on")
+    void submissionRequiresFurnishingAndAvailabilityDate() throws Exception {
+        String uid = "uid-submit-filters-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        User owner = users.saveAndFlush(new User(uid, email, true, "Submit Filters"));
+        Listing listing = new Listing(
+                owner, "Studio sans aménagement", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2500.00"), ListingStatus.DRAFT, AvailabilityState.AVAILABLE);
+        listing.setDescription("Une description complète.");
+        listing.setPropertyType(PropertyType.STUDIO);
+        listing.setRoomType(RoomType.PRIVATE);
+        listing = listings.saveAndFlush(listing);
+        listingPhotos.saveAndFlush(new ListingPhoto(listing, uid + ".jpg", "image/jpeg", 320, 240, 0, true));
+
+        given().header("Authorization", "Bearer submit-filters-token")
+                .when().post("/listings/{id}/submit", listing.getId())
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"))
+                .body("message", equalTo("Aménagement de la chambre requis"));
+
+        listing.setRoomFurnishing(RoomFurnishing.PARTIALLY_FURNISHED);
+        listings.saveAndFlush(listing);
+        given().header("Authorization", "Bearer submit-filters-token")
+                .when().post("/listings/{id}/submit", listing.getId())
+                .then().statusCode(400)
+                .body("message", equalTo("Date de disponibilité requise"));
+
+        listing.setAvailableFrom(java.time.LocalDate.now());
+        listings.saveAndFlush(listing);
+        given().header("Authorization", "Bearer submit-filters-token")
+                .when().post("/listings/{id}/submit", listing.getId())
+                .then().statusCode(200)
+                .body("status", equalTo("PENDING_REVIEW"));
     }
 
     @Test
