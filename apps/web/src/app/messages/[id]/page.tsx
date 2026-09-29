@@ -7,6 +7,7 @@ import { Button } from '@/components/ds/Button';
 import { Icon } from '@/components/ds/Icon';
 import { IconButton } from '@/components/ds/IconButton';
 import { ErrorNotice, errorMessage } from '@/components/ErrorNotice';
+import { ReportDialog } from '@/components/ReportDialog';
 import { apiFetch, ApiError, resolveMediaUrl, type CursorPage } from '@/lib/api';
 import { ErrorCode } from '@/lib/errors';
 import { getIdToken } from '@/lib/firebase';
@@ -634,9 +635,17 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
           >
             {conversation.otherUserDisplayName.charAt(0).toUpperCase()}
           </span>
-          <h1 ref={headingRef} tabIndex={-1} style={{ margin: 0, flex: 1, minWidth: 0, font: 'var(--type-label)', color: 'var(--text-heading)' }}>
-            {conversation.otherUserDisplayName}
+          {/*
+            The name leads to the person's public profile (verification, how
+            long they have been a member), and the thread offers the report
+            action a harassed user needs without leaving the conversation.
+          */}
+          <h1 ref={headingRef} tabIndex={-1} style={{ margin: 0, flex: 1, minWidth: 0, font: 'var(--type-label)', color: 'var(--text-heading)', overflowWrap: 'anywhere' }}>
+            <Link href={`/profile/${conversation.otherUserId}`} style={{ color: 'inherit' }}>
+              {conversation.otherUserDisplayName}
+            </Link>
           </h1>
+          <ReportDialog targetType="USER" targetId={conversation.otherUserId} label="Signaler" />
           </div>
         </header>
 

@@ -245,9 +245,10 @@ number when the task lands (3.1 and 5.3 both add one).
   (`ListingHost`), `e2e/mock-api.mjs` (owner = other-user), new `listing-host.spec.ts`. Verify:
   Web typecheck + `listing-host listing-gallery json-ld media-origin hydration` (dev + production,
   15/15) — detail → host card → profile → report dialog. (2026-09-29)
-- [ ] **3.2c** P1-8 — web thread header links the name to `/profile/{otherUserId}` and offers
-  `ReportDialog targetType="USER"`. Files: `apps/web/src/app/messages/[id]/page.tsx`,
-  `message-thread.spec.ts`. Verify: Web + spec (report dialog opens).
+- [x] **3.2c** P1-8 — web thread header links the name to `/profile/{otherUserId}` and offers
+  `ReportDialog targetType="USER"` ("Signaler"). Files: `apps/web/src/app/messages/[id]/page.tsx`,
+  `message-thread.spec.ts`. Verify: Web typecheck + `message-thread account-journeys` specs — link
+  target, report posts `{targetType: USER, targetId: other-user}`. (2026-09-29)
 - [ ] **3.2d** P1-8 — public profile renders `avatarUrl` (initial as fallback). Files:
   `apps/web/src/app/profile/[id]/page.tsx`. Verify: Web typecheck/build + a spec assertion.
 - [ ] **3.2e** P1-8 — mobile detail host card linking to the profile/report path. Files:

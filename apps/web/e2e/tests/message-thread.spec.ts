@@ -19,6 +19,24 @@ async function afterPolls(page: Page): Promise<number> {
     && (call.query ?? '').includes('after=')).length;
 }
 
+test('the thread names the other person, links to their profile and can report them', async ({ authenticatedPage: page }) => {
+  let reported: Record<string, unknown> | null = null;
+  await page.route('**/api/v1/reports', async (route) => {
+    if (route.request().method() === 'POST') reported = route.request().postDataJSON();
+    await route.continue();
+  });
+
+  await page.goto('/messages/conversation-1');
+  await expect(page.getByRole('heading', { level: 1, name: 'Amina' }).getByRole('link'))
+    .toHaveAttribute('href', '/profile/other-user');
+
+  await page.getByRole('button', { name: 'Signaler', exact: true }).click();
+  await page.getByRole('dialog').getByRole('radio').first().check();
+  await page.getByRole('button', { name: /envoyer le signalement/i }).click();
+  await expect(page.getByRole('heading', { name: /signalement reçu/i })).toBeVisible();
+  expect(reported).toMatchObject({ targetType: 'USER', targetId: 'other-user' });
+});
+
 test('a reply written while the thread is open appears within one poll, exactly once', async ({ authenticatedPage: page, request }) => {
   await page.goto('/messages/conversation-1');
   const log = page.getByRole('log', { name: 'Messages de la conversation' });
