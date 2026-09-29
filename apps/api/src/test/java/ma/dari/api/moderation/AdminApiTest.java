@@ -208,6 +208,39 @@ class AdminApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("the suspended queue lists suspended listings with their reason; other statuses are refused")
+    void suspendedQueueIsItsOwnQuery() throws Exception {
+        User owner = users.saveAndFlush(new User(
+                "uid-owner-queue-" + System.nanoTime(), "owner-queue-" + System.nanoTime() + "@example.ma", true, "Owner"));
+        Listing pending = listingFor(owner, ListingStatus.PENDING_REVIEW);
+        Listing suspended = listingFor(owner, ListingStatus.SUSPENDED);
+        suspended.setRejectionReason("Photos trompeuses");
+        listings.saveAndFlush(suspended);
+
+        admin("queue");
+
+        // ?status used to filter the pending list, so this was always empty.
+        given().header("Authorization", "Bearer admin-token")
+                .queryParam("status", "SUSPENDED")
+                .when().get("/admin/listings")
+                .then().statusCode(200)
+                .body("find { it.id == '" + suspended.getId() + "' }.rejectionReason", equalTo("Photos trompeuses"))
+                .body("find { it.id == '" + pending.getId() + "' }", nullValue());
+
+        given().header("Authorization", "Bearer admin-token")
+                .when().get("/admin/listings")
+                .then().statusCode(200)
+                .body("find { it.id == '" + pending.getId() + "' }.status", equalTo("PENDING_REVIEW"))
+                .body("find { it.id == '" + suspended.getId() + "' }", nullValue());
+
+        given().header("Authorization", "Bearer admin-token")
+                .queryParam("status", "PUBLISHED")
+                .when().get("/admin/listings")
+                .then().statusCode(400)
+                .body("code", equalTo("VALIDATION_FAILED"));
+    }
+
+    @Test
     @DisplayName("admin approves a pending listing and the decision is written to the audit log")
     void adminApprovesListing() throws Exception {
         User owner = users.saveAndFlush(new User(

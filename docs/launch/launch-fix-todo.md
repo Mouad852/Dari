@@ -186,9 +186,10 @@ next to the decision.
   `moderation/AdminService.java`, `AdminController.java`, `AdminApiTest`. Verify: API
   `-Dtest=AdminApiTest` (19/19) — suspend → reinstate → public detail 200, audit row, outbox row.
   (2026-09-29)
-- [ ] **2.6b** P1-13 — `/admin/listings?status=SUSPENDED` queries the repository by status instead
-  of filtering the pending list. Files: `AdminController.java`, `AdminService.java`, repository,
-  `AdminApiTest`. Verify: API `-Dtest=AdminApiTest`.
+- [x] **2.6b** P1-13 — `/admin/listings?status=SUSPENDED` queries the repository by status instead
+  of filtering the pending list; only PENDING_REVIEW (default) and SUSPENDED are queues, anything
+  else is a 400. Files: `AdminController.java`, `AdminService.java` (`moderationQueue`),
+  `AdminApiTest`. Verify: API `-Dtest=AdminApiTest` (20/20). (2026-09-29)
 - [ ] **2.6c** P1-13 — web admin "Suspendues" tab with a "Réintégrer" action. Files:
   `apps/web/src/app/admin/listings/page.tsx`, `e2e/mock-api.mjs`, a spec. Verify: Web + spec.
 - [ ] **2.6d** P1-13 — owner dashboard shows `rejectionReason` for SUSPENDED listings with a

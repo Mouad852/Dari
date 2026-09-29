@@ -79,7 +79,20 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public List<ListingResponse> pendingListings() {
-        List<Listing> rows = listings.findByStatusAndDeletedAtIsNull(ListingStatus.PENDING_REVIEW);
+        return moderationQueue(ListingStatus.PENDING_REVIEW);
+    }
+
+    /**
+     * A moderation queue: listings awaiting review, or listings a moderator (or
+     * the report threshold) suspended. Other statuses are not queues and are
+     * refused, so this never becomes an unbounded dump of every published listing.
+     */
+    @Transactional(readOnly = true)
+    public List<ListingResponse> moderationQueue(ListingStatus status) {
+        if (status != ListingStatus.PENDING_REVIEW && status != ListingStatus.SUSPENDED) {
+            throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Statut non pris en charge");
+        }
+        List<Listing> rows = listings.findByStatusAndDeletedAtIsNull(status);
         // One query for the whole queue, not one per row: a moderator opening a
         // backlog of fifty should not cost fifty round trips to see fifty photos.
         Map<UUID, String> coverUrls = covers.forEach(rows);

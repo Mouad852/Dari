@@ -64,11 +64,9 @@ public class AdminController {
      */
     @GetMapping("/listings")
     public List<ListingResponse> listings(@RequestParam(required = false) ListingStatus status) {
-        return status == null
-                ? adminService.pendingListings()
-                : adminService.pendingListings().stream()
-                    .filter(l -> l.status() == status)
-                    .toList();
+        // PENDING_REVIEW by default; SUSPENDED is the other queue. The status
+        // used to filter the pending list, so ?status=SUSPENDED was always empty.
+        return adminService.moderationQueue(status == null ? ListingStatus.PENDING_REVIEW : status);
     }
 
     /** PENDING_REVIEW -> PUBLISHED. Notifies the owner. */
