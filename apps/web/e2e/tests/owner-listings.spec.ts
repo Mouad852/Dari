@@ -26,14 +26,20 @@ async function serveOwnedListing(page: Page, status: string) {
   await page.route('**/api/v1/listings/listing-edit{,/submit,/renew}', async (route) => {
     const request = route.request();
     calls.push({ method: request.method(), path: new URL(request.url()).pathname, body: request.postDataJSON() });
-    // A PATCH leaves an expired or suspended listing's status as it was.
-    await route.fulfill({ json: { ...ownedListing(status), status: request.url().endsWith('/renew') ? 'PENDING_REVIEW' : status } });
+    // As the API: renew and a PATCH of a PUBLISHED listing send it to review;
+    // a PATCH leaves an expired or suspended listing's status as it was.
+    const toReview = request.url().endsWith('/renew') || (request.method() === 'PATCH' && status === 'PUBLISHED');
+    await route.fulfill({ json: { ...ownedListing(status), status: toReview ? 'PENDING_REVIEW' : status } });
   });
   return calls;
 }
 
 async function walkToValidation(page: Page) {
   await expect(page.getByLabel('Titre de l’annonce')).toHaveValue('Studio à renouveler');
+  await walkToValidationFromAnyTitle(page);
+}
+
+async function walkToValidationFromAnyTitle(page: Page) {
   for (let step = 0; step < 5; step += 1) await page.getByRole('button', { name: 'Suivant' }).click();
   await expect(page.getByText('Vérification avant publication')).toBeVisible();
 }
@@ -50,6 +56,35 @@ test('saving an expired listing in the wizard renews it', async ({ authenticated
   expect(calls.some(({ path }) => path.endsWith('/submit'))).toBe(false);
   // The API refuses a past availableFrom; an unchanged one must not be sent back.
   expect(calls.filter(({ method }) => method === 'PATCH').every(({ body }) => body?.availableFrom === null)).toBe(true);
+});
+
+test('opening a live listing in the wizard and clicking through saves nothing', async ({ authenticatedPage: page }) => {
+  const calls = await serveOwnedListing(page, 'PUBLISHED');
+
+  await page.goto('/publish?listing=listing-edit');
+  await walkToValidation(page);
+  expect(calls.filter(({ method }) => method === 'PATCH'), 'Suivant on a live listing').toHaveLength(0);
+
+  await page.getByRole('button', { name: 'Enregistrer les modifications' }).click();
+  await expect(page.getByRole('status')).toHaveText('Aucune modification : l’annonce reste en ligne.');
+  expect(calls, 'an unchanged live listing is never sent back to review').toHaveLength(0);
+});
+
+test('a changed live listing is saved exactly once, at the end', async ({ authenticatedPage: page }) => {
+  const calls = await serveOwnedListing(page, 'PUBLISHED');
+
+  await page.goto('/publish?listing=listing-edit');
+  await expect(page.getByLabel('Titre de l’annonce')).toHaveValue('Studio à renouveler');
+  await page.getByLabel('Titre de l’annonce').fill('Studio rénové');
+  await walkToValidationFromAnyTitle(page);
+  expect(calls.filter(({ method }) => method === 'PATCH')).toHaveLength(0);
+
+  await page.getByRole('button', { name: 'Enregistrer les modifications' }).click();
+  await expect(page.getByRole('status')).toHaveText('Annonce envoyée pour validation.');
+  const patches = calls.filter(({ method }) => method === 'PATCH');
+  expect(patches).toHaveLength(1);
+  expect(patches[0]?.body).toMatchObject({ title: 'Studio rénové' });
+  expect(calls.some(({ path }) => path.endsWith('/submit') || path.endsWith('/renew'))).toBe(false);
 });
 
 test('a suspended listing cannot be republished from the wizard and claims nothing', async ({ authenticatedPage: page }) => {

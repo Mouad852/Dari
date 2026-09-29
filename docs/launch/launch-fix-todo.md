@@ -283,10 +283,14 @@ number when the task lands (3.1 and 5.3 both add one).
   `public-search.spec.ts`. Verify: Web typecheck + `public-search hydration
   production/accessibility` (14/14) — header sends `city=Casablanca&neighborhood=maarif`.
   (2026-09-29)
-- [ ] **3.4** P1-3 — editing a PUBLISHED listing keeps edits client-side and PATCHes once on the
-  final save; no PATCH when nothing changed; Photos step warns that photo changes re-review.
-  Files: `publish/page.tsx`, `keyboard-publish.spec.ts`. Verify: Web + spec — Suivant through all
-  steps and leave → no PATCH; final save → exactly one PATCH.
+- [x] **3.4** P1-3 — editing a PUBLISHED listing keeps edits client-side and PATCHes once on the
+  final save; no PATCH when nothing changed (compared with the loaded payload; "Aucune
+  modification : l’annonce reste en ligne."); Photos step warns that photo changes re-review.
+  Files: `publish/page.tsx`, `owner-listings.spec.ts`. Verify: Web typecheck + full Playwright
+  (dev + production, 64 passed + 1 intentional skip) — Suivant through all steps → no PATCH;
+  unchanged save → no request; changed save → exactly one PATCH. Same commit repairs two
+  `getByLabel('Ville')` selectors made ambiguous by 3.3c's header select (scoped to `main`).
+  (2026-09-29)
 - [ ] **3.5** Phase 3 gate — API full suite, web full Playwright, mobile jest green.
 
 ## Phase 4 — UI/UX and responsiveness

@@ -167,6 +167,13 @@ function PublishWizard() {
   // The date as loaded. The API refuses a past availableFrom, and a listing
   // saved months ago holds one, so an unchanged date is not sent back.
   const loadedAvailableFrom = useRef('');
+  // Editing a live listing: any save takes it offline until a moderator
+  // approves it again, so the wizard saves it once, at the end, and only if
+  // something changed. The loaded payload is what "changed" is measured
+  // against; a photo upload or cover change has already sent it to review.
+  const loadedPayload = useRef<string | null>(null);
+  const snapshotPending = useRef(false);
+  const livePhotosChanged = useRef(false);
   // Optional details, kept as typed text. The detail page shows "Non précisé"
   // for any the owner leaves blank.
   const [priceDeposit, setPriceDeposit] = useState('');
@@ -184,7 +191,7 @@ function PublishWizard() {
   const [saved, setSaved] = useState(false);
   // What the final save did: sent it for review, saved changes to a listing
   // already awaiting review, or only saved.
-  const [savedOutcome, setSavedOutcome] = useState<'sent' | 'still-pending' | 'saved'>('sent');
+  const [savedOutcome, setSavedOutcome] = useState<'sent' | 'still-pending' | 'saved' | 'unchanged'>('sent');
 
   /**
    * The `disabled={<async state>}` focus-loss bug found and fixed elsewhere in
@@ -337,6 +344,8 @@ function PublishWizard() {
           isShared: room.isShared,
           description: room.description ?? '',
         })));
+        // Taken after the render these setters cause (see the effect below draftPayload).
+        snapshotPending.current = true;
 
         // A resumed draft may already have photos. Nothing could read them back
         // before GET /listings/{id}/photos existed, so the step always looked
@@ -459,6 +468,13 @@ function PublishWizard() {
     })),
   });
 
+  // The loaded listing as it would be sent, captured once its values are in state.
+  useEffect(() => {
+    if (snapshotPending.current) {
+      snapshotPending.current = false;
+      loadedPayload.current = JSON.stringify(draftPayload());
+    }
+  });
 
   /**
    * The six fields `CreateListingRequest` marks @NotBlank/@NotNull, checked so
@@ -545,6 +561,8 @@ function PublishWizard() {
           body: form,
         });
       }
+      // On a live listing the server has just sent it back to review.
+      livePhotosChanged.current = true;
       await refreshPhotos(token, listingId);
     } catch (cause) {
       setPhotoError(cause instanceof ApiError ? cause.message : 'Envoi de la photo impossible.');
@@ -580,6 +598,7 @@ function PublishWizard() {
       const token = await getIdToken();
       if (!token) return;
       await apiFetch(`/listings/${draftId}/photos/${photoId}?isCover=true`, { method: 'PATCH', token });
+      livePhotosChanged.current = true;
       await refreshPhotos(token, draftId);
     } catch (cause) {
       setPhotoError(cause instanceof ApiError ? cause.message : 'Impossible de définir la couverture.');
@@ -638,7 +657,11 @@ function PublishWizard() {
       // The draft row cannot exist until the API has all six required fields,
       // so step 1 advances without writing anything and the badge keeps telling
       // the truth: "Brouillon non enregistré" until there is a row to enregistrer.
-      if (!missingRequired()) {
+      //
+      // A live listing is not saved step by step: every PATCH takes it out of
+      // search until re-approved, so an owner who opened "Modifier" just to
+      // look, or clicked through, took it offline. It is saved once, at the end.
+      if (!missingRequired() && !wasLive) {
         await persistDraft(token);
       }
       setStepIndex((value) => value + 1);
@@ -662,6 +685,14 @@ function PublishWizard() {
       }
 
       const statusBefore = editingStatus;
+      // Nothing to save on a live listing: saving anyway would take it offline
+      // for a moderator to approve an identical copy.
+      if (statusBefore === 'PUBLISHED' && !livePhotosChanged.current
+          && JSON.stringify(draftPayload()) === loadedPayload.current) {
+        setSavedOutcome('unchanged');
+        setSaved(true);
+        return;
+      }
       const draft = await persistDraft(token);
 
       // Only a DRAFT or a REJECTED listing can be submitted, and only an
@@ -1201,6 +1232,17 @@ function PublishWizard() {
 
           {step === 'Photos' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-5)' }}>
+              {/*
+                The one exception to "saved at the end": photos are saved as they
+                are added, and a new photo or cover sends a live listing back to
+                review at once (a new image has not been seen by a moderator).
+              */}
+              {wasLive ? (
+                <p role="note" style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-body)' }}>
+                  Cette annonce est en ligne : ajouter une photo ou changer la photo de couverture
+                  la renvoie immédiatement en validation.
+                </p>
+              ) : null}
               <div
                 style={{
                   border: '1px dashed var(--border-default)',
@@ -1442,7 +1484,9 @@ function PublishWizard() {
               ? 'Annonce envoyée pour validation.'
               : savedOutcome === 'still-pending'
                 ? 'Modifications enregistrées. L’annonce est toujours en attente de validation.'
-                : 'Modifications enregistrées.'}
+                : savedOutcome === 'unchanged'
+                  ? 'Aucune modification : l’annonce reste en ligne.'
+                  : 'Modifications enregistrées.'}
           </p>
         ) : null}
         {isEditing && isSuspended ? (
@@ -1455,8 +1499,9 @@ function PublishWizard() {
         */}
         {isEditing && wasLive && !saved ? (
           <p style={{ margin: 0, color: 'var(--text-body)', font: 'var(--type-body-sm)' }}>
-            Cette annonce est en ligne. Après modification, elle repassera en validation et ne sera
-            pas visible dans les résultats de recherche tant qu’elle n’aura pas été approuvée.
+            Cette annonce est en ligne. Vos modifications sont enregistrées à la dernière étape ;
+            elle repassera alors en validation et ne sera pas visible dans les résultats de
+            recherche tant qu’elle n’aura pas été approuvée.
           </p>
         ) : null}
 
@@ -1486,7 +1531,7 @@ function PublishWizard() {
             {submitting
               ? 'Enregistrement…'
               : saved
-                ? (savedOutcome === 'sent' ? 'Annonce envoyée' : 'Modifications enregistrées')
+                ? (savedOutcome === 'sent' ? 'Annonce envoyée' : savedOutcome === 'unchanged' ? 'Aucune modification' : 'Modifications enregistrées')
                 : isLastStep
                   ? (isEditing ? 'Enregistrer les modifications' : 'Publier l’annonce')
                   : 'Suivant'}

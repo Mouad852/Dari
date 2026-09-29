@@ -30,7 +30,7 @@ test('clearing profile fields sends empty strings, which the API reads as "clear
 
   await page.goto('/account/profile');
   await page.getByLabel('Prénom').fill('');
-  await page.getByLabel('Ville').fill('');
+  await page.getByRole('main').getByLabel('Ville').fill('');
   await page.getByLabel('Biographie').fill('');
   await page.getByRole('button', { name: 'Enregistrer' }).click();
 

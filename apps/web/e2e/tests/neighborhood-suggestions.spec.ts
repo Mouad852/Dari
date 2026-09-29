@@ -17,7 +17,7 @@ test('the publish wizard suggests the chosen city\'s neighborhoods', async ({ au
   await expect(page.locator('#wizard-neighborhoods option')).toHaveCount(2);
   await expect(page.locator('#wizard-neighborhoods option').first()).toHaveAttribute('value', 'Agdal');
 
-  await page.getByLabel('Ville').selectOption('Casablanca');
+  await page.getByRole('main').getByLabel('Ville').selectOption('Casablanca');
   await expect.poll(() => asked).toContain('Casablanca');
   expect(asked[0]).toBe('Rabat');
 });
