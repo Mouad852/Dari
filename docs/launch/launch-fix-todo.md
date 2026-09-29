@@ -216,11 +216,16 @@ next to the decision.
 Migration numbers: the next free Flyway version at the time of writing is V29. Take the next free
 number when the task lands (3.1 and 5.3 both add one).
 
-- [ ] **3.1a** P1-7 — migration adding `conversations.last_message_at`, backfilled from
-  `max(messages.sent_at)`, indexes on `(participant_a_id, last_message_at desc, id)` and the `b`
-  equivalent; `Conversation.java` field; set in `sendMessageInternal` in the same transaction.
-  Files: new `V29__...sql`, `messaging/Conversation.java`, `ConversationService.java`. Verify: API
-  `-Dtest=MessagingApiTest,FlywayMigrationSmokeTest`.
+- [x] **3.1a** P1-7 — V29 adds `conversations.last_activity_at` (NOT NULL, default `now()`),
+  backfilled from `max(messages.sent_at)` or `created_at`, with `(participant_x_id,
+  last_activity_at desc, id desc)` indexes; read-only on the entity; `touchActivity` (DB `now()`,
+  one clock) in `sendMessageInternal`'s transaction. Chosen over a nullable `last_message_at` +
+  `coalesce()` so the keyset stays a plain index. Files: `V29__conversations_last_activity.sql`,
+  `Conversation.java`, `ConversationRepository.java`, `ConversationService.java`,
+  `MessagingApiTest`, new `ConversationActivityMigrationTest`, `FlywayMigrationSmokeTest` (29),
+  `Phase2MigrationsFromV25Test` (pinned to 28). Verify: API `-Dtest=MessagingApiTest,
+  ConversationActivityMigrationTest,FlywayMigrationSmokeTest,Phase2MigrationsFromV25Test`.
+  (2026-09-29)
 - [ ] **3.1b** P1-7 — inbox ordered and paged by `coalesce(last_message_at, created_at)`; cursor
   carries `lastActivityAt`. Files: `ConversationRepository.java`, `TypedCursors`,
   `MessagingApiTest`, `TypedCursorsTest`. Verify: API — A↔B then A↔C, B replies → B's thread first;

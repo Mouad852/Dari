@@ -133,6 +133,41 @@ class MessagingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("a conversation's last activity starts at its creation and moves with each message")
+    void lastActivityFollowsMessages() throws Exception {
+        String suffix = String.valueOf(System.nanoTime());
+        User first = users.saveAndFlush(new User("uid-activity-a-" + suffix, "activity-a-" + suffix + "@example.ma", true, "Amal"));
+        User second = users.saveAndFlush(new User("uid-activity-b-" + suffix, "activity-b-" + suffix + "@example.ma", true, "Badr"));
+        stubToken(first.getFirebaseUid(), first.getEmail(), true);
+
+        String conversationId = given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"otherUserId\":\"" + second.getId() + "\"}")
+                .when().post("/conversations")
+                .then().statusCode(201)
+                .extract().path("id");
+        java.sql.Timestamp[] opened = activityAndCreation(conversationId);
+        assertThat(opened[0]).isEqualTo(opened[1]);
+
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"body\":\"Bonjour Badr\"}")
+                .when().post("/conversations/" + conversationId + "/messages")
+                .then().statusCode(201);
+        java.sql.Timestamp[] afterMessage = activityAndCreation(conversationId);
+        assertThat(afterMessage[0]).isAfter(opened[0]);
+        assertThat(afterMessage[1]).isEqualTo(opened[1]);
+    }
+
+    /** [last_activity_at, created_at], both stamped by the database. */
+    private java.sql.Timestamp[] activityAndCreation(String conversationId) {
+        return jdbc.queryForObject(
+                "select last_activity_at, created_at from conversations where id = ?::uuid",
+                (row, index) -> new java.sql.Timestamp[] {row.getTimestamp(1), row.getTimestamp(2)},
+                conversationId);
+    }
+
+    @Test
     @DisplayName("listing contact must target the listing owner")
     void listingContactRejectsMismatchedUser() throws Exception {
         User owner = users.saveAndFlush(new User("uid-listing-owner-mismatch", "owner-mismatch@example.ma", true, "Owner"));

@@ -52,7 +52,8 @@ class Phase2MigrationsFromV25Test {
                         UUID.randomUUID(), deletedKey);
             }
 
-            var result = db.flyway("latest").migrate();
+            // Pinned to V28 so later migrations never change what this test is about.
+            var result = db.flyway("28").migrate();
             assertThat(result.migrationsExecuted).isEqualTo(3);
             assertThat(result.targetSchemaVersion).isEqualTo("28");
 

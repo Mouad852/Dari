@@ -39,6 +39,14 @@ public class Conversation {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
+    /**
+     * Owned by the database: its default on insert, then
+     * {@link ConversationRepository#touchActivity} on every message, so the
+     * inbox orders threads on one clock. Never written through JPA.
+     */
+    @Column(name = "last_activity_at", nullable = false, insertable = false, updatable = false)
+    private Instant lastActivityAt;
+
     protected Conversation() {
         // JPA
     }
@@ -71,6 +79,10 @@ public class Conversation {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public Instant getLastActivityAt() {
+        return lastActivityAt;
     }
 
     public Instant getDeletedAt() {

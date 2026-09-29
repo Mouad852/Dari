@@ -233,7 +233,10 @@ public class ConversationService {
 
     private Message sendMessageInternal(Conversation conversation, User currentUser, String body) {
         Message message = new Message(conversation, currentUser, body);
-        return messages.save(message);
+        Message saved = messages.save(message);
+        // Same transaction as the message, so the inbox order never disagrees with it.
+        conversations.touchActivity(conversation.getId());
+        return saved;
     }
 
     private User resolveOtherUser(CreateConversationRequest request, Listing listing) {

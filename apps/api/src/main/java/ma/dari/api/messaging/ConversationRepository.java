@@ -28,6 +28,14 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
                        @Param("firstUserId") UUID firstUserId,
                        @Param("secondUserId") UUID secondUserId);
 
+    /**
+     * Marks the conversation active now, on the database clock that also
+     * stamped its creation, so inbox order never mixes JVM and DB time.
+     */
+    @Modifying
+    @Query(value = "update conversations set last_activity_at = now() where id = :id", nativeQuery = true)
+    int touchActivity(@Param("id") UUID id);
+
     @Query("""
             select c from Conversation c
             where c.deletedAt is null
