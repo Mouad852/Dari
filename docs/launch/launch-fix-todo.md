@@ -21,6 +21,8 @@ Verification shorthand used below:
   "- [x] ... (abc1234, YYYY-MM-DD)" in the SAME commit as the change.
 - Fix a cheap adjacent defect you hit in the same file only if it is directly related; otherwise
   add it as a new unchecked line in the tracker.
+- A commit cannot contain its own hash: tick with the date in the task's commit, and fill in the
+  hashes in the end-of-session log commit (as done on 2026-09-29).
 
 Rules:
 
@@ -80,11 +82,11 @@ next to the decision.
   not (they show nothing unreviewed; 1.1b stops a live listing losing its last photo). Files:
   `apps/api/.../listing/ListingService.java`, `ListingApiTest`. Verify: API
   `-Dtest=ListingApiTest` — published → add photo → anonymous `GET /listings/{id}` 404, status
-  PENDING_REVIEW. (2026-09-29)
+  PENDING_REVIEW. (1e8ea78, 2026-09-29)
 - [x] **1.1b** P1-2 — `deletePhoto` refuses the last photo of a PUBLISHED or PENDING_REVIEW listing
   (400 "Une annonce publiée doit garder au moins une photo"). Files: `ListingService.java`,
   `ListingApiTest`. Verify: API `-Dtest=ListingApiTest` — deleting the only photo of a published
-  listing → 400, photo still present. (2026-09-29)
+  listing → 400, photo still present. (96be84a, 2026-09-29)
 - [x] **1.2a** P1-1 — handlers for `HttpRequestMethodNotSupportedException` (405 + `Allow`),
   `HttpMediaTypeNotSupportedException` (415), `MissingServletRequestPartException` and
   `MissingServletRequestParameterException` (400), all in the standard envelope, no Sentry report,
@@ -92,23 +94,23 @@ next to the decision.
   Files: `apps/api/.../common/error/GlobalExceptionHandler.java`, `ErrorCode.java`,
   `GlobalExceptionHandlerTest`, `ErrorReportingApiTest` (real PUT `/listings`, text/plain POST
   `/conversations`, multipart without `file`). Verify: API
-  `-Dtest=GlobalExceptionHandlerTest,ErrorReportingApiTest`. (2026-09-29)
+  `-Dtest=GlobalExceptionHandlerTest,ErrorReportingApiTest`. (bd94c5c, 2026-09-29)
 - [x] **1.2b** P1-1 — `DataIntegrityViolationException` → 409 `CONFLICT`, logged at warn (constraint
   name only), not reported. Files: `GlobalExceptionHandler.java`, `GlobalExceptionHandlerTest`.
-  Verify: API `-Dtest=GlobalExceptionHandlerTest,ArchitectureTest`. (2026-09-29)
+  Verify: API `-Dtest=GlobalExceptionHandlerTest,ArchitectureTest`. (f9d75fc, 2026-09-29)
 - [x] **1.3a** P1-9 — `UserService.update` maps a blank `bio`/`city`/`firstName` to `null`
   (cleared), trims values; a blank `displayName` → 400. Files: `apps/api/.../user/UserService.java`,
   new `UserProfileClearingApiTest` (not `UserApiTest`, see rules). Verify: API
   `-Dtest=UserProfileClearingApiTest,UserApiTest` — PATCH `{bio:""}` → `GET /users/me` `bio: null`
-  and the public profile has no bio. (2026-09-29)
+  and the public profile has no bio. (becedd0, 2026-09-29)
 - [x] **1.3b** P1-9 — web profile form sends `""` for cleared fields instead of `null`. Files:
   `apps/web/src/app/account/profile/page.tsx`, `account-journeys.spec.ts` (asserts the PATCH
   payload). Verify: Web typecheck + `account-journeys` spec (its web servers include the
-  production `next build`). (2026-09-29)
+  production `next build`). (8cbec11, 2026-09-29)
 - [x] **1.3c** P1-9 — mobile profile `save()` sends `""` for cleared fields via a new tested
   `profileUpdateBody`. Files: `apps/mobile/app/(tabs)/profile.tsx`, `src/lib/profile.ts`,
   `src/lib/__tests__/profile.test.ts`. Verify: Mobile `npm test` + `npm run typecheck`.
-  (2026-09-29)
+  (ccd0589, 2026-09-29)
 - [x] **1.4a** P1-6 — authenticated mutation types (SIGNUP, LISTING, UPLOAD, MESSAGE, REPORT) are
   limited per user; the IP bucket for them becomes a ceiling at a multiple (15×,
   `DARI_RATE_LIMIT_SHARED_ADDRESS_MULTIPLIER`) of the per-user limit. Reads and anonymous calls
@@ -116,14 +118,14 @@ next to the decision.
   `RateLimitService.java`, `application.yml`, `.env.example`, `production-operations.md`,
   `RateLimitInterceptorTest`. Verify: API `-Dtest=RateLimitInterceptorTest,RateLimitServiceTest,
   SsrSharedSecretRateLimitIntegrationTest,TomcatForwardedRateLimitIntegrationTest` — 10 users
-  from one IP each sign up; one user's 6th → 429; the address ceiling still binds. (2026-09-29)
+  from one IP each sign up; one user's 6th → 429; the address ceiling still binds. (f9fc443, 2026-09-29)
 - [x] **1.4b** P1-6 — raise `search` to 600/min per IP in `dari.rate-limits`. Files:
   `application.yml`, `RateLimitService.java` default, `.env.example`, `production-operations.md`,
   `infra/scripts/load-test-search.js` comment. Verify: API `-Dtest=RateLimitServiceTest,
   RateLimitInterceptorTest,SsrSharedSecretRateLimitIntegrationTest,TomcatForwardedRateLimitIntegrationTest,
-  ProductionConfigValidatorTest`. (2026-09-29)
+  ProductionConfigValidatorTest`. (508963c, 2026-09-29)
 - [x] **1.5** Phase 1 gate — full API suite green. Verify: `cd apps/api && ./mvnw test` → 317/317,
-  BUILD SUCCESS. (2026-09-29)
+  BUILD SUCCESS. (0d36a81, 2026-09-29)
 
 ## Phase 2 — Broken/incomplete functionality (P0 first)
 
@@ -148,19 +150,19 @@ next to the decision.
   Files: `apps/web/src/app/publish/page.tsx`, `types/api.ts`, `lib/labels.ts`, `ds/Input.tsx`
   (date `min`), `e2e/mock-api.mjs` (PATCH null = unchanged), `keyboard-publish.spec.ts`,
   `account-journeys.spec.ts`. Verify: Web typecheck + `keyboard-publish account-journeys` specs —
-  payload contains both fields. (2026-09-29)
+  payload contains both fields. (2712136, 2026-09-29)
 - [x] **2.2b** P0-2 — wizard collects the optional fields: `minStayMonths`, `priceDeposit`,
   `wifiIncluded`/`electricityIncluded`/`waterIncluded`, `numBedrooms`, `numBathrooms`,
   `currentRoommatesCount`, `maxRoommates`; round-trips through `loadDraft`. Files:
   `publish/page.tsx`, `types/api.ts` (`ChargeInclusion`), `lib/labels.ts`,
   `account-journeys.spec.ts`. Verify: Web typecheck + `keyboard-publish account-journeys` specs
   (payload assertion). Known limit: a PATCH cannot clear an optional number once set (null =
-  unchanged), same as every other optional listing field. (2026-09-29)
+  unchanged), same as every other optional listing field. (b8b7121, 2026-09-29)
 - [x] **2.2c** P0-2 — `ListingSearchService.submit` requires `roomFurnishing` and `availableFrom`
   (400 "Aménagement de la chambre requis" / "Date de disponibilité requise"; a past date is
   accepted). Files: `listing/ListingSearchService.java`, `ListingApiTest`. Verify: API
   `-Dtest=ListingApiTest` (57/57); full suite at the Phase 2 gate. Mobile publish (already unable
-  to submit, P0-4) now also needs these fields if option (b) is chosen. (2026-09-29)
+  to submit, P0-4) now also needs these fields if option (b) is chosen. (9f6db1e, 2026-09-29)
 - [ ] **2.2d** P0-2 **DECISION (NULL date rule)** — one date-filter rule across
   `searchByLocationSorted`, `searchByRadiusPaginated`, `searchByRadiusWithCursor`, the count query
   and `mapPinsByLocationAndRadius`. Files: `listing/ListingSearchRepository.java`,
@@ -170,13 +172,13 @@ next to the decision.
   (`POST /listings/{id}/renew`, card moves to PENDING_REVIEW). Files:
   `apps/web/src/app/account/listings/page.tsx`, new `owner-listings.spec.ts` (stubs the status
   in-spec, so the shared mock is unchanged). Verify: Web typecheck + `owner-listings` spec —
-  renew call made, status label updates, action gone. (2026-09-29)
+  renew call made, status label updates, action gone. (614f1f4, 2026-09-29)
 - [x] **2.3b** P0-3 — wizard `publish()`: EXPIRED → calls `/renew`; SUSPENDED → shows "Cette
   annonce est suspendue par la modération" and disables publish; success copy follows the resulting
   status ("envoyée pour validation" / "toujours en attente de validation" / "Modifications
   enregistrées"). Files: `publish/page.tsx`, `owner-listings.spec.ts`. Verify: Web typecheck +
   `owner-listings keyboard-publish account-journeys` specs — edit EXPIRED → renew call, past date
-  not re-sent; edit SUSPENDED → publish disabled, no success message. (2026-09-29)
+  not re-sent; edit SUSPENDED → publish disabled, no success message. (b4ca744, 2026-09-29)
 - [ ] **2.4** P0-4 **DECISION** — (a) hide "Publier une annonce" in `apps/mobile/app/(tabs)/profile.tsx`
   and link to the web wizard, or (b) parity rewrite (split into sub-tasks once chosen). Verify:
   Mobile `npm test` (+ for (b) a jest test on the request body and a device check).
@@ -185,27 +187,27 @@ next to the decision.
   `app/listing/[id].tsx`, `app/publish.tsx`, `app/(tabs)/profile.tsx`; fix comments in
   `src/types/api.ts`. Test in `src/lib/__tests__/api.test.ts` (relative, absolute,
   protocol-relative). Verify: Mobile `npm test` (78/78) + `npm run typecheck`. A device build
-  against S3/MinIO is still an owner check (audit §18). (2026-09-29)
+  against S3/MinIO is still an owner check (audit §18). (ed2c2a9, 2026-09-29)
 - [x] **2.6a** P1-13 — `POST /admin/listings/{id}/reinstate`: SUSPENDED → prior status (or
   PUBLISHED), clears the moderator reason, writes a `REINSTATE_LISTING` `AdminAction`, notifies the
   owner (existing `LISTING_REINSTATED`); 409 when not suspended, 404 when deleted. Files:
   `moderation/AdminService.java`, `AdminController.java`, `AdminApiTest`. Verify: API
   `-Dtest=AdminApiTest` (19/19) — suspend → reinstate → public detail 200, audit row, outbox row.
-  (2026-09-29)
+  (f3978a3, 2026-09-29)
 - [x] **2.6b** P1-13 — `/admin/listings?status=SUSPENDED` queries the repository by status instead
   of filtering the pending list; only PENDING_REVIEW (default) and SUSPENDED are queues, anything
   else is a 400. Files: `AdminController.java`, `AdminService.java` (`moderationQueue`),
-  `AdminApiTest`. Verify: API `-Dtest=AdminApiTest` (20/20). (2026-09-29)
+  `AdminApiTest`. Verify: API `-Dtest=AdminApiTest` (20/20). (1805e88, 2026-09-29)
 - [x] **2.6c** P1-13 — web admin "Suspendues" queue (toggle next to "En attente de validation")
   showing the suspension reason and a "Réintégrer" action. Files:
   `apps/web/src/app/admin/listings/page.tsx`, new `admin-moderation.spec.ts` (stubs the suspended
   queue in-spec). Verify: Web typecheck + `admin-moderation account-journeys` specs, axe clean.
-  (2026-09-29)
+  (0dadfd4, 2026-09-29)
 - [x] **2.6d** P1-13 — owner dashboard shows `rejectionReason` for SUSPENDED listings (or "après
   plusieurs signalements" when automatic) and that only moderation can lift it. Files:
   `apps/web/src/app/account/listings/page.tsx`, `owner-listings.spec.ts`. Verify: Web typecheck +
   `owner-listings` spec, axe clean. The "Contacter la modération" link is split out as 2.6e.
-  (2026-09-29)
+  (89ba966, 2026-09-29)
 - [ ] **2.6e** P1-13 **OWNER INPUT (moderation contact)** — "Contacter la modération" link on a
   suspended listing. No public contact address exists in the app (`DARI_LEGAL_CONTACT` is
   server-only free text, rendered nowhere). Needs the address that handles appeals, then a
@@ -227,41 +229,41 @@ number when the task lands (3.1 and 5.3 both add one).
   `MessagingApiTest`, new `ConversationActivityMigrationTest`, `FlywayMigrationSmokeTest` (29),
   `Phase2MigrationsFromV25Test` (pinned to 28). Verify: API `-Dtest=MessagingApiTest,
   ConversationActivityMigrationTest,FlywayMigrationSmokeTest,Phase2MigrationsFromV25Test`.
-  (2026-09-29)
+  (09383ba, 2026-09-29)
 - [x] **3.1b** P1-7 — inbox ordered and paged by `last_activity_at desc, id desc`; cursor mode
   `inbox-activity` carries `lastActivityAt` (an old "conversations" cursor is INVALID_CURSOR).
   Files: `ConversationRepository.java`, `TypedCursors.java`, `ConversationService.java`,
   `MessagingApiTest`. Verify: API `-Dtest=MessagingApiTest,TypedCursorsTest` (18/18, 2/2) — A↔B
   then A↔C, B replies → B's thread first; 21 threads page 20 + 1 with none lost or repeated.
-  (2026-09-29)
+  (68b7805, 2026-09-29)
 - [x] **3.2a** P1-8 — `owner: { id, displayName, avatarUrl, verification, memberSince }` on
   `PublicListingDetailResponse` (new `ListingHostResponse`; the detail read is now
   `@Transactional(readOnly = true)` because it reads the lazy owner). Files:
   `listing/ListingHostResponse.java`, `PublicListingDetailResponse.java`,
   `ListingSearchService.java`, `JsonWireContractApiTest`. Verify: API
   `-Dtest=JsonWireContractApiTest,ArchitectureTest,ListingApiTest` — exact host fields, no
-  email/uid/status. (2026-09-29)
+  email/uid/status. (b791b79, 2026-09-29)
 - [x] **3.2b** P1-8 — web "Proposé par" card (avatar, name, verification, member since, "Voir le
   profil") above the contact button. New shared `components/UserAvatar.tsx` and
   `components/VerificationBadge.tsx`. Files: `ListingDetailContent.tsx`, web `types/api.ts`
   (`ListingHost`), `e2e/mock-api.mjs` (owner = other-user), new `listing-host.spec.ts`. Verify:
   Web typecheck + `listing-host listing-gallery json-ld media-origin hydration` (dev + production,
-  15/15) — detail → host card → profile → report dialog. (2026-09-29)
+  15/15) — detail → host card → profile → report dialog. (14e2e75, 2026-09-29)
 - [x] **3.2c** P1-8 — web thread header links the name to `/profile/{otherUserId}` and offers
   `ReportDialog targetType="USER"` ("Signaler"). Files: `apps/web/src/app/messages/[id]/page.tsx`,
   `message-thread.spec.ts`. Verify: Web typecheck + `message-thread account-journeys` specs — link
-  target, report posts `{targetType: USER, targetId: other-user}`. (2026-09-29)
+  target, report posts `{targetType: USER, targetId: other-user}`. (764d325, 2026-09-29)
 - [x] **3.2d** P1-8 — public profile renders `avatarUrl` (initial as fallback) through the shared
   `UserAvatar` and `VerificationBadge`. Files: `apps/web/src/app/profile/[id]/page.tsx`,
   `e2e/mock-api.mjs` (other-user has a photo), `listing-host.spec.ts`. Verify: Web typecheck +
   `listing-host account-journeys` specs — the photo loads (naturalWidth > 0), axe clean.
-  (2026-09-29)
+  (eab2324, 2026-09-29)
 - [x] **3.2e** P1-8 — mobile detail "Proposé par" card (photo or initial, name, verification,
   member since) with "Signaler ce profil" through the existing report screen (mobile has no
   public-profile screen). Labels in a tested `src/lib/host.ts`. Files:
   `apps/mobile/app/listing/[id].tsx`, mobile `types/api.ts`, `src/lib/host.ts`,
   `src/lib/__tests__/host.test.ts`. Verify: Mobile `npm test` (80/80) + typecheck. On-device look
-  not checked. (2026-09-29)
+  not checked. (cd3a9e4, 2026-09-29)
 - [x] **3.3a** P1-11 — case/accent/whitespace-insensitive neighborhood match: V30 adds the
   `unaccent` extension and an IMMUTABLE `dari_fold(text)`; all six search SQL copies compare
   `dari_fold(l.neighborhood) = dari_fold(:neighborhood)`. No expression index: the filter always
@@ -273,18 +275,18 @@ number when the task lands (3.1 and 5.3 both add one).
   `infra/terraform/production/sql/bootstrap.sql`, `infra/db/init/00-extensions.sql`,
   `infra/prod-smoke/bootstrap-check.sh`. Verify: API `-Dtest=ListingApiTest,
   FlywayMigrationSmokeTest,ListingSearchIndexUsageTest,ListingSearchOptimizationTest`;
-  `bash infra/prod-smoke/bootstrap-check.sh`. (2026-09-29)
+  `bash infra/prod-smoke/bootstrap-check.sh`. (8bd3a7a, 2026-09-29)
 - [x] **3.3b** P1-11 — wizard and search filter offer `GET /neighborhoods?city=` suggestions through
   a new `components/NeighborhoodDatalist.tsx` (`<datalist>`; the field stays free text, now exposed
   as a combobox). `ds/Input` gains a `list` prop. Files: `publish/page.tsx`,
   `listings/SearchResults.tsx`, `ds/Input.tsx`, new `neighborhood-suggestions.spec.ts`,
   `public-search.spec.ts` / `account-journeys.spec.ts` (combobox role). Verify: Web typecheck +
-  `neighborhood-suggestions public-search account-journeys keyboard-publish` (8/8). (2026-09-29)
+  `neighborhood-suggestions public-search account-journeys keyboard-publish` (8/8). (2a2171a, 2026-09-29)
 - [x] **3.3c** P1-11 — header search is city-aware: a compact `city` select (default Rabat, as
   the homepage hero) inside the GET form. Files: `components/SiteNav.tsx`,
   `public-search.spec.ts`. Verify: Web typecheck + `public-search hydration
   production/accessibility` (14/14) — header sends `city=Casablanca&neighborhood=maarif`.
-  (2026-09-29)
+  (9431f5c, 2026-09-29)
 - [x] **3.4** P1-3 — editing a PUBLISHED listing keeps edits client-side and PATCHes once on the
   final save; no PATCH when nothing changed (compared with the loaded payload; "Aucune
   modification : l’annonce reste en ligne."); Photos step warns that photo changes re-review.
@@ -292,26 +294,26 @@ number when the task lands (3.1 and 5.3 both add one).
   (dev + production, 64 passed + 1 intentional skip) — Suivant through all steps → no PATCH;
   unchanged save → no request; changed save → exactly one PATCH. Same commit repairs two
   `getByLabel('Ville')` selectors made ambiguous by 3.3c's header select (scoped to `main`).
-  (2026-09-29)
+  (99907c7, 2026-09-29)
 - [x] **3.5** Phase 3 gate — API full suite 325/325; web full Playwright (dev + production) 64
-  passed + 1 intentional skip; mobile jest 80/80 + typecheck. (2026-09-29)
+  passed + 1 intentional skip; mobile jest 80/80 + typecheck. (c0a44b5, 2026-09-29)
 
 ## Phase 4 — UI/UX and responsiveness
 
 - [x] **4.1a** P1-12 — remove `/account/payments` (now a server redirect to `/account`) and its
   hub link. Files: `apps/web/src/app/account/payments/page.tsx`, `account/page.tsx`, new
-  `account-pages.spec.ts`. Verify: Web typecheck + `account-pages hydration` (7/7). (2026-09-29)
+  `account-pages.spec.ts`. Verify: Web typecheck + `account-pages hydration` (7/7). (fd50a5d, 2026-09-29)
 - [x] **4.1b** P1-12 — `/account/notifications` lists only real events (listing updates, account
   moderation, report "reçu" not "traité") and says new messages are not emailed yet. Files:
   `account/notifications/page.tsx`, `account-pages.spec.ts`. Verify: Web typecheck +
-  `account-pages` (2/2). When 2.1 lands, add "Nouveaux messages" back (see 2.1b). (2026-09-29)
+  `account-pages` (2/2). When 2.1 lands, add "Nouveaux messages" back (see 2.1b). (cbb9c64, 2026-09-29)
 - [ ] **4.1c** P1-12 — `/account/security`: "Changer mon mot de passe" sends a reset email via
   `sendPasswordReset(me.email)`; drop "Niveau élevé" and the Firebase copy. Files:
   `account/security/page.tsx`, a spec using the e2e auth seam. Verify: Web + spec.
 - [x] **4.1d** P1-12 — drop "Téléphone" from `PROFILE_COMPLETION_CHECKS` (four checks, a quarter
   each). Files: `account/page.tsx`, `account-pages.spec.ts`. Verify: Web typecheck +
   `account-pages` (3/3) — a complete profile without a phone hides the completion card.
-  (2026-09-29)
+  (5a2fd7f, 2026-09-29)
 - [ ] **4.2a** P1-5 — `lib/image.ts`: draw to canvas, export JPEG ≤ 2560 px long edge at 0.85
   (fixes orientation, size, WebP); used by the wizard and profile avatar upload; formats copy
   corrected. Files: new `apps/web/src/lib/image.ts`, `publish/page.tsx`, `account/profile/page.tsx`.
@@ -439,3 +441,4 @@ Post-launch backlog (not scheduled in §17): P2-1, P2-16, P2-21, P2-25, P2-27, P
 
 | Date | Tasks done | Commits | Test results | Notes |
 |---|---|---|---|---|
+| 2026-09-29 | STEP 0 (audit + tracker); Phase 1 complete (1.1a–1.5); Phase 2: 2.2a, 2.2b, 2.2c, 2.3a, 2.3b, 2.5, 2.6a–2.6d; Phase 3 complete (3.1a–3.5); Phase 4: 4.1a, 4.1b, 4.1d | `8504507`…`5a2fd7f` (36) + this log = 37/40 | API full suite 317/317 (Phase 1), 320/320 (Phase 2 checkpoint), 325/325 (Phase 3). Playwright dev + production 57 passed + 1 intentional skip (Phase 2 checkpoint), 64 + 1 (Phase 3). Mobile jest 75 → 80/80, typecheck clean. | **Blocked on owner:** 2.1a/2.1b (P0-1 throttle window), 2.2d (P0-2 NULL date rule), 2.4 (P0-4 mobile publishing), 5.3a–d (P1-15 consent), and new 2.6e (P1-13 moderation contact address). Gate 2.7 stays open until those land; its checkpoint was green (API 320, web 57+1, mobile 78). 3.3c's header city select broke two specs' `getByLabel('Ville')`, repaired in `99907c7`. `bootstrap-check.sh` now waits for the PostGIS image's real start (it failed every time locally). Not done: 360 px screenshots (chrome-devtools MCP did not connect; layouts use wrapping flex and axe passed), on-device mobile checks, Mailpit. Next: 4.1c. |
