@@ -1,6 +1,6 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { apiOrigin } from '@/lib/api';
+import { mediaUrl } from '@/lib/api';
 import { rentPerMonth } from '@/lib/format';
 import { color, font, radius, shadow, type } from '@/theme/tokens';
 import type { PublicListing } from '@/types/api';
@@ -18,7 +18,7 @@ export function ListingCard({ listing, onPress }: { listing: PublicListing; onPr
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View style={styles.photo}>
         {listing.coverPhotoUrl ? (
-          <Image source={{ uri: `${apiOrigin}${listing.coverPhotoUrl}` }} style={styles.photoImg} resizeMode="cover" />
+          <Image source={{ uri: mediaUrl(listing.coverPhotoUrl) }} style={styles.photoImg} resizeMode="cover" />
         ) : (
           <Text style={styles.photoPlaceholder}>PHOTO</Text>
         )}

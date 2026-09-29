@@ -84,8 +84,9 @@ export interface PublicListing {
   availabilityState: AvailabilityState;
   createdAt: string;
   /**
-   * Root-relative cover photo URL, or null when the listing has none. Prefix
-   * with `apiOrigin` — it is served by the API, not the mobile app.
+   * Cover photo URL, or null when the listing has none: absolute (S3/CDN) in
+   * production, root-relative (/uploads/...) in local storage. Pass it through
+   * `mediaUrl` from lib/api before using it as an image source.
    */
   coverPhotoUrl: string | null;
   /** Present only on proximity searches. */
@@ -137,9 +138,9 @@ export interface PublicListingDetail extends PublicListing {
 /**
  * A stored listing photo. Mirrors ListingPhotoResponse on the server.
  *
- * `url` is root-relative (/uploads/...) and served by the API, not the
- * mobile app — prefix it with `apiOrigin` from lib/api before using it as
- * an <Image source={{ uri }}>.
+ * `url` is absolute (S3/CDN) in production and root-relative (/uploads/...)
+ * in local storage. Pass it through `mediaUrl` from lib/api before using it
+ * as an <Image source={{ uri }}>.
  */
 export interface ListingPhoto {
   id: string;

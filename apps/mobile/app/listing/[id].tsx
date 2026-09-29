@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { TopBar } from '@/components/TopBar';
-import { apiFetch, apiOrigin, errorMessage, reportUnexpected } from '@/lib/api';
+import { apiFetch, errorMessage, mediaUrl, reportUnexpected } from '@/lib/api';
 import { hasNetwork } from '@/lib/network';
 import { getIdToken } from '@/lib/firebase';
 import { amount } from '@/lib/format';
@@ -175,7 +175,7 @@ export default function ListingDetailScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={{ paddingBottom: 32 }}>
       <View style={styles.photo}>
         {coverPhoto ? (
-          <Image source={{ uri: `${apiOrigin}${coverPhoto.url}` }} style={styles.photoImg} resizeMode="cover" />
+          <Image source={{ uri: mediaUrl(coverPhoto.url) }} style={styles.photoImg} resizeMode="cover" />
         ) : (
           <Text style={styles.photoPlaceholder}>PHOTO</Text>
         )}

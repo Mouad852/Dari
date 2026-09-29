@@ -8,7 +8,7 @@ import { DeleteAccountModal } from '@/components/DeleteAccountModal';
 import { LegalLinks } from '@/components/LegalLinks';
 import { TextField } from '@/components/TextField';
 import { TopBar } from '@/components/TopBar';
-import { apiFetch, ApiError, apiOrigin, apiUpload, errorMessage, reportUnexpected } from '@/lib/api';
+import { apiFetch, ApiError, apiUpload, errorMessage, mediaUrl, reportUnexpected } from '@/lib/api';
 import { getIdToken, onAuthChange, signOut } from '@/lib/firebase';
 import { profileUpdateBody } from '@/lib/profile';
 import type { Me } from '@/types/api';
@@ -92,7 +92,7 @@ export default function ProfileScreen() {
   if (loading || !profile) return <View style={styles.screen}><TopBar title="Profil" /><View style={styles.center}><Text style={type.body}>{error ?? 'Chargement…'}</Text>{error && <TextButton onPress={() => setReloadKey((key) => key + 1)}>Réessayer</TextButton>}</View></View>;
   return <View style={styles.screen}><TopBar title="Profil" /><ScrollView contentContainerStyle={styles.content}>
     {error && <Text style={[type.bodySm, styles.error]} accessibilityLiveRegion="assertive">{error}</Text>}
-    <View style={styles.avatarWrap}>{profile.avatarUrl ? <Image source={{ uri: `${apiOrigin}${profile.avatarUrl}` }} style={styles.avatar} /> : <Text style={styles.avatarInitial}>{profile.displayName.charAt(0).toUpperCase()}</Text>}</View>
+    <View style={styles.avatarWrap}>{profile.avatarUrl ? <Image source={{ uri: mediaUrl(profile.avatarUrl) }} style={styles.avatar} /> : <Text style={styles.avatarInitial}>{profile.displayName.charAt(0).toUpperCase()}</Text>}</View>
     <TextButton onPress={() => void changeAvatar()} disabled={avatarBusy}>{avatarBusy ? 'Envoi…' : 'Modifier la photo'}</TextButton>
     <TextField label="Nom affiché" value={displayName} onChangeText={setDisplayName} />
     <TextField label="Prénom" value={firstName} onChangeText={setFirstName} />

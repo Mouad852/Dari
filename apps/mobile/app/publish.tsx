@@ -6,7 +6,7 @@ import { ActivityIndicator, Alert, BackHandler, Image, Pressable, ScrollView, St
 import { Button, TextButton } from '@/components/Button';
 import { TextField } from '@/components/TextField';
 import { TopBar } from '@/components/TopBar';
-import { apiFetch, apiOrigin, apiUpload, errorMessage } from '@/lib/api';
+import { apiFetch, apiUpload, errorMessage, mediaUrl } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import type { CreateListingRequest, ListingDetail, ListingPhoto } from '@/types/api';
 import { color, font, layout, radius, type } from '@/theme/tokens';
@@ -90,7 +90,7 @@ export default function PublishScreen() {
     <TextField label="Séjour minimum (mois)" value={form.minStayMonths} onChangeText={(value) => update('minStayMonths', value)} keyboardType="numeric" />
     <TextField label="Description" value={form.description} onChangeText={(value) => update('description', value)} multiline numberOfLines={5} style={styles.description} />
     <Button onPress={() => void save()} loading={saving}>{saving ? 'Enregistrement…' : 'Enregistrer le brouillon'}</Button>
-    {id && <><Text style={type.h3}>Photos</Text><Text style={[type.bodySm, { color: color.textMuted }]}>Les photos sont ré-encodées par le serveur pour retirer les métadonnées de localisation.</Text><View style={styles.photoActions}><Button variant="secondary" onPress={() => void pickPhotos(false)}>Galerie</Button><Button variant="secondary" onPress={() => void pickPhotos(true)}>Appareil photo</Button></View>{uploading && <Text style={type.bodySm}>Envoi… {Math.round(progress * 100)}%</Text>}<View style={styles.photos}>{photos.map((photo) => <View key={photo.id} style={styles.photoItem}><Image source={{ uri: `${apiOrigin}${photo.url}` }} style={styles.photo} /><View style={styles.photoControls}>{!photo.isCover && <TextButton onPress={() => void photoAction(photo, 'cover')}>Couverture</TextButton>}<TextButton onPress={() => void photoAction(photo, 'delete')}>Supprimer</TextButton></View></View>)}</View><Button onPress={() => void submitListing()}>Envoyer en modération</Button></>}
+    {id && <><Text style={type.h3}>Photos</Text><Text style={[type.bodySm, { color: color.textMuted }]}>Les photos sont ré-encodées par le serveur pour retirer les métadonnées de localisation.</Text><View style={styles.photoActions}><Button variant="secondary" onPress={() => void pickPhotos(false)}>Galerie</Button><Button variant="secondary" onPress={() => void pickPhotos(true)}>Appareil photo</Button></View>{uploading && <Text style={type.bodySm}>Envoi… {Math.round(progress * 100)}%</Text>}<View style={styles.photos}>{photos.map((photo) => <View key={photo.id} style={styles.photoItem}><Image source={{ uri: mediaUrl(photo.url) }} style={styles.photo} /><View style={styles.photoControls}>{!photo.isCover && <TextButton onPress={() => void photoAction(photo, 'cover')}>Couverture</TextButton>}<TextButton onPress={() => void photoAction(photo, 'delete')}>Supprimer</TextButton></View></View>)}</View><Button onPress={() => void submitListing()}>Envoyer en modération</Button></>}
   </ScrollView></View>;
 }
 

@@ -174,11 +174,12 @@ next to the decision.
 - [ ] **2.4** P0-4 **DECISION** — (a) hide "Publier une annonce" in `apps/mobile/app/(tabs)/profile.tsx`
   and link to the web wizard, or (b) parity rewrite (split into sub-tasks once chosen). Verify:
   Mobile `npm test` (+ for (b) a jest test on the request body and a device check).
-- [ ] **2.5** P0-5 — `mediaUrl(value)` in `apps/mobile/src/lib/api.ts` (absolute http(s) unchanged,
+- [x] **2.5** P0-5 — `mediaUrl(value)` in `apps/mobile/src/lib/api.ts` (absolute http(s) unchanged,
   else prefix `apiOrigin`); replace the concatenations in `src/components/ListingCard.tsx`,
   `app/listing/[id].tsx`, `app/publish.tsx`, `app/(tabs)/profile.tsx`; fix comments in
   `src/types/api.ts`. Test in `src/lib/__tests__/api.test.ts` (relative, absolute,
-  protocol-relative). Verify: Mobile `npm test`.
+  protocol-relative). Verify: Mobile `npm test` (78/78) + `npm run typecheck`. A device build
+  against S3/MinIO is still an owner check (audit §18). (2026-09-29)
 - [ ] **2.6a** P1-13 — `POST /admin/listings/{id}/reinstate`: SUSPENDED → prior public status (or
   PUBLISHED), writes an `AdminAction`, notifies the owner. Files: `moderation/AdminService.java`,
   `AdminController.java`, notification service, `AdminApiTest`. Verify: API `-Dtest=AdminApiTest`

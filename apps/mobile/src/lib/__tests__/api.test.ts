@@ -50,6 +50,25 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
+describe('mediaUrl', () => {
+  it('passes absolute production (S3/CDN) URLs through untouched', () => {
+    const { api } = load();
+    expect(api.mediaUrl('https://cdn.example.invalid/listings/a/b.jpg')).toBe('https://cdn.example.invalid/listings/a/b.jpg');
+    expect(api.mediaUrl('HTTP://media.example.invalid/x.jpg')).toBe('HTTP://media.example.invalid/x.jpg');
+  });
+
+  it('serves local-storage paths from the API origin', () => {
+    const { api } = load();
+    expect(api.mediaUrl('/uploads/listings/a/b.jpg')).toBe('https://api.example.invalid/uploads/listings/a/b.jpg');
+    expect(api.mediaUrl('uploads/avatar.jpg')).toBe('https://api.example.invalid/uploads/avatar.jpg');
+  });
+
+  it('keeps a protocol-relative value on the API origin instead of another host', () => {
+    const { api } = load();
+    expect(api.mediaUrl('//evil.example.invalid/x.jpg')).toBe('https://api.example.invalid/evil.example.invalid/x.jpg');
+  });
+});
+
 describe('deadline and network errors', () => {
   it('gives up after 15 s with the French timeout error, and reports it', async () => {
     jest.useFakeTimers();

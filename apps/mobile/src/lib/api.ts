@@ -134,14 +134,24 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
 }
 
 /**
- * Origin serving the API's static files.
- *
- * Photo URLs come back from the API as root-relative paths (/uploads/...),
- * so an <Image source={{ uri }}> needs this prefix or it resolves against
- * nothing. Derived from the same env var as BASE_URL so the two can never
- * point at different backends.
+ * Origin serving the API's static files in local storage mode. Derived from
+ * the same env var as BASE_URL so the two can never point at different
+ * backends. Build image sources with `mediaUrl`, not by prefixing this.
  */
 export const apiOrigin = BASE_URL.replace(/\/api\/v1\/?$/, '');
+
+/**
+ * A media URL from the API as an <Image> source. Mirrors the web's
+ * resolveMediaUrl: production (S3/CDN) returns absolute URLs, which pass
+ * through; local storage returns root-relative paths (/uploads/...), served
+ * from `apiOrigin`. Prefixing unconditionally broke every production photo
+ * (`https://api…https://cdn…`). Leading slashes are collapsed so a
+ * protocol-relative value (//host/x) stays on the API origin.
+ */
+export function mediaUrl(value: string): string {
+  if (/^https?:\/\//i.test(value)) return value;
+  return `${apiOrigin}/${value.replace(/^\/+/, '')}`;
+}
 
 /**
  * A 401 the app can recover from: the token was rejected, not the person.
