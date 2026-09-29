@@ -143,11 +143,13 @@ next to the decision.
   (date `min`), `e2e/mock-api.mjs` (PATCH null = unchanged), `keyboard-publish.spec.ts`,
   `account-journeys.spec.ts`. Verify: Web typecheck + `keyboard-publish account-journeys` specs —
   payload contains both fields. (2026-09-29)
-- [ ] **2.2b** P0-2 — wizard collects the optional fields: `minStayMonths`, `priceDeposit`,
+- [x] **2.2b** P0-2 — wizard collects the optional fields: `minStayMonths`, `priceDeposit`,
   `wifiIncluded`/`electricityIncluded`/`waterIncluded`, `numBedrooms`, `numBathrooms`,
   `currentRoommatesCount`, `maxRoommates`; round-trips through `loadDraft`. Files:
-  `publish/page.tsx`, `e2e/mock-api.mjs`, `keyboard-publish.spec.ts`. Verify: Web +
-  `keyboard-publish` spec payload assertion.
+  `publish/page.tsx`, `types/api.ts` (`ChargeInclusion`), `lib/labels.ts`,
+  `account-journeys.spec.ts`. Verify: Web typecheck + `keyboard-publish account-journeys` specs
+  (payload assertion). Known limit: a PATCH cannot clear an optional number once set (null =
+  unchanged), same as every other optional listing field. (2026-09-29)
 - [x] **2.2c** P0-2 — `ListingSearchService.submit` requires `roomFurnishing` and `availableFrom`
   (400 "Aménagement de la chambre requis" / "Date de disponibilité requise"; a past date is
   accepted). Files: `listing/ListingSearchService.java`, `ListingApiTest`. Verify: API

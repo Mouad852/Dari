@@ -40,6 +40,15 @@ test('clearing profile fields sends empty strings, which the API reads as "clear
 });
 
 test('listing publication covers the wizard, photo upload, and moderation handoff', async ({ authenticatedPage: page }) => {
+  // Every listing write the wizard makes, merged the way the API applies them.
+  const written: Record<string, unknown> = {};
+  page.on('request', (request) => {
+    if (/\/api\/v1\/listings(\/listing-new)?$/.test(request.url()) && ['POST', 'PATCH'].includes(request.method())) {
+      for (const [key, value] of Object.entries(request.postDataJSON() ?? {})) {
+        if (value !== null) written[key] = value;
+      }
+    }
+  });
   await page.goto('/publish');
   await page.getByLabel("Titre de l’annonce").fill('Chambre test E2E');
   await page.getByRole('textbox', { name: 'Quartier', exact: true }).fill('Agdal');
@@ -52,6 +61,14 @@ test('listing publication covers the wizard, photo upload, and moderation handof
   await page.getByLabel('Loyer mensuel').fill('3200');
   await page.getByLabel('Aménagement de la chambre').selectOption('PARTIALLY_FURNISHED');
   await page.getByLabel('Disponible à partir du').fill('2030-10-01');
+  await page.getByLabel('Caution').fill('3 200');
+  await page.getByLabel('Durée minimale').fill('6');
+  await page.getByLabel('Wi-Fi').selectOption('INCLUDED');
+  await page.getByLabel('Électricité').selectOption('NOT_INCLUDED');
+  await page.getByLabel('Chambres dans le logement').fill('3');
+  await page.getByLabel('Salles de bain').fill('1');
+  await page.getByLabel('Colocataires actuels').fill('2');
+  await page.getByLabel('Colocataires au maximum').fill('3');
   await page.getByRole('button', { name: 'Suivant' }).click();
   await page.getByRole('button', { name: 'Suivant' }).click();
 
@@ -61,6 +78,20 @@ test('listing publication covers the wizard, photo upload, and moderation handof
   await page.getByRole('button', { name: 'Suivant' }).click();
   await page.getByRole('button', { name: /publier l’annonce/i }).click();
   await expect(page.getByRole('status')).toContainText('envoyée pour validation');
+  expect(written).toMatchObject({
+    roomFurnishing: 'PARTIALLY_FURNISHED',
+    availableFrom: '2030-10-01',
+    priceDeposit: 3200,
+    minStayMonths: 6,
+    wifiIncluded: 'INCLUDED',
+    electricityIncluded: 'NOT_INCLUDED',
+    numBedrooms: 3,
+    numBathrooms: 1,
+    currentRoommatesCount: 2,
+    maxRoommates: 3,
+  });
+  // Left at "Non précisé": never sent, so the server keeps NA.
+  expect(written).not.toHaveProperty('waterIncluded');
   await expectAccessible(page);
 });
 

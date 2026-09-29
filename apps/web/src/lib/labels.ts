@@ -14,7 +14,7 @@
  * which owns the thin-space thousands, the decimal comma and the date forms.
  */
 
-import type { AvailabilityState, ListingRoomType, ListingStatus, PropertyType, ReportReason, ReportTargetType, RoomFurnishing, RoomType, UserAccountStatus, VerificationTier } from '@/types/api';
+import type { AvailabilityState, ChargeInclusion, ListingRoomType, ListingStatus, PropertyType, ReportReason, ReportTargetType, RoomFurnishing, RoomType, UserAccountStatus, VerificationTier } from '@/types/api';
 
 export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
   APARTMENT: 'Appartement',
@@ -26,6 +26,13 @@ export const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
 export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
   PRIVATE: 'Chambre privée',
   SHARED: 'Chambre partagée',
+};
+
+/** A charge (Wi-Fi, electricity, water) relative to the rent; worded as on the listing page. */
+export const CHARGE_INCLUSION_LABELS: Record<ChargeInclusion, string> = {
+  INCLUDED: 'Compris',
+  NOT_INCLUDED: 'En supplément',
+  NA: 'Non précisé',
 };
 
 /** How the offered room is furnished ("la chambre", hence the feminine). */

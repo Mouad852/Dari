@@ -17,8 +17,8 @@ import { LocationPicker } from '@/components/LocationPicker';
 import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
 import { CITIES } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
-import { AMENITY_LABELS, LISTING_ROOM_TYPE_LABELS, PROPERTY_TYPE_LABELS, ROOM_FURNISHING_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
-import type { HouseRules, ListingPhoto, ListingRoom, ListingRoomType, ListingStatus, PropertyType, RoomFurnishing, RoomType } from '@/types/api';
+import { AMENITY_LABELS, CHARGE_INCLUSION_LABELS, LISTING_ROOM_TYPE_LABELS, PROPERTY_TYPE_LABELS, ROOM_FURNISHING_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
+import type { ChargeInclusion, HouseRules, ListingPhoto, ListingRoom, ListingRoomType, ListingStatus, PropertyType, RoomFurnishing, RoomType } from '@/types/api';
 
 const HOURS = ['20:00', '21:00', '22:00', '23:00', '00:00', '06:00', '07:00', '08:00', '09:00'];
 
@@ -45,6 +45,15 @@ type DraftListing = {
   roomFurnishing: RoomFurnishing | null;
   /** ISO date, "2026-10-01". */
   availableFrom: string | null;
+  minStayMonths: number | null;
+  priceDeposit: number | null;
+  wifiIncluded: ChargeInclusion;
+  electricityIncluded: ChargeInclusion;
+  waterIncluded: ChargeInclusion;
+  numBedrooms: number | null;
+  numBathrooms: number | null;
+  currentRoommatesCount: number | null;
+  maxRoommates: number | null;
   amenityCodes: string[];
   houseRules: HouseRules | null;
   rooms: ListingRoom[];
@@ -55,6 +64,19 @@ type DraftListing = {
 function todayIso(): string {
   return new Date().toLocaleDateString('en-CA');
 }
+
+/** An optional number field: blank is null ("leave unchanged" on a PATCH). */
+function optionalNumber(value: string): number | null {
+  const trimmed = value.replace(/\s/g, '');
+  return trimmed ? Number(trimmed) : null;
+}
+
+const CHARGES = [
+  { key: 'wifi', label: 'Wi-Fi' },
+  { key: 'electricity', label: 'Électricité' },
+  { key: 'water', label: 'Eau' },
+] as const;
+type ChargeKey = (typeof CHARGES)[number]['key'];
 
 /** A room row while it's being edited in the wizard. `key` is client-only, never sent to the API. */
 type WizardRoom = {
@@ -144,6 +166,16 @@ function PublishWizard() {
   // The date as loaded. The API refuses a past availableFrom, and a listing
   // saved months ago holds one, so an unchanged date is not sent back.
   const loadedAvailableFrom = useRef('');
+  // Optional details, kept as typed text. The detail page shows "Non précisé"
+  // for any the owner leaves blank.
+  const [priceDeposit, setPriceDeposit] = useState('');
+  const [minStayMonths, setMinStayMonths] = useState('');
+  const [numBedrooms, setNumBedrooms] = useState('');
+  const [numBathrooms, setNumBathrooms] = useState('');
+  const [currentRoommatesCount, setCurrentRoommatesCount] = useState('');
+  const [maxRoommates, setMaxRoommates] = useState('');
+  // '' is "not stated" (NA on the server).
+  const [charges, setCharges] = useState<Record<ChargeKey, ChargeInclusion | ''>>({ wifi: '', electricity: '', water: '' });
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -274,6 +306,19 @@ function PublishWizard() {
         setRoomFurnishing(draft.roomFurnishing ?? '');
         setAvailableFrom(draft.availableFrom ?? '');
         loadedAvailableFrom.current = draft.availableFrom ?? '';
+        const text = (value: number | null) => (value == null ? '' : String(value));
+        setPriceDeposit(text(draft.priceDeposit));
+        setMinStayMonths(text(draft.minStayMonths));
+        setNumBedrooms(text(draft.numBedrooms));
+        setNumBathrooms(text(draft.numBathrooms));
+        setCurrentRoommatesCount(text(draft.currentRoommatesCount));
+        setMaxRoommates(text(draft.maxRoommates));
+        const stated = (value: ChargeInclusion | null) => (value && value !== 'NA' ? value : '');
+        setCharges({
+          wifi: stated(draft.wifiIncluded),
+          electricity: stated(draft.electricityIncluded),
+          water: stated(draft.waterIncluded),
+        });
         setSelectedAmenities(draft.amenityCodes);
         setSmokingAllowed(draft.houseRules?.smokingAllowed ?? false);
         setPetsAllowed(draft.houseRules?.petsAllowed ?? false);
@@ -381,6 +426,15 @@ function PublishWizard() {
     // null leaves the stored value alone on a PATCH.
     roomFurnishing: roomFurnishing || null,
     availableFrom: availableFrom && availableFrom !== loadedAvailableFrom.current ? availableFrom : null,
+    priceDeposit: optionalNumber(priceDeposit),
+    minStayMonths: optionalNumber(minStayMonths),
+    numBedrooms: optionalNumber(numBedrooms),
+    numBathrooms: optionalNumber(numBathrooms),
+    currentRoommatesCount: optionalNumber(currentRoommatesCount),
+    maxRoommates: optionalNumber(maxRoommates),
+    wifiIncluded: charges.wifi || null,
+    electricityIncluded: charges.electricity || null,
+    waterIncluded: charges.water || null,
     amenityCodes: selectedAmenities,
     houseRules: {
       smokingAllowed,
@@ -976,6 +1030,77 @@ function PublishWizard() {
                   min={todayIso()}
                 />
               </div>
+
+              <fieldset style={{ border: 'none', margin: 0, padding: 0, minWidth: 0, display: 'grid', gap: 'var(--space-4)' }}>
+                <legend style={{ padding: 0, font: 'var(--type-label)', color: 'var(--text-heading)' }}>
+                  Détails facultatifs
+                </legend>
+                <p style={{ margin: 0, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
+                  Affichés sur l’annonce. Un champ laissé vide apparaît comme « Non précisé ».
+                </p>
+                <div className="wizard-pair">
+                  <Input
+                    label="Caution"
+                    value={priceDeposit}
+                    onChange={(event) => setPriceDeposit(event.target.value)}
+                    inputMode="numeric"
+                    suffix="MAD"
+                  />
+                  <Input
+                    label="Durée minimale"
+                    value={minStayMonths}
+                    onChange={(event) => setMinStayMonths(event.target.value)}
+                    inputMode="numeric"
+                    suffix="mois"
+                  />
+                </div>
+                <div className="wizard-pair">
+                  {CHARGES.map(({ key, label }) => (
+                    <Select
+                      key={key}
+                      label={label}
+                      value={charges[key]}
+                      placeholder={CHARGE_INCLUSION_LABELS.NA}
+                      onChange={(event) => {
+                        const value = event.target.value as ChargeInclusion | '';
+                        setCharges((current) => ({ ...current, [key]: value }));
+                      }}
+                      options={(['INCLUDED', 'NOT_INCLUDED'] as const).map((value) => ({
+                        value,
+                        label: CHARGE_INCLUSION_LABELS[value],
+                      }))}
+                    />
+                  ))}
+                </div>
+                <div className="wizard-pair">
+                  <Input
+                    label="Chambres dans le logement"
+                    value={numBedrooms}
+                    onChange={(event) => setNumBedrooms(event.target.value)}
+                    inputMode="numeric"
+                  />
+                  <Input
+                    label="Salles de bain"
+                    value={numBathrooms}
+                    onChange={(event) => setNumBathrooms(event.target.value)}
+                    inputMode="numeric"
+                  />
+                </div>
+                <div className="wizard-pair">
+                  <Input
+                    label="Colocataires actuels"
+                    value={currentRoommatesCount}
+                    onChange={(event) => setCurrentRoommatesCount(event.target.value)}
+                    inputMode="numeric"
+                  />
+                  <Input
+                    label="Colocataires au maximum"
+                    value={maxRoommates}
+                    onChange={(event) => setMaxRoommates(event.target.value)}
+                    inputMode="numeric"
+                  />
+                </div>
+              </fieldset>
 
               <fieldset style={{ border: 'none', margin: 0, padding: 0, minWidth: 0 }}>
                 <legend style={{ padding: 0, font: 'var(--type-label)', color: 'var(--text-heading)' }}>

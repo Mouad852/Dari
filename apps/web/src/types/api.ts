@@ -109,6 +109,9 @@ export interface HouseRules {
 
 export type ListingRoomType = 'BEDROOM' | 'SALON' | 'KITCHEN' | 'BATHROOM' | 'TERRACE' | 'STORAGE';
 
+/** Whether a charge is in the rent. `NA` is "not stated". Mirrors ChargeInclusion. */
+export type ChargeInclusion = 'INCLUDED' | 'NOT_INCLUDED' | 'NA';
+
 /** How the offered room is furnished. Mirrors RoomFurnishing on the server. */
 export type RoomFurnishing = 'FULLY_FURNISHED' | 'PARTIALLY_FURNISHED' | 'UNFURNISHED';
 
@@ -124,9 +127,9 @@ export interface ListingRoom {
 export interface PublicListingDetail extends PublicListing {
   priceDeposit: number | null;
   description: string | null;
-  wifiIncluded: 'INCLUDED' | 'NOT_INCLUDED' | 'NA';
-  electricityIncluded: 'INCLUDED' | 'NOT_INCLUDED' | 'NA';
-  waterIncluded: 'INCLUDED' | 'NOT_INCLUDED' | 'NA';
+  wifiIncluded: ChargeInclusion;
+  electricityIncluded: ChargeInclusion;
+  waterIncluded: ChargeInclusion;
   propertyType: PropertyType | null;
   numBedrooms: number | null;
   numBathrooms: number | null;
