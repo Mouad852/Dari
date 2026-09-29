@@ -5,7 +5,7 @@ test('search filters, paginates, and switches to the map', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /annonces.*rabat/i })).toBeVisible();
   await expect(page.getByText('Chambre lumineuse à Agdal')).toBeVisible();
 
-  await page.getByRole('textbox', { name: 'Quartier', exact: true }).fill('Agdal');
+  await page.getByRole('combobox', { name: 'Quartier', exact: true }).fill('Agdal');
   await expect(page).toHaveURL(/neighborhood=Agdal/);
   await page.getByRole('button', { name: /voir .*annonce/i }).click();
   await expect(page.getByText('Chambre lumineuse à Agdal')).toBeVisible();

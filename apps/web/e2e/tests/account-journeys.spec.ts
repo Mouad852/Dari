@@ -51,7 +51,7 @@ test('listing publication covers the wizard, photo upload, and moderation handof
   });
   await page.goto('/publish');
   await page.getByLabel("Titre de l’annonce").fill('Chambre test E2E');
-  await page.getByRole('textbox', { name: 'Quartier', exact: true }).fill('Agdal');
+  await page.getByRole('combobox', { name: 'Quartier', exact: true }).fill('Agdal');
   await page.getByRole('button', { name: /saisir les coordonnées/i }).click();
   await page.getByLabel('Latitude').fill('33.9716');
   await page.getByLabel('Longitude').fill('-6.8498');

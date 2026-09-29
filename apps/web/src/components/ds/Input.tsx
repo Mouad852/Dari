@@ -38,6 +38,8 @@ export interface InputProps {
   step?: number;
   inputMode?: 'text' | 'numeric' | 'decimal' | 'email' | 'tel' | 'search';
   autoComplete?: string;
+  /** Id of a `<datalist>` offering suggestions; the field stays free text. */
+  list?: string;
   style?: CSSProperties;
 }
 

@@ -272,9 +272,12 @@ number when the task lands (3.1 and 5.3 both add one).
   `infra/prod-smoke/bootstrap-check.sh`. Verify: API `-Dtest=ListingApiTest,
   FlywayMigrationSmokeTest,ListingSearchIndexUsageTest,ListingSearchOptimizationTest`;
   `bash infra/prod-smoke/bootstrap-check.sh`. (2026-09-29)
-- [ ] **3.3b** P1-11 — wizard and search filter offer `GET /neighborhoods?city=` suggestions
-  (`<datalist>`). Files: `publish/page.tsx`, `listings/SearchResults.tsx`, `e2e/mock-api.mjs`.
-  Verify: Web + spec (suggestions for Rabat).
+- [x] **3.3b** P1-11 — wizard and search filter offer `GET /neighborhoods?city=` suggestions through
+  a new `components/NeighborhoodDatalist.tsx` (`<datalist>`; the field stays free text, now exposed
+  as a combobox). `ds/Input` gains a `list` prop. Files: `publish/page.tsx`,
+  `listings/SearchResults.tsx`, `ds/Input.tsx`, new `neighborhood-suggestions.spec.ts`,
+  `public-search.spec.ts` / `account-journeys.spec.ts` (combobox role). Verify: Web typecheck +
+  `neighborhood-suggestions public-search account-journeys keyboard-publish` (8/8). (2026-09-29)
 - [ ] **3.3c** P1-11 — header search is city-aware. Files: `components/SiteNav.tsx`,
   `public-search.spec.ts`. Verify: Web + spec.
 - [ ] **3.4** P1-3 — editing a PUBLISHED listing keeps edits client-side and PATCHes once on the

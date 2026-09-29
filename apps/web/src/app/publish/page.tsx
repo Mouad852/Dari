@@ -14,6 +14,7 @@ import { Switch } from '@/components/ds/Switch';
 import { Tag } from '@/components/ds/Tag';
 import { Textarea } from '@/components/ds/Textarea';
 import { LocationPicker } from '@/components/LocationPicker';
+import { NeighborhoodDatalist } from '@/components/NeighborhoodDatalist';
 import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
 import { CITIES } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
@@ -896,7 +897,9 @@ function PublishWizard() {
                   value={district}
                   onChange={(event) => setDistrict(event.target.value)}
                   placeholder="Agdal"
+                  list="wizard-neighborhoods"
                 />
+                <NeighborhoodDatalist id="wizard-neighborhoods" city={city} />
               </div>
 
               {/*

@@ -18,6 +18,7 @@ import { Select } from '@/components/ds/Select';
 import { Tabs } from '@/components/ds/Tabs';
 import { Tag } from '@/components/ds/Tag';
 import { ErrorNotice } from '@/components/ErrorNotice';
+import { NeighborhoodDatalist } from '@/components/NeighborhoodDatalist';
 import { amount, distance } from '@/lib/format';
 import { AMENITY_LABELS } from '@/lib/labels';
 import type { MapPin, PublicListing } from '@/types/api';
@@ -922,7 +923,9 @@ function SearchResultsPageContent() {
                         updateUrl(view, radius, { neighborhood: nextValue });
                       }}
                       placeholder="Agdal, Maarif, Gueliz"
+                      list="search-neighborhoods"
                     />
+                    <NeighborhoodDatalist id="search-neighborhoods" city={city} />
 
                     <Select
                       label="Type de logement"
