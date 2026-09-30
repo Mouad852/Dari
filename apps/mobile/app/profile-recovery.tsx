@@ -8,6 +8,7 @@ import { Icon } from '@/components/Icon';
 import { TextField } from '@/components/TextField';
 import { ApiError, errorMessage } from '@/lib/api';
 import { onAuthChange, signOut } from '@/lib/firebase';
+import { MAX_LENGTH } from '@/lib/fields';
 import { completeProfile, hasProfile, PROFILE_FIELDS_REQUIRED, sendVerificationEmail } from '@/lib/profile';
 import { color, font, layout, radius, ramp, type } from '@/theme/tokens';
 
@@ -109,9 +110,9 @@ export default function ProfileRecoveryScreen() {
             </View>
           )}
 
-          <TextField label="Nom d’affichage" value={displayName} onChangeText={setDisplayName} autoComplete="name" />
-          <TextField label="Prénom" value={firstName} onChangeText={setFirstName} autoComplete="given-name" />
-          <TextField label="Ville (facultatif)" value={city} onChangeText={setCity} placeholder="Rabat" autoComplete="postal-address-locality" />
+          <TextField label="Nom d’affichage" value={displayName} onChangeText={setDisplayName} autoComplete="name" maxLength={MAX_LENGTH.displayName} />
+          <TextField label="Prénom" value={firstName} onChangeText={setFirstName} autoComplete="given-name" maxLength={MAX_LENGTH.firstName} />
+          <TextField label="Ville (facultatif)" value={city} onChangeText={setCity} placeholder="Rabat" autoComplete="postal-address-locality" maxLength={MAX_LENGTH.profileCity} />
 
           {status && (
             <Text style={[type.bodySm, { color: ramp.clay700 }]} accessibilityLiveRegion="polite">{status}</Text>

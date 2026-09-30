@@ -8,6 +8,7 @@ import { LegalLinks } from '@/components/LegalLinks';
 import { Icon } from '@/components/Icon';
 import { TextField } from '@/components/TextField';
 import { getFirebaseAuth } from '@/lib/firebase';
+import { MAX_LENGTH } from '@/lib/fields';
 import { sendVerificationEmail } from '@/lib/profile';
 import { color, font, layout, radius, ramp, type } from '@/theme/tokens';
 
@@ -59,13 +60,13 @@ export default function SignUpScreen() {
 
           <View style={styles.row}>
             <View style={styles.half}>
-              <TextField label="Prénom" value={firstName} onChangeText={setFirstName} autoComplete="given-name" />
+              <TextField label="Prénom" value={firstName} onChangeText={setFirstName} autoComplete="given-name" maxLength={MAX_LENGTH.signUpFirstName} />
             </View>
             <View style={styles.half}>
-              <TextField label="Nom" value={lastName} onChangeText={setLastName} autoComplete="family-name" />
+              <TextField label="Nom" value={lastName} onChangeText={setLastName} autoComplete="family-name" maxLength={MAX_LENGTH.signUpLastName} />
             </View>
           </View>
-          <TextField label="Ville (facultatif)" value={city} onChangeText={setCity} placeholder="Rabat" autoComplete="postal-address-locality" />
+          <TextField label="Ville (facultatif)" value={city} onChangeText={setCity} placeholder="Rabat" autoComplete="postal-address-locality" maxLength={MAX_LENGTH.profileCity} />
           <TextField
             label="E-mail"
             value={email}

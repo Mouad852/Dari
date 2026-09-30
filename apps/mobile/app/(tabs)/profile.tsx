@@ -9,6 +9,7 @@ import { LegalLinks } from '@/components/LegalLinks';
 import { TextField } from '@/components/TextField';
 import { TopBar } from '@/components/TopBar';
 import { apiFetch, ApiError, apiUpload, errorMessage, mediaUrl, reportUnexpected } from '@/lib/api';
+import { fieldErrors, MAX_LENGTH } from '@/lib/fields';
 import { getIdToken, onAuthChange, signOut } from '@/lib/firebase';
 import { profileUpdateBody } from '@/lib/profile';
 import type { Me } from '@/types/api';
@@ -25,6 +26,8 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The API's per-field messages from the last failed save (audit P1-4). */
+  const [fieldIssues, setFieldIssues] = useState<Record<string, string>>({});
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -57,9 +60,9 @@ export default function ProfileScreen() {
   async function save() {
     const token = await getIdToken(); if (!token || saving) return;
     if (displayName.trim().length < 2) { setError('Le nom affiché doit contenir au moins 2 caractères.'); return; }
-    setSaving(true); setError(null);
+    setSaving(true); setError(null); setFieldIssues({});
     try { setProfile(await apiFetch<Me>('/users/me', { method: 'PATCH', token, body: profileUpdateBody({ firstName, displayName, city, bio }) })); }
-    catch (cause) { setError(errorMessage(cause, 'Impossible d’enregistrer votre profil.')); }
+    catch (cause) { setError(errorMessage(cause, 'Impossible d’enregistrer votre profil.')); setFieldIssues(fieldErrors(cause)); }
     finally { setSaving(false); }
   }
 
@@ -94,10 +97,10 @@ export default function ProfileScreen() {
     {error && <Text style={[type.bodySm, styles.error]} accessibilityLiveRegion="assertive">{error}</Text>}
     <View style={styles.avatarWrap}>{profile.avatarUrl ? <Image source={{ uri: mediaUrl(profile.avatarUrl) }} style={styles.avatar} /> : <Text style={styles.avatarInitial}>{profile.displayName.charAt(0).toUpperCase()}</Text>}</View>
     <TextButton onPress={() => void changeAvatar()} disabled={avatarBusy}>{avatarBusy ? 'Envoi…' : 'Modifier la photo'}</TextButton>
-    <TextField label="Nom affiché" value={displayName} onChangeText={setDisplayName} />
-    <TextField label="Prénom" value={firstName} onChangeText={setFirstName} />
-    <TextField label="Ville" value={city} onChangeText={setCity} />
-    <TextField label="Bio" value={bio} onChangeText={setBio} multiline numberOfLines={4} style={styles.bioInput} />
+    <TextField label="Nom affiché" value={displayName} onChangeText={setDisplayName} maxLength={MAX_LENGTH.displayName} error={fieldIssues.displayName} />
+    <TextField label="Prénom" value={firstName} onChangeText={setFirstName} maxLength={MAX_LENGTH.firstName} error={fieldIssues.firstName} />
+    <TextField label="Ville" value={city} onChangeText={setCity} maxLength={MAX_LENGTH.profileCity} error={fieldIssues.city} />
+    <TextField label="Bio" value={bio} onChangeText={setBio} multiline numberOfLines={4} style={styles.bioInput} maxLength={MAX_LENGTH.bio} error={fieldIssues.bio} />
     <Button onPress={() => void save()} loading={saving}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Button>
     <Button variant="secondary" onPress={() => router.push('/publish' as never)}>Publier une annonce</Button>
     <Button variant="secondary" onPress={() => void signOut()}>Se déconnecter</Button>

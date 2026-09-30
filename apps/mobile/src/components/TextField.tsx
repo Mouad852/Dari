@@ -13,8 +13,15 @@ import { color, font, radius } from '@/theme/tokens';
 export function TextField({
   label,
   secureEntry,
+  error,
+  style,
   ...props
-}: { label: string; secureEntry?: boolean } & TextInputProps) {
+}: {
+  label: string;
+  secureEntry?: boolean;
+  /** The API's message for this field (audit P1-4): danger border, the text below, and read out with the field. */
+  error?: string;
+} & TextInputProps) {
   const [revealed, setRevealed] = useState(false);
   const isPassword = Boolean(secureEntry);
 
@@ -24,9 +31,12 @@ export function TextField({
       <View>
         <TextInput
           {...props}
+          accessibilityLabel={props.accessibilityLabel ?? label}
+          accessibilityHint={error ?? props.accessibilityHint}
           secureTextEntry={isPassword && !revealed}
           placeholderTextColor={color.textMuted}
-          style={[styles.input, isPassword && styles.inputWithIcon]}
+          // The caller's style last: it used to be dropped, so the profile's taller bio box never applied.
+          style={[styles.input, isPassword && styles.inputWithIcon, error ? styles.inputError : null, style]}
         />
         {isPassword && (
           <Pressable
@@ -40,6 +50,11 @@ export function TextField({
           </Pressable>
         )}
       </View>
+      {error ? (
+        <Text style={styles.error} accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -66,6 +81,14 @@ const styles = StyleSheet.create({
   },
   inputWithIcon: {
     paddingRight: 42,
+  },
+  inputError: {
+    borderColor: color.danger,
+  },
+  error: {
+    fontFamily: font.uiRegular,
+    fontSize: 12,
+    color: color.danger,
   },
   reveal: {
     position: 'absolute',

@@ -394,8 +394,13 @@ number when the task lands (3.1 and 5.3 both add one).
   Nom" ≤ 60) and city 60; profile-recovery 60. Profile (60/600), report (2000) and composer
   (4000, 4.4b) already matched. Admin reject reason stays 500 (API allows 1000). `field-errors`
   5/5; full suite 80 passed + 1 skip. (2026-09-30)
-- [ ] **5.1d** P1-4 — mobile `TextField` accepts `maxLength` and shows field errors from the API.
-  Files: mobile `TextField`, forms. Verify: Mobile `npm test`.
+- [x] **5.1d** P1-4 — mobile `TextField` accepts `maxLength` and shows field errors from the API.
+  Files: mobile `TextField`, forms. Verify: Mobile `npm test`. `TextField` gains `error` (danger
+  border, text below, read as the field's hint) and now applies the caller's `style` (the
+  profile's taller bio box was dropped). New `lib/fields.ts` (`MAX_LENGTH`, `fieldErrors`) used by
+  profile, publish, sign-up, profile-recovery and the composer; profile and publish show the
+  API's field messages. Jest 83/83 (new `fields.test.ts`), typecheck clean. Not checked on a
+  device. (2026-09-30)
 - [x] **5.1e** (test, added 2026-09-30) — `listing-host`'s "Voir le profil" navigation timed out
   under full-suite load twice: the App Router changes the URL only after `next dev` compiles
   `/profile/[id]`. That one assertion now waits 15 s. Files: `listing-host.spec.ts`. Verify: full

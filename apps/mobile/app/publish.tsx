@@ -7,6 +7,7 @@ import { Button, TextButton } from '@/components/Button';
 import { TextField } from '@/components/TextField';
 import { TopBar } from '@/components/TopBar';
 import { apiFetch, apiUpload, errorMessage, mediaUrl } from '@/lib/api';
+import { fieldErrors, MAX_LENGTH } from '@/lib/fields';
 import { getIdToken } from '@/lib/firebase';
 import type { CreateListingRequest, ListingDetail, ListingPhoto } from '@/types/api';
 import { color, font, layout, radius, type } from '@/theme/tokens';
@@ -26,6 +27,8 @@ export default function PublishScreen() {
   const [progress, setProgress] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The API's per-field messages from the last failed save (audit P1-4). */
+  const [fieldIssues, setFieldIssues] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let current = true;
@@ -54,11 +57,11 @@ export default function PublishScreen() {
     if (latitude === null || longitude === null || priceRent === null) return;
     if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180 || priceRent < 0) { setError('Vérifiez les coordonnées et le loyer.'); return; }
     const body: CreateListingRequest = { title: form.title.trim(), city: form.city.trim(), neighborhood: form.neighborhood.trim(), latitude, longitude, priceRent, description: form.description.trim() || null, availableFrom: form.availableFrom.trim() || null, minStayMonths: Number(form.minStayMonths) || 1 };
-    setSaving(true); setError(null);
+    setSaving(true); setError(null); setFieldIssues({});
     try {
       const saved = id ? await apiFetch<ListingDetail>(`/listings/${encodeURIComponent(id)}`, { method: 'PATCH', token, body }) : await apiFetch<ListingDetail>('/listings', { method: 'POST', token, body });
       setId(saved.id); setDirty(false); setError(null); Alert.alert('Brouillon enregistré', 'Votre annonce est enregistrée. Ajoutez des photos puis envoyez-la en modération.');
-    } catch (cause) { setError(errorMessage(cause, 'Impossible d’enregistrer le brouillon.')); }
+    } catch (cause) { setError(errorMessage(cause, 'Impossible d’enregistrer le brouillon.')); setFieldIssues(fieldErrors(cause)); }
     finally { setSaving(false); }
   }
 
@@ -82,13 +85,13 @@ export default function PublishScreen() {
   return <View style={styles.screen}><TopBar title={id ? 'Modifier l’annonce' : 'Publier une annonce'} onBack={leave} /><ScrollView contentContainerStyle={styles.content}>
     <Text style={[type.bodySm, { color: color.textMuted }]}>Les coordonnées sont réservées à votre annonce et restent protégées par l’API.</Text>
     {error && <Text style={[type.bodySm, styles.error]} accessibilityLiveRegion="assertive">{error}</Text>}
-    <TextField label="Titre" value={form.title} onChangeText={(value) => update('title', value)} placeholder="Chambre lumineuse à Gauthier" />
-    <View style={styles.row}><View style={styles.half}><TextField label="Ville" value={form.city} onChangeText={(value) => update('city', value)} /></View><View style={styles.half}><TextField label="Quartier" value={form.neighborhood} onChangeText={(value) => update('neighborhood', value)} /></View></View>
-    <View style={styles.row}><View style={styles.half}><TextField label="Latitude" value={form.latitude} onChangeText={(value) => update('latitude', value)} keyboardType="numbers-and-punctuation" /></View><View style={styles.half}><TextField label="Longitude" value={form.longitude} onChangeText={(value) => update('longitude', value)} keyboardType="numbers-and-punctuation" /></View></View>
-    <TextField label="Loyer mensuel (MAD)" value={form.priceRent} onChangeText={(value) => update('priceRent', value)} keyboardType="numeric" />
-    <TextField label="Disponible à partir du (AAAA-MM-JJ)" value={form.availableFrom} onChangeText={(value) => update('availableFrom', value)} placeholder="2026-10-01" />
-    <TextField label="Séjour minimum (mois)" value={form.minStayMonths} onChangeText={(value) => update('minStayMonths', value)} keyboardType="numeric" />
-    <TextField label="Description" value={form.description} onChangeText={(value) => update('description', value)} multiline numberOfLines={5} style={styles.description} />
+    <TextField label="Titre" value={form.title} onChangeText={(value) => update('title', value)} placeholder="Chambre lumineuse à Gauthier" maxLength={MAX_LENGTH.listingTitle} error={fieldIssues.title} />
+    <View style={styles.row}><View style={styles.half}><TextField label="Ville" value={form.city} onChangeText={(value) => update('city', value)} maxLength={MAX_LENGTH.listingCity} error={fieldIssues.city} /></View><View style={styles.half}><TextField label="Quartier" value={form.neighborhood} onChangeText={(value) => update('neighborhood', value)} maxLength={MAX_LENGTH.listingNeighborhood} error={fieldIssues.neighborhood} /></View></View>
+    <View style={styles.row}><View style={styles.half}><TextField label="Latitude" value={form.latitude} onChangeText={(value) => update('latitude', value)} keyboardType="numbers-and-punctuation" error={fieldIssues.latitude} /></View><View style={styles.half}><TextField label="Longitude" value={form.longitude} onChangeText={(value) => update('longitude', value)} keyboardType="numbers-and-punctuation" error={fieldIssues.longitude} /></View></View>
+    <TextField label="Loyer mensuel (MAD)" value={form.priceRent} onChangeText={(value) => update('priceRent', value)} keyboardType="numeric" error={fieldIssues.priceRent} />
+    <TextField label="Disponible à partir du (AAAA-MM-JJ)" value={form.availableFrom} onChangeText={(value) => update('availableFrom', value)} placeholder="2026-10-01" error={fieldIssues.availableFrom} />
+    <TextField label="Séjour minimum (mois)" value={form.minStayMonths} onChangeText={(value) => update('minStayMonths', value)} keyboardType="numeric" error={fieldIssues.minStayMonths} />
+    <TextField label="Description" value={form.description} onChangeText={(value) => update('description', value)} multiline numberOfLines={5} style={styles.description} maxLength={MAX_LENGTH.listingDescription} error={fieldIssues.description} />
     <Button onPress={() => void save()} loading={saving}>{saving ? 'Enregistrement…' : 'Enregistrer le brouillon'}</Button>
     {id && <><Text style={type.h3}>Photos</Text><Text style={[type.bodySm, { color: color.textMuted }]}>Les photos sont ré-encodées par le serveur pour retirer les métadonnées de localisation.</Text><View style={styles.photoActions}><Button variant="secondary" onPress={() => void pickPhotos(false)}>Galerie</Button><Button variant="secondary" onPress={() => void pickPhotos(true)}>Appareil photo</Button></View>{uploading && <Text style={type.bodySm}>Envoi… {Math.round(progress * 100)}%</Text>}<View style={styles.photos}>{photos.map((photo) => <View key={photo.id} style={styles.photoItem}><Image source={{ uri: mediaUrl(photo.url) }} style={styles.photo} /><View style={styles.photoControls}>{!photo.isCover && <TextButton onPress={() => void photoAction(photo, 'cover')}>Couverture</TextButton>}<TextButton onPress={() => void photoAction(photo, 'delete')}>Supprimer</TextButton></View></View>)}</View><Button onPress={() => void submitListing()}>Envoyer en modération</Button></>}
   </ScrollView></View>;

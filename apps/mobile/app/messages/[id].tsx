@@ -17,6 +17,7 @@ import { Icon } from '@/components/Icon';
 import { TextButton } from '@/components/Button';
 import { TopBar } from '@/components/TopBar';
 import { apiFetch, ApiError, errorMessage, reportUnexpected } from '@/lib/api';
+import { MAX_LENGTH } from '@/lib/fields';
 import { getIdToken } from '@/lib/firebase';
 import { hasNetwork } from '@/lib/network';
 import { clockTime, dayLabel } from '@/lib/format';
@@ -320,6 +321,7 @@ export default function ConversationScreen() {
           placeholderTextColor={color.textMuted}
           style={styles.composerInput}
           multiline
+          maxLength={MAX_LENGTH.message}
         />
         <Pressable
           onPress={() => void handleSend()}
