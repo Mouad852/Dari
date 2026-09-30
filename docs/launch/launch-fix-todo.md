@@ -444,8 +444,10 @@ number when the task lands (3.1 and 5.3 both add one).
   new `AccountStatusBanner` in the root layout, skipped on sign-in/up/recovery (it raced sign-in).
   session-recovery 9/9, account-pages 6/6 (+ axe on the banner), both ×2 with account-journeys
   38/38; UserStatusApiTest, UserApiTest, AdminApiTest, SecurityHeadersApiTest 40/40. (2026-09-30)
-- [ ] **5.4d** P2-11 — allow `DELETE /users/me` while suspended. Files:
-  `common/auth/FirebaseAuthFilter.java`, user test class. Verify: API.
+- [x] **5.4d** P2-11 — allow `DELETE /users/me` while suspended. Files:
+  `common/auth/FirebaseAuthFilter.java`, user test class. Verify: API. `UserStatusApiTest` 2/2 (a suspended
+  account's PATCH is 403 ACCOUNT_SUSPENDED, its DELETE 204 and soft-deletes); with UserApiTest,
+  AdminApiTest, SecurityHeadersApiTest 40/40. (2026-09-30)
 - [ ] **5.4e** P2-17 — rent minimum 100 MAD server-side; client previews the parsed value. Files:
   `CreateListingRequest`/update DTO, `publish/page.tsx`, `ListingApiTest`. Verify: API + Web.
 - [ ] **5.4f** P2-18 — `/publish` gated up front with a sign-in CTA carrying `next`; `next` on all

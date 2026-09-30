@@ -89,7 +89,11 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
             boolean readOnly = "GET".equalsIgnoreCase(method)
                     || "HEAD".equalsIgnoreCase(method)
                     || "OPTIONS".equalsIgnoreCase(method);
-            if (!readOnly) {
+            // A suspension limits what someone does on Dari, not their right to
+            // leave it: deleting their own account stays open (audit P2-11).
+            boolean leaving = "DELETE".equalsIgnoreCase(method)
+                    && "/api/v1/users/me".equals(request.getRequestURI().substring(request.getContextPath().length()));
+            if (!readOnly && !leaving) {
                 writeError(response, 403, ErrorCode.ACCOUNT_SUSPENDED,
                         "Ce compte est suspendu (lecture seule)");
                 return;

@@ -10,11 +10,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
 /**
  * What a suspended account can still do (audit P2-11): read its own profile,
- * which says it is suspended so the web can explain refused writes.
+ * which says it is suspended so the web can explain refused writes, and
+ * delete itself. Everything else it writes is refused.
  */
 class UserStatusApiTest extends AbstractIntegrationTest {
 
@@ -53,5 +55,23 @@ class UserStatusApiTest extends AbstractIntegrationTest {
                 .when().get("/users/me")
                 .then().statusCode(200)
                 .body("status", equalTo("SUSPENDED"));
+    }
+
+    @Test
+    @DisplayName("a suspended account cannot edit its profile but can still delete itself")
+    void aSuspendedAccountCanStillLeave() throws Exception {
+        UUID id = suspendedAccount();
+
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"bio\":\"Toujours là\"}")
+                .when().patch("/users/me")
+                .then().statusCode(403)
+                .body("code", equalTo("ACCOUNT_SUSPENDED"));
+
+        given().header("Authorization", "Bearer test-token")
+                .when().delete("/users/me")
+                .then().statusCode(204);
+        assertThat(users.findById(id).orElseThrow().getDeletedAt()).isNotNull();
     }
 }
