@@ -20,6 +20,9 @@ test('a profile with photo, bio, city and verified email is complete without a p
   await expect(page.getByRole('link', { name: /Profil public/ })).toBeVisible();
   await expect(page.getByText('Profil complet')).toHaveCount(0);
   await expect(page.getByText('Téléphone')).toHaveCount(0);
+  // The hub describes the notifications the product sends, not replies or visits it does not.
+  await expect(page.getByRole('link', { name: /Notifications/ })).toContainText('E-mails sur vos annonces et votre compte');
+  await expect(page.getByText(/visites/)).toHaveCount(0);
 });
 
 test('there is no payments page: the hub does not offer one and old links land on the hub', async ({ authenticatedPage: page }) => {

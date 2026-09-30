@@ -21,7 +21,8 @@ interface AccountStats {
 
 const SECTIONS = [
   { label: 'Profil public', detail: 'Mettre à jour votre photo et votre bio', icon: UserRound, href: '/account/profile' },
-  { label: 'Notifications', detail: 'Nouvelles réponses, visites et rappels', icon: Bell, href: '/account/notifications' },
+  // What /account/notifications lists: no email goes out for replies yet (P0-1), and there are no visit alerts.
+  { label: 'Notifications', detail: 'E-mails sur vos annonces et votre compte', icon: Bell, href: '/account/notifications' },
   { label: 'Sécurité', detail: 'Mot de passe et vérification de compte', icon: Lock, href: '/account/security' },
 ] as const;
 

@@ -315,6 +315,10 @@ number when the task lands (3.1 and 5.3 both add one).
   each). Files: `account/page.tsx`, `account-pages.spec.ts`. Verify: Web typecheck +
   `account-pages` (3/3) — a complete profile without a phone hides the completion card.
   (5a2fd7f, 2026-09-29)
+- [x] **4.1e** P1-12 (added 2026-09-30, found in 4.4d screenshots) — the `/account` hub's
+  Notifications card promised "Nouvelles réponses, visites et rappels"; now "E-mails sur vos
+  annonces et votre compte". Files: `account/page.tsx`, `account-pages.spec.ts`. Verify: Web
+  typecheck + `account-pages` (5/5). When 2.1 lands, mention replies again. (2026-09-30)
 - [x] **4.2a** P1-5 — `lib/image.ts`: draw to canvas, export JPEG ≤ 2560 px long edge at 0.85
   (fixes orientation, size, WebP); used by the wizard and profile avatar upload; formats copy
   corrected. Files: new `apps/web/src/lib/image.ts`, `publish/page.tsx`, `account/profile/page.tsx`.
