@@ -119,7 +119,8 @@ export function ListingDetailContent({ listing }: { listing: PublicListingDetail
         {listing.description && (
           <section>
             <h2 style={sectionHeadingStyle}>À propos du logement</h2>
-            <p style={{ margin: 0, lineHeight: 1.7 }}>{listing.description}</p>
+            {/* pre-line keeps the owner's line breaks and still wraps and collapses runs of spaces. */}
+            <p style={{ margin: 0, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{listing.description}</p>
           </section>
         )}
 
@@ -176,7 +177,7 @@ export function ListingDetailContent({ listing }: { listing: PublicListingDetail
               {petsLabel && <span>{petsLabel}</span>}
               {guestsLabel && <span>{guestsLabel}</span>}
               {quietHours && <span>{quietHours}</span>}
-              {rules?.otherRules && <span>{rules.otherRules}</span>}
+              {rules?.otherRules && <span style={{ whiteSpace: 'pre-line' }}>{rules.otherRules}</span>}
             </div>
           </section>
         )}

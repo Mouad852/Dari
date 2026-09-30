@@ -22,3 +22,14 @@ test('a listing says who offers it and leads to their profile and its report act
   await page.getByRole('button', { name: 'Signaler ce profil' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
 });
+
+test('description, house rules and bio keep the line breaks their author typed', async ({ page }) => {
+  // innerText reflects rendering: a newline survives only where it is drawn as a line break.
+  await page.goto('/listings/listing-1');
+  const description = page.getByRole('main').getByText(/^Une chambre calme/);
+  await expect.poll(() => description.evaluate((element: HTMLElement) => element.innerText)).toMatch(/^Une chambre calme\.\nCharges comprises\./);
+  await expect(page.getByText(/^Ménage le samedi/)).toHaveJSProperty('innerText', 'Ménage le samedi.\nPas de fête.');
+
+  await page.goto('/profile/other-user');
+  await expect(page.getByText(/^Étudiante à Rabat/)).toHaveJSProperty('innerText', 'Étudiante à Rabat.\nNon-fumeuse.');
+});

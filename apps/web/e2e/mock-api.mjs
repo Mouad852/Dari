@@ -23,7 +23,8 @@ const PORT = Number(process.env.E2E_MOCK_PORT ?? 4110);
 // resolved against the first NEXT_PUBLIC_MEDIA_ORIGINS entry.
 const CDN_ORIGIN = process.env.E2E_MOCK_CDN_ORIGIN ?? `http://127.0.0.1:${PORT}`;
 const now = '2026-09-20T10:00:00Z';
-const JSON_LD_BREAKOUT_DESCRIPTION = 'Une chambre calme. </script><script>window.__jsonLdBreakout = true</script>';
+// Also carries a line break as an owner types one: the detail page has to keep it.
+const JSON_LD_BREAKOUT_DESCRIPTION = 'Une chambre calme.\nCharges comprises. </script><script>window.__jsonLdBreakout = true</script>';
 
 const RELATIVE_COVER = '/uploads/listings/e2e-owner/e2e-relative-cover.png';
 const ABSOLUTE_COVER = `${CDN_ORIGIN}/cdn/listings/e2e-owner/e2e-absolute-cover.png`;
@@ -86,7 +87,7 @@ const detail = (id = 'listing-1', status = 'PENDING_REVIEW') => ({
   rejectionReason: null,
   amenityCodes: ['WIFI'],
   photos: [],
-  houseRules: { smokingAllowed: false, petsAllowed: true, guestsAllowed: true, quietHoursStart: null, quietHoursEnd: null, otherRules: null },
+  houseRules: { smokingAllowed: false, petsAllowed: true, guestsAllowed: true, quietHoursStart: null, quietHoursEnd: null, otherRules: 'Ménage le samedi.\nPas de fête.' },
   rooms: [],
   // The same person as /users/other-user and the messaging thread.
   owner: { id: 'other-user', displayName: 'Amina', avatarUrl: null, verification: 'EMAIL', memberSince: now },
@@ -401,7 +402,7 @@ async function handle(request, response) {
     return response.end('<html><body>502 Bad Gateway</body></html>');
   }
   // With a photo, where the listing's owner block has none: both avatar paths render somewhere.
-  if (path === '/users/other-user' && method === 'GET') return sendJson(response, 200, { id: 'other-user', displayName: 'Amina', city: 'Rabat', bio: null, avatarUrl: '/uploads/avatars/other-user.png', verification: 'EMAIL', memberSince: now, activeListingCount: 1 });
+  if (path === '/users/other-user' && method === 'GET') return sendJson(response, 200, { id: 'other-user', displayName: 'Amina', city: 'Rabat', bio: 'Étudiante à Rabat.\nNon-fumeuse.', avatarUrl: '/uploads/avatars/other-user.png', verification: 'EMAIL', memberSince: now, activeListingCount: 1 });
 
   if (path === '/favorites/ids' && method === 'GET') return sendJson(response, 200, [...state.favorites]);
   if (path === '/favorites' && method === 'GET') return sendJson(response, 200, { items: publicListings.filter((item) => state.favorites.has(item.id)), nextCursor: null, hasMore: false });

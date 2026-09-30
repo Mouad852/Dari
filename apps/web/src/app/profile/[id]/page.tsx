@@ -106,7 +106,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
               dev-mode warning ("can lead to styling bugs"), not just noise
               -- found 2026-09-09 via the console during a live QA pass.
             */}
-            <p style={{ margin: 0, fontWeight: 'var(--weight-regular)', fontSize: 'var(--text-body-md)', fontFamily: 'var(--font-ui)', color: 'var(--text-heading)', lineHeight: 1.6 }}>{profile.bio}</p>
+            <p style={{ margin: 0, fontWeight: 'var(--weight-regular)', fontSize: 'var(--text-body-md)', fontFamily: 'var(--font-ui)', color: 'var(--text-heading)', lineHeight: 1.6, whiteSpace: 'pre-line' }}>{profile.bio}</p>
           </section>
         ) : null}
 

@@ -347,8 +347,13 @@ number when the task lands (3.1 and 5.3 both add one).
   `SmtpNotificationSender` to a local Mailpit: subjects and UTF-8 bodies intact. (2026-09-30)
 - [ ] **4.3c** P1-10 / P0-1 (from 4.3b) — new-message email template (sender's first name, listing
   title, link to the thread). Lands with 2.1b; blocked on the P0-1 throttle decision. Files: `NotificationTemplates`, `NotificationTemplatesTest`.
-- [ ] **4.4a** P2-13 — `whiteSpace: 'pre-line'` on description, rules and bio. Files:
-  `ListingDetailContent.tsx`, `profile/[id]/page.tsx`. Verify: Web + screenshot.
+- [x] **4.4a** P2-13 — `whiteSpace: 'pre-line'` on description, rules and bio. Files:
+  `ListingDetailContent.tsx`, `profile/[id]/page.tsx`. Verify: Web + screenshot. New
+  `listing-host` test reads `innerText` (a newline survives only if rendered); mock data now
+  carries line breaks. Full suite (dev + production): 69 passed, 1 skip, 3 failed: the new test
+  (listing-1's description is the JSON-LD one; fixed) and `account-journeys` signup +
+  `public-search`, which fail under full-suite load only. Rerun: those four specs 9/9 on dev,
+  production project 21 + 1 skip. 360 px screenshots of description, rules and bio. (2026-09-30)
 - [ ] **4.4b** P2-14 — auto-growing `<textarea>` composer, Enter sends, Shift+Enter newline,
   `maxLength=4000`. Files: `messages/[id]/page.tsx`, `message-thread.spec.ts`. Verify: Web + spec.
 - [ ] **4.4c** P2-15 — thread page `height: 100dvh` with `100vh` fallback. Files:
