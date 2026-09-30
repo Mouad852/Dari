@@ -39,6 +39,8 @@ type E2eAuthState = {
   refreshCount?: number;
   /** Makes a forced refresh fail the way the SDK does when it cannot reach Firebase. */
   refreshFails?: boolean;
+  /** Every address a password-reset email was requested for, so a test can assert who gets it. */
+  passwordResetEmails?: string[];
 };
 
 declare global {
@@ -171,7 +173,11 @@ export function onAuthChange(callback: (user: FirebaseUser | null) => void): () 
 }
 
 export function sendPasswordReset(email: string): Promise<void> {
-  if (e2eAuthState()) return Promise.resolve();
+  const state = e2eAuthState();
+  if (state) {
+    window.__DARI_E2E_AUTH__ = { ...state, passwordResetEmails: [...(state.passwordResetEmails ?? []), email] };
+    return Promise.resolve();
+  }
   return sendPasswordResetEmail(getFirebaseAuth(), email);
 }
 

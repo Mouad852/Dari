@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Check, ChevronRight, KeyRound, Lock, ShieldCheck, Smartphone, TriangleAlert } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Check, KeyRound, Lock, ShieldCheck } from 'lucide-react';
 
+import { Button } from '@/components/ds/Button';
 import { apiFetch, ApiError } from '@/lib/api';
-import { getIdToken } from '@/lib/firebase';
+import { getIdToken, sendPasswordReset } from '@/lib/firebase';
 import { VERIFICATION_LABELS } from '@/lib/labels';
 import type { Me } from '@/types/api';
 
@@ -13,22 +14,30 @@ import type { Me } from '@/types/api';
  * actifs", "Dernière modification il y a 3 mois", "Vérification de compte:
  * Validé" -- none of it backed by anything real, and the last one directly
  * contradicted /account/profile's own (real) "Non vérifié" badge for the
- * same account. Found 2026-09-09. There is no session list or password-
- * change timestamp anywhere in the API, so those two rows say so honestly
- * instead of inventing numbers; only the auth method and verification tier
- * are things `/users/me` actually knows.
+ * same account. Found 2026-09-09.
+ *
+ * The replacement still said password and devices were "Géré directement
+ * dans Firebase", under a hard-coded "Niveau élevé" badge -- a console no
+ * member can open (audit P1-12). The page now shows only what `/users/me`
+ * knows, plus the one action a member can actually take: a password-reset
+ * email to their own address. There is no session list in the API, so there
+ * is no devices row.
  */
 type SecurityItem = {
   id: string;
   title: string;
   detail: string;
-  status: string;
+  status?: string;
+  action?: ReactNode;
   icon: typeof Lock;
 };
+
+type ResetStatus = 'idle' | 'sending' | 'sent' | 'failed';
 
 export default function AccountSecurityPage() {
   const [profile, setProfile] = useState<Me | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resetStatus, setResetStatus] = useState<ResetStatus>('idle');
 
   useEffect(() => {
     let isCurrent = true;
@@ -53,29 +62,45 @@ export default function AccountSecurityPage() {
     };
   }, []);
 
+  /**
+   * The same Firebase reset flow as "Mot de passe oublié ?" on /sign-in, sent
+   * to the signed-in account's own address -- so, unlike sign-in, there is no
+   * account-enumeration concern and any failure is reported as one.
+   */
+  async function handlePasswordReset() {
+    if (!profile) return;
+    setResetStatus('sending');
+    try {
+      await sendPasswordReset(profile.email);
+      setResetStatus('sent');
+    } catch {
+      setResetStatus('failed');
+    }
+  }
+
   const verificationLabel = profile ? VERIFICATION_LABELS[profile.verification] : 'Chargement…';
+  const emailStatus = profile ? (profile.emailVerified ? 'Confirmé' : 'À confirmer') : 'Chargement…';
 
   const items: SecurityItem[] = [
     {
       id: 'auth-method',
       title: 'Méthode d’authentification',
-      detail: profile?.emailVerified ? 'Identité vérifiée via Firebase' : 'Email non confirmé auprès de Firebase',
+      detail: profile?.emailVerified ? 'E-mail et mot de passe, adresse confirmée' : 'E-mail et mot de passe, adresse non confirmée',
       status: profile?.emailVerified ? 'Active' : 'À confirmer',
       icon: ShieldCheck,
     },
     {
       id: 'password',
       title: 'Mot de passe',
-      detail: 'Géré directement dans Firebase',
-      status: 'Non disponible',
+      detail: profile
+        ? `Recevez à ${profile.email} un lien pour choisir un nouveau mot de passe.`
+        : 'Recevez par e-mail un lien pour choisir un nouveau mot de passe.',
+      action: (
+        <Button variant="secondary" size="sm" loading={resetStatus === 'sending'} disabled={!profile} onClick={handlePasswordReset}>
+          Changer mon mot de passe
+        </Button>
+      ),
       icon: KeyRound,
-    },
-    {
-      id: 'device',
-      title: 'Appareils connectés',
-      detail: 'Gérés directement dans Firebase',
-      status: 'Non disponible',
-      icon: Smartphone,
     },
     {
       id: 'review',
@@ -98,36 +123,11 @@ export default function AccountSecurityPage() {
       }}
     >
       <div style={{ maxWidth: 'var(--container-max)', margin: '0 auto', display: 'grid', gap: 'var(--space-5)' }}>
-        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-              Compte
-            </div>
-            <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Sécurité</h1>
+        <header>
+          <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+            Compte
           </div>
-
-          {/* No in-app edit flow exists for any of this -- it's all managed in
-              Firebase, per the notice below. Disabled rather than removed so
-              the page still says plainly what "Modifier" would have meant. */}
-          <button
-            type="button"
-            disabled
-            title="Géré directement dans Firebase"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.45rem',
-              border: '1px solid var(--border-hairline)',
-              borderRadius: 'var(--radius-pill)',
-              background: 'var(--surface-card)',
-              color: 'var(--text-subtle)',
-              padding: '0.7rem 1rem',
-              font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)',
-              cursor: 'not-allowed',
-            }}
-          >
-            Modifier
-          </button>
+          <h1 style={{ margin: '0.35rem 0 0', font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Sécurité</h1>
         </header>
 
         {error ? (
@@ -157,29 +157,13 @@ export default function AccountSecurityPage() {
                 gap: 'var(--space-4)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                    Protection du compte
-                  </div>
-                  <div style={{ marginTop: 4, font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Gestion par Firebase</div>
+              <div>
+                <div style={{ font: 'var(--type-label)', letterSpacing: 'var(--ls-caps)', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                  Protection du compte
                 </div>
-
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    borderRadius: 'var(--radius-pill)',
-                    background: 'var(--atlas-50)',
-                    color: 'var(--atlas-700)',
-                    padding: '0.45rem 0.7rem',
-                    font: 'var(--type-label)',
-                  }}
-                >
-                  <ShieldCheck size={12} aria-hidden="true" />
-                  Niveau élevé
-                </span>
+                <div style={{ marginTop: 4, font: 'var(--type-h3)', color: 'var(--text-heading)', overflowWrap: 'anywhere' }}>
+                  {profile?.email ?? 'Chargement…'}
+                </div>
               </div>
 
               <div
@@ -190,16 +174,16 @@ export default function AccountSecurityPage() {
                 }}
               >
                 <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
-                  <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Protection</div>
-                  <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>Firebase</div>
+                  <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Connexion</div>
+                  <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>E-mail</div>
                 </div>
                 <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
                   <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Vérification</div>
                   <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>{verificationLabel}</div>
                 </div>
                 <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
-                  <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Alertes</div>
-                  <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>Non disponible</div>
+                  <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Adresse e-mail</div>
+                  <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>{emailStatus}</div>
                 </div>
               </div>
             </section>
@@ -215,12 +199,13 @@ export default function AccountSecurityPage() {
                 gap: 'var(--space-3)',
               }}
             >
-              {items.map(({ id, title, detail, status, icon: Icon }) => (
+              {items.map(({ id, title, detail, status, action, icon: Icon }) => (
                 <div
                   key={id}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
+                    flexWrap: 'wrap',
                     gap: 'var(--space-3)',
                     border: '1px solid var(--border-hairline)',
                     borderRadius: 'var(--radius-card-inner)',
@@ -232,6 +217,7 @@ export default function AccountSecurityPage() {
                     style={{
                       width: 42,
                       height: 42,
+                      flexShrink: 0,
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -243,12 +229,12 @@ export default function AccountSecurityPage() {
                     <Icon size={18} aria-hidden="true" />
                   </span>
 
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
                     <div style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>{title}</div>
-                    <div style={{ marginTop: 4, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>{detail}</div>
+                    <div style={{ marginTop: 4, font: 'var(--type-body-sm)', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{detail}</div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {action ?? (
                     <span
                       style={{
                         display: 'inline-flex',
@@ -262,35 +248,23 @@ export default function AccountSecurityPage() {
                     >
                       {status}
                     </span>
-                    <ChevronRight size={18} color="var(--text-subtle)" aria-hidden="true" />
-                  </div>
+                  )}
                 </div>
               ))}
+
+              {resetStatus === 'sent' && profile ? (
+                <p role="status" style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-heading)' }}>
+                  Un e-mail de réinitialisation vient d’être envoyé à {profile.email}. Le lien vous permet de choisir un nouveau mot de passe.
+                </p>
+              ) : null}
+              {resetStatus === 'failed' ? (
+                <p role="alert" style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--danger)' }}>
+                  Impossible d’envoyer l’e-mail pour le moment. Réessayez.
+                </p>
+              ) : null}
             </section>
           </>
         )}
-
-        <section
-          style={{
-            background: 'var(--surface-card)',
-            border: '1px solid var(--border-hairline)',
-            borderRadius: 'var(--radius-card)',
-            boxShadow: 'var(--shadow-xs)',
-            padding: 'var(--space-4)',
-            display: 'grid',
-            gap: 'var(--space-3)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--saffron-700)' }}>
-            <TriangleAlert size={18} aria-hidden="true" />
-            <div style={{ font: 'var(--weight-semibold) var(--type-body) var(--font-ui)' }}>Attention</div>
-          </div>
-
-          {/* Longhand, not the `font` shorthand -- see ReportDialog.tsx for why. */}
-          <div style={{ fontWeight: 'var(--weight-regular)', fontSize: 'var(--text-body-sm)', fontFamily: 'var(--font-ui)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-            La gestion des sessions, du mot de passe et des alertes de connexion est assurée dans Firebase. Cette page ne simule pas de données d’appareils.
-          </div>
-        </section>
       </div>
     </main>
   );

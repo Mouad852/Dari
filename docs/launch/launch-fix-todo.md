@@ -307,9 +307,10 @@ number when the task lands (3.1 and 5.3 both add one).
   moderation, report "reçu" not "traité") and says new messages are not emailed yet. Files:
   `account/notifications/page.tsx`, `account-pages.spec.ts`. Verify: Web typecheck +
   `account-pages` (2/2). When 2.1 lands, add "Nouveaux messages" back (see 2.1b). (cbb9c64, 2026-09-29)
-- [ ] **4.1c** P1-12 — `/account/security`: "Changer mon mot de passe" sends a reset email via
+- [x] **4.1c** P1-12 — `/account/security`: "Changer mon mot de passe" sends a reset email via
   `sendPasswordReset(me.email)`; drop "Niveau élevé" and the Firebase copy. Files:
-  `account/security/page.tsx`, a spec using the e2e auth seam. Verify: Web + spec.
+  `account/security/page.tsx`, a spec using the e2e auth seam. Verify: Web typecheck +
+  `account-pages` (4/4, incl. axe); 360/768/1280 screenshots, no overflow. (2026-09-30)
 - [x] **4.1d** P1-12 — drop "Téléphone" from `PROFILE_COMPLETION_CHECKS` (four checks, a quarter
   each). Files: `account/page.tsx`, `account-pages.spec.ts`. Verify: Web typecheck +
   `account-pages` (3/3) — a complete profile without a phone hides the completion card.

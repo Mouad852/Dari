@@ -1,4 +1,5 @@
-import { expect, test } from './fixtures';
+import { e2eAuth } from '../playwright.config';
+import { expect, expectAccessible, test } from './fixtures';
 
 /* The account pages state only what the product actually does. */
 
@@ -28,4 +29,18 @@ test('there is no payments page: the hub does not offer one and old links land o
 
   await page.goto('/account/payments');
   await expect(page).toHaveURL(/\/account$/);
+});
+
+test('the security page sends a password-reset email to the account address', async ({ authenticatedPage: page }) => {
+  await page.goto('/account/security');
+  const main = page.getByRole('main');
+  await expect(main.getByText(e2eAuth.email).first()).toBeVisible();
+  // No made-up protection level, and no pointer to a console members cannot open.
+  await expect(main.getByText('Niveau élevé')).toHaveCount(0);
+  await expect(main.getByText(/Firebase/)).toHaveCount(0);
+  await expectAccessible(page);
+
+  await main.getByRole('button', { name: 'Changer mon mot de passe' }).click();
+  await expect(main.getByRole('status')).toContainText(`envoyé à ${e2eAuth.email}`);
+  expect(await page.evaluate(() => window.__DARI_E2E_AUTH__?.passwordResetEmails)).toEqual([e2eAuth.email]);
 });
