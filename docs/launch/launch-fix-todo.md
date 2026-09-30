@@ -324,9 +324,10 @@ number when the task lands (3.1 and 5.3 both add one).
 - [x] **4.2b** P1-5 — server fills white before drawing PNG alpha onto RGB. Files:
   `media/ImageProcessor.java`, `ImageProcessorTest`. Verify: API `-Dtest=ImageProcessorTest`
   (7/7; the new transparent-PNG test was red — black pixels — before the fix). (2026-09-30)
-- [ ] **4.2c** P1-5 — server-side EXIF orientation fallback for API clients. Files:
-  `ImageProcessor.java`, `ImageProcessorTest` (orientation-6 fixture). Verify: API
-  `-Dtest=ImageProcessorTest`.
+- [x] **4.2c** P1-5 — server-side EXIF orientation fallback for API clients. Files:
+  `ImageProcessor.java`, new `ExifOrientation.java`, `ImageProcessorTest` (orientation 6 in both
+  byte orders, 8, 3, 1, and a malformed IFD offset). Verify: API `-Dtest=ImageProcessorTest`
+  (13/13). (2026-09-30)
 - [ ] **4.3a** P1-10 — `dari.public-site-url` config; per-event subject/body templates (greeting,
   what happened, reason, next step, link, footer) for moderation events. Files:
   `OutboxNotificationService.java`, `SmtpNotificationSender.java`, `application*.yml`,

@@ -3,9 +3,13 @@ package ma.dari.api.media;
 import ma.dari.api.common.error.ApiException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.mock.web.MockMultipartFile;
 
 import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -48,6 +52,60 @@ class ImageProcessorTest {
         // JPEG is lossy, so "white" is every channel near 255.
         assertThat(List.of((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF)).allSatisfy(channel ->
                 assertThat(channel).isGreaterThan(245));
+    }
+
+    /*
+     * Stored 400x200: left half red, right half blue. Each case names where the red half must end
+     * up once the EXIF Orientation is applied, and the upright size.
+     */
+    @ParameterizedTest(name = "orientation {0} ({1}) puts red at the {2}")
+    @CsvSource({
+            "6, MM, top,    200, 400",
+            "6, II, top,    200, 400",
+            "8, MM, bottom, 200, 400",
+            "3, MM, right,  400, 200",
+            "1, MM, left,   400, 200",
+    })
+    void rotatesJpegPixelsUprightFromExifOrientation(int orientation, String byteOrder, String redSide,
+                                                     int width, int height) throws Exception {
+        BufferedImage stored = new BufferedImage(400, 200, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = stored.createGraphics();
+        graphics.setColor(Color.RED);
+        graphics.fillRect(0, 0, 200, 200);
+        graphics.setColor(Color.BLUE);
+        graphics.fillRect(200, 0, 200, 200);
+        graphics.dispose();
+        ByteArrayOutputStream jpeg = new ByteArrayOutputStream();
+        assertThat(ImageIO.write(stored, "jpg", jpeg)).isTrue();
+
+        ImageProcessor.EncodedImage encoded = ImageProcessor.process(new MockMultipartFile(
+                "file", "portrait.jpg", "image/jpeg", withOrientation(jpeg.toByteArray(), orientation, byteOrder)));
+
+        assertThat(encoded.width()).isEqualTo(width);
+        assertThat(encoded.height()).isEqualTo(height);
+        BufferedImage upright = ImageIO.read(new ByteArrayInputStream(encoded.bytes()));
+        assertThat(upright.getWidth()).isEqualTo(width);
+        int[] red = switch (redSide) {
+            case "top" -> new int[]{width / 2, height / 4};
+            case "bottom" -> new int[]{width / 2, height * 3 / 4};
+            case "left" -> new int[]{width / 4, height / 2};
+            default -> new int[]{width * 3 / 4, height / 2};
+        };
+        int[] blue = {width - 1 - red[0], height - 1 - red[1]};
+        assertThat(isMostly(upright.getRGB(red[0], red[1]), 16)).as("red side").isTrue();
+        assertThat(isMostly(upright.getRGB(blue[0], blue[1]), 0)).as("blue side").isTrue();
+    }
+
+    @Test
+    void ignoresMalformedExifInsteadOfFailingTheUpload() throws Exception {
+        byte[] truncated = withOrientation(imageBytes("jpg"), 6, "MM");
+        truncated[2 + 4 + 6 + 4] = 0x7F; // IFD0 offset now points far past the segment
+
+        ImageProcessor.EncodedImage encoded = ImageProcessor.process(new MockMultipartFile(
+                "file", "photo.jpg", "image/jpeg", truncated));
+
+        assertThat(encoded.width()).isEqualTo(320);
+        assertThat(encoded.height()).isEqualTo(240);
     }
 
     @Test
@@ -125,6 +183,34 @@ class ImageProcessorTest {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         assertThat(ImageIO.write(image, format, output)).isTrue();
         return output.toByteArray();
+    }
+
+    /** The JPEG with an EXIF APP1 holding only IFD0's Orientation tag, in the given TIFF byte order. */
+    private static byte[] withOrientation(byte[] jpeg, int orientation, String byteOrder) {
+        boolean intel = byteOrder.equals("II");
+        byte[] tiff = intel
+                ? new byte[]{'I', 'I', 0x2A, 0, 8, 0, 0, 0, 1, 0, 0x12, 0x01, 3, 0, 1, 0, 0, 0, (byte) orientation, 0, 0, 0, 0, 0, 0, 0}
+                : new byte[]{'M', 'M', 0, 0x2A, 0, 0, 0, 8, 0, 1, 0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, (byte) orientation, 0, 0, 0, 0, 0, 0};
+        ByteArrayOutputStream output = new ByteArrayOutputStream(jpeg.length + tiff.length + 10);
+        output.write(jpeg, 0, 2); // JPEG SOI
+        output.write(0xFF);
+        output.write(0xE1); // APP1
+        int length = 2 + 6 + tiff.length;
+        output.write(length >>> 8);
+        output.write(length);
+        output.writeBytes("Exif\u0000\u0000".getBytes(StandardCharsets.ISO_8859_1));
+        output.writeBytes(tiff);
+        output.write(jpeg, 2, jpeg.length - 2);
+        return output.toByteArray();
+    }
+
+    /** True when the channel at {@code channelShift} dominates (JPEG blurs colours slightly). */
+    private static boolean isMostly(int rgb, int channelShift) {
+        for (int shift : new int[]{16, 8, 0}) {
+            int value = (rgb >> shift) & 0xFF;
+            if (shift == channelShift ? value < 180 : value > 90) return false;
+        }
+        return true;
     }
 
     private static byte[] jpegWithExifMarker() throws Exception {

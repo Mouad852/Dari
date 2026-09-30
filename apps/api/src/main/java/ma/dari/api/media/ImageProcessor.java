@@ -10,6 +10,7 @@ import javax.imageio.stream.ImageInputStream;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -34,6 +35,7 @@ public final class ImageProcessor {
         if (file.getContentType() == null || !ALLOWED_MIME_TYPES.contains(file.getContentType())) {
             throw invalid("Type de fichier non pris en charge");
         }
+        int orientation = readOrientation(file);
         try (InputStream in = file.getInputStream();
              ImageInputStream imageInput = ImageIO.createImageInputStream(in)) {
             if (imageInput == null) throw invalid("Le fichier n'est pas une image valide");
@@ -49,9 +51,11 @@ public final class ImageProcessor {
 
                 BufferedImage original = reader.read(0);
                 if (original == null) throw invalid("Le fichier n'est pas une image valide");
-                int width = original.getWidth();
-                int height = original.getHeight();
-                validateDimensions(width, height);
+                validateDimensions(original.getWidth(), original.getHeight());
+                // Orientations 5-8 turn the picture a quarter, swapping its sides.
+                boolean quarterTurn = orientation >= 5;
+                int width = quarterTurn ? original.getHeight() : original.getWidth();
+                int height = quarterTurn ? original.getWidth() : original.getHeight();
 
                 BufferedImage safeImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
                 Graphics2D graphics = safeImage.createGraphics();
@@ -60,7 +64,7 @@ public final class ImageProcessor {
                     // JPEG has no alpha: a transparent PNG pixel drawn onto the zeroed RGB buffer comes out black.
                     graphics.setColor(Color.WHITE);
                     graphics.fillRect(0, 0, width, height);
-                    graphics.drawImage(original, 0, 0, width, height, null);
+                    graphics.drawImage(original, uprightTransform(orientation, original.getWidth(), original.getHeight()), null);
                 } finally {
                     graphics.dispose();
                 }
@@ -73,6 +77,34 @@ public final class ImageProcessor {
         } catch (IOException ex) {
             throw new ApiException(500, ErrorCode.INTERNAL_ERROR, "L'enregistrement de la photo a échoué");
         }
+    }
+
+    /** Only JPEG carries the EXIF tag in practice; a PNG, or any read failure, is drawn as stored. */
+    private static int readOrientation(MultipartFile file) {
+        if (!"image/jpeg".equals(file.getContentType())) return ExifOrientation.NORMAL;
+        try (InputStream in = file.getInputStream()) {
+            return ExifOrientation.read(in);
+        } catch (IOException ex) {
+            return ExifOrientation.NORMAL;
+        }
+    }
+
+    /**
+     * Maps stored pixels (w x h) to the upright picture the EXIF Orientation value describes:
+     * x' = m00*x + m01*y + m02, y' = m10*x + m11*y + m12. The constructor takes them in the order
+     * (m00, m10, m01, m11, m02, m12).
+     */
+    static AffineTransform uprightTransform(int orientation, int w, int h) {
+        return switch (orientation) {
+            case 2 -> new AffineTransform(-1, 0, 0, 1, w, 0);   // mirrored horizontally
+            case 3 -> new AffineTransform(-1, 0, 0, -1, w, h);  // rotated 180°
+            case 4 -> new AffineTransform(1, 0, 0, -1, 0, h);   // mirrored vertically
+            case 5 -> new AffineTransform(0, 1, 1, 0, 0, 0);    // transposed
+            case 6 -> new AffineTransform(0, 1, -1, 0, h, 0);   // needs 90° clockwise
+            case 7 -> new AffineTransform(0, -1, -1, 0, h, w);  // transversed
+            case 8 -> new AffineTransform(0, -1, 1, 0, 0, w);   // needs 90° counter-clockwise
+            default -> new AffineTransform();
+        };
     }
 
     private static void validateDimensions(int width, int height) {
