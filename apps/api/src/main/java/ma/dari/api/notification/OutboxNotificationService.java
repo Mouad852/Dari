@@ -9,33 +9,39 @@ import org.springframework.transaction.annotation.Transactional;
 public class OutboxNotificationService implements NotificationService {
 
     private final NotificationOutboxRepository outbox;
+    private final NotificationTemplates templates;
 
-    public OutboxNotificationService(NotificationOutboxRepository outbox) {
+    public OutboxNotificationService(NotificationOutboxRepository outbox, NotificationTemplates templates) {
         this.outbox = outbox;
+        this.templates = templates;
     }
 
     @Override
     @Transactional
     public void listingApproved(Object listing) {
-        enqueue("LISTING_APPROVED", listing, "Votre annonce a été approuvée");
+        Listing target = listing(listing);
+        enqueue("LISTING_APPROVED", target, templates.listingApproved(target));
     }
 
     @Override
     @Transactional
     public void listingRejected(Object listing, String reason) {
-        enqueue("LISTING_REJECTED", listing, reason);
+        Listing target = listing(listing);
+        enqueue("LISTING_REJECTED", target, templates.listingRejected(target, reason));
     }
 
     @Override
     @Transactional
     public void listingSuspended(Object listing) {
-        enqueue("LISTING_SUSPENDED", listing, "Votre annonce a été suspendue");
+        Listing target = listing(listing);
+        enqueue("LISTING_SUSPENDED", target, templates.listingSuspended(target));
     }
 
     @Override
     @Transactional
     public void listingReinstated(Object listing) {
-        enqueue("LISTING_REINSTATED", listing, "Votre annonce a été rétablie");
+        Listing target = listing(listing);
+        enqueue("LISTING_REINSTATED", target, templates.listingReinstated(target));
     }
 
     @Override
@@ -54,19 +60,19 @@ public class OutboxNotificationService implements NotificationService {
     @Override
     @Transactional
     public void userWarned(User user, String reason) {
-        enqueue("USER_WARNED", user, reasonOrDefault(reason, "Nous vous invitons à vérifier votre activité sur Dari"));
+        enqueue("USER_WARNED", user, templates.userWarned(user, reason));
     }
 
     @Override
     @Transactional
     public void userSuspended(User user, String reason) {
-        enqueue("USER_SUSPENDED", user, reason);
+        enqueue("USER_SUSPENDED", user, templates.userSuspended(user, reason));
     }
 
     @Override
     @Transactional
     public void userBanned(User user, String reason) {
-        enqueue("USER_BANNED", user, reasonOrDefault(reason, "Votre compte a été banni de Dari"));
+        enqueue("USER_BANNED", user, templates.userBanned(user, reason));
     }
 
     @Override
@@ -75,6 +81,21 @@ public class OutboxNotificationService implements NotificationService {
         enqueue("REPORT_ACKNOWLEDGED", reporter, "Votre signalement a bien été reçu");
     }
 
+    private void enqueue(String eventType, Listing listing, NotificationTemplates.Email email) {
+        outbox.save(new NotificationOutbox(eventType, listing.getOwner().getId(), listing.getId(),
+                email.subject(), email.body()));
+    }
+
+    private void enqueue(String eventType, User user, NotificationTemplates.Email email) {
+        outbox.save(new NotificationOutbox(eventType, user.getId(), null, email.subject(), email.body()));
+    }
+
+    private static Listing listing(Object target) {
+        if (target instanceof Listing listing) return listing;
+        throw new IllegalArgumentException("Unsupported notification target");
+    }
+
+    /** Events still sent as a short phrase under the generic subject (expiry, reports: task 4.3b). */
     private void enqueue(String eventType, Object target, String payload) {
         if (target instanceof Listing listing) {
             outbox.save(new NotificationOutbox(eventType, listing.getOwner().getId(), listing.getId(), payload));
@@ -83,9 +104,5 @@ public class OutboxNotificationService implements NotificationService {
         } else {
             throw new IllegalArgumentException("Unsupported notification target");
         }
-    }
-
-    private String reasonOrDefault(String reason, String fallback) {
-        return reason == null || reason.isBlank() ? fallback : reason;
     }
 }

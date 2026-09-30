@@ -27,6 +27,10 @@ public class NotificationOutbox {
     @Column(name = "aggregate_id")
     private UUID aggregateId;
 
+    /** Null on rows queued before V31; the sender then uses a generic subject. */
+    @Column(columnDefinition = "text")
+    private String subject;
+
     @Column(nullable = false, columnDefinition = "text")
     private String payload;
 
@@ -56,9 +60,14 @@ public class NotificationOutbox {
     }
 
     public NotificationOutbox(String eventType, UUID recipientId, UUID aggregateId, String payload) {
+        this(eventType, recipientId, aggregateId, null, payload);
+    }
+
+    public NotificationOutbox(String eventType, UUID recipientId, UUID aggregateId, String subject, String payload) {
         this.eventType = eventType;
         this.recipientId = recipientId;
         this.aggregateId = aggregateId;
+        this.subject = subject;
         this.payload = payload;
     }
 
@@ -72,6 +81,10 @@ public class NotificationOutbox {
 
     public UUID getAggregateId() {
         return aggregateId;
+    }
+
+    public String getSubject() {
+        return subject;
     }
 
     public String getPayload() {

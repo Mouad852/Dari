@@ -60,6 +60,8 @@ dari:
       # and the "DB unreachable" alarm goes off on the missing data.
       enabled: ${DARI_METRICS_CLOUDWATCH_ENABLED:true}
   web-origins: ${DARI_WEB_ORIGIN}
+  # Optional: links in emails default to the first DARI_WEB_ORIGIN.
+  public-site-url: ${DARI_PUBLIC_SITE_URL:}
   firebase:
     credentials-path: ${FIREBASE_CREDENTIALS_PATH}
   location:

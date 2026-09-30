@@ -23,11 +23,12 @@ public class SmtpNotificationSender implements NotificationSender {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(from);
         message.setTo(recipientEmail);
-        message.setSubject(subject(event.getEventType()));
+        message.setSubject(event.getSubject() != null ? event.getSubject() : subject(event.getEventType()));
         message.setText(event.getPayload());
         mailSender.send(message);
     }
 
+    /** For rows queued before V31, and events not yet on a template, which carry no subject of their own. */
     private String subject(String eventType) {
         return switch (eventType) {
             case "REPORT_ACKNOWLEDGED" -> "Votre signalement Dari";

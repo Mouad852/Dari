@@ -328,11 +328,15 @@ number when the task lands (3.1 and 5.3 both add one).
   `ImageProcessor.java`, new `ExifOrientation.java`, `ImageProcessorTest` (orientation 6 in both
   byte orders, 8, 3, 1, and a malformed IFD offset). Verify: API `-Dtest=ImageProcessorTest`
   (13/13). (2026-09-30)
-- [ ] **4.3a** P1-10 — `dari.public-site-url` config; per-event subject/body templates (greeting,
+- [x] **4.3a** P1-10 — `dari.public-site-url` config; per-event subject/body templates (greeting,
   what happened, reason, next step, link, footer) for moderation events. Files:
   `OutboxNotificationService.java`, `SmtpNotificationSender.java`, `application*.yml`,
   `NotificationDeliveryServiceTest`, `ProductionConfigValidatorTest` if the property is required
-  in production. Verify: API `-Dtest=NotificationDeliveryServiceTest`.
+  in production. Verify: API `-Dtest=NotificationDeliveryServiceTest`. Done with new
+  `NotificationTemplates` + V31 `notification_outbox.subject`; the site URL is optional (defaults
+  to the first web origin, validated when set). NotificationTemplatesTest 6, SmtpNotificationSenderTest 2,
+  NotificationDeliveryServiceTest 3, ProductionConfigValidatorTest 56, AdminApiTest 20,
+  ReportApiTest 9, ListingExpiryIntegrationTest 8, FlywayMigrationSmokeTest 1 — all green. (2026-09-30)
 - [ ] **4.3b** P1-10 / P0-3 — templates for expiry (title + link to `/account/listings`), report
   acknowledgement and new-message events. Files: same. Verify: API
   `-Dtest=NotificationDeliveryServiceTest`; one of each to Mailpit.

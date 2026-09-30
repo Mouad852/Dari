@@ -297,7 +297,8 @@ class AdminApiTest extends AbstractIntegrationTest {
                 .anyMatch(event -> "LISTING_REJECTED".equals(event.getEventType())
                         && event.getAggregateId().equals(pending.getId())
                         && event.getRecipientId().equals(owner.getId())
-                        && event.getPayload().equals("Les photos ne correspondent pas au logement")))
+                        && event.getSubject().equals("Votre annonce « " + pending.getTitle() + " » n’a pas été validée")
+                        && event.getPayload().contains("Motif : Les photos ne correspondent pas au logement")))
                 .isTrue();
     }
 
@@ -515,7 +516,8 @@ class AdminApiTest extends AbstractIntegrationTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(warning.getRecipientId()).isEqualTo(owner.getId());
-        assertThat(warning.getPayload()).isEqualTo("Veuillez verifier votre annonce");
+        assertThat(warning.getSubject()).isEqualTo("Un avertissement concernant votre compte Dari");
+        assertThat(warning.getPayload()).contains("Motif : Veuillez verifier votre annonce");
         assertThat(reports.findByTargetTypeAndTargetIdAndStatus(
                 ReportTarget.LISTING, listing.getId(), ReportStatus.PENDING)).isEmpty();
         assertThat(reports.findByTargetTypeAndTargetIdAndStatus(

@@ -703,6 +703,9 @@ history.
 | --- | --- |
 | `SPRING_PROFILES_ACTIVE=production`, `DARI_RELEASE_VERSION`, `DB_URL`, `DARI_WEB_ORIGIN`, `DARI_TRUSTED_PROXY_IPS`, `DARI_MEDIA_PROVIDER=s3`, `DARI_MEDIA_PUBLIC_BASE_URL`, `DARI_MEDIA_S3_ENDPOINT`, `DARI_MEDIA_S3_REGION`, `DARI_MEDIA_S3_BUCKET`, `SMTP_HOST`, `SMTP_PORT=587` | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `DARI_LOCATION_FUZZ_SECRET`, `DARI_SSR_SHARED_SECRET`, `DARI_MEDIA_S3_ACCESS_KEY`, `DARI_MEDIA_S3_SECRET_KEY`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `DARI_NOTIFICATIONS_FROM`, Firebase service-account JSON |
 
+Optional: `DARI_PUBLIC_SITE_URL`, the https origin that links in notification
+emails point to. Unset, they use the first `DARI_WEB_ORIGIN` entry.
+
 Set `FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase/service-account.json` in
 the API container. Add a non-essential BusyBox init container that reads the
 Firebase JSON SecureString, writes it to a task-scoped shared volume, then

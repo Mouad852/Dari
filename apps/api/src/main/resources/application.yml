@@ -148,6 +148,8 @@ dari:
       # Tests and VPC-endpoint setups only; empty means the regional AWS endpoint.
       endpoint: ${DARI_METRICS_CLOUDWATCH_ENDPOINT:}
   web-origins: ${DARI_WEB_ORIGIN:http://localhost:3000}
+  # Base of the links in notification emails. Empty means the first web origin.
+  public-site-url: ${DARI_PUBLIC_SITE_URL:}
   upload-dir: ${DARI_UPLOAD_DIR:./uploads}
   media:
     provider: ${DARI_MEDIA_PROVIDER:local}

@@ -62,6 +62,12 @@ public class ProductionConfigValidator
                     "must be a comma-separated list of https origins with no path or trailing slash");
         }
 
+        // Optional (the first web origin is the default), but a link in every email when set.
+        String siteUrl = environment.getProperty("dari.public-site-url", "");
+        if (!siteUrl.isBlank() && (siteUrl.contains(",") || !allHttpsOrigins(siteUrl))) {
+            check.invalid("DARI_PUBLIC_SITE_URL", "must be one https origin with no path or trailing slash");
+        }
+
         String credentials = check.required("FIREBASE_CREDENTIALS_PATH", "dari.firebase.credentials-path");
         if (credentials != null && !readableFile(credentials)) {
             check.invalid("FIREBASE_CREDENTIALS_PATH", "must point to a readable file");

@@ -125,10 +125,10 @@ moderator warnings from the report queue:
 
 ```java
 public interface NotificationService {
-    void listingApproved(Object listing);           // "Votre annonce a été approuvée"
+    void listingApproved(Object listing);
     void listingRejected(Object listing, String reason);
-    void listingSuspended(Object listing);          // "Votre annonce a été suspendue"
-    void listingReinstated(Object listing);         // "Votre annonce a été rétablie"
+    void listingSuspended(Object listing);
+    void listingReinstated(Object listing);
     void listingExpiringSoon(Object listing, int daysRemaining);
     void listingExpired(Object listing);            // "Votre annonce a expiré et doit être renouvelée"
     void userWarned(User user, String reason);
@@ -138,7 +138,7 @@ public interface NotificationService {
 }
 ```
 
-Implementations (currently `OutboxNotificationService`) persist to the outbox table. The delivery service sends the persisted payloads unchanged. The `WARN` report action uses `userWarned` for the reported user or listing owner, then marks pending reports as acted on in the same transaction.
+Implementations (currently `OutboxNotificationService`) persist to the outbox table. The delivery service sends the persisted subject and payload unchanged. The `WARN` report action uses `userWarned` for the reported user or listing owner, then marks pending reports as acted on in the same transaction.
 
 ## Configuration
 
@@ -164,7 +164,15 @@ See [docs/operations/smtp-configuration.md](../../../../../../../../../docs/oper
 
 ## Copy and Content
 
-All French notification copy is defined at enqueue time in `OutboxNotificationService` and sent unchanged by the delivery service. The payloads are **plain text**:
+All French notification copy is built at enqueue time and sent unchanged by the delivery service.
+Moderation events (listing approved, rejected, suspended, reinstated; account warned, suspended,
+banned) come from `NotificationTemplates`: a subject naming the listing, and a body with a greeting,
+what happened, the moderator's reason when there is one, the next step with a link, and a footer.
+Links start at `dari.public-site-url` (`DARI_PUBLIC_SITE_URL`), which defaults to the first
+`dari.web-origins` entry. The subject is stored in `notification_outbox.subject` (V31); rows without
+one (queued before V31, or events not yet on a template) are sent as "Notification Dari".
+
+The payloads are **plain text**:
 
 - No HTML, no markdown
 - No exclamation marks
@@ -172,10 +180,24 @@ All French notification copy is defined at enqueue time in `OutboxNotificationSe
 - Sentence case, plain and non-blaming
 - Report acknowledgments are generic (no outcome revealed)
 
-Examples:
-- Listing approval: `"Votre annonce a été approuvée"`
-- Expiry warning: `"Votre annonce expire dans 7 jours"`
-- Report acknowledged: `"Votre signalement a bien été reçu"`
+Example (rejection):
+
+```
+Subject: Votre annonce « Chambre lumineuse à Agdal » n’a pas été validée
+
+Bonjour Salma,
+
+Votre annonce « Chambre lumineuse à Agdal » n’a pas été validée par la modération.
+
+Motif : Photos floues
+
+Vous pouvez la modifier depuis votre espace, puis la soumettre à nouveau : https://dari.ma/account/listings
+
+L’équipe Dari
+--
+Vous recevez cet e-mail parce qu’il concerne votre compte Dari.
+Conditions d’utilisation : https://dari.ma/legal/terms
+```
 
 ## Testing
 
