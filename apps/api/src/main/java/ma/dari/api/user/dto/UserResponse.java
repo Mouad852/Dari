@@ -2,6 +2,7 @@ package ma.dari.api.user.dto;
 
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRole;
+import ma.dari.api.user.UserStatus;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -21,6 +22,12 @@ public record UserResponse(UUID id,
                            String bio,
                            String avatarUrl,
                            UserRole role,
+                           /*
+                            * ACTIVE or SUSPENDED: a suspended account can still sign in
+                            * and read, and the web shows why its writes are refused
+                            * (audit P2-11). A banned or deleted one never gets here.
+                            */
+                           UserStatus status,
                            VerificationTier verification,
                            Instant createdAt) {
 
@@ -32,6 +39,6 @@ public record UserResponse(UUID id,
         return new UserResponse(
                 u.getId(), u.getEmail(), u.isEmailVerified(), u.getPhone(), u.isPhoneVerified(),
                 u.getFirstName(), u.getDisplayName(), u.getCity(), u.getBio(), avatarUrl,
-                u.getRole(), VerificationTier.of(u), u.getCreatedAt());
+                u.getRole(), u.getStatus(), VerificationTier.of(u), u.getCreatedAt());
     }
 }

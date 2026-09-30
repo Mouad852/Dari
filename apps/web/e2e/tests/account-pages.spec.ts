@@ -66,3 +66,21 @@ test('account stat grids and owner listing cards stack on the narrowest phones',
     expect(await columns('.owner-listing-card'), `owner card at ${width}px`).toBe(card);
   }
 });
+
+test('a suspended account is told so on every page, an active one is not', async ({ authenticatedPage: page }) => {
+  const banner = page.getByRole('status').filter({ hasText: 'Votre compte est suspendu' });
+  await page.goto('/favorites');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(banner).toHaveCount(0);
+
+  await page.route('**/api/v1/users/me', async (route) => {
+    if (route.request().method() !== 'GET') return route.continue();
+    const response = await route.fetch();
+    await route.fulfill({ response, json: { ...(await response.json()), status: 'SUSPENDED' } });
+  });
+  await page.goto('/account');
+  await expect(banner).toContainText('pas publier');
+  await page.goto('/favorites');
+  await expect(banner).toBeVisible();
+  await expectAccessible(page);
+});

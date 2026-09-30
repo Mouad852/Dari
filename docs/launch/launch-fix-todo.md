@@ -417,7 +417,8 @@ number when the task lands (3.1 and 5.3 both add one).
 - [ ] **5.2b** (test, added 2026-09-30) — `production/accessibility.spec.ts` `/listings/listing-1`
   failed once under full-suite load with `page-has-heading-one`, although the spec waits for an
   `<h1>` first; passes on rerun. Find what replaces the heading after it attaches (streamed
-  loading state?) rather than raising timeouts.
+  loading state?) rather than raising timeouts. Same `page-has-heading-one` seen twice on dev in
+  `account-journeys` "signup provisions the profile…" under full-suite load (4.4a, 5.4c runs).
 - [ ] **5.3a** P1-15 **DECISION (wording/version)** — migration adding `users.terms_accepted_at`
   and `users.terms_version`; optional `CreateUserRequest.acceptedTermsVersion` stored on create.
   Files: new migration, `user/*`, new user test class. Verify: API.
@@ -437,8 +438,12 @@ number when the task lands (3.1 and 5.3 both add one).
   409. Files: `messages/[id]/page.tsx`, `message-thread.spec.ts`. Verify: Web + spec. `RECIPIENT_UNAVAILABLE` added to `lib/errors.ts`;
   message-thread 8/8 (new: stubbed 409 → notice, composer and Envoyer disabled, history intact,
   unsent bubble removed). (2026-09-30)
-- [ ] **5.4c** P2-11 — sign-in maps `ACCOUNT_BANNED`/`UNAUTHENTICATED` to specific copy; global
-  suspended banner. Files: `sign-in/page.tsx`, layout/nav. Verify: Web + `session-recovery` spec.
+- [x] **5.4c** P2-11 — sign-in maps `ACCOUNT_BANNED`/`UNAUTHENTICATED` to specific copy; global
+  suspended banner. Files: `sign-in/page.tsx`, layout/nav. Verify: Web + `session-recovery` spec. Sign-in (141015f): the API's sentence
+  and a Firebase sign-out. Banner: `/users/me` now returns `status` (API, `UserStatusApiTest`);
+  new `AccountStatusBanner` in the root layout, skipped on sign-in/up/recovery (it raced sign-in).
+  session-recovery 9/9, account-pages 6/6 (+ axe on the banner), both ×2 with account-journeys
+  38/38; UserStatusApiTest, UserApiTest, AdminApiTest, SecurityHeadersApiTest 40/40. (2026-09-30)
 - [ ] **5.4d** P2-11 — allow `DELETE /users/me` while suspended. Files:
   `common/auth/FirebaseAuthFilter.java`, user test class. Verify: API.
 - [ ] **5.4e** P2-17 — rent minimum 100 MAD server-side; client previews the parsed value. Files:

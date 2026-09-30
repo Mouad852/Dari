@@ -46,6 +46,8 @@ export interface Me {
   bio: string | null;
   avatarUrl: string | null;
   role: 'USER' | 'ADMIN';
+  /** A suspended account can sign in and read, not write; a banned one never gets a profile back. */
+  status: 'ACTIVE' | 'SUSPENDED';
   verification: VerificationTier;
   createdAt: string;
 }

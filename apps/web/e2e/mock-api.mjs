@@ -185,7 +185,7 @@ function sendMessagePage(response, params) {
 const me = () => ({
   id: 'e2e-user-1', email: 'e2e.user@example.invalid', emailVerified: true, phone: null,
   phoneVerified: false, firstName: 'Utilisateur', displayName: 'Utilisateur E2E', city: 'Rabat',
-  bio: 'Profil de test', avatarUrl: '/uploads/avatars/e2e-user-1.png', role: 'ADMIN', verification: 'EMAIL', createdAt: now,
+  bio: 'Profil de test', avatarUrl: '/uploads/avatars/e2e-user-1.png', role: 'ADMIN', status: 'ACTIVE', verification: 'EMAIL', createdAt: now,
 });
 
 const publicListings = [

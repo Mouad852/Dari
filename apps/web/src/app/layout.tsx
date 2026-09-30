@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import '@/styles/app.css';
 
 import { SiteFooter } from '@/components/SiteFooter';
+import { AccountStatusBanner } from '@/components/AccountStatusBanner';
 import { SiteNav } from '@/components/SiteNav';
 import { SkipLink } from '@/components/SkipLink';
 
@@ -51,7 +52,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SkipLink />
         <SiteNav />
         {/* The skip link's target, rendered on the server so the client has nothing to add to the page's HTML. */}
-        <div id="main-content">{children}</div>
+        <div id="main-content">
+          <AccountStatusBanner />
+          {children}
+        </div>
         <SiteFooter />
       </body>
     </html>
