@@ -4,8 +4,9 @@ import { ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 
-import { sendPasswordReset, signInFirebase } from '@/lib/firebase';
+import { sendPasswordReset, signInFirebase, signOut } from '@/lib/firebase';
 import { ApiError, apiFetch } from '@/lib/api';
+import { ErrorCode } from '@/lib/errors';
 import { ensureProfile } from '@/lib/profile';
 
 /**
@@ -109,6 +110,16 @@ export default function SignInPage() {
         } else throw cause;
       }
     } catch (cause) {
+      // A banned (403) or deleted (401) account: Firebase accepted the password,
+      // the API refuses the person. Its own sentence ("Ce compte a été fermé",
+      // "Ce compte a été supprimé") instead of "Réessayez", which could never
+      // work, and no Firebase session left half open (audit P2-11).
+      if (cause instanceof ApiError
+        && (cause.code === ErrorCode.ACCOUNT_BANNED || cause.code === ErrorCode.UNAUTHENTICATED)) {
+        await signOut().catch(() => undefined);
+        setError(`${cause.message}.`);
+        return;
+      }
       const code = cause instanceof Error ? cause.message : '';
       setError(code.includes('invalid-credential') || code.includes('user-not-found')
         ? 'E-mail ou mot de passe incorrect.'

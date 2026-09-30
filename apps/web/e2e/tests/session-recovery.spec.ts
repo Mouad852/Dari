@@ -131,3 +131,22 @@ test('a request that never answers says its deadline passed', async ({ signedInW
 
   await expect(alert(page)).toContainText('La requête a dépassé son délai');
 });
+
+for (const [status, code, message] of [
+  [403, 'ACCOUNT_BANNED', 'Ce compte a été fermé'],
+  [401, 'UNAUTHENTICATED', 'Ce compte a été supprimé'],
+] as const) {
+  test(`signing in to an account the API refuses (${code}) says why and leaves no session`, async ({ signedInWith }) => {
+    const page = await signedInWith(FRESH);
+    await page.route('**/api/v1/users/me', (route) => route.fulfill({ status, json: { code, message } }));
+    await page.goto('/sign-in');
+    const main = page.getByRole('main');
+    await main.getByLabel('E-mail', { exact: true }).fill('e2e.user@example.invalid');
+    await main.getByLabel('Mot de passe', { exact: true }).fill('secret123');
+    await main.getByRole('button', { name: 'Se connecter' }).click();
+
+    await expect(alert(page)).toHaveText(`${message}.`);
+    await expect(alert(page)).not.toContainText('Réessayez');
+    expect(await page.evaluate(() => window.__DARI_E2E_AUTH__ ?? null), 'signed out of Firebase').toBeNull();
+  });
+}
