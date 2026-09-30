@@ -396,6 +396,10 @@ number when the task lands (3.1 and 5.3 both add one).
   5/5; full suite 80 passed + 1 skip. (2026-09-30)
 - [ ] **5.1d** P1-4 — mobile `TextField` accepts `maxLength` and shows field errors from the API.
   Files: mobile `TextField`, forms. Verify: Mobile `npm test`.
+- [x] **5.1e** (test, added 2026-09-30) — `listing-host`'s "Voir le profil" navigation timed out
+  under full-suite load twice: the App Router changes the URL only after `next dev` compiles
+  `/profile/[id]`. That one assertion now waits 15 s. Files: `listing-host.spec.ts`. Verify: full
+  suite 80 passed + 1 skip. (2026-09-30)
 - [ ] **5.2** P1-14 — text inputs update the URL debounced (400 ms); in-flight requests aborted on
   param change; effect keyed on `searchParams` only. Files: `listings/SearchResults.tsx`,
   `public-search.spec.ts`. Verify: Web + spec — 8 characters in Quartier → at most 1 `/listings`

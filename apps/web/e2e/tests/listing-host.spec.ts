@@ -11,7 +11,10 @@ test('a listing says who offers it and leads to their profile and its report act
   await expectAccessible(page);
 
   await host.getByRole('link', { name: 'Voir le profil' }).click();
-  await expect(page).toHaveURL(/\/profile\/other-user$/);
+  // The App Router changes the URL only once the new route has loaded, and under
+  // `next dev` the first visit compiles /profile/[id] first: past 5 s when the
+  // full suite loads the machine (failed twice on 2026-09-30, never alone).
+  await expect(page).toHaveURL(/\/profile\/other-user$/, { timeout: 15_000 });
   await expect(page.getByRole('heading', { level: 1, name: 'Amina' })).toBeVisible();
   // The uploaded photo, not just the initial, and it actually loads from the media origin.
   const avatar = page.locator('main img[src*="/uploads/avatars/other-user.png"]');
