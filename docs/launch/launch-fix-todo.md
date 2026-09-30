@@ -354,8 +354,10 @@ number when the task lands (3.1 and 5.3 both add one).
   (listing-1's description is the JSON-LD one; fixed) and `account-journeys` signup +
   `public-search`, which fail under full-suite load only. Rerun: those four specs 9/9 on dev,
   production project 21 + 1 skip. 360 px screenshots of description, rules and bio. (2026-09-30)
-- [ ] **4.4b** P2-14 — auto-growing `<textarea>` composer, Enter sends, Shift+Enter newline,
+- [x] **4.4b** P2-14 — auto-growing `<textarea>` composer, Enter sends, Shift+Enter newline,
   `maxLength=4000`. Files: `messages/[id]/page.tsx`, `message-thread.spec.ts`. Verify: Web + spec.
+  Bubbles also keep line breaks (`pre-line`). message-thread + account-journeys 10/10 (dev),
+  production project 21 + 1 skip; 360 px screenshot with a four-line draft. (2026-09-30)
 - [ ] **4.4c** P2-15 — thread page `height: 100dvh` with `100vh` fallback. Files:
   `messages/[id]/page.tsx`. Verify: Web + screenshot at 360 px.
 - [ ] **4.4d** P2-24 — owner dashboard card and account stat grids stack below 480 px. Files:

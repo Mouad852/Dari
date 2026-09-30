@@ -126,3 +126,31 @@ test('a long thread opens at its newest message and loads older ones above witho
   await expect(bubble(1)).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Voir les messages précédents' })).toHaveCount(0);
 });
+
+test('the composer grows for several lines, Shift+Enter breaks a line and Enter sends', async ({ authenticatedPage: page }) => {
+  const sent: unknown[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().endsWith('/conversations/conversation-1/messages')) sent.push(request.postDataJSON());
+  });
+  await page.goto('/messages/conversation-1');
+  const composer = page.getByLabel('Écrire un message');
+  await expect(composer).toHaveAttribute('maxlength', '4000');
+  const height = async () => (await composer.boundingBox())!.height;
+  const oneLine = await height();
+
+  await composer.click();
+  await composer.pressSequentially('Bonjour');
+  await composer.press('Shift+Enter');
+  await composer.pressSequentially('Deuxième ligne');
+  await expect(composer).toHaveValue('Bonjour\nDeuxième ligne');
+  expect(sent, 'Shift+Enter does not send').toHaveLength(0);
+  await expect.poll(height).toBeGreaterThan(oneLine);
+
+  await composer.press('Enter');
+  await expect.poll(() => sent).toEqual([{ body: 'Bonjour\nDeuxième ligne' }]);
+  const bubble = page.getByRole('log', { name: 'Messages de la conversation' }).getByText(/Deuxième ligne$/);
+  await expect.poll(() => bubble.evaluate((element: HTMLElement) => element.innerText)).toBe('Bonjour\nDeuxième ligne');
+  await expect(composer).toHaveValue('');
+  // Back to one line once the draft is cleared (within a sub-pixel of the first layout).
+  await expect.poll(async () => Math.abs((await height()) - oneLine)).toBeLessThan(1);
+});

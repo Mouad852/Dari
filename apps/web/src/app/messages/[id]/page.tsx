@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { use, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { use, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 
 import { Button } from '@/components/ds/Button';
 import { Icon } from '@/components/ds/Icon';
@@ -47,6 +47,11 @@ type ListingContext =
  */
 const THREAD_COLUMN = { width: '100%', maxWidth: 760, margin: '0 auto', minWidth: 0 } as const;
 
+/** The API's limit on one message (CreateMessageRequest, @Size max 4000). */
+const MESSAGE_MAX_LENGTH = 4000;
+/** About six lines of body text; beyond that the composer scrolls instead of eating the thread. */
+const COMPOSER_MAX_HEIGHT = 160;
+
 const MESSAGE_LIST = { listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--space-3)' } as const;
 
 export default function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -68,7 +73,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   const [sendError, setSendError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
-  const composerRef = useRef<HTMLInputElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   const scrollRegionRef = useRef<HTMLDivElement | null>(null);
   const scrollPlanRef = useRef<ScrollPlan | null>(null);
@@ -382,6 +387,27 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
    * sending, so a load triggered by something else never steals focus.
    */
   const shouldRefocusRef = useRef(false);
+
+  /*
+   * The composer grows with what is typed, up to about six lines, then
+   * scrolls. Measured from scrollHeight after resetting to `auto`, so it also
+   * shrinks back when text is deleted or the draft is cleared by a send.
+   */
+  useLayoutEffect(() => {
+    const composer = composerRef.current;
+    if (!composer) return;
+    composer.style.height = 'auto';
+    const border = composer.offsetHeight - composer.clientHeight;
+    composer.style.height = `${Math.min(composer.scrollHeight + border, COMPOSER_MAX_HEIGHT)}px`;
+  }, [draft]);
+
+  /** Enter sends and Shift+Enter starts a new line, except while an IME is composing a character. */
+  const onComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  };
+
   useEffect(() => {
     if (!sending && shouldRefocusRef.current) {
       shouldRefocusRef.current = false;
@@ -538,7 +564,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             opacity: pending ? 0.6 : 1,
           }}
         >
-          {message.body}
+          <span style={{ whiteSpace: 'pre-line' }}>{message.body}</span>
           {/*
             A bubble with no time on it leaves a reader guessing whether a
             reply came back in five minutes or five days. The hour goes
@@ -735,32 +761,40 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             {sendError}
           </p>
         ) : null}
-        <div style={{ ...THREAD_COLUMN, display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
+        <div style={{ ...THREAD_COLUMN, display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-end' }}>
         {/*
-          A bare input rather than the design system's Input: this one is a pill
-          in a composer bar, not a labelled form field, and Input's label block
+          A bare textarea rather than the design system's Textarea: this one sits
+          in a composer bar, not a labelled form field, and Textarea's label block
           and helper row are the wrong shape here. The border, radius and focus
-          treatment still come from the same tokens.
+          treatment still come from the same tokens. maxLength is the API's
+          4000-character limit (CreateMessageRequest).
         */}
-        <input
+        <textarea
           ref={composerRef}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={onComposerKeyDown}
           placeholder="Écrire un message…"
           aria-label="Écrire un message"
+          aria-describedby="composer-hint"
           disabled={sending}
+          rows={1}
+          maxLength={MESSAGE_MAX_LENGTH}
           style={{
             flex: 1,
             minWidth: 0,
-            height: 'var(--control-h-md)',
+            boxSizing: 'border-box',
+            minHeight: 'var(--control-h-md)',
+            resize: 'none',
             border: '1px solid var(--border-hairline)',
-            borderRadius: 'var(--radius-pill)',
+            borderRadius: 'var(--radius-xl)',
             background: 'var(--surface-card)',
             color: 'var(--text-heading)',
-            padding: '0 16px',
+            padding: '10px 16px',
             font: 'var(--type-body)',
           }}
         />
+        <span id="composer-hint" hidden>Entrée pour envoyer, Maj+Entrée pour aller à la ligne.</span>
         <Button type="submit" variant="primary" iconLeft="send" loading={sending} disabled={!draft.trim()}>
           Envoyer
         </Button>
