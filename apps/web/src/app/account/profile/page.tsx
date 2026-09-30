@@ -9,6 +9,7 @@ import { Dialog } from '@/components/ds/Dialog';
 import { Input } from '@/components/ds/Input';
 import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
 import { getIdToken, signOut } from '@/lib/firebase';
+import { prepareImageForUpload } from '@/lib/image';
 import { VERIFICATION_LABELS } from '@/lib/labels';
 import type { Me } from '@/types/api';
 
@@ -123,7 +124,7 @@ export default function AccountProfilePage() {
     setAvatarError(null);
     try {
       const form = new FormData();
-      form.append('file', file);
+      form.append('file', await prepareImageForUpload(file));
       const updated = await apiFetch<Me>('/users/me/avatar', { method: 'POST', token, body: form });
       setProfile(updated);
     } catch (cause) {

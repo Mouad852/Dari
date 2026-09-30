@@ -18,6 +18,7 @@ import { NeighborhoodDatalist } from '@/components/NeighborhoodDatalist';
 import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
 import { CITIES } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
+import { prepareImageForUpload } from '@/lib/image';
 import { AMENITY_LABELS, CHARGE_INCLUSION_LABELS, LISTING_ROOM_TYPE_LABELS, PROPERTY_TYPE_LABELS, ROOM_FURNISHING_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
 import type { ChargeInclusion, HouseRules, ListingPhoto, ListingRoom, ListingRoomType, ListingStatus, PropertyType, RoomFurnishing, RoomType } from '@/types/api';
 
@@ -554,7 +555,7 @@ function PublishWizard() {
       // rule deterministic instead of dependent on which response lands first.
       for (const file of Array.from(files)) {
         const form = new FormData();
-        form.append('file', file);
+        form.append('file', await prepareImageForUpload(file));
         await apiFetch<ListingPhoto>(`/listings/${listingId}/photos`, {
           method: 'POST',
           token,
@@ -1272,7 +1273,7 @@ function PublishWizard() {
                 <div>
                   <div ref={photosHeadingRef} tabIndex={-1} style={{ font: 'var(--type-h3)', color: 'var(--text-heading)' }}>Ajouter des photos</div>
                   <p style={{ margin: '6px 0 0', font: 'var(--type-body-sm)', color: 'var(--text-body)' }}>
-                    La première photo devient la couverture. Formats JPG, PNG ou WebP, 5 Mo maximum.
+                    La première photo devient la couverture. Formats JPG, PNG ou WebP, redimensionnés avant l’envoi.
                     Les métadonnées GPS sont retirées à l’enregistrement.
                   </p>
                 </div>

@@ -315,10 +315,12 @@ number when the task lands (3.1 and 5.3 both add one).
   each). Files: `account/page.tsx`, `account-pages.spec.ts`. Verify: Web typecheck +
   `account-pages` (3/3) — a complete profile without a phone hides the completion card.
   (5a2fd7f, 2026-09-29)
-- [ ] **4.2a** P1-5 — `lib/image.ts`: draw to canvas, export JPEG ≤ 2560 px long edge at 0.85
+- [x] **4.2a** P1-5 — `lib/image.ts`: draw to canvas, export JPEG ≤ 2560 px long edge at 0.85
   (fixes orientation, size, WebP); used by the wizard and profile avatar upload; formats copy
   corrected. Files: new `apps/web/src/lib/image.ts`, `publish/page.tsx`, `account/profile/page.tsx`.
-  Verify: Web + manual upload matrix (portrait JPEG, >5 MB, WebP).
+  Verify: Web + manual upload matrix (portrait JPEG, >5 MB, WebP) — automated as
+  `photo-upload.spec.ts` (3/3: EXIF-6 JPEG arrives 20×40, 3000×2000 PNG > 5 MB arrives
+  2560×1707 JPEG, WebP arrives JPEG); with journeys/owner/media/account specs 20/20. (2026-09-30)
 - [ ] **4.2b** P1-5 — server fills white before drawing PNG alpha onto RGB. Files:
   `media/ImageProcessor.java`, `ImageProcessorTest`. Verify: API `-Dtest=ImageProcessorTest`.
 - [ ] **4.2c** P1-5 — server-side EXIF orientation fallback for API clients. Files:

@@ -116,6 +116,8 @@ const state = {
   reportCreated: false,
   adminUserStatus: 'SUSPENDED',
   ownListings: ownListings(),
+  /** The last avatar upload as received, so a test can inspect what the browser sent. */
+  avatarUpload: null,
 };
 
 function reset() {
@@ -131,6 +133,7 @@ function reset() {
   state.reportCreated = false;
   state.adminUserStatus = 'SUSPENDED';
   state.ownListings = ownListings();
+  state.avatarUpload = null;
 }
 
 /**
@@ -267,6 +270,12 @@ async function handle(request, response) {
   if (request.method === 'GET' && /^\/(uploads|cdn)\/.+\.png$/.test(url.pathname)) return sendPng(response);
 
   if (url.pathname === '/__ssr-audit' && request.method === 'GET') return sendJson(response, 200, ssrAudit);
+  // Playwright does not expose a fetch body built from a File, so the upload is read here.
+  if (url.pathname === '/__avatar-upload' && request.method === 'GET') {
+    if (!state.avatarUpload) return sendNoContent(response);
+    response.writeHead(200, { 'content-type': 'application/octet-stream', 'x-upload-content-type': state.avatarUpload.contentType });
+    return response.end(state.avatarUpload.body);
+  }
 
   if (url.pathname === '/__auth' && request.method === 'POST') {
     const body = await readBody(request);
@@ -335,6 +344,12 @@ async function handle(request, response) {
 
   if (path === '/users/me' && method === 'GET') return sendJson(response, 200, state.deleted ? { ...me(), displayName: '' } : me());
   if (path === '/users' && method === 'POST') return sendJson(response, 201, me());
+  if (path === '/users/me/avatar' && method === 'POST') {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    state.avatarUpload = { contentType: request.headers['content-type'] ?? '', body: Buffer.concat(chunks) };
+    return sendJson(response, 200, me());
+  }
   if (path === '/users/me' && method === 'DELETE') { state.deleted = true; return sendNoContent(response); }
 
   if (path === '/cities' && method === 'GET') return sendJson(response, 200, ['Rabat', 'Casablanca', 'Marrakech', 'Tanger']);
