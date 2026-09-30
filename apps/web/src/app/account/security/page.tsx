@@ -166,13 +166,7 @@ export default function AccountSecurityPage() {
                 </div>
               </div>
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                  gap: 'var(--space-3)',
-                }}
-              >
+              <div className="stat-grid">
                 <div style={{ background: 'var(--sable-50)', borderRadius: 'var(--radius-card-inner)', border: '1px solid var(--border-hairline)', padding: 'var(--space-3)' }}>
                   <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>Connexion</div>
                   <div style={{ marginTop: 6, font: 'var(--weight-semibold) var(--type-body) var(--font-ui)', color: 'var(--text-heading)' }}>E-mail</div>

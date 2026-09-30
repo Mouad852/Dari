@@ -44,3 +44,22 @@ test('the security page sends a password-reset email to the account address', as
   await expect(main.getByRole('status')).toContainText(`envoyé à ${e2eAuth.email}`);
   expect(await page.evaluate(() => window.__DARI_E2E_AUTH__?.passwordResetEmails)).toEqual([e2eAuth.email]);
 });
+
+test('account stat grids and owner listing cards stack on the narrowest phones', async ({ authenticatedPage: page }) => {
+  const columns = (selector: string) => page.locator(selector).first()
+    .evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+  for (const [width, stats, card] of [[360, 1, 1], [768, 3, 2]] as const) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/account');
+    await expect(page.locator('.stat-grid a').first()).toBeVisible();
+    expect(await columns('.stat-grid'), `hub at ${width}px`).toBe(stats);
+
+    await page.goto('/account/security');
+    await expect(page.getByRole('button', { name: 'Changer mon mot de passe' })).toBeEnabled();
+    expect(await columns('.stat-grid'), `security at ${width}px`).toBe(stats);
+
+    await page.goto('/account/listings');
+    await expect(page.locator('.owner-listing-card').first()).toBeVisible();
+    expect(await columns('.owner-listing-card'), `owner card at ${width}px`).toBe(card);
+  }
+});

@@ -353,10 +353,8 @@ export default function MyListingsPage() {
                   return (
                     <article
                       key={listing.id}
+                      className="owner-listing-card"
                       style={{
-                        display: 'grid',
-                        gridTemplateColumns: '160px 1fr',
-                        gap: 'var(--space-4)',
                         background: 'var(--surface-card)',
                         border: '1px solid var(--border-hairline)',
                         borderRadius: 'var(--radius-card)',

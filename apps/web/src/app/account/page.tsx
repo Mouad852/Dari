@@ -251,7 +251,7 @@ export default function AccountPage() {
             positioned exactly like a set of navigation cards, just missing
             the one thing that makes them navigate.
           */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-3)' }}>
+          <div className="stat-grid">
             {(stats ? [
               ['Annonces', `${stats.listings}${stats.listingsHasMore ? '+' : ''} annonce${stats.listings > 1 ? 's' : ''}`, '/account/listings'],
               ['Messages', `${stats.conversations}${stats.conversationsHasMore ? '+' : ''} conversation${stats.conversations > 1 ? 's' : ''}`, '/messages'],

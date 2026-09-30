@@ -354,3 +354,31 @@ body {
   height: 100vh;
   height: 100dvh;
 }
+
+/* Account stat grids (hub, security): three across, stacked on the narrowest
+   phones, where a third of 360px left each label wrapping letter by letter. */
+.stat-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+@media (min-width: 480px) {
+  .stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* An owner's listing card on /account/listings: photo beside the text, or
+   above it below 480px, where a 160px photo left the text a 150px column. */
+.owner-listing-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+@media (min-width: 480px) {
+  .owner-listing-card {
+    grid-template-columns: 160px minmax(0, 1fr);
+  }
+}

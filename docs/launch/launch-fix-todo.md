@@ -363,9 +363,12 @@ number when the task lands (3.1 and 5.3 both add one).
   `styles/app.css` (inline styles hold one value). message-thread 7/7 incl. a new 360×640 check
   (main is 640 px, composer inside the screen); production project 21 + 1 skip; screenshot.
   Real-device toolbar behaviour not checked (no device). (2026-09-30)
-- [ ] **4.4d** P2-24 — owner dashboard card and account stat grids stack below 480 px. Files:
+- [x] **4.4d** P2-24 — owner dashboard card and account stat grids stack below 480 px. Files:
   `account/listings/page.tsx`, `account/page.tsx`, `account/security/page.tsx`. Verify: Web +
-  360/768/1280 screenshots.
+  360/768/1280 screenshots. Done as `.stat-grid` / `.owner-listing-card` in `styles/app.css`.
+  New `account-pages` test counts computed columns at 360 and 768 px; account-pages +
+  owner-listings 11/11; full suite 74 passed + 1 skip + 1 load flake (`listing-host` profile
+  navigation, 4/4 alone); screenshots at three widths, no horizontal overflow. (2026-09-30)
 
 ## Phase 5 — Error handling and edge cases
 
