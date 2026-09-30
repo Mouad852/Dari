@@ -26,7 +26,9 @@ class NotificationTemplatesTest {
                 templates::listingApproved,
                 l -> templates.listingRejected(l, "Photos floues"),
                 templates::listingSuspended,
-                templates::listingReinstated);
+                templates::listingReinstated,
+                l -> templates.listingExpiringSoon(l, 7),
+                templates::listingExpired);
 
         for (var event : events) {
             NotificationTemplates.Email email = event.apply(listing);
@@ -58,6 +60,31 @@ class NotificationTemplatesTest {
                 .startsWith("Bonjour Karim,")
                 .contains("Motif : Photos floues\n")
                 .contains("la soumettre à nouveau : https://dari.ma/account/listings");
+    }
+
+    @Test
+    void expiryEmailsSayWhenAndHowToComeBack() {
+        Listing listing = listing("Studio", owner("Salma", null));
+
+        assertThat(templates.listingExpiringSoon(listing, 1).subject()).isEqualTo("Votre annonce « Studio » expire dans 1 jour");
+        assertThat(templates.listingExpiringSoon(listing, 7).body()).contains("expire dans 7 jours.")
+                .contains("vous pourrez la renouveler");
+
+        NotificationTemplates.Email expired = templates.listingExpired(listing);
+        assertThat(expired.subject()).isEqualTo("Votre annonce « Studio » a expiré");
+        assertThat(expired.body()).contains("« Renouveler »").contains("vérifiée par la modération");
+    }
+
+    @Test
+    void aReportReceiptRevealsNothingAboutTheTargetOrTheOutcome() {
+        NotificationTemplates.Email email = templates.reportAcknowledged(owner("Salma", null));
+
+        assertThat(email.subject()).isEqualTo("Votre signalement a bien été reçu");
+        assertThat(email.body())
+                .startsWith("Bonjour Salma,")
+                .contains("nous ne communiquons pas la suite donnée")
+                .doesNotContain("/listings")
+                .doesNotContain("/account");
     }
 
     @Test

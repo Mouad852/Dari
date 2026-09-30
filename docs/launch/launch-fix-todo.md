@@ -337,9 +337,16 @@ number when the task lands (3.1 and 5.3 both add one).
   to the first web origin, validated when set). NotificationTemplatesTest 6, SmtpNotificationSenderTest 2,
   NotificationDeliveryServiceTest 3, ProductionConfigValidatorTest 56, AdminApiTest 20,
   ReportApiTest 9, ListingExpiryIntegrationTest 8, FlywayMigrationSmokeTest 1 — all green. (2026-09-30)
-- [ ] **4.3b** P1-10 / P0-3 — templates for expiry (title + link to `/account/listings`), report
+- [x] **4.3b** P1-10 / P0-3 — templates for expiry (title + link to `/account/listings`), report
   acknowledgement and new-message events. Files: same. Verify: API
-  `-Dtest=NotificationDeliveryServiceTest`; one of each to Mailpit.
+  `-Dtest=NotificationDeliveryServiceTest`; one of each to Mailpit. Expiry, expiry warning and
+  report receipt done; every event now has a template. The new-message event does not exist yet
+  (2.1, blocked on P0-1), so its template moved to 4.3c. NotificationTemplatesTest 8,
+  SmtpNotificationSenderTest 2, NotificationDeliveryServiceTest 3, ReportApiTest 9,
+  ListingExpiryIntegrationTest 8, AdminApiTest 20; all 10 events sent through
+  `SmtpNotificationSender` to a local Mailpit: subjects and UTF-8 bodies intact. (2026-09-30)
+- [ ] **4.3c** P1-10 / P0-1 (from 4.3b) — new-message email template (sender's first name, listing
+  title, link to the thread). Lands with 2.1b; blocked on the P0-1 throttle decision. Files: `NotificationTemplates`, `NotificationTemplatesTest`.
 - [ ] **4.4a** P2-13 — `whiteSpace: 'pre-line'` on description, rules and bio. Files:
   `ListingDetailContent.tsx`, `profile/[id]/page.tsx`. Verify: Web + screenshot.
 - [ ] **4.4b** P2-14 — auto-growing `<textarea>` composer, Enter sends, Shift+Enter newline,

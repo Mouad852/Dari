@@ -79,7 +79,8 @@ class ReportApiTest extends AbstractIntegrationTest {
 
         assertThat(notificationOutbox.findAll().stream()
                 .anyMatch(event -> "REPORT_ACKNOWLEDGED".equals(event.getEventType())
-                        && reporter.getId().equals(event.getRecipientId())))
+                        && reporter.getId().equals(event.getRecipientId())
+                        && "Votre signalement a bien été reçu".equals(event.getSubject())))
                 .isTrue();
 
         given().header("Authorization", "Bearer test-reporter")

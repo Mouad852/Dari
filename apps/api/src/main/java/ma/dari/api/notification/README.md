@@ -130,11 +130,11 @@ public interface NotificationService {
     void listingSuspended(Object listing);
     void listingReinstated(Object listing);
     void listingExpiringSoon(Object listing, int daysRemaining);
-    void listingExpired(Object listing);            // "Votre annonce a expiré et doit être renouvelée"
+    void listingExpired(Object listing);
     void userWarned(User user, String reason);
     void userSuspended(User user, String reason);
     void userBanned(User user, String reason);
-    void reportAcknowledged(User reporter);         // "Votre signalement a bien été reçu"
+    void reportAcknowledged(User reporter);
 }
 ```
 
@@ -165,12 +165,12 @@ See [docs/operations/smtp-configuration.md](../../../../../../../../../docs/oper
 ## Copy and Content
 
 All French notification copy is built at enqueue time and sent unchanged by the delivery service.
-Moderation events (listing approved, rejected, suspended, reinstated; account warned, suspended,
-banned) come from `NotificationTemplates`: a subject naming the listing, and a body with a greeting,
-what happened, the moderator's reason when there is one, the next step with a link, and a footer.
+Every event comes from `NotificationTemplates`: a subject (naming the listing for listing events),
+and a body with a greeting, what happened, the moderator's reason when there is one, the next step
+with a link, and a footer. The report receipt names neither the target nor the outcome.
 Links start at `dari.public-site-url` (`DARI_PUBLIC_SITE_URL`), which defaults to the first
 `dari.web-origins` entry. The subject is stored in `notification_outbox.subject` (V31); rows without
-one (queued before V31, or events not yet on a template) are sent as "Notification Dari".
+one (queued before V31) are sent as "Notification Dari".
 
 The payloads are **plain text**:
 

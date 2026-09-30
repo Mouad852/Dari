@@ -28,7 +28,7 @@ public class SmtpNotificationSender implements NotificationSender {
         mailSender.send(message);
     }
 
-    /** For rows queued before V31, and events not yet on a template, which carry no subject of their own. */
+    /** For rows queued before V31, which carry no subject of their own. */
     private String subject(String eventType) {
         return switch (eventType) {
             case "REPORT_ACKNOWLEDGED" -> "Votre signalement Dari";

@@ -47,14 +47,15 @@ public class OutboxNotificationService implements NotificationService {
     @Override
     @Transactional
     public void listingExpiringSoon(Object listing, int daysRemaining) {
-        enqueue("LISTING_EXPIRING_SOON", listing, "Votre annonce expire dans " + daysRemaining
-                + (daysRemaining == 1 ? " jour" : " jours"));
+        Listing target = listing(listing);
+        enqueue("LISTING_EXPIRING_SOON", target, templates.listingExpiringSoon(target, daysRemaining));
     }
 
     @Override
     @Transactional
     public void listingExpired(Object listing) {
-        enqueue("LISTING_EXPIRED", listing, "Votre annonce a expiré et doit être renouvelée");
+        Listing target = listing(listing);
+        enqueue("LISTING_EXPIRED", target, templates.listingExpired(target));
     }
 
     @Override
@@ -78,7 +79,7 @@ public class OutboxNotificationService implements NotificationService {
     @Override
     @Transactional
     public void reportAcknowledged(User reporter) {
-        enqueue("REPORT_ACKNOWLEDGED", reporter, "Votre signalement a bien été reçu");
+        enqueue("REPORT_ACKNOWLEDGED", reporter, templates.reportAcknowledged(reporter));
     }
 
     private void enqueue(String eventType, Listing listing, NotificationTemplates.Email email) {
@@ -93,16 +94,5 @@ public class OutboxNotificationService implements NotificationService {
     private static Listing listing(Object target) {
         if (target instanceof Listing listing) return listing;
         throw new IllegalArgumentException("Unsupported notification target");
-    }
-
-    /** Events still sent as a short phrase under the generic subject (expiry, reports: task 4.3b). */
-    private void enqueue(String eventType, Object target, String payload) {
-        if (target instanceof Listing listing) {
-            outbox.save(new NotificationOutbox(eventType, listing.getOwner().getId(), listing.getId(), payload));
-        } else if (target instanceof User user) {
-            outbox.save(new NotificationOutbox(eventType, user.getId(), null, payload));
-        } else {
-            throw new IllegalArgumentException("Unsupported notification target");
-        }
     }
 }

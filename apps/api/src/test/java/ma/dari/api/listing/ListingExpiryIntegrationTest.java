@@ -71,7 +71,7 @@ class ListingExpiryIntegrationTest extends AbstractJobIntegrationTest {
         assertThat(status(id)).isEqualTo("PUBLISHED");
         assertThat(warnedAt(id)).isEqualTo(approvedAt.plus(Duration.ofDays(54)));
         assertThat(expiresAt(id)).as("the warning does not move the date").isEqualTo(approvedAt.plus(Duration.ofDays(60)));
-        assertThat(outbox("LISTING_EXPIRING_SOON", id)).containsExactly("Votre annonce expire dans 6 jours");
+        assertThat(outbox("LISTING_EXPIRING_SOON", id)).singleElement().asString().contains("expire dans 6 jours.");
 
         clock.set(approvedAt.plus(Duration.ofDays(55)));
         runJob();
@@ -80,7 +80,8 @@ class ListingExpiryIntegrationTest extends AbstractJobIntegrationTest {
         clock.set(approvedAt.plus(Duration.ofDays(60)));
         runJob();
         assertThat(status(id)).isEqualTo("EXPIRED");
-        assertThat(outbox("LISTING_EXPIRED", id)).containsExactly("Votre annonce a expiré et doit être renouvelée");
+        assertThat(outbox("LISTING_EXPIRED", id)).singleElement().asString()
+                .contains("a expiré").contains("« Renouveler »").contains("/account/listings");
 
         clock.advance(Duration.ofHours(1));
         runJob();
@@ -204,7 +205,7 @@ class ListingExpiryIntegrationTest extends AbstractJobIntegrationTest {
         assertThat(outbox("LISTING_EXPIRED", due)).hasSize(1);
         assertThat(outbox("LISTING_EXPIRED", alsoDue)).hasSize(1);
         assertThat(outbox("LISTING_EXPIRED", soon)).isEmpty();
-        assertThat(outbox("LISTING_EXPIRING_SOON", soon)).containsExactly("Votre annonce expire dans 1 jour");
+        assertThat(outbox("LISTING_EXPIRING_SOON", soon)).singleElement().asString().contains("expire dans 1 jour.");
         assertThat(meters.counter("dari.jobs.listing_expiry.expired").count() - expiredBefore)
                 .isEqualTo(allOutbox("LISTING_EXPIRED") - notifiedBefore);
     }

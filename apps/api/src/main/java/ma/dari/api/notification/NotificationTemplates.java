@@ -81,6 +81,41 @@ public class NotificationTemplates {
                 "Vous pouvez suivre son état depuis votre espace : " + manageListings());
     }
 
+    Email listingExpiringSoon(Listing listing, int daysRemaining) {
+        String delay = daysRemaining + (daysRemaining == 1 ? " jour" : " jours");
+        return email(listing.getOwner(),
+                "Votre annonce « " + title(listing) + " » expire dans " + delay,
+                "Votre annonce « " + title(listing) + " » expire dans " + delay + ". "
+                        + "Elle n’apparaîtra alors plus dans les résultats de recherche.",
+                null,
+                "Une fois expirée, vous pourrez la renouveler depuis votre espace ; elle sera de nouveau "
+                        + "vérifiée par la modération avant de réapparaître. Si la chambre a trouvé preneur, "
+                        + "vous pouvez aussi l’indiquer dès maintenant : " + manageListings());
+    }
+
+    Email listingExpired(Listing listing) {
+        return email(listing.getOwner(),
+                "Votre annonce « " + title(listing) + " » a expiré",
+                "Votre annonce « " + title(listing) + " » a expiré : elle n’apparaît plus dans les résultats "
+                        + "de recherche.",
+                null,
+                "Pour la remettre en ligne, choisissez « Renouveler » dans votre espace. Elle sera vérifiée "
+                        + "par la modération avant de réapparaître : " + manageListings());
+    }
+
+    /**
+     * Receipt only: no target, no outcome, no link to what was reported. See
+     * {@link NotificationService#reportAcknowledged}.
+     */
+    Email reportAcknowledged(User reporter) {
+        return email(reporter,
+                "Votre signalement a bien été reçu",
+                "Nous avons bien reçu votre signalement. L’équipe de modération va l’examiner.",
+                null,
+                "Pour protéger les personnes concernées, nous ne communiquons pas la suite donnée "
+                        + "aux signalements. Merci de contribuer à la sécurité de Dari.");
+    }
+
     Email userWarned(User user, String reason) {
         return email(user,
                 "Un avertissement concernant votre compte Dari",
