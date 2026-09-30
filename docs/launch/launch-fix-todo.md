@@ -387,9 +387,13 @@ number when the task lands (3.1 and 5.3 both add one).
   spec forcing a 400 with `fields`. Stubbed with `page.route` (client-side fetches), so the mock
   API is unchanged. New `field-errors.spec.ts` 3/3; full suite 77 passed + 1 skip + the recurring
   `listing-host` load flake (fixed separately, 5.1e). (2026-09-30)
-- [ ] **5.1c** P1-4 — `maxLength` equal to the DTO limit on every web text input (title 120,
+- [x] **5.1c** P1-4 — `maxLength` equal to the DTO limit on every web text input (title 120,
   description 2000, rules, room descriptions, bio, composer 4000). Files: forms above. Verify: Web
-  + spec (2,001 chars capped).
+  + spec (2,001 chars capped). Wizard title 120, quartier 80, description 2000, room 500, other
+  rules 2000 (`ds/Input` gains `maxLength`); sign-up first/last name 30/29 (display name "Prénom
+  Nom" ≤ 60) and city 60; profile-recovery 60. Profile (60/600), report (2000) and composer
+  (4000, 4.4b) already matched. Admin reject reason stays 500 (API allows 1000). `field-errors`
+  5/5; full suite 80 passed + 1 skip. (2026-09-30)
 - [ ] **5.1d** P1-4 — mobile `TextField` accepts `maxLength` and shows field errors from the API.
   Files: mobile `TextField`, forms. Verify: Mobile `npm test`.
 - [ ] **5.2** P1-14 — text inputs update the URL debounced (400 ms); in-flight requests aborted on

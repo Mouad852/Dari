@@ -64,3 +64,22 @@ test('the report dialog shows a rejected detail on its field', async ({ authenti
   await expect(details).toHaveAttribute('aria-invalid', 'true');
   await expect(details).toHaveAccessibleDescription('1000 caractères maximum');
 });
+
+test('text fields stop at the API limit instead of failing on save', async ({ authenticatedPage: page }) => {
+  await page.goto('/publish');
+  const description = page.getByLabel('Description');
+  await description.fill('a'.repeat(2001));
+  await expect(description).toHaveValue('a'.repeat(2000));
+  const title = page.getByLabel('Titre de l’annonce');
+  await title.fill('t'.repeat(121));
+  await expect(title).toHaveValue('t'.repeat(120));
+});
+
+test('sign-up names fit the 60-character display name together', async ({ page }) => {
+  await page.goto('/sign-up');
+  const main = page.getByRole('main');
+  await main.getByLabel('Prénom').fill('p'.repeat(40));
+  await main.getByLabel('Nom', { exact: true }).fill('n'.repeat(40));
+  await expect(main.getByLabel('Prénom')).toHaveValue('p'.repeat(30));
+  await expect(main.getByLabel('Nom', { exact: true })).toHaveValue('n'.repeat(29));
+});

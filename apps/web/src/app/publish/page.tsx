@@ -914,6 +914,7 @@ function PublishWizard() {
                 label="Titre de l’annonce"
                 value={title}
                 error={fieldIssues.title}
+                maxLength={120}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="Chambre meublée proche du tramway"
                 helper="Décrivez la chambre en quelques mots. C’est la première chose que lit un chercheur."
@@ -940,6 +941,7 @@ function PublishWizard() {
                   label="Quartier"
                   value={district}
                   error={fieldIssues.neighborhood}
+                  maxLength={80}
                   onChange={(event) => setDistrict(event.target.value)}
                   placeholder="Agdal"
                   list="wizard-neighborhoods"
@@ -969,6 +971,7 @@ function PublishWizard() {
                 label="Description"
                 value={description}
                 error={fieldIssues.description}
+                maxLength={2000}
                 onChange={(event) => setDescription(event.target.value)}
                 rows={6}
                 placeholder="Le logement, le quartier, les colocataires, les règles de vie."
@@ -1025,6 +1028,7 @@ function PublishWizard() {
                     label="Description"
                     value={room.description}
                     error={fieldIssues[`rooms[${index}].description`]}
+                    maxLength={500}
                     onChange={(event) => updateRoom(index, { description: event.target.value })}
                     placeholder="Facultatif"
                   />
@@ -1247,6 +1251,7 @@ function PublishWizard() {
                 label="Autres règles"
                 value={otherRules}
                 error={fieldIssues['houseRules.otherRules']}
+                maxLength={2000}
                 onChange={(event) => setOtherRules(event.target.value)}
                 rows={4}
                 placeholder="Ménage des parties communes à tour de rôle, une semaine chacun."

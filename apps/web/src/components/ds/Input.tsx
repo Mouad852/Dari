@@ -40,6 +40,8 @@ export interface InputProps {
   autoComplete?: string;
   /** Id of a `<datalist>` offering suggestions; the field stays free text. */
   list?: string;
+  /** The API's limit for the field, so the browser stops typing where the server would refuse. */
+  maxLength?: number;
   style?: CSSProperties;
 }
 

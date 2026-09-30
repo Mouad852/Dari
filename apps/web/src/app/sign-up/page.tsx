@@ -108,11 +108,12 @@ export default function SignUpPage() {
             <h1 style={{ margin: 0, font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Bienvenue chez Dari</h1>
             <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>Créez votre profil et trouvez une colocation qui correspond à votre quotidien.</p>
           </div>
+          {/* 30 + a space + 29: the display name is "Prénom Nom", and the API caps it at 60. */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
-            <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>Prénom<input required value={firstName} onChange={(event) => setFirstName(event.target.value)} autoComplete="given-name" style={inputStyle} /></label>
-            <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>Nom<input required value={lastName} onChange={(event) => setLastName(event.target.value)} autoComplete="family-name" style={inputStyle} /></label>
+            <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>Prénom<input required maxLength={30} value={firstName} onChange={(event) => setFirstName(event.target.value)} autoComplete="given-name" style={inputStyle} /></label>
+            <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>Nom<input required maxLength={29} value={lastName} onChange={(event) => setLastName(event.target.value)} autoComplete="family-name" style={inputStyle} /></label>
           </div>
-          <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>Ville (facultatif)<input value={city} onChange={(event) => setCity(event.target.value)} placeholder="Rabat" autoComplete="address-level2" style={inputStyle} /></label>
+          <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>Ville (facultatif)<input maxLength={60} value={city} onChange={(event) => setCity(event.target.value)} placeholder="Rabat" autoComplete="address-level2" style={inputStyle} /></label>
           <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>E-mail<input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="vous@dari.ma" style={inputStyle} /></label>
           <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>Mot de passe<input required minLength={6} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" placeholder="6 caractères minimum" style={inputStyle} /></label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', borderRadius: 'var(--radius-card-inner)', background: 'var(--brand-subtle)', border: '1px solid var(--brand-border)', color: 'var(--clay-700)', padding: '0.8rem 0.9rem', font: 'var(--type-body-sm)' }}><CheckCircle2 size={16} aria-hidden="true" /> Votre identité est sécurisée par Firebase.</div>
