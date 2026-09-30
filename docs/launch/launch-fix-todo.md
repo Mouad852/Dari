@@ -448,8 +448,12 @@ number when the task lands (3.1 and 5.3 both add one).
   `common/auth/FirebaseAuthFilter.java`, user test class. Verify: API. `UserStatusApiTest` 2/2 (a suspended
   account's PATCH is 403 ACCOUNT_SUSPENDED, its DELETE 204 and soft-deletes); with UserApiTest,
   AdminApiTest, SecurityHeadersApiTest 40/40. (2026-09-30)
-- [ ] **5.4e** P2-17 — rent minimum 100 MAD server-side; client previews the parsed value. Files:
-  `CreateListingRequest`/update DTO, `publish/page.tsx`, `ListingApiTest`. Verify: API + Web.
+- [x] **5.4e** P2-17 — rent minimum 100 MAD server-side; client previews the parsed value. Files:
+  `CreateListingRequest`/update DTO, `publish/page.tsx`, `ListingApiTest`. Verify: API + Web. New `parseMad` (`lib/format.ts`):
+  "3.200"/"3,200"/"3 200" → 3200, "3200,50" → 3200.5, else unreadable (blocked with a message);
+  rent helper previews "Loyer enregistré : 3 200 MAD/mois"; deposit parsed the same way.
+  ListingApiTest 59/59 (new: 99.99 and 3.20 refused, 100 accepted); field-errors +
+  account-journeys + keyboard-publish 11/11. (2026-09-30)
 - [ ] **5.4f** P2-18 — `/publish` gated up front with a sign-in CTA carrying `next`; `next` on all
   "Se connecter" links. Files: `publish/page.tsx`, `account/*`, `messages`, `favorites`. Verify:
   Web + spec.

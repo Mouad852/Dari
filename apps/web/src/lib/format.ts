@@ -28,6 +28,22 @@ export function amount(value: number): string {
   return groupThousands(value);
 }
 
+/**
+ * An amount in MAD as an owner types it, or null when it is not one (audit P2-17).
+ *
+ * `Number("3.200")` is 3.2: a Moroccan owner writing the thousands the usual
+ * way got a rent of 3,20 MAD. A dot, comma or space followed by exactly three
+ * digits groups thousands ("3.200", "3,200", "3 200", "12.500.000"); one
+ * followed by one or two digits is a decimal ("3200,50", "3200.5"). Anything
+ * else -- letters, two decimal marks, "3,5,0" -- is not an amount.
+ */
+export function parseMad(input: string): number | null {
+  const compact = input.replace(/[\s\u00a0\u202f]/g, '');
+  if (/^\d{1,3}([.,]\d{3})+$/.test(compact)) return Number(compact.replace(/[.,]/g, ''));
+  if (/^\d+([.,]\d{1,2})?$/.test(compact)) return Number(compact.replace(',', '.'));
+  return null;
+}
+
 /** 3200 -> "3 200 MAD/mois". Rent always states its period. */
 export function rentPerMonth(amount: number): string {
   return `${groupThousands(amount)}${THIN_SPACE}MAD/mois`;

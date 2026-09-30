@@ -83,3 +83,32 @@ test('sign-up names fit the 60-character display name together', async ({ page }
   await expect(main.getByLabel('Prénom')).toHaveValue('p'.repeat(30));
   await expect(main.getByLabel('Nom', { exact: true })).toHaveValue('n'.repeat(29));
 });
+
+test('a rent typed with a Moroccan thousands dot is previewed and saved as thousands', async ({ authenticatedPage: page }) => {
+  const posted: Record<string, unknown>[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/api/v1/listings')) posted.push(request.postDataJSON());
+  });
+  await page.goto('/publish');
+  await page.getByLabel('Titre de l’annonce').fill('Chambre test E2E');
+  await page.getByRole('combobox', { name: 'Quartier', exact: true }).fill('Agdal');
+  await page.getByRole('button', { name: /saisir les coordonnées/i }).click();
+  await page.getByLabel('Latitude').fill('33.9716');
+  await page.getByLabel('Longitude').fill('-6.8498');
+  for (let i = 0; i < 2; i += 1) await page.getByRole('button', { name: 'Suivant' }).click();
+
+  const rent = page.getByLabel('Loyer mensuel');
+  await rent.fill('3,5,0');
+  await expect(rent).toHaveAccessibleDescription(/Montant non reconnu/);
+  await page.getByLabel('Aménagement de la chambre').selectOption('PARTIALLY_FURNISHED');
+  await page.getByLabel('Disponible à partir du').fill('2030-10-01');
+  await page.getByRole('button', { name: 'Suivant' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'montant en MAD' })).toBeVisible();
+  expect(posted, 'nothing saved with an unreadable rent').toHaveLength(0);
+
+  await rent.fill('3.200');
+  await expect(rent).toHaveAccessibleDescription('Loyer enregistré : 3 200 MAD/mois');
+  await page.getByRole('button', { name: 'Suivant' }).click();
+  await expect.poll(() => posted.length).toBe(1);
+  expect(posted[0]).toMatchObject({ priceRent: 3200 });
+});

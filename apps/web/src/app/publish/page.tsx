@@ -19,6 +19,7 @@ import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
 import { FieldErrorList, fieldErrors } from '@/components/ErrorNotice';
 import { CITIES } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
+import { parseMad, rentPerMonth } from '@/lib/format';
 import { prepareImageForUpload } from '@/lib/image';
 import { AMENITY_LABELS, CHARGE_INCLUSION_LABELS, LISTING_ROOM_TYPE_LABELS, PROPERTY_TYPE_LABELS, ROOM_FURNISHING_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
 import type { ChargeInclusion, HouseRules, ListingPhoto, ListingRoom, ListingRoomType, ListingStatus, PropertyType, RoomFurnishing, RoomType } from '@/types/api';
@@ -443,14 +444,14 @@ function PublishWizard() {
     neighborhood: district.trim(),
     latitude: Number(latitude),
     longitude: Number(longitude),
-    priceRent: Number(monthlyRent.replace(/\s/g, '')),
+    priceRent: parseMad(monthlyRent) ?? Number.NaN,
     description: description.trim(),
     roomType,
     propertyType,
     // null leaves the stored value alone on a PATCH.
     roomFurnishing: roomFurnishing || null,
     availableFrom: availableFrom && availableFrom !== loadedAvailableFrom.current ? availableFrom : null,
-    priceDeposit: optionalNumber(priceDeposit),
+    priceDeposit: priceDeposit.trim() ? parseMad(priceDeposit) ?? Number.NaN : null,
     minStayMonths: optionalNumber(minStayMonths),
     numBedrooms: optionalNumber(numBedrooms),
     numBathrooms: optionalNumber(numBathrooms),
@@ -507,8 +508,19 @@ function PublishWizard() {
     if (!district.trim()) return 'Renseignez le quartier avant de continuer.';
     if (!latitude || !longitude) return 'Placez un point sur la carte pour indiquer où se trouve le logement.';
     if (through >= 2 && !monthlyRent.trim()) return 'Renseignez le loyer mensuel avant de continuer.';
+    if (through >= 2 && parseMad(monthlyRent) === null) return 'Le loyer doit être un montant en MAD, par exemple 3 200.';
+    if (through >= 2 && priceDeposit.trim() && parseMad(priceDeposit) === null) {
+      return 'La caution doit être un montant en MAD, par exemple 3 200.';
+    }
     return null;
   };
+
+  const parsedRent = parseMad(monthlyRent);
+  const rentPreview = !monthlyRent.trim()
+    ? undefined
+    : parsedRent === null
+      ? 'Montant non reconnu : écrivez par exemple 3 200.'
+      : `Loyer enregistré : ${rentPerMonth(parsedRent)}`;
 
   /** Everything the API requires. Null means a draft row can be written. */
   const missingRequired = (): string | null => missingThrough(STEPS.length - 1);
@@ -1061,9 +1073,12 @@ function PublishWizard() {
                   value={monthlyRent}
                   error={fieldIssues.priceRent}
                   onChange={(event) => setMonthlyRent(event.target.value)}
-                  inputMode="numeric"
+                  inputMode="decimal"
                   placeholder="3 200"
                   suffix="MAD"
+                  // What will be saved, as the listing will show it: "3.200" typed
+                  // the Moroccan way reads back as 3 200 MAD/mois, not 3,20.
+                  helper={rentPreview}
                 />
                 <Select
                   label="Type de bien"
@@ -1451,7 +1466,7 @@ function PublishWizard() {
                   value={latitude && longitude ? `${Number(latitude).toFixed(5)}, ${Number(longitude).toFixed(5)}` : undefined}
                   missingLabel="Aucun point placé"
                 />
-                <SummaryRow required label="Loyer" value={monthlyRent.trim() ? `${monthlyRent.trim()} MAD` : undefined} />
+                <SummaryRow required label="Loyer" value={parsedRent !== null ? rentPerMonth(parsedRent) : undefined} />
                 <SummaryRow label="Type de bien" value={PROPERTY_TYPE_LABELS[propertyType]} />
                 <SummaryRow label="Type de chambre" value={ROOM_TYPE_LABELS[roomType]} />
                 <SummaryRow required label="Aménagement" value={roomFurnishing ? ROOM_FURNISHING_LABELS[roomFurnishing] : undefined} />

@@ -576,6 +576,35 @@ class ListingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("rent below 100 MAD is refused on create and update (\"3.200\" read as 3.20, audit P2-17)")
+    void rentHasAFloorOf100Mad() throws Exception {
+        stubToken("uid-rent-floor", "rent-floor@example.ma", true);
+        users.save(new User("uid-rent-floor", "rent-floor@example.ma", true, "Rent Floor"));
+        String body = "{\"title\":\"Studio\",\"city\":\"Rabat\",\"neighborhood\":\"Agdal\",\"latitude\":33.9716,\"longitude\":-6.8498,\"priceRent\":%s}";
+
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body(String.format(body, "99.99"))
+                .when().post("/listings")
+                .then().statusCode(400)
+                .body("fields.priceRent", equalTo("Le loyer doit être d'au moins 100 MAD"));
+
+        String id = given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body(String.format(body, "100"))
+                .when().post("/listings")
+                .then().statusCode(201)
+                .extract().path("id");
+
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"priceRent\":3.20}")
+                .when().patch("/listings/" + id)
+                .then().statusCode(400)
+                .body("fields.priceRent", equalTo("Le loyer doit être d'au moins 100 MAD"));
+    }
+
+    @Test
     @DisplayName("create validates availability date and minimum stay range")
     void createValidatesAvailabilityFields() throws Exception {
         stubToken("uid-create-validation", "create-validation@example.ma", true);

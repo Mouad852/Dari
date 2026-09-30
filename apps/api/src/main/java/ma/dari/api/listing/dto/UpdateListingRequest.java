@@ -42,7 +42,7 @@ public record UpdateListingRequest(
         @Min(-180) @Max(180)
         Double longitude,
 
-        @DecimalMin(value = "0.00", inclusive = true, message = "Le loyer doit être positif")
+        @DecimalMin(value = "100.00", inclusive = true, message = "Le loyer doit être d'au moins 100 MAD")
         @Digits(integer = 8, fraction = 2, message = "Le loyer doit comporter au maximum 8 chiffres entiers et 2 décimales")
         BigDecimal priceRent,
 
