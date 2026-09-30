@@ -321,8 +321,9 @@ number when the task lands (3.1 and 5.3 both add one).
   Verify: Web + manual upload matrix (portrait JPEG, >5 MB, WebP) — automated as
   `photo-upload.spec.ts` (3/3: EXIF-6 JPEG arrives 20×40, 3000×2000 PNG > 5 MB arrives
   2560×1707 JPEG, WebP arrives JPEG); with journeys/owner/media/account specs 20/20. (2026-09-30)
-- [ ] **4.2b** P1-5 — server fills white before drawing PNG alpha onto RGB. Files:
-  `media/ImageProcessor.java`, `ImageProcessorTest`. Verify: API `-Dtest=ImageProcessorTest`.
+- [x] **4.2b** P1-5 — server fills white before drawing PNG alpha onto RGB. Files:
+  `media/ImageProcessor.java`, `ImageProcessorTest`. Verify: API `-Dtest=ImageProcessorTest`
+  (7/7; the new transparent-PNG test was red — black pixels — before the fix). (2026-09-30)
 - [ ] **4.2c** P1-5 — server-side EXIF orientation fallback for API clients. Files:
   `ImageProcessor.java`, `ImageProcessorTest` (orientation-6 fixture). Verify: API
   `-Dtest=ImageProcessorTest`.

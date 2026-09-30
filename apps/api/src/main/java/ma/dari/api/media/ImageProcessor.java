@@ -7,6 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -56,6 +57,9 @@ public final class ImageProcessor {
                 Graphics2D graphics = safeImage.createGraphics();
                 try {
                     graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    // JPEG has no alpha: a transparent PNG pixel drawn onto the zeroed RGB buffer comes out black.
+                    graphics.setColor(Color.WHITE);
+                    graphics.fillRect(0, 0, width, height);
                     graphics.drawImage(original, 0, 0, width, height, null);
                 } finally {
                     graphics.dispose();

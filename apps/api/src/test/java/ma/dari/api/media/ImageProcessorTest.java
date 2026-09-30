@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import java.util.zip.CRC32;
 
@@ -31,6 +32,22 @@ class ImageProcessorTest {
         assertThat(encoded.width()).isEqualTo(320);
         assertThat(encoded.height()).isEqualTo(240);
         assertThat(ImageIO.read(new ByteArrayInputStream(encoded.bytes()))).isNotNull();
+    }
+
+    @Test
+    void flattensPngTransparencyOntoWhiteNotBlack() throws Exception {
+        BufferedImage transparent = new BufferedImage(320, 240, BufferedImage.TYPE_INT_ARGB); // every pixel alpha 0
+        ByteArrayOutputStream png = new ByteArrayOutputStream();
+        assertThat(ImageIO.write(transparent, "png", png)).isTrue();
+
+        ImageProcessor.EncodedImage encoded = ImageProcessor.process(new MockMultipartFile(
+                "file", "logo.png", "image/png", png.toByteArray()));
+
+        BufferedImage decoded = ImageIO.read(new ByteArrayInputStream(encoded.bytes()));
+        int rgb = decoded.getRGB(160, 120);
+        // JPEG is lossy, so "white" is every channel near 255.
+        assertThat(List.of((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF)).allSatisfy(channel ->
+                assertThat(channel).isGreaterThan(245));
     }
 
     @Test
