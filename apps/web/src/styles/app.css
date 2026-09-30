@@ -343,3 +343,14 @@ body {
     grid-template-columns: 280px minmax(0, 1fr);
   }
 }
+
+/* The message thread is exactly one screen tall so its middle region scrolls
+   and the composer stays pinned. 100vh on a phone is the height with the
+   browser's toolbar retracted, which put the composer under the toolbar;
+   100dvh follows the toolbar. The vh line is the fallback for browsers
+   without dynamic viewport units (a later declaration they cannot parse is
+   dropped). Here, not inline: an inline style can hold one value only. */
+.thread-page {
+  height: 100vh;
+  height: 100dvh;
+}

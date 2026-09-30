@@ -604,8 +604,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
 
   return (
     <main
+      className="thread-page"
       style={{
-        // Bounded, not `minHeight`: the three children below are a fixed
+        // Bounded (by .thread-page), not `minHeight`: the three children below are a fixed
         // header band, a `flex: 1; overflowY: auto` message region, and a
         // composer meant to stay pinned at the bottom. With only a minimum,
         // `main` simply grew past the viewport once a thread had enough
@@ -613,7 +614,6 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         // of the middle region — which took the composer down with it,
         // scrolled away behind the page's own footer. A capped height is what
         // makes the middle child's own scroll region the one that activates.
-        height: '100vh',
         background: 'linear-gradient(180deg, var(--bg-page) 0%, var(--sable-50) 100%)',
         color: 'var(--text-heading)',
         display: 'flex',

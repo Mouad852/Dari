@@ -154,3 +154,14 @@ test('the composer grows for several lines, Shift+Enter breaks a line and Enter 
   // Back to one line once the draft is cleared (within a sub-pixel of the first layout).
   await expect.poll(async () => Math.abs((await height()) - oneLine)).toBeLessThan(1);
 });
+
+test('the thread is exactly one screen tall, so the composer is on screen', async ({ authenticatedPage: page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto('/messages/conversation-1');
+  const composer = page.getByLabel('Écrire un message');
+  await expect(composer).toBeVisible();
+  // Chromium on a desktop has no retracting toolbar, so 100dvh = 100vh = the viewport here.
+  await expect(page.locator('main.thread-page')).toHaveCSS('height', '640px');
+  const box = (await composer.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(640);
+});

@@ -358,8 +358,11 @@ number when the task lands (3.1 and 5.3 both add one).
   `maxLength=4000`. Files: `messages/[id]/page.tsx`, `message-thread.spec.ts`. Verify: Web + spec.
   Bubbles also keep line breaks (`pre-line`). message-thread + account-journeys 10/10 (dev),
   production project 21 + 1 skip; 360 px screenshot with a four-line draft. (2026-09-30)
-- [ ] **4.4c** P2-15 — thread page `height: 100dvh` with `100vh` fallback. Files:
-  `messages/[id]/page.tsx`. Verify: Web + screenshot at 360 px.
+- [x] **4.4c** P2-15 — thread page `height: 100dvh` with `100vh` fallback. Files:
+  `messages/[id]/page.tsx`. Verify: Web + screenshot at 360 px. Done as `.thread-page` in
+  `styles/app.css` (inline styles hold one value). message-thread 7/7 incl. a new 360×640 check
+  (main is 640 px, composer inside the screen); production project 21 + 1 skip; screenshot.
+  Real-device toolbar behaviour not checked (no device). (2026-09-30)
 - [ ] **4.4d** P2-24 — owner dashboard card and account stat grids stack below 480 px. Files:
   `account/listings/page.tsx`, `account/page.tsx`, `account/security/page.tsx`. Verify: Web +
   360/768/1280 screenshots.
