@@ -201,6 +201,40 @@ export function SearchResults() {
   );
 }
 
+/** How long a typed filter (quartier, rayon, prix) waits before it becomes the search. */
+const TYPING_DEBOUNCE_MS = 400;
+
+/**
+ * The API query for the search in the URL (audit P1-14).
+ *
+ * The one source every request reads: the list, its count, the map and "load
+ * more". They used to read the filter inputs' state instead, so each keystroke
+ * in Quartier re-ran them whatever the URL said -- about 24 requests for
+ * "Hay Riad". Now only a URL change starts a search.
+ */
+function apiSearchParams(url: URLSearchParams): URLSearchParams {
+  const params = new URLSearchParams(url.toString());
+  params.set('sort', url.get('sort') ?? 'recommended');
+  params.delete('view');
+  params.delete('cursor');
+  const radius = (url.get('radius') ?? '').trim();
+  const radiusM = Number.parseInt(radius, 10);
+  params.delete('radius');
+  if (radius && Number.isFinite(radiusM) && radiusM > 0) {
+    const [lat, lng] = centerFor(url.get('city') ?? '');
+    params.delete('city');
+    params.delete('neighborhood');
+    params.set('lat', String(lat));
+    params.set('lng', String(lng));
+    params.set('radiusM', String(radiusM));
+  } else {
+    params.delete('lat');
+    params.delete('lng');
+    params.delete('radiusM');
+  }
+  return params;
+}
+
 function SearchResultsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -232,8 +266,20 @@ function SearchResultsPageContent() {
   const [availableFrom, setAvailableFrom] = useState(searchParams.get('availableFrom') ?? '');
   const [radius, setRadius] = useState(searchParams.get('radius') ?? '');
   const [view, setView] = useState<ViewValue>(searchParams.get('view') === 'map' ? 'map' : 'results');
+  /** A typed filter's URL update, waiting for the typing to pause. */
+  const pendingUrlUpdateRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** The last search this page wrote to the URL. */
+  const lastWrittenSearchRef = useRef<string | null>(null);
+
+  useEffect(() => () => {
+    if (pendingUrlUpdateRef.current) clearTimeout(pendingUrlUpdateRef.current);
+  }, []);
 
   useEffect(() => {
+    // A URL this page wrote already matches its inputs. Copying it back could
+    // only undo what was typed since: a debounced write lands a render or two
+    // after the keystroke that scheduled it. Back/forward and links still sync.
+    if (searchParams.toString() === lastWrittenSearchRef.current) return;
     setNeighborhood(searchParams.get('neighborhood') ?? '');
     setPropertyType(searchParams.get('propertyType') ?? '');
     setRoomType(searchParams.get('roomType') ?? '');
@@ -387,6 +433,7 @@ function SearchResultsPageContent() {
       availableFrom: string;
     }> = {},
   ) => {
+    cancelPendingUrlUpdate();
     const currentNeighborhood = overrides.neighborhood ?? neighborhood;
     const currentPropertyType = overrides.propertyType ?? propertyType;
     const currentRoomType = overrides.roomType ?? roomType;
@@ -430,8 +477,28 @@ function SearchResultsPageContent() {
     }
 
     if (params.toString() !== searchParams.toString()) {
+      lastWrittenSearchRef.current = params.toString();
       router.replace(`/listings?${params.toString()}`, { scroll: false });
     }
+  };
+
+  /**
+   * `updateUrl` for a field typed a character at a time: the search waits for
+   * a 400 ms pause. Any immediate update (a select, a tag, "Voir les
+   * annonces") replaces the pending one and carries the typed value from state.
+   */
+  const cancelPendingUrlUpdate = () => {
+    if (pendingUrlUpdateRef.current) {
+      clearTimeout(pendingUrlUpdateRef.current);
+      pendingUrlUpdateRef.current = null;
+    }
+  };
+  const scheduleUrlUpdate = (...args: Parameters<typeof updateUrl>) => {
+    cancelPendingUrlUpdate();
+    pendingUrlUpdateRef.current = setTimeout(() => {
+      pendingUrlUpdateRef.current = null;
+      updateUrl(...args);
+    }, TYPING_DEBOUNCE_MS);
   };
 
   const setSort = (value: SortValue) => {
@@ -453,6 +520,8 @@ function SearchResultsPageContent() {
     appendFilterParams(params);
 
     if (params.toString() !== searchParams.toString()) {
+      cancelPendingUrlUpdate();
+      lastWrittenSearchRef.current = params.toString();
       router.replace(`/listings?${params.toString()}`, { scroll: false });
     }
   };
@@ -540,129 +609,77 @@ function SearchResultsPageContent() {
     updateUrl(view, radius, { amenities: nextAmenities });
   };
 
+  /** The search the list currently shows, so a late "load more" page cannot land in a newer one. */
+  const shownSearchRef = useRef(searchParams.toString());
+
   useEffect(() => {
-    let isCurrent = true;
+    // Aborted, not just ignored, when a newer search replaces it: the requests
+    // stop costing the API anything (P1-6's per-IP limits) the moment they are stale.
+    const controller = new AbortController();
+    const { signal } = controller;
+    const params = apiSearchParams(searchParams);
+    shownSearchRef.current = searchParams.toString();
 
-    async function loadListings(cursor?: string) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('sort', currentSort);
-      params.set('view', view);
-      if (cursor) params.set('cursor', cursor); else params.delete('cursor');
+    // The count belongs to the filter set, not the page, so it is fetched only
+    // on a fresh search and never while paginating. It is also deliberately
+    // not awaited with the results: a slower count must not delay the list.
+    const countParams = new URLSearchParams(params);
+    countParams.delete('sort');
+    void apiFetch<{ count: number; capped: boolean }>(`/listings/count?${countParams.toString()}`, { signal })
+      .then((result) => {
+        if (!signal.aborted) setResultCount(result);
+      })
+      .catch(() => {
+        // A missing count degrades the heading to a neutral one; it must
+        // never take the results down with it.
+        if (!signal.aborted) setResultCount(null);
+      });
 
-      if (hasRadiusMode && Number.isFinite(effectiveRadiusM) && effectiveRadiusM > 0) {
-        params.delete('city');
-        params.delete('neighborhood');
-        params.set('lat', String(referencePoint.lat));
-        params.set('lng', String(referencePoint.lng));
-        params.set('radiusM', String(effectiveRadiusM));
-      } else {
-        params.delete('lat');
-        params.delete('lng');
-        params.delete('radiusM');
-        if (city) params.set('city', city); else params.delete('city');
-        if (neighborhood.trim()) params.set('neighborhood', neighborhood.trim());
-        else params.delete('neighborhood');
-      }
-
-      appendFilterParams(params);
-
-      // The count belongs to the filter set, not the page, so it is fetched only
-      // on a fresh search and never while paginating. It is also deliberately
-      // not awaited with the results: a slower count must not delay the list.
-      if (!cursor) {
-        const countParams = new URLSearchParams(params);
-        countParams.delete('sort');
-        countParams.delete('view');
-        countParams.delete('cursor');
-        void apiFetch<{ count: number; capped: boolean }>(`/listings/count?${countParams.toString()}`)
-          .then((result) => {
-            if (isCurrent) setResultCount(result);
-          })
-          .catch(() => {
-            // A missing count degrades the heading to a neutral one; it must
-            // never take the results down with it.
-            if (isCurrent) setResultCount(null);
-          });
-      }
-
+    setLoading(true);
+    setLoadingMore(false);
+    void (async () => {
       try {
-        const page = await apiFetch<CursorPage<PublicListing>>(`/listings?${params.toString()}`);
-        if (!isCurrent) return;
-        setListings(cursor ? (prev) => [...prev, ...page.items] : page.items);
+        const page = await apiFetch<CursorPage<PublicListing>>(`/listings?${params.toString()}`, { signal });
+        if (signal.aborted) return;
+        setListings(page.items);
         setNextCursor(page.nextCursor);
         setError(null);
       } catch (err) {
-        if (!isCurrent) return;
+        if (signal.aborted) return;
         setError(err);
       } finally {
-        if (isCurrent) {
+        if (!signal.aborted) {
           setLoading(false);
           setLoadingMore(false);
         }
       }
-    }
+    })();
 
-    setLoading(true);
-    setLoadingMore(false);
-    void loadListings();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [city, currentSort, effectiveRadiusM, hasRadiusMode, neighborhood, referencePoint.lat, referencePoint.lng, reloadKey, searchParams, view]);
+    return () => controller.abort();
+  }, [reloadKey, searchParams]);
 
   useEffect(() => {
-    if (view !== 'map') return;
+    if (searchParams.get('view') !== 'map') return;
 
-    let isCurrent = true;
-
-    async function loadMapPins() {
-      setMapLoading(true);
-      setMapError(null);
-
-      const params = new URLSearchParams(searchParams.toString());
-      params.delete('cursor');
-      params.delete('view');
-      params.set('sort', currentSort);
-
-      const cityValue = (searchParams.get('city') ?? city ?? '').trim();
-      const neighborhoodValue = (searchParams.get('neighborhood') ?? neighborhood ?? '').trim();
-
-      if (hasRadiusMode && Number.isFinite(effectiveRadiusM) && effectiveRadiusM > 0) {
-        params.delete('city');
-        params.delete('neighborhood');
-        params.set('lat', String(referencePoint.lat));
-        params.set('lng', String(referencePoint.lng));
-        params.set('radiusM', String(effectiveRadiusM));
-      } else {
-        if (cityValue) params.set('city', cityValue); else params.delete('city');
-        if (neighborhoodValue) params.set('neighborhood', neighborhoodValue);
-        else params.delete('neighborhood');
-        params.delete('lat');
-        params.delete('lng');
-        params.delete('radiusM');
-      }
-
-      appendFilterParams(params);
-
+    const controller = new AbortController();
+    const { signal } = controller;
+    setMapLoading(true);
+    setMapError(null);
+    void (async () => {
       try {
-        const pins = await apiFetch<MapPin[]>(`/listings/map?${params.toString()}`);
-        if (!isCurrent) return;
+        const pins = await apiFetch<MapPin[]>(`/listings/map?${apiSearchParams(searchParams).toString()}`, { signal });
+        if (signal.aborted) return;
         setMapPins(pins);
       } catch (err) {
-        if (!isCurrent) return;
+        if (signal.aborted) return;
         setMapError(err);
       } finally {
-        if (isCurrent) setMapLoading(false);
+        if (!signal.aborted) setMapLoading(false);
       }
-    }
+    })();
 
-    void loadMapPins();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [city, currentSort, effectiveRadiusM, furnishing, hasRadiusMode, neighborhood, priceMax, priceMin, propertyType, referencePoint.lat, referencePoint.lng, reloadKey, roomType, searchParams, view]);
+    return () => controller.abort();
+  }, [reloadKey, searchParams]);
 
   /**
    * How many filters are actually narrowing the search.
@@ -720,28 +737,17 @@ function SearchResultsPageContent() {
     const active = document.activeElement;
     lastFocusedBeforeLoadMoreRef.current = active instanceof HTMLElement ? active : null;
     setLoadingMore(true);
+    const search = searchParams.toString();
     void (async () => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('sort', currentSort);
+      const params = apiSearchParams(searchParams);
       params.set('cursor', nextCursor);
-      if (hasRadiusMode && Number.isFinite(effectiveRadiusM) && effectiveRadiusM > 0) {
-        params.delete('city');
-        params.delete('neighborhood');
-        params.set('lat', String(referencePoint.lat));
-        params.set('lng', String(referencePoint.lng));
-        params.set('radiusM', String(effectiveRadiusM));
-      } else {
-        if (city) params.set('city', city); else params.delete('city');
-        params.delete('lat');
-        params.delete('lng');
-        params.delete('radiusM');
-      }
-      appendFilterParams(params);
       try {
         const page = await apiFetch<CursorPage<PublicListing>>(`/listings?${params.toString()}`);
+        if (shownSearchRef.current !== search) return;
         setListings((prev) => [...prev, ...page.items]);
         setNextCursor(page.nextCursor);
       } catch (err) {
+        if (shownSearchRef.current !== search) return;
         setError(err);
       } finally {
         setLoadingMore(false);
@@ -908,7 +914,7 @@ function SearchResultsPageContent() {
                     onChange={(event) => {
                       const nextRadius = event.target.value;
                       setRadius(nextRadius);
-                      updateUrl(view, nextRadius);
+                      scheduleUrlUpdate(view, nextRadius);
                     }}
                     helper="Le rayon reste dans l’URL sans exposer les coordonnées exactes."
                   />
@@ -920,7 +926,7 @@ function SearchResultsPageContent() {
                       onChange={(event) => {
                         const nextValue = event.target.value;
                         setNeighborhood(nextValue);
-                        updateUrl(view, radius, { neighborhood: nextValue });
+                        scheduleUrlUpdate(view, radius, { neighborhood: nextValue });
                       }}
                       placeholder="Agdal, Maarif, Gueliz"
                       list="search-neighborhoods"
@@ -1011,7 +1017,7 @@ function SearchResultsPageContent() {
                         onChange={(event) => {
                           const nextValue = event.target.value;
                           setPriceMin(nextValue);
-                          updateUrl(view, radius, { priceMin: nextValue });
+                          scheduleUrlUpdate(view, radius, { priceMin: nextValue });
                         }}
                         placeholder="2 000"
                       />
@@ -1024,7 +1030,7 @@ function SearchResultsPageContent() {
                         onChange={(event) => {
                           const nextValue = event.target.value;
                           setPriceMax(nextValue);
-                          updateUrl(view, radius, { priceMax: nextValue });
+                          scheduleUrlUpdate(view, radius, { priceMax: nextValue });
                         }}
                         placeholder="4 500"
                       />

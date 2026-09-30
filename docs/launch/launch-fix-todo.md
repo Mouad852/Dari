@@ -405,10 +405,19 @@ number when the task lands (3.1 and 5.3 both add one).
   under full-suite load twice: the App Router changes the URL only after `next dev` compiles
   `/profile/[id]`. That one assertion now waits 15 s. Files: `listing-host.spec.ts`. Verify: full
   suite 80 passed + 1 skip. (2026-09-30)
-- [ ] **5.2** P1-14 — text inputs update the URL debounced (400 ms); in-flight requests aborted on
+- [x] **5.2** P1-14 — text inputs update the URL debounced (400 ms); in-flight requests aborted on
   param change; effect keyed on `searchParams` only. Files: `listings/SearchResults.tsx`,
   `public-search.spec.ts`. Verify: Web + spec — 8 characters in Quartier → at most 1 `/listings`
-  request.
+  request. Every request (list, count, map, "load more") now builds its query from the URL alone
+  (`apiSearchParams`); Quartier, Rayon and the price fields debounce; the URL-to-inputs sync skips
+  URLs the page wrote itself so a late write cannot eat typed characters. `public-search` 4/4 (new:
+  "Hay Riad" → 1 request, field keeps every character; radius mode sends lat/lng/radiusM, no city).
+  Full suite 81 passed + 1 skip + 1 production a11y flake (5.2b); production rerun 21 + 1 skip.
+  (2026-09-30)
+- [ ] **5.2b** (test, added 2026-09-30) — `production/accessibility.spec.ts` `/listings/listing-1`
+  failed once under full-suite load with `page-has-heading-one`, although the spec waits for an
+  `<h1>` first; passes on rerun. Find what replaces the heading after it attaches (streamed
+  loading state?) rather than raising timeouts.
 - [ ] **5.3a** P1-15 **DECISION (wording/version)** — migration adding `users.terms_accepted_at`
   and `users.terms_version`; optional `CreateUserRequest.acceptedTermsVersion` stored on create.
   Files: new migration, `user/*`, new user test class. Verify: API.
