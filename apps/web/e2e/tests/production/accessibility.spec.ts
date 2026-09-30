@@ -9,7 +9,10 @@ import { expectAccessible } from '../fixtures';
  * <title> on pages that have both (seen intermittently on cold runs).
  */
 async function waitForStreamedDocument(page: Page) {
-  await expect(page.locator('h1').first()).toBeAttached();
+  // Visible, not merely attached: streamed content first arrives inside a
+  // `<div hidden id="S:0">` and is only then swapped into place, so an attached
+  // <h1> can still be one axe ignores (task 5.2b, seen under full-suite load).
+  await expect(page.locator('h1').first()).toBeVisible();
   await expect(page).toHaveTitle(/\S/);
 }
 

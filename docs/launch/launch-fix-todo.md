@@ -414,11 +414,15 @@ number when the task lands (3.1 and 5.3 both add one).
   "Hay Riad" → 1 request, field keeps every character; radius mode sends lat/lng/radiusM, no city).
   Full suite 81 passed + 1 skip + 1 production a11y flake (5.2b); production rerun 21 + 1 skip.
   (2026-09-30)
-- [ ] **5.2b** (test, added 2026-09-30) — `production/accessibility.spec.ts` `/listings/listing-1`
+- [x] **5.2b** (test, added 2026-09-30) — `production/accessibility.spec.ts` `/listings/listing-1`
   failed once under full-suite load with `page-has-heading-one`, although the spec waits for an
   `<h1>` first; passes on rerun. Find what replaces the heading after it attaches (streamed
   loading state?) rather than raising timeouts. Same `page-has-heading-one` seen twice on dev in
-  `account-journeys` "signup provisions the profile…" under full-suite load (4.4a, 5.4c runs).
+  `account-journeys` "signup provisions the profile…" under full-suite load (4.4a, 5.4c runs). Cause: the production helper waited for an `<h1>` to be
+  *attached*, but streamed content arrives in `<div hidden id="S:0">` before it is swapped in;
+  now it waits for a visible one. The signup journey scanned right after the URL changed, before
+  `/account` rendered; it now waits for the page's `<h1>`. Both specs ×3 on both projects:
+  30/30. (2026-09-30)
 - [ ] **5.3a** P1-15 **DECISION (wording/version)** — migration adding `users.terms_accepted_at`
   and `users.terms_version`; optional `CreateUserRequest.acceptedTermsVersion` stored on create.
   Files: new migration, `user/*`, new user test class. Verify: API.

@@ -16,6 +16,9 @@ test('signup provisions the profile through the API-owned boundary', async ({ au
   await page.getByRole('button', { name: /créer mon compte/i }).click();
   await expect(page).toHaveURL(/\/account$/);
   expect(profileCreated).toBeTruthy();
+  // The URL changes before /account has rendered past its loading state; axe
+  // scanned in between and reported no <h1> under full-suite load (5.2b).
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await expectAccessible(page);
 });
 
