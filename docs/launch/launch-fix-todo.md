@@ -382,9 +382,11 @@ number when the task lands (3.1 and 5.3 both add one).
   (red border, `aria-invalid`, message row); added `ErrorNotice`'s labelled list, a
   `fieldErrors()` helper and `FIELD_LABELS`/`fieldLabel()` in `lib/labels.ts`. Typecheck; full
   suite dev + production 75 passed + 1 skip. (2026-09-30)
-- [ ] **5.1b** P1-4 — forms render `fields` next to inputs (wizard, profile, report dialog). Files:
+- [x] **5.1b** P1-4 — forms render `fields` next to inputs (wizard, profile, report dialog). Files:
   `publish/page.tsx`, `account/profile/page.tsx`, report dialog, `e2e/mock-api.mjs`. Verify: Web +
-  spec forcing a 400 with `fields`.
+  spec forcing a 400 with `fields`. Stubbed with `page.route` (client-side fetches), so the mock
+  API is unchanged. New `field-errors.spec.ts` 3/3; full suite 77 passed + 1 skip + the recurring
+  `listing-host` load flake (fixed separately, 5.1e). (2026-09-30)
 - [ ] **5.1c** P1-4 — `maxLength` equal to the DTO limit on every web text input (title 120,
   description 2000, rules, room descriptions, bio, composer 4000). Files: forms above. Verify: Web
   + spec (2,001 chars capped).

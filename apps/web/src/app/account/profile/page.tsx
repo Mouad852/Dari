@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ds/Button';
 import { Dialog } from '@/components/ds/Dialog';
 import { Input } from '@/components/ds/Input';
+import { FieldErrorList, fieldErrors } from '@/components/ErrorNotice';
 import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
 import { getIdToken, signOut } from '@/lib/firebase';
 import { prepareImageForUpload } from '@/lib/image';
@@ -17,6 +18,8 @@ export default function AccountProfilePage() {
   const [token, setToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<Me | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** The API's per-field messages from the last failed save, shown under each field (audit P1-4). */
+  const [fieldIssues, setFieldIssues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -159,6 +162,17 @@ export default function AccountProfilePage() {
     }
   };
 
+  /* A field the API rejected: danger border, aria-invalid, and its message tied by aria-describedby. */
+  const invalidProps = (key: string) => fieldIssues[key]
+    ? { 'aria-invalid': true as const, 'aria-describedby': `profile-${key}-error` }
+    : {};
+  const fieldStyle = (key: string) => (fieldIssues[key] ? { ...inputStyle, borderColor: 'var(--danger)' } : inputStyle);
+  const fieldMessage = (key: string) => (fieldIssues[key] ? (
+    <span id={`profile-${key}-error`} style={{ color: 'var(--danger)', font: 'var(--type-caption)', textTransform: 'none', letterSpacing: 'normal' }}>
+      {fieldIssues[key]}
+    </span>
+  ) : null);
+
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!token || saving) return;
@@ -167,6 +181,7 @@ export default function AccountProfilePage() {
     setSaving(true);
     setSaved(false);
     setError(null);
+    setFieldIssues({});
     void (async () => {
       try {
         const updated = await apiFetch<Me>('/users/me', {
@@ -187,6 +202,7 @@ export default function AccountProfilePage() {
         setSaved(true);
       } catch (cause) {
         setError(cause instanceof ApiError ? cause.message : 'Impossible d’enregistrer votre profil.');
+        setFieldIssues(fieldErrors(cause));
       } finally {
         setSaving(false);
       }
@@ -248,7 +264,12 @@ export default function AccountProfilePage() {
           </button>
         </header>
 
-        {error ? <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
+        {error ? (
+          <div role="alert" style={{ display: 'grid', gap: 'var(--space-2)' }}>
+            <p style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p>
+            <FieldErrorList fields={fieldIssues} />
+          </div>
+        ) : null}
         {saved ? (
           <p role="status" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--brand)', font: 'var(--type-body-sm)' }}>
             <CheckCircle2 size={14} aria-hidden="true" />
@@ -367,8 +388,10 @@ export default function AccountProfilePage() {
               onChange={(event) => setFirstName(event.target.value)}
               maxLength={60}
               autoComplete="given-name"
-              style={inputStyle}
+              {...invalidProps('firstName')}
+              style={fieldStyle('firstName')}
             />
+            {fieldMessage('firstName')}
           </label>
 
           <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
@@ -380,8 +403,10 @@ export default function AccountProfilePage() {
               maxLength={60}
               required
               autoComplete="nickname"
-              style={inputStyle}
+              {...invalidProps('displayName')}
+              style={fieldStyle('displayName')}
             />
+            {fieldMessage('displayName')}
           </label>
 
           <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
@@ -392,12 +417,14 @@ export default function AccountProfilePage() {
                 onChange={(event) => setCity(event.target.value)}
                 maxLength={60}
                 autoComplete="address-level2"
-                style={{ ...inputStyle, width: '100%', padding: '0.82rem 2.7rem 0.82rem 0.9rem', boxSizing: 'border-box' }}
+                {...invalidProps('city')}
+                style={{ ...fieldStyle('city'), width: '100%', padding: '0.82rem 2.7rem 0.82rem 0.9rem', boxSizing: 'border-box' }}
               />
               <span style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
                 <MapPin size={16} aria-hidden="true" />
               </span>
             </div>
+            {fieldMessage('city')}
           </label>
 
           <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>
@@ -407,8 +434,10 @@ export default function AccountProfilePage() {
               onChange={(event) => setBio(event.target.value)}
               maxLength={600}
               rows={5}
-              style={{ ...inputStyle, resize: 'vertical' }}
+              {...invalidProps('bio')}
+              style={{ ...fieldStyle('bio'), resize: 'vertical' }}
             />
+            {fieldMessage('bio')}
           </label>
         </section>
       </form>

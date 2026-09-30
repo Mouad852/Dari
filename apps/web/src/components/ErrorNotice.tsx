@@ -50,6 +50,23 @@ export function fieldErrors(error: unknown): Record<string, string> {
   return error instanceof ApiError && error.fields ? error.fields : {};
 }
 
+/**
+ * The per-field messages as "<label> : <message>" lines. A form puts this in
+ * its own alert, under the message, for the fields that are not on screen --
+ * the wizard publishes from its last step, while the title is on the first.
+ */
+export function FieldErrorList({ fields }: { fields: Record<string, string> }) {
+  const entries = Object.entries(fields);
+  if (entries.length === 0) return null;
+  return (
+    <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'grid', gap: 'var(--space-1)', color: 'var(--text-body)', font: 'var(--type-body-sm)' }}>
+      {entries.map(([key, message]) => (
+        <li key={key}>{fieldLabel(key)} : {message}</li>
+      ))}
+    </ul>
+  );
+}
+
 export interface ErrorNoticeProps {
   error: unknown;
   /** Shown only for a failure with no French of its own. */
@@ -61,7 +78,6 @@ export interface ErrorNoticeProps {
 }
 
 export function ErrorNotice({ error, fallback, onRetry, children }: ErrorNoticeProps) {
-  const fields = Object.entries(fieldErrors(error));
   return (
     <Card padding="var(--card-pad-lg)" style={{ display: 'grid', gap: 'var(--space-4)', justifyItems: 'start' }}>
       {/*
@@ -74,13 +90,7 @@ export function ErrorNotice({ error, fallback, onRetry, children }: ErrorNoticeP
         <p style={{ margin: 0, color: 'var(--text-body)', font: 'var(--type-body)' }}>
           {errorMessage(error, fallback)}
         </p>
-        {fields.length > 0 ? (
-          <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'grid', gap: 'var(--space-1)', color: 'var(--text-body)', font: 'var(--type-body-sm)' }}>
-            {fields.map(([key, message]) => (
-              <li key={key}>{fieldLabel(key)} : {message}</li>
-            ))}
-          </ul>
-        ) : null}
+        <FieldErrorList fields={fieldErrors(error)} />
       </div>
       {onRetry ? (
         <Button variant="secondary" onClick={onRetry}>Réessayer</Button>

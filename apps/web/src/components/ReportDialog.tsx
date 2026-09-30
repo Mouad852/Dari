@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ds/Button';
 import { Dialog } from '@/components/ds/Dialog';
 import { Icon } from '@/components/ds/Icon';
+import { FieldErrorList, fieldErrors } from '@/components/ErrorNotice';
 import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { REPORT_REASON_LABELS } from '@/lib/labels';
@@ -50,6 +51,8 @@ export function ReportDialog({
   const [details, setDetails] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** The API's per-field messages from the last failed send (audit P1-4). */
+  const [fieldIssues, setFieldIssues] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
 
   /**
@@ -98,6 +101,7 @@ export function ReportDialog({
     armSubmitRefocus();
     setPending(true);
     setError(null);
+    setFieldIssues({});
     try {
       const token = await getIdToken();
       if (!token) {
@@ -121,6 +125,7 @@ export function ReportDialog({
           ? cause.message
           : 'Envoi du signalement impossible. Réessayez dans un instant.',
       );
+      setFieldIssues(fieldErrors(cause));
     } finally {
       setPending(false);
     }
@@ -244,6 +249,8 @@ export function ReportDialog({
                 value={details}
                 maxLength={DETAILS_MAX}
                 onChange={(event) => setDetails(event.target.value)}
+                aria-invalid={fieldIssues.details ? true : undefined}
+                aria-describedby={fieldIssues.details ? 'report-details-error' : undefined}
                 rows={4}
                 placeholder={
                   detailsRequired
@@ -254,7 +261,7 @@ export function ReportDialog({
                   width: '100%',
                   boxSizing: 'border-box',
                   resize: 'vertical',
-                  border: '1px solid var(--border-default)',
+                  border: `1px solid ${fieldIssues.details ? 'var(--danger)' : 'var(--border-default)'}`,
                   borderRadius: 'var(--radius-control)',
                   padding: '0.7rem 0.8rem',
                   font: 'var(--type-body-sm)',
@@ -262,15 +269,23 @@ export function ReportDialog({
                   background: 'var(--surface-card)',
                 }}
               />
+              {fieldIssues.details ? (
+                <span id="report-details-error" style={{ font: 'var(--type-caption)', color: 'var(--danger)' }}>
+                  {fieldIssues.details}
+                </span>
+              ) : null}
               <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', justifySelf: 'end' }}>
                 {details.length} / {DETAILS_MAX}
               </span>
             </label>
 
             {error && (
-              <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>
-                {error}
-              </p>
+              <div role="alert" style={{ display: 'grid', gap: 'var(--space-2)' }}>
+                <p style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>
+                  {error}
+                </p>
+                <FieldErrorList fields={fieldIssues} />
+              </div>
             )}
           </div>
         )}

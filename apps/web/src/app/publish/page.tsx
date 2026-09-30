@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ds/Textarea';
 import { LocationPicker } from '@/components/LocationPicker';
 import { NeighborhoodDatalist } from '@/components/NeighborhoodDatalist';
 import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
+import { FieldErrorList, fieldErrors } from '@/components/ErrorNotice';
 import { CITIES } from '@/lib/cities';
 import { getIdToken } from '@/lib/firebase';
 import { prepareImageForUpload } from '@/lib/image';
@@ -189,6 +190,12 @@ function PublishWizard() {
   const [longitude, setLongitude] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * The API's per-field messages from the last failed save (audit P1-4): shown
+   * on each input, and listed in the alert because publish runs from the last
+   * step while most fields are on earlier ones. Cleared by the next attempt.
+   */
+  const [fieldIssues, setFieldIssues] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
   // What the final save did: sent it for review, saved changes to a listing
   // already awaiting review, or only saved.
@@ -640,6 +647,7 @@ function PublishWizard() {
   const saveAndContinue = async () => {
     // Only what this step was responsible for. Complaining about the rent while
     // standing on the step before it is what made the wizard impassable.
+    setFieldIssues({});
     const missingHere = missingThrough(stepIndex);
     if (missingHere) {
       setError(missingHere);
@@ -668,6 +676,7 @@ function PublishWizard() {
       setStepIndex((value) => value + 1);
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'Impossible d’enregistrer le brouillon.');
+      setFieldIssues(fieldErrors(cause));
     } finally {
       setSubmitting(false);
     }
@@ -678,6 +687,7 @@ function PublishWizard() {
     armSubmitRefocus();
     setSubmitting(true);
     setError(null);
+    setFieldIssues({});
     try {
       const token = await getIdToken();
       if (!token) {
@@ -718,6 +728,7 @@ function PublishWizard() {
       setSaved(true);
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : 'Publication impossible. Vérifiez vos informations.');
+      setFieldIssues(fieldErrors(cause));
     } finally {
       setSubmitting(false);
     }
@@ -902,6 +913,7 @@ function PublishWizard() {
               <Input
                 label="Titre de l’annonce"
                 value={title}
+                error={fieldIssues.title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="Chambre meublée proche du tramway"
                 helper="Décrivez la chambre en quelques mots. C’est la première chose que lit un chercheur."
@@ -927,6 +939,7 @@ function PublishWizard() {
                 <Input
                   label="Quartier"
                   value={district}
+                  error={fieldIssues.neighborhood}
                   onChange={(event) => setDistrict(event.target.value)}
                   placeholder="Agdal"
                   list="wizard-neighborhoods"
@@ -955,6 +968,7 @@ function PublishWizard() {
               <Textarea
                 label="Description"
                 value={description}
+                error={fieldIssues.description}
                 onChange={(event) => setDescription(event.target.value)}
                 rows={6}
                 placeholder="Le logement, le quartier, les colocataires, les règles de vie."
@@ -1010,6 +1024,7 @@ function PublishWizard() {
                   <Input
                     label="Description"
                     value={room.description}
+                    error={fieldIssues[`rooms[${index}].description`]}
                     onChange={(event) => updateRoom(index, { description: event.target.value })}
                     placeholder="Facultatif"
                   />
@@ -1040,6 +1055,7 @@ function PublishWizard() {
                 <Input
                   label="Loyer mensuel"
                   value={monthlyRent}
+                  error={fieldIssues.priceRent}
                   onChange={(event) => setMonthlyRent(event.target.value)}
                   inputMode="numeric"
                   placeholder="3 200"
@@ -1080,6 +1096,7 @@ function PublishWizard() {
                   label="Disponible à partir du"
                   type="date"
                   value={availableFrom}
+                  error={fieldIssues.availableFrom}
                   onChange={(event) => setAvailableFrom(event.target.value)}
                   min={todayIso()}
                 />
@@ -1096,6 +1113,7 @@ function PublishWizard() {
                   <Input
                     label="Caution"
                     value={priceDeposit}
+                    error={fieldIssues.priceDeposit}
                     onChange={(event) => setPriceDeposit(event.target.value)}
                     inputMode="numeric"
                     suffix="MAD"
@@ -1103,6 +1121,7 @@ function PublishWizard() {
                   <Input
                     label="Durée minimale"
                     value={minStayMonths}
+                    error={fieldIssues.minStayMonths}
                     onChange={(event) => setMinStayMonths(event.target.value)}
                     inputMode="numeric"
                     suffix="mois"
@@ -1130,12 +1149,14 @@ function PublishWizard() {
                   <Input
                     label="Chambres dans le logement"
                     value={numBedrooms}
+                    error={fieldIssues.numBedrooms}
                     onChange={(event) => setNumBedrooms(event.target.value)}
                     inputMode="numeric"
                   />
                   <Input
                     label="Salles de bain"
                     value={numBathrooms}
+                    error={fieldIssues.numBathrooms}
                     onChange={(event) => setNumBathrooms(event.target.value)}
                     inputMode="numeric"
                   />
@@ -1144,12 +1165,14 @@ function PublishWizard() {
                   <Input
                     label="Colocataires actuels"
                     value={currentRoommatesCount}
+                    error={fieldIssues.currentRoommatesCount}
                     onChange={(event) => setCurrentRoommatesCount(event.target.value)}
                     inputMode="numeric"
                   />
                   <Input
                     label="Colocataires au maximum"
                     value={maxRoommates}
+                    error={fieldIssues.maxRoommates}
                     onChange={(event) => setMaxRoommates(event.target.value)}
                     inputMode="numeric"
                   />
@@ -1223,6 +1246,7 @@ function PublishWizard() {
               <Textarea
                 label="Autres règles"
                 value={otherRules}
+                error={fieldIssues['houseRules.otherRules']}
                 onChange={(event) => setOtherRules(event.target.value)}
                 rows={4}
                 placeholder="Ménage des parties communes à tour de rôle, une semaine chacun."
@@ -1478,7 +1502,12 @@ function PublishWizard() {
           )}
         </Card>
 
-        {error ? <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
+        {error ? (
+          <div role="alert" style={{ display: 'grid', gap: 'var(--space-2)' }}>
+            <p style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p>
+            <FieldErrorList fields={fieldIssues} />
+          </div>
+        ) : null}
         {saved ? (
           <p role="status" style={{ margin: 0, color: 'var(--success)', font: 'var(--type-body-sm)' }}>
             {savedOutcome === 'sent'

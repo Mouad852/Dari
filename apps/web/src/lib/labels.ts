@@ -170,7 +170,7 @@ export const FIELD_LABELS: Record<string, string> = {
   otherRules: 'Autres règles',
   displayName: 'Nom affiché',
   firstName: 'Prénom',
-  bio: 'Bio',
+  bio: 'Biographie',
   body: 'Message',
   reason: 'Motif',
   details: 'Détails',
