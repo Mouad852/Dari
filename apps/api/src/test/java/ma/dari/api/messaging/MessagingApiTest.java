@@ -79,6 +79,86 @@ class MessagingApiTest extends AbstractIntegrationTest {
         Mockito.when(firebaseAuth.verifyIdToken(Mockito.anyString())).thenReturn(token);
     }
 
+    private Listing listingOf(User owner, ListingStatus status) {
+        return listings.saveAndFlush(new Listing(owner, "Chambre P2-5", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2600.00"), status, AvailabilityState.AVAILABLE));
+    }
+
+    @Test
+    @DisplayName("a new conversation needs a published listing; an existing one survives the listing's suspension")
+    void newConversationsNeedAPublishedListing() throws Exception {
+        User owner = users.save(new User("uid-owner-p25", "owner.p25@example.ma", true, "Owner"));
+        users.save(new User("uid-seeker-p25", "seeker.p25@example.ma", true, "Seeker"));
+        stubToken("uid-seeker-p25", "seeker.p25@example.ma", true);
+
+        for (ListingStatus hidden : List.of(ListingStatus.DRAFT, ListingStatus.PENDING_REVIEW, ListingStatus.REJECTED,
+                ListingStatus.SUSPENDED, ListingStatus.EXPIRED)) {
+            given().header("Authorization", "Bearer test-token")
+                    .contentType("application/json")
+                    .body("{\"listingId\":\"" + listingOf(owner, hidden).getId() + "\",\"body\":\"Bonjour\"}")
+                    .when().post("/conversations")
+                    .then().statusCode(404)
+                    .body("code", equalTo("NOT_FOUND"));
+        }
+
+        Listing published = listingOf(owner, ListingStatus.PUBLISHED);
+        String conversationId = given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"listingId\":\"" + published.getId() + "\",\"body\":\"Bonjour\"}")
+                .when().post("/conversations")
+                .then().statusCode(201)
+                .extract().path("id");
+        published.setStatus(ListingStatus.SUSPENDED);
+        listings.saveAndFlush(published);
+
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"listingId\":\"" + published.getId() + "\",\"body\":\"Toujours là ?\"}")
+                .when().post("/conversations")
+                .then().statusCode(200)
+                .body("id", equalTo(conversationId));
+    }
+
+    @Test
+    @DisplayName("a banned or deleted participant cannot be written to, but the thread stays readable")
+    void unavailableParticipantsCannotBeWrittenTo() throws Exception {
+        users.save(new User("uid-seeker-gone", "seeker.gone@example.ma", true, "Seeker"));
+        User banned = users.save(new User("uid-banned-gone", "banned.gone@example.ma", true, "Banned"));
+        User deleted = users.save(new User("uid-deleted-gone", "deleted.gone@example.ma", true, "Deleted"));
+        stubToken("uid-seeker-gone", "seeker.gone@example.ma", true);
+        String withBanned = openConversationWith(banned);
+        String withDeleted = openConversationWith(deleted);
+
+        banned.setStatus(ma.dari.api.user.UserStatus.BANNED);
+        users.saveAndFlush(banned);
+        deleted.setDeletedAt(Instant.now());
+        users.saveAndFlush(deleted);
+
+        for (String conversationId : List.of(withBanned, withDeleted)) {
+            given().header("Authorization", "Bearer test-token")
+                    .contentType("application/json")
+                    .body("{\"body\":\"Bonjour ?\"}")
+                    .when().post("/conversations/" + conversationId + "/messages")
+                    .then().statusCode(409)
+                    .body("code", equalTo("RECIPIENT_UNAVAILABLE"))
+                    .body("message", equalTo("Ce compte n'existe plus"));
+            given().header("Authorization", "Bearer test-token")
+                    .when().get("/conversations/" + conversationId + "/messages")
+                    .then().statusCode(200);
+        }
+
+        // Nor can a new thread be opened with a banned account.
+        User alsoBanned = users.save(new User("uid-banned-new", "banned.new@example.ma", true, "Banned too"));
+        alsoBanned.setStatus(ma.dari.api.user.UserStatus.BANNED);
+        users.saveAndFlush(alsoBanned);
+        given().header("Authorization", "Bearer test-token")
+                .contentType("application/json")
+                .body("{\"otherUserId\":\"" + alsoBanned.getId() + "\"}")
+                .when().post("/conversations")
+                .then().statusCode(409)
+                .body("code", equalTo("RECIPIENT_UNAVAILABLE"));
+    }
+
     @Test
     @DisplayName("conversation can be created and a message can be sent")
     void createConversationAndSendMessage() throws Exception {

@@ -7,12 +7,14 @@ import ma.dari.api.common.pagination.CursorPage;
 import ma.dari.api.common.pagination.TypedCursors;
 import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingRepository;
+import ma.dari.api.listing.ListingStatus;
 import ma.dari.api.messaging.dto.ConversationResponse;
 import ma.dari.api.messaging.dto.CreateConversationRequest;
 import ma.dari.api.messaging.dto.CreateMessageRequest;
 import ma.dari.api.messaging.dto.MessageResponse;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
+import ma.dari.api.user.UserStatus;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -102,6 +104,18 @@ public class ConversationService {
                 ? conversations.findByParticipantPairWithoutListing(min(first, second), max(first, second))
                 : conversations.findByListingAndParticipantPair(listing.getId(), min(first, second), max(first, second));
 
+        // A new conversation needs a public listing: a UUID alone must not open a
+        // thread about a draft, a rejected or a suspended listing (audit P2-5). The
+        // same 404 as a missing listing, so the answer never says which. An existing
+        // thread is still returned, whatever the listing has become since.
+        if (existing.isEmpty() && listing != null && listing.getStatus() != ListingStatus.PUBLISHED) {
+            throw ApiException.notFound("Annonce introuvable");
+        }
+        boolean sends = request.body() != null && !request.body().isBlank();
+        if (existing.isEmpty() || sends) {
+            requireReachable(otherUser);
+        }
+
         Conversation conversation;
         boolean created;
         if (existing.isPresent()) {
@@ -128,7 +142,7 @@ public class ConversationService {
             }
         }
 
-        if (request.body() != null && !request.body().isBlank()) {
+        if (sends) {
             sendMessageInternal(conversation, currentUser, request.body());
         }
 
@@ -219,6 +233,7 @@ public class ConversationService {
         }
 
         Conversation conversation = findVisibleConversation(currentUser, conversationId);
+        requireReachable(conversation.otherParticipant(currentUser));
         return MessageResponse.from(sendMessageInternal(conversation, currentUser, request.body()));
     }
 
@@ -237,6 +252,17 @@ public class ConversationService {
         // Same transaction as the message, so the inbox order never disagrees with it.
         conversations.touchActivity(conversation.getId());
         return saved;
+    }
+
+    /**
+     * A deleted or banned account can no longer be written to (audit P2-5).
+     * Conversations keep their participants by design, so the history stays
+     * readable; a message sent into it would only sit unread forever.
+     */
+    private void requireReachable(User recipient) {
+        if (recipient.getDeletedAt() != null || recipient.getStatus() == UserStatus.BANNED) {
+            throw new ApiException(409, ErrorCode.RECIPIENT_UNAVAILABLE, "Ce compte n'existe plus");
+        }
     }
 
     private User resolveOtherUser(CreateConversationRequest request, Listing listing) {

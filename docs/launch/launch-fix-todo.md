@@ -428,9 +428,11 @@ number when the task lands (3.1 and 5.3 both add one).
   `apps/mobile/app/sign-up.tsx`, `profile-recovery.tsx`. Verify: Mobile `npm test`.
 - [ ] **5.3d** P1-15 **DECISION** — API makes the accepted version required (400 without it).
   Files: `CreateUserRequest`, user test class. Verify: API full suite.
-- [ ] **5.4a** P2-5 — new conversations require a PUBLISHED listing; sends to a deleted or banned
+- [x] **5.4a** P2-5 — new conversations require a PUBLISHED listing; sends to a deleted or banned
   participant → 409. Files: `messaging/ConversationService.java`, `MessagingApiTest`. Verify: API
-  `-Dtest=MessagingApiTest`.
+  `-Dtest=MessagingApiTest`. New error code `RECIPIENT_UNAVAILABLE` ("Ce compte n'existe
+  plus"); an unpublished listing answers 404 like a missing one; an existing thread is still
+  returned and readable. MessagingApiTest 20/20 (2 new); full API suite 347/347. (2026-09-30)
 - [ ] **5.4b** P2-5 — web thread shows "Ce compte n'existe plus" and disables the composer on that
   409. Files: `messages/[id]/page.tsx`, `message-thread.spec.ts`. Verify: Web + spec.
 - [ ] **5.4c** P2-11 — sign-in maps `ACCOUNT_BANNED`/`UNAUTHENTICATED` to specific copy; global

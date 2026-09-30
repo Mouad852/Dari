@@ -30,6 +30,8 @@ public enum ErrorCode {
     IDENTITY_BANNED,
     INVALID_CURSOR,
     ILLEGAL_TRANSITION,
+    /** The other participant's account was deleted or banned: the thread stays readable, not writable. */
+    RECIPIENT_UNAVAILABLE,
     RATE_LIMITED,
     METHOD_NOT_ALLOWED,
     UNSUPPORTED_MEDIA_TYPE,
