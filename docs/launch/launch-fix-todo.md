@@ -478,8 +478,18 @@ number when the task lands (3.1 and 5.3 both add one).
 
 ## Phase 6 — Testing
 
-- [ ] **6.1** Confirm every row of audit §14 has its test (most land with their task above); add
-  any missing one, one commit per test. Verify: listed test classes/specs green.
+- [x] **6.1** Confirm every row of audit §14 has its test (most land with their task above); add
+  any missing one, one commit per test. Verify: listed test classes/specs green. Checked
+  2026-09-30, row by row: P0-3 `owner-listings` (Renouveler, wizard renew/copy); P0-5 mobile
+  `api.test.ts` (mediaUrl); P1-1 `GlobalExceptionHandlerTest` (405/415/missing part/constraint);
+  P1-2 `ListingApiTest` (published photo → review; keeps ≥ 1 photo); P1-3 `owner-listings` (no
+  PATCH for an unchanged live listing); P1-4 `field-errors.spec.ts`; P1-5 `ImageProcessorTest`
+  (orientation 3/6/8); P1-6 `RateLimitInterceptorTest` (users behind one address keep their own
+  quota); P1-7 `MessagingApiTest` (inbox order + paging); P1-8 `JsonWireContractApiTest` (owner
+  block); P1-9 `UserProfileClearingApiTest`; P1-13 `AdminApiTest` (reinstate); P0-2 wizard
+  payload in `keyboard-publish`/`account-journeys`. Still open with their blocked tasks: P0-1
+  (2.1), P0-2 search over NULL fields (2.2d), P0-4 mobile publish body (2.4); the web↔API
+  journey is 6.2. No test was missing, so no new test commit. (2026-09-30)
 - [ ] **6.2a** Full-stack smoke harness: web against the real API (local stack or Testcontainers)
   with the Firebase Auth emulator (free, no project calls). Files: new e2e config/script. Verify:
   harness boots and a trivial request passes.
