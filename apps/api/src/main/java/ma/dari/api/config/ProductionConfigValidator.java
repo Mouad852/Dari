@@ -68,6 +68,13 @@ public class ProductionConfigValidator
             check.invalid("DARI_PUBLIC_SITE_URL", "must be one https origin with no path or trailing slash");
         }
 
+        // The Admin SDK reads this variable by itself and then accepts ID tokens
+        // without checking their signature: anyone could sign in as anyone.
+        if (!environment.getProperty(FirebaseConfig.AUTH_EMULATOR_HOST, "").isBlank()) {
+            check.invalid(FirebaseConfig.AUTH_EMULATOR_HOST,
+                    "must not be set in production; it makes Firebase accept unsigned tokens");
+        }
+
         String credentials = check.required("FIREBASE_CREDENTIALS_PATH", "dari.firebase.credentials-path");
         if (credentials != null && !readableFile(credentials)) {
             check.invalid("FIREBASE_CREDENTIALS_PATH", "must point to a readable file");

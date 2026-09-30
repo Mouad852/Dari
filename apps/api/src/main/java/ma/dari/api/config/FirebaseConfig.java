@@ -1,5 +1,6 @@
 package ma.dari.api.config;
 
+import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
@@ -25,14 +26,29 @@ import java.io.InputStream;
 @Profile("!test")
 public class FirebaseConfig {
 
+    /** Read by the Admin SDK itself: when set, it verifies tokens without their signature. */
+    static final String AUTH_EMULATOR_HOST = "FIREBASE_AUTH_EMULATOR_HOST";
+
     @Bean
     FirebaseApp firebaseApp(@Value("${dari.firebase.credentials-path}") String credentialsPath,
                             @Value("${dari.firebase.connect-timeout-ms:5000}") int connectTimeoutMs,
-                            @Value("${dari.firebase.read-timeout-ms:10000}") int readTimeoutMs)
+                            @Value("${dari.firebase.read-timeout-ms:10000}") int readTimeoutMs,
+                            @Value("${dari.firebase.emulator-project-id:demo-dari}") String emulatorProjectId)
             throws IOException {
 
         if (!FirebaseApp.getApps().isEmpty()) {
             return FirebaseApp.getInstance();
+        }
+        // The local full-stack harness (task 6.2a) signs people in against the
+        // Firebase Auth emulator, so there is no service account to load. A
+        // "demo-" project id never reaches a real Firebase project.
+        // ProductionConfigValidator refuses to start production with this set.
+        String emulatorHost = System.getenv(AUTH_EMULATOR_HOST);
+        if (emulatorHost != null && !emulatorHost.isBlank()) {
+            return FirebaseApp.initializeApp(FirebaseOptions.builder()
+                    .setProjectId(emulatorProjectId)
+                    .setCredentials(GoogleCredentials.create(new AccessToken("auth-emulator", null)))
+                    .build());
         }
         try (InputStream in = new FileInputStream(credentialsPath)) {
             return FirebaseApp.initializeApp(

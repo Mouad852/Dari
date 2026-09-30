@@ -140,6 +140,7 @@ class ProductionConfigValidatorTest {
             "DARI_WEB_ORIGIN            | dari.web-origins             | https://dari.ma/",
             "DARI_WEB_ORIGIN            | dari.web-origins             | https://dari.ma,http://localhost:3000",
             "DARI_WEB_ORIGIN            | dari.web-origins             | https://dari.ma,",
+            "FIREBASE_AUTH_EMULATOR_HOST | FIREBASE_AUTH_EMULATOR_HOST | 127.0.0.1:9099",
             "DARI_PUBLIC_SITE_URL       | dari.public-site-url         | http://dari.ma",
             "DARI_PUBLIC_SITE_URL       | dari.public-site-url         | https://dari.ma/",
             "DARI_PUBLIC_SITE_URL       | dari.public-site-url         | https://dari.ma,https://www.dari.ma",
