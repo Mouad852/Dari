@@ -58,6 +58,13 @@ export default function SignUpPage() {
         setError(cause.message);
       } else if (cause instanceof Error && cause.message.includes('email-already-in-use')) {
         setError('Cette adresse e-mail est déjà utilisée.');
+      } else if (cause instanceof Error
+        && (cause.message.includes('weak-password') || cause.message.includes('password-does-not-meet-requirements'))) {
+        setError('Ce mot de passe est trop faible. Choisissez-en un plus long, d’au moins 6 caractères.');
+      } else if (cause instanceof Error && cause.message.includes('too-many-requests')) {
+        setError('Trop de tentatives depuis cet appareil. Patientez quelques minutes, puis réessayez.');
+      } else if (cause instanceof Error && cause.message.includes('invalid-email')) {
+        setError('Cette adresse e-mail n’est pas valide.');
       } else {
         setError('Inscription impossible. Vérifiez vos informations et réessayez.');
       }
@@ -108,6 +115,13 @@ export default function SignUpPage() {
             <h1 style={{ margin: 0, font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Bienvenue chez Dari</h1>
             <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>Créez votre profil et trouvez une colocation qui correspond à votre quotidien.</p>
           </div>
+          {/*
+            Once the account exists and waits for its email to be confirmed, the
+            form is gone (audit P2-20): pressing "Créer mon compte" again only
+            answered "Cette adresse e-mail est déjà utilisée".
+          */}
+          {verificationPending ? null : (
+          <>
           {/* 30 + a space + 29: the display name is "Prénom Nom", and the API caps it at 60. */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
             <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>Prénom<input required maxLength={30} value={firstName} onChange={(event) => setFirstName(event.target.value)} autoComplete="given-name" style={inputStyle} /></label>
@@ -117,6 +131,8 @@ export default function SignUpPage() {
           <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>E-mail<input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="vous@dari.ma" style={inputStyle} /></label>
           <label style={{ display: 'grid', gap: '0.45rem', color: 'var(--text-muted)' }}>Mot de passe<input required minLength={6} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" placeholder="6 caractères minimum" style={inputStyle} /></label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', borderRadius: 'var(--radius-card-inner)', background: 'var(--brand-subtle)', border: '1px solid var(--brand-border)', color: 'var(--clay-700)', padding: '0.8rem 0.9rem', font: 'var(--type-body-sm)' }}><CheckCircle2 size={16} aria-hidden="true" /> Votre identité est sécurisée par Firebase.</div>
+          </>
+          )}
           {verificationPending ? (
             <div role="status" style={{ display: 'grid', gap: 'var(--space-3)', borderRadius: 'var(--radius-card-inner)', background: 'var(--brand-subtle)', border: '1px solid var(--brand-border)', color: 'var(--clay-700)', padding: '0.9rem', font: 'var(--type-body-sm)' }}>
               <strong>Confirmez votre adresse e-mail</strong>
@@ -128,7 +144,7 @@ export default function SignUpPage() {
             </div>
           ) : null}
           {error ? <p role="alert" style={{ margin: 0, color: 'var(--danger)', font: 'var(--type-body-sm)' }}>{error}</p> : null}
-          <button ref={submitRef} disabled={submitting} type="submit" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', border: 'none', borderRadius: 'var(--radius-pill)', background: 'var(--brand)', color: 'white', padding: '0.9rem 1.1rem', font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)', cursor: submitting ? 'wait' : 'pointer' }}>{submitting ? 'Création…' : 'Créer mon compte'} <ArrowRight size={16} aria-hidden="true" /></button>
+          {verificationPending ? null : <button ref={submitRef} disabled={submitting} type="submit" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', border: 'none', borderRadius: 'var(--radius-pill)', background: 'var(--brand)', color: 'white', padding: '0.9rem 1.1rem', font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)', cursor: submitting ? 'wait' : 'pointer' }}>{submitting ? 'Création…' : 'Créer mon compte'} <ArrowRight size={16} aria-hidden="true" /></button>}
           <div style={{ textAlign: 'center', font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>Vous avez déjà un compte ? <button type="button" onClick={() => router.push('/sign-in')} style={{ border: 0, background: 'transparent', color: 'var(--clay-700)', padding: 0, font: 'inherit', cursor: 'pointer' }}>Se connecter</button></div>
         </form>
       </div>

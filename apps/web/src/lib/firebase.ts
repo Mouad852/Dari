@@ -41,6 +41,10 @@ type E2eAuthState = {
   refreshFails?: boolean;
   /** Every address a password-reset email was requested for, so a test can assert who gets it. */
   passwordResetEmails?: string[];
+  /** Sign-in and sign-up fail with this Firebase error code (e.g. "auth/too-many-requests"). */
+  authError?: string;
+  /** Sign-in and sign-up produce an account whose email is not yet verified. */
+  accountUnverified?: boolean;
 };
 
 declare global {
@@ -70,13 +74,15 @@ function e2eUser(): FirebaseUser | null {
 }
 
 function e2eCredential(email: string, password: string): UserCredential | null {
-  if (!e2eAuthState()) return null;
+  const current = e2eAuthState();
+  if (!current) return null;
+  if (current.authError) throw new Error(`Firebase: Error (${current.authError}).`);
   if (password.length < 6) throw new Error('auth/password-does-not-meet-requirements');
   const state: E2eAuthState = {
     uid: 'e2e-user-1',
     email,
     displayName: email.split('@')[0],
-    emailVerified: true,
+    emailVerified: !current.accountUnverified,
     token: 'e2e-firebase-token',
   };
   window.__DARI_E2E_AUTH__ = state;

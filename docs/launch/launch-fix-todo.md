@@ -466,8 +466,11 @@ number when the task lands (3.1 and 5.3 both add one).
   when signed out; the recovery button reads "Créer mon profil". account-pages (new: 404
   PROFILE_NOT_FOUND → "Créer mon profil" → recovery, axe) + account-journeys + session-recovery
   20/20. (2026-09-30)
-- [ ] **5.4h** P2-20 — hide the sign-up form once `verificationPending`; map `weak-password` and
-  `too-many-requests`. Files: `sign-up/page.tsx`. Verify: Web + spec.
+- [x] **5.4h** P2-20 — hide the sign-up form once `verificationPending`; map `weak-password` and
+  `too-many-requests`. Files: `sign-up/page.tsx`. Verify: Web + spec. Also `invalid-email`. e2e seam gains
+  `authError` and `accountUnverified`. New `sign-up.spec.ts` 4/4; with account-journeys and
+  session-recovery 17/17 (one earlier run lost a worker to a Chromium crash, 0xC0000409; clean on
+  rerun). (2026-09-30)
 
 ## Phase 6 — Testing
 
