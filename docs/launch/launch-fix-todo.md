@@ -461,8 +461,11 @@ number when the task lands (3.1 and 5.3 both add one).
   favourite redirects, report dialog, admin layout. New `sign-in-return.spec.ts` 3/3; the production
   "publish shell hydrates" test now expects the gate. Full suite 89 passed + 1 skip + that test
   (fixed; production rerun 21 + 1 skip). (2026-09-30)
-- [ ] **5.4g** P2-19 — `/account` without a profile links to `/profile-recovery`; recovery uses
-  `Button`. Files: `account/page.tsx`, `profile-recovery/page.tsx`. Verify: Web.
+- [x] **5.4g** P2-19 — `/account` without a profile links to `/profile-recovery`; recovery uses
+  `Button`. Files: `account/page.tsx`, `profile-recovery/page.tsx`. Verify: Web. The sign-in link now shows only
+  when signed out; the recovery button reads "Créer mon profil". account-pages (new: 404
+  PROFILE_NOT_FOUND → "Créer mon profil" → recovery, axe) + account-journeys + session-recovery
+  20/20. (2026-09-30)
 - [ ] **5.4h** P2-20 — hide the sign-up form once `verificationPending`; map `weak-password` and
   `too-many-requests`. Files: `sign-up/page.tsx`. Verify: Web + spec.
 

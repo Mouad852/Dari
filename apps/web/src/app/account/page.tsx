@@ -52,6 +52,12 @@ export default function AccountPage() {
   const [profile, setProfile] = useState<Me | null>(null);
   const [stats, setStats] = useState<AccountStats | null>(null);
   const [error, setError] = useState<unknown>(null);
+  /**
+   * What the visitor can do about the error: sign in, or finish a profile that
+   * was never created (audit P2-19). A missing profile used to offer
+   * "Se connecter" to someone already signed in.
+   */
+  const [nextStep, setNextStep] = useState<'sign-in' | 'profile' | null>(null);
   // Bumped by the error notice's retry, which is what re-runs the load effect.
   const [reloadKey, setReloadKey] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
@@ -72,7 +78,10 @@ export default function AccountPage() {
     async function loadProfile() {
       const token = await getIdToken();
       if (!token) {
-        if (isCurrent) setError('Connectez-vous pour accéder à votre compte.');
+        if (isCurrent) {
+          setError('Connectez-vous pour accéder à votre compte.');
+          setNextStep('sign-in');
+        }
         return;
       }
 
@@ -82,9 +91,9 @@ export default function AccountPage() {
       } catch (cause) {
         if (isCurrent) {
           // A missing profile is a step to take, not a failure to report.
-          setError(cause instanceof ApiError && cause.isMissingProfile
-            ? 'Votre profil Dari doit encore être créé.'
-            : cause);
+          const missing = cause instanceof ApiError && cause.isMissingProfile;
+          setError(missing ? 'Votre profil Dari doit encore être créé.' : cause);
+          setNextStep(missing ? 'profile' : null);
         }
         return;
       }
@@ -134,7 +143,11 @@ export default function AccountPage() {
             setReloadKey((key) => key + 1);
           }}
         >
-          <Link href={signInHref('/account')} style={{ color: 'var(--brand)' }}>Se connecter</Link>
+          {nextStep === 'sign-in' ? (
+            <Link href={signInHref('/account')} style={{ color: 'var(--brand)' }}>Se connecter</Link>
+          ) : nextStep === 'profile' ? (
+            <Link href="/profile-recovery" style={{ color: 'var(--brand)' }}>Créer mon profil</Link>
+          ) : null}
         </ErrorNotice>
       </main>
     );

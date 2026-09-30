@@ -84,3 +84,18 @@ test('a suspended account is told so on every page, an active one is not', async
   await expect(banner).toBeVisible();
   await expectAccessible(page);
 });
+
+test('a signed-in account without a profile is sent to create it, not to sign in again', async ({ authenticatedPage: page }) => {
+  await page.route('**/api/v1/users/me', (route) => (route.request().method() === 'GET'
+    ? route.fulfill({ status: 404, json: { code: 'PROFILE_NOT_FOUND', message: 'Profil introuvable' } })
+    : route.continue()));
+  await page.goto('/account');
+  const main = page.getByRole('main');
+  await expect(main.getByText('Votre profil Dari doit encore être créé.')).toBeVisible();
+  await expect(main.getByRole('link', { name: 'Se connecter' })).toHaveCount(0);
+
+  await main.getByRole('link', { name: 'Créer mon profil' }).click();
+  await expect(page).toHaveURL(/\/profile-recovery$/, { timeout: 15_000 });
+  await expect(page.getByRole('button', { name: 'Créer mon profil' })).toBeVisible();
+  await expectAccessible(page);
+});
