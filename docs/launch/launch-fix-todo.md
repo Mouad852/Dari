@@ -376,9 +376,12 @@ number when the task lands (3.1 and 5.3 both add one).
 
 ## Phase 5 — Error handling and edge cases
 
-- [ ] **5.1a** P1-4 — `error` prop on `ds/Input` and `ds/Textarea`; `ErrorNotice` lists
+- [x] **5.1a** P1-4 — `error` prop on `ds/Input` and `ds/Textarea`; `ErrorNotice` lists
   `ApiError.fields`. Files: `components/ErrorNotice.tsx`, `components/ds/Input.tsx`,
-  `components/ds/Textarea.tsx`. Verify: Web typecheck/build.
+  `components/ds/Textarea.tsx`. Verify: Web typecheck/build. Both ds fields already had `error`
+  (red border, `aria-invalid`, message row); added `ErrorNotice`'s labelled list, a
+  `fieldErrors()` helper and `FIELD_LABELS`/`fieldLabel()` in `lib/labels.ts`. Typecheck; full
+  suite dev + production 75 passed + 1 skip. (2026-09-30)
 - [ ] **5.1b** P1-4 — forms render `fields` next to inputs (wizard, profile, report dialog). Files:
   `publish/page.tsx`, `account/profile/page.tsx`, report dialog, `e2e/mock-api.mjs`. Verify: Web +
   spec forcing a 400 with `fields`.

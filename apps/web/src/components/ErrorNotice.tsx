@@ -11,6 +11,7 @@ import {
 } from '@/lib/api';
 import { Button } from '@/components/ds/Button';
 import { Card } from '@/components/ds/Card';
+import { fieldLabel } from '@/lib/labels';
 
 /**
  * The sentence to show for a failed request.
@@ -40,6 +41,15 @@ export function errorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+/**
+ * The per-field messages of a validation failure (a 400's `fields`), keyed as
+ * the API sent them -- for a form to show each one next to its input. Empty
+ * for any other failure.
+ */
+export function fieldErrors(error: unknown): Record<string, string> {
+  return error instanceof ApiError && error.fields ? error.fields : {};
+}
+
 export interface ErrorNoticeProps {
   error: unknown;
   /** Shown only for a failure with no French of its own. */
@@ -51,15 +61,27 @@ export interface ErrorNoticeProps {
 }
 
 export function ErrorNotice({ error, fallback, onRetry, children }: ErrorNoticeProps) {
+  const fields = Object.entries(fieldErrors(error));
   return (
     <Card padding="var(--card-pad-lg)" style={{ display: 'grid', gap: 'var(--space-4)', justifyItems: 'start' }}>
       {/*
         role="alert" on an element that only mounts on failure: the message is
         announced when it appears, without a live region sitting on the page.
+        The per-field list is inside it, so "Données invalides" is never
+        announced without the reasons (audit P1-4).
       */}
-      <p role="alert" style={{ margin: 0, color: 'var(--text-body)', font: 'var(--type-body)' }}>
-        {errorMessage(error, fallback)}
-      </p>
+      <div role="alert" style={{ display: 'grid', gap: 'var(--space-2)' }}>
+        <p style={{ margin: 0, color: 'var(--text-body)', font: 'var(--type-body)' }}>
+          {errorMessage(error, fallback)}
+        </p>
+        {fields.length > 0 ? (
+          <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'grid', gap: 'var(--space-1)', color: 'var(--text-body)', font: 'var(--type-body-sm)' }}>
+            {fields.map(([key, message]) => (
+              <li key={key}>{fieldLabel(key)} : {message}</li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
       {onRetry ? (
         <Button variant="secondary" onClick={onRetry}>Réessayer</Button>
       ) : null}

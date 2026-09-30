@@ -137,3 +137,51 @@ export const AMENITY_LABELS: Record<string, string> = {
   furnished: 'Meublé',
   smoke_free: 'Sans fumée',
 };
+
+/**
+ * French names for the API's request fields, as a 400's `fields` map keys
+ * them (DTO property names). The wording matches the form labels, so "Titre
+ * de l’annonce : 120 caractères maximum" points at the field the user sees.
+ */
+export const FIELD_LABELS: Record<string, string> = {
+  title: 'Titre de l’annonce',
+  city: 'Ville',
+  neighborhood: 'Quartier',
+  latitude: 'Latitude',
+  longitude: 'Longitude',
+  priceRent: 'Loyer mensuel',
+  priceDeposit: 'Caution',
+  description: 'Description',
+  wifiIncluded: 'Wi-Fi',
+  electricityIncluded: 'Électricité',
+  waterIncluded: 'Eau',
+  propertyType: 'Type de bien',
+  numBedrooms: 'Chambres dans le logement',
+  numBathrooms: 'Salles de bain',
+  roomType: 'Type de chambre',
+  roomFurnishing: 'Aménagement de la chambre',
+  commonAreasFurnished: 'Espaces communs meublés',
+  currentRoommatesCount: 'Colocataires actuels',
+  maxRoommates: 'Colocataires au maximum',
+  availableFrom: 'Disponible à partir du',
+  minStayMonths: 'Durée minimale',
+  quietHoursStart: 'Heures de silence (début)',
+  quietHoursEnd: 'Heures de silence (fin)',
+  otherRules: 'Autres règles',
+  displayName: 'Nom affiché',
+  firstName: 'Prénom',
+  bio: 'Bio',
+  body: 'Message',
+  reason: 'Motif',
+  details: 'Détails',
+};
+
+/**
+ * The label for one `fields` key. Nested keys name their last segment
+ * ("houseRules.otherRules" is "Autres règles"); a key this map does not know
+ * is shown as sent rather than dropped.
+ */
+export function fieldLabel(key: string): string {
+  const last = key.split('.').pop()!.replace(/\[\d+\]$/, '');
+  return FIELD_LABELS[key] ?? FIELD_LABELS[last] ?? key;
+}
