@@ -106,7 +106,10 @@ test('the prerendered publish shell hydrates for a signed-out visitor', async ({
   expectSecurityHeaders(response);
 
   await expectHydrated(page);
-  await expect(page.getByLabel("Titre de l’annonce")).toBeVisible();
+  // Signed out, the page asks for a sign-in first (P2-18). The link only renders
+  // once the client has read the auth state, so it also proves hydration.
+  await expect(page.getByRole('main').getByRole('link', { name: 'Se connecter' }))
+    .toHaveAttribute('href', '/sign-in?next=%2Fpublish');
 });
 
 test('a dynamic listing page renders relative and absolute photos and hydrates', async ({ guardedPage: page }) => {

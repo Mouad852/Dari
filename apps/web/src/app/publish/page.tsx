@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 
@@ -18,8 +19,9 @@ import { NeighborhoodDatalist } from '@/components/NeighborhoodDatalist';
 import { apiFetch, ApiError, resolveMediaUrl } from '@/lib/api';
 import { FieldErrorList, fieldErrors } from '@/components/ErrorNotice';
 import { CITIES } from '@/lib/cities';
-import { getIdToken } from '@/lib/firebase';
+import { getIdToken, onAuthChange } from '@/lib/firebase';
 import { parseMad, rentPerMonth } from '@/lib/format';
+import { signInHref } from '@/lib/signInHref';
 import { prepareImageForUpload } from '@/lib/image';
 import { AMENITY_LABELS, CHARGE_INCLUSION_LABELS, LISTING_ROOM_TYPE_LABELS, PROPERTY_TYPE_LABELS, ROOM_FURNISHING_LABELS, ROOM_TYPE_LABELS } from '@/lib/labels';
 import type { ChargeInclusion, HouseRules, ListingPhoto, ListingRoom, ListingRoomType, ListingStatus, PropertyType, RoomFurnishing, RoomType } from '@/types/api';
@@ -98,8 +100,55 @@ type WizardRoom = {
 export default function PublishWizardPage() {
   return (
     <Suspense fallback={<main style={{ padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-muted)' }}>Chargement…</main>}>
-      <PublishWizard />
+      <PublishGate />
     </Suspense>
+  );
+}
+
+/**
+ * Publishing needs an account, so a signed-out visitor is asked to sign in
+ * before the wizard, not after typing a whole listing (audit P2-18): the first
+ * save used to answer "Connectez-vous pour enregistrer votre brouillon." with
+ * no link. The sign-in link brings them back here, edit target included.
+ */
+function PublishGate() {
+  const searchParams = useSearchParams();
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  useEffect(() => onAuthChange((user) => setSignedIn(Boolean(user))), []);
+
+  if (signedIn === null) {
+    return <main style={{ padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-muted)' }}>Chargement…</main>;
+  }
+  if (signedIn) return <PublishWizard />;
+
+  const query = searchParams.toString();
+  const here = query ? `/publish?${query}` : '/publish';
+  const linkStyle: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 'var(--radius-pill)',
+    padding: '0.7rem 1.1rem',
+    font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)',
+    textDecoration: 'none',
+  };
+  return (
+    <main style={{ minHeight: '100vh', padding: 'var(--space-8) var(--gutter-mobile)', background: 'var(--bg-page)' }}>
+      <Card padding="var(--card-pad-lg)" style={{ maxWidth: 560, margin: '0 auto', display: 'grid', gap: 'var(--space-4)' }}>
+        <h1 style={{ margin: 0, font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Publier une annonce</h1>
+        <p style={{ margin: 0, font: 'var(--type-body)', color: 'var(--text-body)' }}>
+          Connectez-vous pour publier une annonce. Elle est vérifiée par la modération avant d’apparaître dans les recherches.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+          <Link href={signInHref(here)} style={{ ...linkStyle, background: 'var(--brand)', color: 'var(--text-on-brand)' }}>
+            Se connecter
+          </Link>
+          <Link href="/sign-up" style={{ ...linkStyle, border: '1px solid var(--border-default)', color: 'var(--text-heading)' }}>
+            Créer un compte
+          </Link>
+        </div>
+      </Card>
+    </main>
   );
 }
 

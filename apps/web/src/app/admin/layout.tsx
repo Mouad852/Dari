@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import type { Me } from '@/types/api';
+import { signInHref } from '@/lib/signInHref';
 
 /**
  * The real gate is server-side (`hasRole('ADMIN')` on every /api/v1/admin/**
@@ -24,7 +25,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     async function check() {
       const token = await getIdToken();
       if (!token) {
-        router.replace('/sign-in');
+        router.replace(signInHref());
         return;
       }
 
@@ -38,7 +39,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         setStatus('allowed');
       } catch (cause) {
         if (!isCurrent) return;
-        router.replace(cause instanceof ApiError && cause.isMissingProfile ? '/sign-up' : '/sign-in');
+        router.replace(cause instanceof ApiError && cause.isMissingProfile ? '/sign-up' : signInHref());
       }
     }
 

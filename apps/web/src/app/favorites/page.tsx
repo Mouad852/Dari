@@ -11,6 +11,7 @@ import { ErrorNotice } from '@/components/ErrorNotice';
 import { amount } from '@/lib/format';
 import { UNAVAILABLE_REASON_LABELS } from '@/lib/labels';
 import type { PublicListing } from '@/types/api';
+import { signInHref } from '@/lib/signInHref';
 
 /**
  * Why a favorited listing is no longer bookable, or null if it still is.
@@ -201,7 +202,7 @@ export default function FavoritesPage() {
             }}
           >
             {!token ? (
-              <Link href="/sign-in" style={{ color: 'var(--brand)', font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)' }}>
+              <Link href={signInHref('/favorites')} style={{ color: 'var(--brand)', font: 'var(--weight-medium) var(--type-body-sm) var(--font-ui)' }}>
                 Se connecter
               </Link>
             ) : null}

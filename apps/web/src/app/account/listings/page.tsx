@@ -24,6 +24,7 @@ import { getIdToken } from '@/lib/firebase';
 import { rentPerMonth } from '@/lib/format';
 import { AVAILABILITY_LABELS, LISTING_STATUS_LABELS } from '@/lib/labels';
 import type { ListingDetail, ListingStatus } from '@/types/api';
+import { signInHref } from '@/lib/signInHref';
 
 type OwnedListing = ListingDetail;
 
@@ -287,7 +288,7 @@ export default function MyListingsPage() {
         {error ? (
           <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
             <p role="alert" style={{ margin: 0, color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>{error}</p>
-            {!token ? <Link href="/sign-in" style={{ color: 'var(--brand)' }}>Se connecter</Link> : null}
+            {!token ? <Link href={signInHref('/account/listings')} style={{ color: 'var(--brand)' }}>Se connecter</Link> : null}
           </div>
         ) : !listings ? (
           <p style={{ color: 'var(--text-muted)', font: 'var(--type-body-sm)' }}>Chargement de vos annonces…</p>

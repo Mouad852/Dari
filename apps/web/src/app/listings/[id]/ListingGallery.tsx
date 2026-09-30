@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { apiFetch, resolveMediaUrl } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import type { ListingPhoto } from '@/types/api';
+import { signInHref } from '@/lib/signInHref';
 
 /**
  * The photo header, and the only interactive part of it.
@@ -62,7 +63,7 @@ export function ListingGallery({
   const toggleSaved = async () => {
     const token = await getIdToken();
     if (!token) {
-      router.push('/sign-in');
+      router.push(signInHref());
       return;
     }
     const next = !saved;

@@ -14,6 +14,7 @@ import { getIdToken } from '@/lib/firebase';
 import { clockTime, dayLabel, rentPerMonth } from '@/lib/format';
 import { confirmPending, isPending, mergeMessages, newestFetched, PENDING_PREFIX, pollAnchor } from '@/lib/messages';
 import type { Conversation, Me, Message, PublicListing } from '@/types/api';
+import { signInHref } from '@/lib/signInHref';
 
 /**
  * What the next render does to the message region's scroll: follow the thread
@@ -496,7 +497,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             setReloadKey((key) => key + 1);
           }}
         >
-          <Link href={token ? '/messages' : '/sign-in'} style={{ textDecoration: 'none' }}>
+          <Link href={token ? '/messages' : signInHref(`/messages/${id}`)} style={{ textDecoration: 'none' }}>
             <Button variant="secondary" iconLeft={token ? 'arrow-left' : undefined}>
               {token ? 'Retour aux messages' : 'Se connecter'}
             </Button>

@@ -10,6 +10,7 @@ import { apiFetch, type CursorPage } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { relativeTime } from '@/lib/format';
 import type { Conversation } from '@/types/api';
+import { signInHref } from '@/lib/signInHref';
 
 const TONES = ['brand', 'sand', 'atlas'] as const;
 
@@ -171,7 +172,7 @@ export default function InboxPage() {
             }}
           >
             {!token ? (
-              <Link href="/sign-in" style={{ textDecoration: 'none' }}>
+              <Link href={signInHref('/messages')} style={{ textDecoration: 'none' }}>
                 <Button variant="primary">Se connecter</Button>
               </Link>
             ) : null}

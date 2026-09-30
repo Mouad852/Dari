@@ -11,6 +11,7 @@ import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
 import { REPORT_REASON_LABELS } from '@/lib/labels';
 import type { ReportReason, ReportTargetType } from '@/types/api';
+import { signInHref } from '@/lib/signInHref';
 
 const REASONS = Object.keys(REPORT_REASON_LABELS) as ReportReason[];
 
@@ -105,7 +106,7 @@ export function ReportDialog({
     try {
       const token = await getIdToken();
       if (!token) {
-        router.push('/sign-in');
+        router.push(signInHref());
         return;
       }
       await apiFetch('/reports', {

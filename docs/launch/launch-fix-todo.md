@@ -454,9 +454,13 @@ number when the task lands (3.1 and 5.3 both add one).
   rent helper previews "Loyer enregistré : 3 200 MAD/mois"; deposit parsed the same way.
   ListingApiTest 59/59 (new: 99.99 and 3.20 refused, 100 accepted); field-errors +
   account-journeys + keyboard-publish 11/11. (2026-09-30)
-- [ ] **5.4f** P2-18 — `/publish` gated up front with a sign-in CTA carrying `next`; `next` on all
+- [x] **5.4f** P2-18 — `/publish` gated up front with a sign-in CTA carrying `next`; `next` on all
   "Se connecter" links. Files: `publish/page.tsx`, `account/*`, `messages`, `favorites`. Verify:
-  Web + spec.
+  Web + spec. New `lib/signInHref.ts`; used by
+  account hub/listings/profile, favorites, messages, thread, search/listing/profile contact and
+  favourite redirects, report dialog, admin layout. New `sign-in-return.spec.ts` 3/3; the production
+  "publish shell hydrates" test now expects the gate. Full suite 89 passed + 1 skip + that test
+  (fixed; production rerun 21 + 1 skip). (2026-09-30)
 - [ ] **5.4g** P2-19 — `/account` without a profile links to `/profile-recovery`; recovery uses
   `Button`. Files: `account/page.tsx`, `profile-recovery/page.tsx`. Verify: Web.
 - [ ] **5.4h** P2-20 — hide the sign-up form once `verificationPending`; map `weak-password` and

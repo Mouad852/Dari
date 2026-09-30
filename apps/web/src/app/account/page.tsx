@@ -10,6 +10,7 @@ import { ErrorNotice } from '@/components/ErrorNotice';
 import { getIdToken, signOut } from '@/lib/firebase';
 import { VERIFICATION_LABELS } from '@/lib/labels';
 import type { ListingDetail, Me } from '@/types/api';
+import { signInHref } from '@/lib/signInHref';
 
 interface AccountStats {
   listings: number;
@@ -133,7 +134,7 @@ export default function AccountPage() {
             setReloadKey((key) => key + 1);
           }}
         >
-          <Link href="/sign-in" style={{ color: 'var(--brand)' }}>Se connecter</Link>
+          <Link href={signInHref('/account')} style={{ color: 'var(--brand)' }}>Se connecter</Link>
         </ErrorNotice>
       </main>
     );

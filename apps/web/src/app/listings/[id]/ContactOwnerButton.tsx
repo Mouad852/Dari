@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
+import { signInHref } from '@/lib/signInHref';
 
 /**
  * Starts a conversation about this listing.
@@ -36,7 +37,7 @@ export function ContactOwnerButton({ listingId }: { listingId: string }) {
     try {
       const token = await getIdToken();
       if (!token) {
-        router.push('/sign-in');
+        router.push(signInHref());
         return;
       }
       const conversation = await apiFetch<{ id: string }>('/conversations', {

@@ -22,6 +22,7 @@ import { NeighborhoodDatalist } from '@/components/NeighborhoodDatalist';
 import { amount, distance } from '@/lib/format';
 import { AMENITY_LABELS } from '@/lib/labels';
 import type { MapPin, PublicListing } from '@/types/api';
+import { signInHref } from '@/lib/signInHref';
 
 /*
  * Labels say what the sort actually does.
@@ -359,7 +360,7 @@ function SearchResultsPageContent() {
   const handleToggleFavorite = (listingId: string) => {
     if (favoritePendingId) return;
     if (!favoriteToken) {
-      router.push('/sign-in');
+      router.push(signInHref());
       return;
     }
 

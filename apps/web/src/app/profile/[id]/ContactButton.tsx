@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
+import { signInHref } from '@/lib/signInHref';
 
 export function ContactButton({ userId }: { userId: string }) {
   const router = useRouter();
@@ -32,7 +33,7 @@ export function ContactButton({ userId }: { userId: string }) {
     if (pending) return;
     const token = await getIdToken();
     if (!token) {
-      router.push('/sign-in');
+      router.push(signInHref());
       return;
     }
 

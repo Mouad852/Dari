@@ -13,6 +13,7 @@ import { getIdToken, signOut } from '@/lib/firebase';
 import { prepareImageForUpload } from '@/lib/image';
 import { VERIFICATION_LABELS } from '@/lib/labels';
 import type { Me } from '@/types/api';
+import { signInHref } from '@/lib/signInHref';
 
 export default function AccountProfilePage() {
   const [token, setToken] = useState<string | null>(null);
@@ -214,7 +215,7 @@ export default function AccountProfilePage() {
       <main style={{ minHeight: '100vh', padding: 'var(--space-8) var(--gutter-mobile)', color: 'var(--text-muted)' }}>
         <h1 style={{ margin: 0, font: 'var(--type-h2)', color: 'var(--text-heading)' }}>Votre profil</h1>
         <p role="alert">{error}</p>
-        {!token ? <Link href="/sign-in" style={{ color: 'var(--brand)' }}>Se connecter</Link> : null}
+        {!token ? <Link href={signInHref('/account/profile')} style={{ color: 'var(--brand)' }}>Se connecter</Link> : null}
       </main>
     );
   }
