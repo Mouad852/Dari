@@ -165,3 +165,21 @@ test('the thread is exactly one screen tall, so the composer is on screen', asyn
   const box = (await composer.boundingBox())!;
   expect(box.y + box.height).toBeLessThanOrEqual(640);
 });
+
+test('a deleted or banned correspondent: the thread stays readable and the composer closes', async ({ authenticatedPage: page }) => {
+  await page.route('**/api/v1/conversations/conversation-1/messages', (route) => (route.request().method() === 'POST'
+    ? route.fulfill({ status: 409, json: { code: 'RECIPIENT_UNAVAILABLE', message: 'Ce compte n’existe plus' } })
+    : route.continue()));
+  await page.goto('/messages/conversation-1');
+  const composer = page.getByLabel('Écrire un message');
+  await composer.fill('Bonjour ?');
+  await page.getByRole('button', { name: 'Envoyer' }).click();
+
+  await expect(page.getByRole('alert').filter({ hasText: 'Ce compte n’existe plus' })).toContainText('plus y répondre');
+  await expect(composer).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Envoyer' })).toBeDisabled();
+  // The history is still there, and the unsent bubble is gone.
+  const log = page.getByRole('log', { name: 'Messages de la conversation' });
+  await expect(log.getByText('Bonjour, la chambre est-elle toujours disponible ?')).toBeVisible();
+  await expect(log.getByText('Bonjour ?', { exact: true })).toHaveCount(0);
+});

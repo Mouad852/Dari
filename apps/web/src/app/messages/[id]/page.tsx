@@ -71,6 +71,11 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   // Bumped by the error notice's retry, which is what re-runs the load effect.
   const [reloadKey, setReloadKey] = useState(0);
   const [sendError, setSendError] = useState<string | null>(null);
+  /**
+   * The other person's account was deleted or banned (409 RECIPIENT_UNAVAILABLE,
+   * audit P2-5): the history stays readable, but nothing more can be sent.
+   */
+  const [recipientGone, setRecipientGone] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
@@ -468,7 +473,11 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         // with a bare "Retour aux messages" screen on every failed send,
         // discarding a still-perfectly-loaded conversation over one message
         // that didn't go through.
-        setSendError(errorMessage(cause, 'Le message n’a pas pu être envoyé.'));
+        if (cause instanceof ApiError && cause.code === ErrorCode.RECIPIENT_UNAVAILABLE) {
+          setRecipientGone(true);
+        } else {
+          setSendError(errorMessage(cause, 'Le message n’a pas pu être envoyé.'));
+        }
       } finally {
         sendingRef.current = false;
         setSending(false);
@@ -753,6 +762,14 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
           borderTop: '1px solid var(--border-hairline)',
         }}
       >
+        {recipientGone ? (
+          <p
+            role="alert"
+            style={{ ...THREAD_COLUMN, margin: '0 0 var(--space-2)', color: 'var(--text-body)', font: 'var(--type-body-sm)' }}
+          >
+            <strong>Ce compte n’existe plus.</strong> Vous pouvez relire la conversation, mais plus y répondre.
+          </p>
+        ) : null}
         {sendError ? (
           <p
             role="alert"
@@ -777,7 +794,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
           placeholder="Écrire un message…"
           aria-label="Écrire un message"
           aria-describedby="composer-hint"
-          disabled={sending}
+          disabled={sending || recipientGone}
           rows={1}
           maxLength={MESSAGE_MAX_LENGTH}
           style={{
@@ -795,7 +812,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
           }}
         />
         <span id="composer-hint" hidden>Entrée pour envoyer, Maj+Entrée pour aller à la ligne.</span>
-        <Button type="submit" variant="primary" iconLeft="send" loading={sending} disabled={!draft.trim()}>
+        <Button type="submit" variant="primary" iconLeft="send" loading={sending} disabled={!draft.trim() || recipientGone}>
           Envoyer
         </Button>
         </div>

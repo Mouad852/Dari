@@ -433,8 +433,10 @@ number when the task lands (3.1 and 5.3 both add one).
   `-Dtest=MessagingApiTest`. New error code `RECIPIENT_UNAVAILABLE` ("Ce compte n'existe
   plus"); an unpublished listing answers 404 like a missing one; an existing thread is still
   returned and readable. MessagingApiTest 20/20 (2 new); full API suite 347/347. (2026-09-30)
-- [ ] **5.4b** P2-5 — web thread shows "Ce compte n'existe plus" and disables the composer on that
-  409. Files: `messages/[id]/page.tsx`, `message-thread.spec.ts`. Verify: Web + spec.
+- [x] **5.4b** P2-5 — web thread shows "Ce compte n'existe plus" and disables the composer on that
+  409. Files: `messages/[id]/page.tsx`, `message-thread.spec.ts`. Verify: Web + spec. `RECIPIENT_UNAVAILABLE` added to `lib/errors.ts`;
+  message-thread 8/8 (new: stubbed 409 → notice, composer and Envoyer disabled, history intact,
+  unsent bubble removed). (2026-09-30)
 - [ ] **5.4c** P2-11 — sign-in maps `ACCOUNT_BANNED`/`UNAUTHENTICATED` to specific copy; global
   suspended banner. Files: `sign-in/page.tsx`, layout/nav. Verify: Web + `session-recovery` spec.
 - [ ] **5.4d** P2-11 — allow `DELETE /users/me` while suspended. Files:
