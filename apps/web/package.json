@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "phase3:smoke": "node scripts/phase3-smoke.mjs",
+    "e2e:full-stack": "node e2e/full-stack/run.mjs",
     "tokens:sync": "node scripts/sync-tokens.mjs",
     "tokens:check": "node scripts/check-tokens.mjs"
   },

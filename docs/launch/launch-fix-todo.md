@@ -490,9 +490,14 @@ number when the task lands (3.1 and 5.3 both add one).
   payload in `keyboard-publish`/`account-journeys`. Still open with their blocked tasks: P0-1
   (2.1), P0-2 search over NULL fields (2.2d), P0-4 mobile publish body (2.4); the web↔API
   journey is 6.2. No test was missing, so no new test commit. (c56080f, 2026-09-30)
-- [ ] **6.2a** Full-stack smoke harness: web against the real API (local stack or Testcontainers)
+- [x] **6.2a** Full-stack smoke harness: web against the real API (local stack or Testcontainers)
   with the Firebase Auth emulator (free, no project calls). Files: new e2e config/script. Verify:
-  harness boots and a trivial request passes.
+  harness boots and a trivial request passes. `npm run e2e:full-stack` (`e2e/full-stack/run.mjs`):
+  throwaway PostGIS on 55432, Auth emulator (`demo-dari`) on 9099, API from source on 18080 in
+  emulator mode (1a63cb2), `next dev` on 3120 with `connectAuthEmulator`; runs
+  `e2e/full-stack.config.ts`, tears everything down. Specs live in `e2e/full-stack/` so the normal
+  suite never needs the stack. `smoke.spec.ts` 2/2 (emulator account → profile created and read
+  back, forged token 401; web renders /listings from the API). (2026-10-01)
 - [ ] **6.2b** Full-stack smoke journey: sign up → publish → approve → search → message. Files:
   new `apps/web/e2e/tests/full-stack.spec.ts`. Verify: spec green.
 - [ ] **6.3** Full run: `./mvnw test`; `npm run typecheck && npm run build && npx playwright test`

@@ -10,6 +10,7 @@
 
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
 import {
+  connectAuthEmulator,
   createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
@@ -93,6 +94,13 @@ export function getFirebaseAuth(): Auth {
   if (!authInstance) {
     const app: FirebaseApp = getApps().length ? getApps()[0]! : initializeApp(config);
     authInstance = getAuth(app);
+    // The local full-stack harness (e2e/full-stack) signs in against the free
+    // Firebase Auth emulator. Never in a production build: the API refuses the
+    // emulator in production too (ProductionConfigValidator).
+    const emulatorHost = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST;
+    if (emulatorHost && process.env.NODE_ENV !== 'production') {
+      connectAuthEmulator(authInstance, `http://${emulatorHost}`, { disableWarnings: true });
+    }
   }
   return authInstance;
 }
