@@ -5,7 +5,6 @@ import ma.dari.api.common.auth.AuthenticatedUser;
 import ma.dari.api.common.auth.CurrentUser;
 import ma.dari.api.common.error.ApiException;
 import ma.dari.api.common.error.ErrorCode;
-import ma.dari.api.common.error.NotImplementedYetException;
 import ma.dari.api.common.ratelimit.RateLimited;
 import ma.dari.api.common.ratelimit.RateLimitType;
 import ma.dari.api.user.dto.CreateUserRequest;
@@ -101,13 +100,6 @@ public class UserController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteMe(@CurrentUser User user) {
         userService.deleteAccount(user);
-    }
-
-    /** Reserved by §7 for fast-follow phone verification. */
-    @PostMapping("/me/phone-verification")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-    public Object startPhoneVerification(@CurrentUser User user) {
-        throw new NotImplementedYetException("post-MVP");
     }
 
     private UserResponse response(User user) {

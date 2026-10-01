@@ -525,8 +525,10 @@ number when the task lands (3.1 and 5.3 both add one).
   Verify: Web + spec. "Avertir le propriétaire" (listing) / "Avertir" (account), its
   own dialog and reason field (sent as the email's "Motif"). confirmation-dialogs 4/4 (new: POST
   {action: WARN, reason}, axe). (2026-10-01)
-- [ ] **7.2** P2-8 — remove the 501 `POST /users/me/phone-verification` stub. Files:
-  `user/UserController.java`, tests. Verify: API.
+- [x] **7.2** P2-8 — remove the 501 `POST /users/me/phone-verification` stub. Files:
+  `user/UserController.java`, tests. Verify: API. Now an ordinary 404 (new
+  `UserRemovedRoutesApiTest`); `NotImplementedYetException`/`NOT_IMPLEMENTED` stay, unused, as
+  part of the error contract. With UserApiTest and ArchitectureTest 25/25. (2026-10-01)
 - [ ] **7.3** P2-22 — marketing copy matches behaviour (charges, "profils contrôlés",
   colocataires). Files: `app/layout.tsx`, `app/page.tsx`. Verify: Web.
 - [ ] **7.4** P2-26 — delete dead `ListingSearchService`/`ListingSearchRepository` methods and move
