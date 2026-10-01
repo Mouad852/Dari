@@ -114,8 +114,9 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
         listings.saveAndFlush(casablanca);
 
         // Search only the city created for this test.
-        List<Listing> rabatResults = search.searchByLocationPaginated(
-                testCity, null, null, null, null, null, null, null, null, 0, 100
+        List<Listing> rabatResults = search.searchByLocationSorted(
+                testCity, null, null, null, null, null, null, null, null, 0,
+                "recommended", null, null, null, null, 100
         );
 
         assertThat(rabatResults.size()).isEqualTo(15);
@@ -142,17 +143,20 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
         }
 
         // Get first page
-        List<Listing> page1 = search.searchByLocationPaginated(
-                testCity, null, null, null, null, null, null, null, null, 0, 11
+        List<Listing> page1 = search.searchByLocationSorted(
+                testCity, null, null, null, null, null, null, null, null, 0,
+                "recommended", null, null, null, null, 11
         );
         assertThat(page1).hasSize(11);
 
-        // Get second page using cursor
+        // Second page from the cursor the service writes for the default sort:
+        // the last row's creation time and id.
         var lastListing = page1.get(10);
-        List<Listing> page2 = search.searchByLocationWithCursor(
+        List<Listing> page2 = search.searchByLocationSorted(
                 testCity, null, null, null, null, null, null, null, null, 0,
-                java.time.OffsetDateTime.ofInstant(lastListing.getCreatedAt(), java.time.ZoneId.systemDefault()), 
-                lastListing.getId(),
+                "recommended", null,
+                java.time.OffsetDateTime.ofInstant(lastListing.getCreatedAt(), java.time.ZoneOffset.UTC),
+                null, lastListing.getId(),
                 11
         );
         
@@ -185,11 +189,12 @@ class ListingSearchOptimizationTest extends AbstractIntegrationTest {
         }
 
         // Filter by price range
-        List<Listing> expensive = search.searchByLocationPaginated(
+        List<Listing> expensive = search.searchByLocationSorted(
                 testCity, null,
                 BigDecimal.valueOf(3000), null,
                 null, null, null,
                 null, null, 0,
+                "recommended", null, null, null, null,
                 100
         );
 

@@ -534,8 +534,12 @@ number when the task lands (3.1 and 5.3 both add one).
   (`flatshare/[city]`), the home's "encaissez le loyer en ligne" (no payments) and the search
   header's "Mises à jour aujourd'hui · loyers charges comprises". New `marketing-claims.spec.ts`
   3/3 (page text and meta description); production project 21 + 1 skip. (2026-10-01)
-- [ ] **7.4** P2-26 — delete dead `ListingSearchService`/`ListingSearchRepository` methods and move
-  `ListingSearchOptimizationTest` onto `searchByLocationSorted`. Verify: API full suite.
+- [x] **7.4** P2-26 — delete dead `ListingSearchService`/`ListingSearchRepository` methods and move
+  `ListingSearchOptimizationTest` onto `searchByLocationSorted`. Verify: API full suite. Removed
+  `searchByLocationPaginated`, `searchByLocationWithCursor`, `getPublicOrOwnerListing`,
+  `parseEnumList`, `encodeCursor`; the test pages with the service's own `recommended` cursor.
+  Full API suite 352/352 (a first run hit the IDE-builder `NoClassDefFound` trap; clean rerun).
+  (2026-10-01)
 - [ ] **7.5** P2-23 — "Administration" link for `me.role === 'ADMIN'`. Files: `SiteNav.tsx`,
   `account/page.tsx`. Verify: Web.
 - [ ] **7.6a** P2-9 — batch amenities/rules/rooms by `listingId IN` in `listMine` and the admin

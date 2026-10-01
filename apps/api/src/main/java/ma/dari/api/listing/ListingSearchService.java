@@ -391,29 +391,6 @@ public class ListingSearchService {
                 .toList();
     }
 
-    public PublicListingResponse getPublicOrOwnerListing(UUID listingId, User viewer) {
-        Listing listing = listings.findByIdAndDeletedAtIsNull(listingId)
-                .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
-
-        if (viewer != null && listing.getOwner().getId().equals(viewer.getId())) {
-            return PublicListingResponse.from(listing, locationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM), covers.forListing(listing.getId()));
-        }
-
-        // Moderators review PENDING_REVIEW/SUSPENDED listings that belong to
-        // someone else; without this, the admin console's own "view listing"
-        // link 404s on exactly the listings it exists to review.
-        if (viewer != null && viewer.getRole() == UserRole.ADMIN) {
-            return PublicListingResponse.from(listing, locationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM), covers.forListing(listing.getId()));
-        }
-
-        if (listing.getStatus() == ListingStatus.PUBLISHED
-                && listing.getAvailabilityState() == AvailabilityState.AVAILABLE) {
-            return PublicListingResponse.from(listing, locationFuzzer.fuzz(listing.getId(), listing.getLatitude(), listing.getLongitude(), fuzzRadiusM), covers.forListing(listing.getId()));
-        }
-
-        throw new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable");
-    }
-
     // Read-only transaction: the host block reads the lazily loaded owner.
     @Transactional(readOnly = true)
     public PublicListingDetailResponse getPublicOrOwnerListingDetail(UUID listingId, User viewer) {
@@ -535,27 +512,6 @@ public class ListingSearchService {
         return new ApiException(409, ErrorCode.ILLEGAL_TRANSITION, "Transition illégale: " + message);
     }
 
-    private <T extends Enum<T>> Set<T> parseEnumList(String[] rawValues, Class<T> enumType) {
-        if (rawValues == null || rawValues.length == 0) {
-            return Set.of();
-        }
-
-        Set<T> values = new java.util.HashSet<>();
-        for (String raw : rawValues) {
-            if (raw == null || raw.isBlank()) {
-                continue;
-            }
-            for (String token : raw.split(",")) {
-                String cleaned = token.trim();
-                if (cleaned.isEmpty()) {
-                    continue;
-                }
-                values.add(Enum.valueOf(enumType, cleaned.toUpperCase(Locale.ROOT)));
-            }
-        }
-        return values;
-    }
-
     private String[] normalizeValues(String[] rawValues) {
         if (rawValues == null || rawValues.length == 0) {
             return null;
@@ -620,13 +576,6 @@ public class ListingSearchService {
         } catch (java.security.NoSuchAlgorithmException impossible) {
             throw new IllegalStateException(impossible);
         }
-    }
-
-    private String encodeCursor(UUID id, String sort) {
-        ObjectNode payload = Cursor.newPayload();
-        payload.put("sort", sort);
-        payload.put("lastId", id.toString());
-        return Cursor.encode(payload);
     }
 
 }

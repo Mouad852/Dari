@@ -118,44 +118,6 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
     );
 
     /**
-     * Search by city and neighborhood with cursor pagination, sorted by creation date descending.
-     * Includes all enum-based filters (propertyType, roomType, furnishing) and date availability.
-     * Amenities use a GROUP BY HAVING subquery to enforce AND semantics.
-     */
-    @Query(value = """
-            SELECT l.* FROM published_listings l
-            WHERE 1 = 1
-              AND (:city IS NULL OR l.city = :city)
-              AND (CAST(:neighborhood AS text) IS NULL OR dari_fold(l.neighborhood) = dari_fold(CAST(:neighborhood AS text)))
-              AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
-              AND (:maxPrice IS NULL OR l.price_rent <= :maxPrice)
-              AND (CAST(:propertyTypes AS property_type[]) IS NULL OR l.property_type = ANY(CAST(:propertyTypes AS property_type[])))
-              AND (CAST(:roomTypes AS room_type[]) IS NULL OR l.room_type = ANY(CAST(:roomTypes AS room_type[])))
-              AND (CAST(:furnishings AS room_furnishing[]) IS NULL OR l.room_furnishing = ANY(CAST(:furnishings AS room_furnishing[])))
-              AND (CAST(:availableBy AS date) IS NULL OR l.available_from <= :availableBy)
-              AND (CAST(:amenityCodes AS text[]) IS NULL OR (
-                  SELECT COUNT(DISTINCT la.amenity_code) FROM listing_amenities la
-                  WHERE la.listing_id = l.id
-                    AND la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
-              ) = :amenityCount)
-            ORDER BY l.created_at DESC, l.id DESC
-            LIMIT :limit
-            """, nativeQuery = true)
-    List<Listing> searchByLocationPaginated(
-            @Param("city") String city,
-            @Param("neighborhood") String neighborhood,
-            @Param("minPrice") BigDecimal minPrice,
-            @Param("maxPrice") BigDecimal maxPrice,
-            @Param("propertyTypes") String[] propertyTypes,
-            @Param("roomTypes") String[] roomTypes,
-            @Param("furnishings") String[] furnishings,
-            @Param("availableBy") LocalDate availableBy,
-            @Param("amenityCodes") String[] amenityCodes,
-            @Param("amenityCount") int amenityCount,
-            @Param("limit") int limit
-    );
-
-    /**
      * Radius search around a point, ordered by distance ascending, then ID descending.
      * Includes all enum-based filters and amenities AND logic.
      * Uses the idx_listings_location GIST index for efficient spatial lookups.
@@ -270,50 +232,6 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
             @Param("amenityCodes") String[] amenityCodes,
             @Param("amenityCount") int amenityCount,
             @Param("lastDistance") double lastDistance,
-            @Param("lastId") UUID lastId,
-            @Param("limit") int limit
-    );
-
-    /**
-     * Keyset pagination cursor for location-based queries: find results where created_at < lastCreatedAt,
-     * or if created_at equals lastCreatedAt, find results where ID < lastId.
-     * Includes all enum-based filters and amenities AND logic.
-     */
-    @Query(value = """
-            SELECT l.* FROM published_listings l
-            WHERE 1 = 1
-              AND (:city IS NULL OR l.city = :city)
-              AND (CAST(:neighborhood AS text) IS NULL OR dari_fold(l.neighborhood) = dari_fold(CAST(:neighborhood AS text)))
-              AND (:minPrice IS NULL OR l.price_rent >= :minPrice)
-              AND (:maxPrice IS NULL OR l.price_rent <= :maxPrice)
-              AND (CAST(:propertyTypes AS property_type[]) IS NULL OR l.property_type = ANY(CAST(:propertyTypes AS property_type[])))
-              AND (CAST(:roomTypes AS room_type[]) IS NULL OR l.room_type = ANY(CAST(:roomTypes AS room_type[])))
-              AND (CAST(:furnishings AS room_furnishing[]) IS NULL OR l.room_furnishing = ANY(CAST(:furnishings AS room_furnishing[])))
-              AND (CAST(:availableBy AS date) IS NULL OR l.available_from <= :availableBy)
-              AND (CAST(:amenityCodes AS text[]) IS NULL OR (
-                  SELECT COUNT(DISTINCT la.amenity_code) FROM listing_amenities la
-                  WHERE la.listing_id = l.id
-                    AND la.amenity_code = ANY(CAST(:amenityCodes AS text[]))
-              ) = :amenityCount)
-              AND (
-                  l.created_at < :lastCreatedAt
-                  OR (l.created_at = :lastCreatedAt AND l.id < :lastId)
-              )
-            ORDER BY l.created_at DESC, l.id DESC
-            LIMIT :limit
-            """, nativeQuery = true)
-    List<Listing> searchByLocationWithCursor(
-            @Param("city") String city,
-            @Param("neighborhood") String neighborhood,
-            @Param("minPrice") BigDecimal minPrice,
-            @Param("maxPrice") BigDecimal maxPrice,
-            @Param("propertyTypes") String[] propertyTypes,
-            @Param("roomTypes") String[] roomTypes,
-            @Param("furnishings") String[] furnishings,
-            @Param("availableBy") LocalDate availableBy,
-            @Param("amenityCodes") String[] amenityCodes,
-            @Param("amenityCount") int amenityCount,
-            @Param("lastCreatedAt") java.time.OffsetDateTime lastCreatedAt,
             @Param("lastId") UUID lastId,
             @Param("limit") int limit
     );
