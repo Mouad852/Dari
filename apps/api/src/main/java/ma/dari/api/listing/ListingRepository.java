@@ -64,7 +64,8 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
             ListingStatus status,
             AvailabilityState availabilityState);
 
-    List<Listing> findByStatusAndDeletedAtIsNull(ListingStatus status);
+    /** A moderation queue, oldest change first, one bounded page (audit P2-9). */
+    List<Listing> findByStatusAndDeletedAtIsNullOrderByUpdatedAtAscIdAsc(ListingStatus status, Pageable page);
 
     /** Backs the moderation-queue-depth gauge; counting avoids loading the queue into memory on every scrape. */
     long countByStatusAndDeletedAtIsNull(ListingStatus status);

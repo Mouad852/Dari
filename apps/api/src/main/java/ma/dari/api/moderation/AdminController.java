@@ -40,19 +40,14 @@ import java.util.UUID;
 public class AdminController {
 
     private final AdminService adminService;
-    private final ReportRepository reportRepository;
 
-    public AdminController(AdminService adminService, ReportRepository reportRepository) {
+    public AdminController(AdminService adminService) {
         this.adminService = adminService;
-        this.reportRepository = reportRepository;
     }
 
     @GetMapping("/dashboard")
     public Map<String, Long> dashboard(@CurrentUser User admin) {
-        return Map.of(
-                "pendingReviews", (long) adminService.pendingListings().size(),
-                "pendingReports", (long) reportRepository.findByStatus(ReportStatus.PENDING).size()
-        );
+        return adminService.dashboard();
     }
 
     // --- listing review ------------------------------------------------------

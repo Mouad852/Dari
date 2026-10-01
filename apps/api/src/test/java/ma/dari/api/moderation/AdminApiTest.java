@@ -21,6 +21,7 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
@@ -663,5 +664,31 @@ class AdminApiTest extends AbstractIntegrationTest {
                 .then().statusCode(200)
                 .body("pendingReviews", org.hamcrest.Matchers.notNullValue())
                 .body("pendingReports", org.hamcrest.Matchers.notNullValue());
+    }
+
+    @Test
+    @DisplayName("the review queue returns its oldest 100 while the dashboard counts them all")
+    void reviewQueueIsBoundedAndOldestFirst() throws Exception {
+        admin("queue-bound");
+        User owner = users.saveAndFlush(new User("uid-queue-owner-" + System.nanoTime(),
+                "queue-owner-" + System.nanoTime() + "@example.ma", true, "Queue Owner"));
+        // Other tests leave pending listings behind in the shared database: top up past the bound.
+        long before = given().header("Authorization", "Bearer admin-token")
+                .when().get("/admin/dashboard").then().statusCode(200)
+                .extract().jsonPath().getLong("pendingReviews");
+        long added = Math.max(0, AdminService.QUEUE_LIMIT + 1 - before);
+        for (int i = 0; i < added; i++) listingFor(owner, ListingStatus.PENDING_REVIEW);
+
+        given().header("Authorization", "Bearer admin-token")
+                .when().get("/admin/dashboard")
+                .then().statusCode(200)
+                .body("pendingReviews", equalTo((int) (before + added)));
+
+        List<String> updated = given().header("Authorization", "Bearer admin-token")
+                .when().get("/admin/listings")
+                .then().statusCode(200)
+                .extract().jsonPath().getList("updatedAt", String.class);
+        assertThat(updated).hasSize(AdminService.QUEUE_LIMIT);
+        assertThat(updated.stream().map(java.time.Instant::parse).toList()).isSorted();
     }
 }

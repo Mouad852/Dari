@@ -548,8 +548,12 @@ number when the task lands (3.1 and 5.3 both add one).
   queue. Verify: API full suite. New `ListingExtras` (three `IN` queries per
   page); new `ListingExtrasApiTest` (each listing keeps its own extras, empty where none). Full API
   suite 353/353. (2026-10-01)
-- [ ] **7.6b** P2-9 — `countByStatus` for the admin dashboard; page the queues. Verify: API
-  `-Dtest=AdminApiTest`.
+- [x] **7.6b** P2-9 — `countByStatus` for the admin dashboard; page the queues. Verify: API
+  `-Dtest=AdminApiTest`. Dashboard counts in the database
+  (`AdminService.dashboard`). Queues bounded rather than cursor-paged, so the admin pages' array
+  contract is unchanged: listings oldest-first, reports in priority order, at most 100 each
+  (`QUEUE_LIMIT`); the dashboard shows the full counts. AdminApiTest 21/21 (new: 101 pending →
+  queue 100, sorted, dashboard counts all) + ReportApiTest 9/9. (2026-10-01)
 - [ ] **7.7a** P2-2 — `@Version` on `Listing` and `User` (migration) + 409 handler. Verify: API
   full suite.
 - [ ] **7.7b** P2-2 — `@Transactional` on `ListingSearchService` lifecycle methods. Verify: API

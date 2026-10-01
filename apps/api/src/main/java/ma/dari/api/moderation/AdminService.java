@@ -81,6 +81,21 @@ public class AdminService {
         this.expiry = expiry;
     }
 
+    /**
+     * Most items a queue returns (audit P2-9): oldest first for listings, highest
+     * priority first for reports. Moderators work from the top, and the dashboard
+     * counts say when more wait behind.
+     */
+    static final int QUEUE_LIMIT = 100;
+
+    /** The dashboard's numbers, counted by the database rather than by loading both queues. */
+    @Transactional(readOnly = true)
+    public Map<String, Long> dashboard() {
+        return Map.of(
+                "pendingReviews", listings.countByStatusAndDeletedAtIsNull(ListingStatus.PENDING_REVIEW),
+                "pendingReports", reports.countByStatus(ReportStatus.PENDING));
+    }
+
     @Transactional(readOnly = true)
     public List<ListingResponse> pendingListings() {
         return moderationQueue(ListingStatus.PENDING_REVIEW);
@@ -96,7 +111,7 @@ public class AdminService {
         if (status != ListingStatus.PENDING_REVIEW && status != ListingStatus.SUSPENDED) {
             throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Statut non pris en charge");
         }
-        List<Listing> rows = listings.findByStatusAndDeletedAtIsNull(status);
+        List<Listing> rows = listings.findByStatusAndDeletedAtIsNullOrderByUpdatedAtAscIdAsc(status, PageRequest.of(0, QUEUE_LIMIT));
         // One query for the whole queue, not one per row: a moderator opening a
         // backlog of fifty should not cost fifty round trips to see fifty photos.
         Map<UUID, String> coverUrls = covers.forEach(rows);
@@ -220,6 +235,7 @@ public class AdminService {
                         .comparing((AdminReportQueueItem item) -> !item.autoFlagged())
                         .thenComparing(Comparator.comparingLong(AdminReportQueueItem::reportCount).reversed())
                         .thenComparing(AdminReportQueueItem::firstReportedAt))
+                .limit(QUEUE_LIMIT)
                 .toList();
     }
 
