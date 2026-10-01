@@ -521,8 +521,10 @@ number when the task lands (3.1 and 5.3 both add one).
 
 ## Phase 7 — Final cleanup
 
-- [ ] **7.1** P2-8 — WARN action in the admin report queue UI. Files: `admin/reports/page.tsx`.
-  Verify: Web + spec.
+- [x] **7.1** P2-8 — WARN action in the admin report queue UI. Files: `admin/reports/page.tsx`.
+  Verify: Web + spec. "Avertir le propriétaire" (listing) / "Avertir" (account), its
+  own dialog and reason field (sent as the email's "Motif"). confirmation-dialogs 4/4 (new: POST
+  {action: WARN, reason}, axe). (2026-10-01)
 - [ ] **7.2** P2-8 — remove the 501 `POST /users/me/phone-verification` stub. Files:
   `user/UserController.java`, tests. Verify: API.
 - [ ] **7.3** P2-22 — marketing copy matches behaviour (charges, "profils contrôlés",

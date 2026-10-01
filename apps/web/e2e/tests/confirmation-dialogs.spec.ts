@@ -120,3 +120,18 @@ test('banning asks in a dialog, and an empty reason is left out rather than sent
   await expect(page.getByText('Banni', { exact: true })).toBeVisible();
   expect(nativeDialogs).toEqual([]);
 });
+
+test('a report can end in a warning to the listing owner, with its reason', async ({ authenticatedPage: page }) => {
+  await page.goto('/admin/reports');
+
+  await page.getByRole('button', { name: 'Avertir le propriétaire' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Envoyer un avertissement ?' });
+  await expect(dialog).toContainText('l’annonce et le compte restent actifs');
+  await expect(dialog).toContainText('Envoyé par e-mail dans l’avertissement');
+  await expectAccessible(page);
+
+  await dialog.getByLabel('Motif de l’avertissement (facultatif)').fill('Photos trompeuses');
+  const sent = page.waitForRequest((request: Request) => request.method() === 'POST' && request.url().endsWith('/admin/reports/LISTING/listing-1/action'));
+  await dialog.getByRole('button', { name: 'Avertir', exact: true }).click();
+  expect((await sent).postDataJSON()).toEqual({ action: 'WARN', reason: 'Photos trompeuses' });
+});

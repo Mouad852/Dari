@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Ban, Check, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Ban, Check, ExternalLink, MessageSquareWarning } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -12,10 +12,11 @@ import { getIdToken } from '@/lib/firebase';
 import { relativeTime } from '@/lib/format';
 import { REPORT_REASON_LABELS, REPORT_TARGET_LABELS } from '@/lib/labels';
 
-type QueueAction = 'DISMISS' | 'SUSPEND' | 'BAN';
+type QueueAction = 'DISMISS' | 'WARN' | 'SUSPEND' | 'BAN';
 
 const ACTION_REASON_LABEL: Record<QueueAction, string> = {
   DISMISS: 'Raison du classement sans suite (facultatif)',
+  WARN: 'Motif de l’avertissement (facultatif)',
   SUSPEND: 'Raison de la suspension (facultatif)',
   BAN: 'Raison du bannissement (facultatif)',
 };
@@ -26,6 +27,8 @@ const ACTION_REASON_LABEL: Record<QueueAction, string> = {
 // text; dismissing, or suspending an account, only reaches the moderation log.
 const actionReasonHelper = (action: QueueAction, targetType: AdminReportQueueItem['targetType']) => {
   if (action === 'BAN') return 'Envoyée par e-mail à la personne bannie. Sans raison, elle reçoit un message générique.';
+  // A warning on a listing goes to its owner (ReportService); it is the email's "Motif".
+  if (action === 'WARN') return 'Envoyé par e-mail dans l’avertissement. Sans motif, il ne contient que le rappel général.';
   if (action === 'SUSPEND' && targetType === 'LISTING') {
     return 'Enregistrée sur l’annonce et dans le journal de modération. Elle n’est pas envoyée par e-mail.';
   }
@@ -368,6 +371,20 @@ export default function AdminReportsPage() {
                         Classer sans suite
                       </button>
 
+                      {/*
+                        The step between dismissing and suspending (audit P2-8): the
+                        API has always offered it; the queue did not.
+                      */}
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={() => handleAction(item, 'WARN')}
+                        style={queueActionStyle(isPending)}
+                      >
+                        <MessageSquareWarning size={14} aria-hidden="true" />
+                        {item.targetType === 'LISTING' ? 'Avertir le propriétaire' : 'Avertir'}
+                      </button>
+
                       <button
                         type="button"
                         disabled={isPending}
@@ -405,6 +422,8 @@ export default function AdminReportsPage() {
           title={
             confirming.action === 'DISMISS'
               ? 'Classer sans suite ?'
+              : confirming.action === 'WARN'
+                ? 'Envoyer un avertissement ?'
               : confirming.action === 'BAN'
                 ? 'Bannir définitivement ce compte ?'
                 : confirming.item.targetType === 'LISTING' ? 'Suspendre l’annonce ?' : 'Suspendre le compte ?'
@@ -413,8 +432,10 @@ export default function AdminReportsPage() {
           footer={
             <>
               <Button variant="secondary" onClick={() => setConfirming(null)}>Annuler</Button>
-              <Button variant={confirming.action === 'DISMISS' ? 'primary' : 'danger'} onClick={confirmAction}>
-                {confirming.action === 'DISMISS' ? 'Classer sans suite' : confirming.action === 'BAN' ? 'Bannir' : 'Suspendre'}
+              <Button variant={confirming.action === 'DISMISS' || confirming.action === 'WARN' ? 'primary' : 'danger'} onClick={confirmAction}>
+                {confirming.action === 'DISMISS'
+                  ? 'Classer sans suite'
+                  : confirming.action === 'WARN' ? 'Avertir' : confirming.action === 'BAN' ? 'Bannir' : 'Suspendre'}
               </Button>
             </>
           }
@@ -425,6 +446,11 @@ export default function AdminReportsPage() {
                 {confirming.item.targetLabel ?? `#${confirming.item.targetId.slice(0, 8)}`}
               </strong>
               {confirming.action === 'DISMISS' ? ' : les signalements en attente seront clos sans action.' : null}
+              {confirming.action === 'WARN'
+                ? confirming.item.targetType === 'LISTING'
+                  ? ' : son propriétaire reçoit un avertissement par e-mail ; l’annonce et le compte restent actifs.'
+                  : ' : la personne reçoit un avertissement par e-mail ; son compte reste actif.'
+                : null}
               {confirming.action === 'BAN' ? ' : ses annonces seront retirées et son adresse ne pourra plus se réinscrire.' : null}
             </p>
             <Textarea
