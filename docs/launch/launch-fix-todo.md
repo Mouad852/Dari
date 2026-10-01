@@ -544,8 +544,10 @@ number when the task lands (3.1 and 5.3 both add one).
   `account/page.tsx`. Verify: Web. In the account hub's "Paramètres" only: the nav does not
   know the role and would need `/users/me` on every page. account-pages 8/8 (new: shown for ADMIN,
   absent for USER). (2026-10-01)
-- [ ] **7.6a** P2-9 — batch amenities/rules/rooms by `listingId IN` in `listMine` and the admin
-  queue. Verify: API full suite.
+- [x] **7.6a** P2-9 — batch amenities/rules/rooms by `listingId IN` in `listMine` and the admin
+  queue. Verify: API full suite. New `ListingExtras` (three `IN` queries per
+  page); new `ListingExtrasApiTest` (each listing keeps its own extras, empty where none). Full API
+  suite 353/353. (2026-10-01)
 - [ ] **7.6b** P2-9 — `countByStatus` for the admin dashboard; page the queues. Verify: API
   `-Dtest=AdminApiTest`.
 - [ ] **7.7a** P2-2 — `@Version` on `Listing` and `User` (migration) + 409 handler. Verify: API

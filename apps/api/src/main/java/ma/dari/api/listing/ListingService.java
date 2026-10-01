@@ -44,12 +44,13 @@ public class ListingService {
     private final NeighborhoodRepository neighborhoods;
     private final ListingRoomRepository rooms;
     private final ListingCovers covers;
+    private final ListingExtras listingExtras;
 
     public ListingService(ListingRepository listings, ListingPhotoRepository listingPhotos, ImageStore imageStore,
                            MediaCleanupService mediaCleanup,
                            AmenityRepository amenities, ListingAmenityRepository listingAmenities,
                            HouseRulesRepository houseRules, NeighborhoodRepository neighborhoods,
-                           ListingRoomRepository rooms, ListingCovers covers) {
+                           ListingRoomRepository rooms, ListingCovers covers, ListingExtras listingExtras) {
         this.listings = listings;
         this.listingPhotos = listingPhotos;
         this.imageStore = imageStore;
@@ -60,6 +61,7 @@ public class ListingService {
         this.neighborhoods = neighborhoods;
         this.rooms = rooms;
         this.covers = covers;
+        this.listingExtras = listingExtras;
     }
 
     /** The owner's dashboard: every status, not just what search would show. */
@@ -77,9 +79,14 @@ public class ListingService {
         List<Listing> pageRows = hasMore ? rows.subList(0, PAGE_SIZE) : rows;
         // One query for the page's covers rather than one per listing.
         java.util.Map<UUID, String> coverUrls = covers.forEach(pageRows);
+        // Likewise amenities, house rules and rooms: three queries per page, not per listing.
+        java.util.Map<UUID, ListingExtras.Extras> extras = listingExtras.forEach(pageRows);
         List<ListingResponse> items = pageRows.stream()
-                .map(listing -> ListingResponse.from(listing, amenityCodesFor(listing.getId()),
-                        coverUrls.get(listing.getId()), houseRulesFor(listing.getId()), roomsFor(listing.getId())))
+                .map(listing -> {
+                    ListingExtras.Extras more = extras.get(listing.getId());
+                    return ListingResponse.from(listing, more.amenityCodes(), coverUrls.get(listing.getId()),
+                            more.houseRules(), more.rooms());
+                })
                 .toList();
 
         String nextCursor = null;

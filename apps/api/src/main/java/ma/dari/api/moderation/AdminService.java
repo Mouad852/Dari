@@ -8,6 +8,7 @@ import ma.dari.api.common.pagination.TypedCursors;
 import ma.dari.api.listing.HouseRulesRepository;
 import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingAmenityRepository;
+import ma.dari.api.listing.ListingExtras;
 import ma.dari.api.listing.ListingExpiry;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingRoomRepository;
@@ -43,6 +44,7 @@ public class AdminService {
     private final HouseRulesRepository houseRules;
     private final ListingRoomRepository rooms;
     private final ListingCovers covers;
+    private final ListingExtras listingExtras;
     private final AdminActionRepository adminActions;
     private final ReportRepository reports;
     private final ReportService reportService;
@@ -56,6 +58,7 @@ public class AdminService {
                        HouseRulesRepository houseRules,
                        ListingRoomRepository rooms,
                        ListingCovers covers,
+                       ListingExtras listingExtras,
                        AdminActionRepository adminActions,
                        ReportRepository reports,
                        ReportService reportService,
@@ -68,6 +71,7 @@ public class AdminService {
         this.houseRules = houseRules;
         this.rooms = rooms;
         this.covers = covers;
+        this.listingExtras = listingExtras;
         this.adminActions = adminActions;
         this.reports = reports;
         this.reportService = reportService;
@@ -96,9 +100,14 @@ public class AdminService {
         // One query for the whole queue, not one per row: a moderator opening a
         // backlog of fifty should not cost fifty round trips to see fifty photos.
         Map<UUID, String> coverUrls = covers.forEach(rows);
+        // Likewise amenities, house rules and rooms (audit P2-9).
+        Map<UUID, ListingExtras.Extras> extras = listingExtras.forEach(rows);
         return rows.stream()
-                .map(listing -> ListingResponse.from(listing, amenityCodesFor(listing.getId()),
-                        coverUrls.get(listing.getId()), houseRulesFor(listing.getId()), roomsFor(listing.getId())))
+                .map(listing -> {
+                    ListingExtras.Extras more = extras.get(listing.getId());
+                    return ListingResponse.from(listing, more.amenityCodes(), coverUrls.get(listing.getId()),
+                            more.houseRules(), more.rooms());
+                })
                 .toList();
     }
 

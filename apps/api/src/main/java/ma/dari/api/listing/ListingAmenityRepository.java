@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,6 +13,10 @@ public interface ListingAmenityRepository extends JpaRepository<ListingAmenity, 
 
     @Query("select la.amenityCode from ListingAmenity la where la.listing.id = :listingId")
     List<String> findAmenityCodesByListingId(@Param("listingId") UUID listingId);
+
+    /** [listing id, amenity code] pairs for many listings at once (ListingExtras). */
+    @Query("select la.listing.id, la.amenityCode from ListingAmenity la where la.listing.id in :listingIds")
+    List<Object[]> findListingIdAndAmenityCodeByListingIdIn(@Param("listingIds") Collection<UUID> listingIds);
 
     @Modifying
     @Query("delete from ListingAmenity la where la.listing.id = :listingId")
