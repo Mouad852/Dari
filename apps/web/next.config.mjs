@@ -78,8 +78,14 @@ function contentSecurityPolicy() {
   const firebaseOrigin = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     ? `https://${process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}`
     : 'https://*.firebaseapp.com';
-  // `next dev` needs eval for its tooling; only the e2e dev server gets it.
-  const developmentE2e = process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true' && process.env.NODE_ENV !== 'production';
+  // The full-stack harness (e2e/full-stack) runs `next dev` against the
+  // Firebase Auth emulator; never in a production build.
+  const authEmulator = process.env.NODE_ENV !== 'production'
+    ? process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST
+    : undefined;
+  // `next dev` needs eval for its tooling; only the e2e and full-stack dev servers get it.
+  const developmentE2e = (process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true' || Boolean(authEmulator))
+    && process.env.NODE_ENV !== 'production';
 
   return [
     "default-src 'self'",
@@ -89,7 +95,7 @@ function contentSecurityPolicy() {
     "style-src-attr 'unsafe-inline'",
     ["img-src 'self' data: blob:", ...media, 'https://*.tile.openstreetmap.org'].join(' '),
     "font-src 'self'",
-    ["connect-src 'self'", api, firebaseOrigin, 'https://identitytoolkit.googleapis.com', 'https://securetoken.googleapis.com', 'https://www.googleapis.com', ...(errorReporting ? [errorReporting.origin] : [])].join(' '),
+    ["connect-src 'self'", api, firebaseOrigin, 'https://identitytoolkit.googleapis.com', 'https://securetoken.googleapis.com', 'https://www.googleapis.com', ...(errorReporting ? [errorReporting.origin] : []), ...(authEmulator ? [`http://${authEmulator}`] : [])].join(' '),
     ["frame-src 'self'", firebaseOrigin].join(' '),
     "object-src 'none'",
     "base-uri 'self'",

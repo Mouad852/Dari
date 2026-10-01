@@ -498,8 +498,17 @@ number when the task lands (3.1 and 5.3 both add one).
   `e2e/full-stack.config.ts`, tears everything down. Specs live in `e2e/full-stack/` so the normal
   suite never needs the stack. `smoke.spec.ts` 2/2 (emulator account → profile created and read
   back, forged token 401; web renders /listings from the API). (2026-10-01)
-- [ ] **6.2b** Full-stack smoke journey: sign up → publish → approve → search → message. Files:
-  new `apps/web/e2e/tests/full-stack.spec.ts`. Verify: spec green.
+- [x] **6.2b** Full-stack smoke journey: sign up → publish → approve → search → message. Files:
+  new `apps/web/e2e/tests/full-stack.spec.ts`. Verify: spec green. Lives at `e2e/full-stack/journey.spec.ts` (outside
+  the mock suite's testDir). Owner signs up in the UI (emulator holds the confirmation), publishes
+  with a real photo; an admin (promoted in the DB) approves via the API; a seeker signs in, finds it
+  in search, contacts and messages; the message is read back from the API. `next.config.mjs`: with
+  the emulator variable (dev only) the CSP allows `next dev`'s eval and the emulator origin.
+  `npm run e2e:full-stack` from cold: 3/3, teardown clean. `--serve` keeps the stack up. (2026-10-01)
+- [ ] **6.2c** (added 2026-10-01, found in 6.2b) — a plain `npm run dev` gets the strict CSP
+  (no `'unsafe-eval'`), which blocked hydration in the harness until it was exempted. Confirm
+  whether local `npm run dev` hydrates; if not, allow eval for every non-production `next dev`
+  (owner's choice: the comment says only the e2e server gets it). Files: `next.config.mjs`.
 - [ ] **6.3** Full run: `./mvnw test`; `npm run typecheck && npm run build && npx playwright test`
   (dev + production); mobile `npm test`.
 

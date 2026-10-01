@@ -32,8 +32,9 @@ export async function verifiedAccount(email: string, password = 'secret123'): Pr
 
 /** Confirms the email of an account created through the web app. */
 export async function confirmEmail(email: string): Promise<void> {
-  const found = await call<{ users?: { localId: string }[] }>(`${IDENTITY}/projects/${PROJECT_ID}/accounts:query`,
-    { expression: [{ email }], returnUserInfo: true }, { Authorization: 'Bearer owner' });
+  // accounts:lookup by email (the emulator does not implement accounts:query).
+  const found = await call<{ users?: { localId: string }[] }>(`${IDENTITY}/projects/${PROJECT_ID}/accounts:lookup`,
+    { email: [email] }, { Authorization: 'Bearer owner' });
   const localId = found.users?.[0]?.localId;
   if (!localId) throw new Error(`no emulator account for ${email}`);
   await call(`${IDENTITY}/projects/${PROJECT_ID}/accounts:update`, { localId, emailVerified: true },

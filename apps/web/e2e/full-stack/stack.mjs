@@ -3,6 +3,9 @@ export const PORTS = { db: 55432, emulator: 9099, api: 18080, web: 3120 };
 
 export const PROJECT_ID = 'demo-dari';
 
+/** The harness's throwaway database container. */
+export const DB_CONTAINER = 'dari-fullstack-db';
+
 /** Placeholder only: the harness's API and web app share it so SSR requests are keyed. */
 export const SSR_SECRET = 'full-stack-only-ssr-shared-secret-placeholder';
 

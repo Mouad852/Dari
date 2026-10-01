@@ -16,6 +16,7 @@
  * <tmp>/dari-full-stack/. Needs Docker running and the ports below free.
  *
  * Usage (from apps/web): npm run e2e:full-stack [-- <playwright args>]
+ *        npm run e2e:full-stack -- --serve   (start the stack and keep it up)
  */
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, openSync, readFileSync } from 'node:fs';
@@ -23,7 +24,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { PORTS, PROJECT_ID, SSR_SECRET, URLS } from './stack.mjs';
+import { DB_CONTAINER, PORTS, PROJECT_ID, SSR_SECRET, URLS } from './stack.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webDir = path.resolve(here, '..', '..');
@@ -32,8 +33,9 @@ const repoDir = path.resolve(webDir, '..', '..');
 const logDir = path.join(os.tmpdir(), 'dari-full-stack');
 mkdirSync(logDir, { recursive: true });
 
-const DB_CONTAINER = 'dari-fullstack-db';
 const isWindows = process.platform === 'win32';
+const serveOnly = process.argv.includes('--serve');
+const playwrightArgs = process.argv.slice(2).filter((arg) => arg !== '--serve');
 const children = [];
 
 function log(message) {
@@ -175,8 +177,14 @@ async function main() {
   });
   await waitFor('web', () => answers(URLS.web), 180_000, web);
 
+  if (serveOnly) {
+    // Leave the stack up for repeated `npx playwright test -c e2e/full-stack.config.ts` runs.
+    log(`stack is up (web ${URLS.web}, API ${URLS.api}); Ctrl+C stops it`);
+    await new Promise(() => {});
+  }
+
   log('running the full-stack specs');
-  const result = spawnSync('npx', ['playwright', 'test', '-c', 'e2e/full-stack.config.ts', ...process.argv.slice(2)], {
+  const result = spawnSync('npx', ['playwright', 'test', '-c', 'e2e/full-stack.config.ts', ...playwrightArgs], {
     cwd: webDir,
     stdio: 'inherit',
     shell: isWindows,
