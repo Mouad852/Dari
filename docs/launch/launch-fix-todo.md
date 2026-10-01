@@ -310,7 +310,7 @@ number when the task lands (3.1 and 5.3 both add one).
 - [x] **4.1c** P1-12 — `/account/security`: "Changer mon mot de passe" sends a reset email via
   `sendPasswordReset(me.email)`; drop "Niveau élevé" and the Firebase copy. Files:
   `account/security/page.tsx`, a spec using the e2e auth seam. Verify: Web typecheck +
-  `account-pages` (4/4, incl. axe); 360/768/1280 screenshots, no overflow. (2026-09-30)
+  `account-pages` (4/4, incl. axe); 360/768/1280 screenshots, no overflow. (1a47b50, 2026-09-30)
 - [x] **4.1d** P1-12 — drop "Téléphone" from `PROFILE_COMPLETION_CHECKS` (four checks, a quarter
   each). Files: `account/page.tsx`, `account-pages.spec.ts`. Verify: Web typecheck +
   `account-pages` (3/3) — a complete profile without a phone hides the completion card.
@@ -318,20 +318,20 @@ number when the task lands (3.1 and 5.3 both add one).
 - [x] **4.1e** P1-12 (added 2026-09-30, found in 4.4d screenshots) — the `/account` hub's
   Notifications card promised "Nouvelles réponses, visites et rappels"; now "E-mails sur vos
   annonces et votre compte". Files: `account/page.tsx`, `account-pages.spec.ts`. Verify: Web
-  typecheck + `account-pages` (5/5). When 2.1 lands, mention replies again. (2026-09-30)
+  typecheck + `account-pages` (5/5). When 2.1 lands, mention replies again. (ffc753a, 2026-09-30)
 - [x] **4.2a** P1-5 — `lib/image.ts`: draw to canvas, export JPEG ≤ 2560 px long edge at 0.85
   (fixes orientation, size, WebP); used by the wizard and profile avatar upload; formats copy
   corrected. Files: new `apps/web/src/lib/image.ts`, `publish/page.tsx`, `account/profile/page.tsx`.
   Verify: Web + manual upload matrix (portrait JPEG, >5 MB, WebP) — automated as
   `photo-upload.spec.ts` (3/3: EXIF-6 JPEG arrives 20×40, 3000×2000 PNG > 5 MB arrives
-  2560×1707 JPEG, WebP arrives JPEG); with journeys/owner/media/account specs 20/20. (2026-09-30)
+  2560×1707 JPEG, WebP arrives JPEG); with journeys/owner/media/account specs 20/20. (83096d8, 2026-09-30)
 - [x] **4.2b** P1-5 — server fills white before drawing PNG alpha onto RGB. Files:
   `media/ImageProcessor.java`, `ImageProcessorTest`. Verify: API `-Dtest=ImageProcessorTest`
-  (7/7; the new transparent-PNG test was red — black pixels — before the fix). (2026-09-30)
+  (7/7; the new transparent-PNG test was red — black pixels — before the fix). (2f1d436, 2026-09-30)
 - [x] **4.2c** P1-5 — server-side EXIF orientation fallback for API clients. Files:
   `ImageProcessor.java`, new `ExifOrientation.java`, `ImageProcessorTest` (orientation 6 in both
   byte orders, 8, 3, 1, and a malformed IFD offset). Verify: API `-Dtest=ImageProcessorTest`
-  (13/13). (2026-09-30)
+  (13/13). (5ff4925, 2026-09-30)
 - [x] **4.3a** P1-10 — `dari.public-site-url` config; per-event subject/body templates (greeting,
   what happened, reason, next step, link, footer) for moderation events. Files:
   `OutboxNotificationService.java`, `SmtpNotificationSender.java`, `application*.yml`,
@@ -340,7 +340,7 @@ number when the task lands (3.1 and 5.3 both add one).
   `NotificationTemplates` + V31 `notification_outbox.subject`; the site URL is optional (defaults
   to the first web origin, validated when set). NotificationTemplatesTest 6, SmtpNotificationSenderTest 2,
   NotificationDeliveryServiceTest 3, ProductionConfigValidatorTest 56, AdminApiTest 20,
-  ReportApiTest 9, ListingExpiryIntegrationTest 8, FlywayMigrationSmokeTest 1 — all green. (2026-09-30)
+  ReportApiTest 9, ListingExpiryIntegrationTest 8, FlywayMigrationSmokeTest 1 — all green. (ce4398b, 2026-09-30)
 - [x] **4.3b** P1-10 / P0-3 — templates for expiry (title + link to `/account/listings`), report
   acknowledgement and new-message events. Files: same. Verify: API
   `-Dtest=NotificationDeliveryServiceTest`; one of each to Mailpit. Expiry, expiry warning and
@@ -348,7 +348,7 @@ number when the task lands (3.1 and 5.3 both add one).
   (2.1, blocked on P0-1), so its template moved to 4.3c. NotificationTemplatesTest 8,
   SmtpNotificationSenderTest 2, NotificationDeliveryServiceTest 3, ReportApiTest 9,
   ListingExpiryIntegrationTest 8, AdminApiTest 20; all 10 events sent through
-  `SmtpNotificationSender` to a local Mailpit: subjects and UTF-8 bodies intact. (2026-09-30)
+  `SmtpNotificationSender` to a local Mailpit: subjects and UTF-8 bodies intact. (93fa117, 2026-09-30)
 - [ ] **4.3c** P1-10 / P0-1 (from 4.3b) — new-message email template (sender's first name, listing
   title, link to the thread). Lands with 2.1b; blocked on the P0-1 throttle decision. Files: `NotificationTemplates`, `NotificationTemplatesTest`.
 - [x] **4.4a** P2-13 — `whiteSpace: 'pre-line'` on description, rules and bio. Files:
@@ -357,22 +357,22 @@ number when the task lands (3.1 and 5.3 both add one).
   carries line breaks. Full suite (dev + production): 69 passed, 1 skip, 3 failed: the new test
   (listing-1's description is the JSON-LD one; fixed) and `account-journeys` signup +
   `public-search`, which fail under full-suite load only. Rerun: those four specs 9/9 on dev,
-  production project 21 + 1 skip. 360 px screenshots of description, rules and bio. (2026-09-30)
+  production project 21 + 1 skip. 360 px screenshots of description, rules and bio. (06a18f1, 2026-09-30)
 - [x] **4.4b** P2-14 — auto-growing `<textarea>` composer, Enter sends, Shift+Enter newline,
   `maxLength=4000`. Files: `messages/[id]/page.tsx`, `message-thread.spec.ts`. Verify: Web + spec.
   Bubbles also keep line breaks (`pre-line`). message-thread + account-journeys 10/10 (dev),
-  production project 21 + 1 skip; 360 px screenshot with a four-line draft. (2026-09-30)
+  production project 21 + 1 skip; 360 px screenshot with a four-line draft. (ed36fc8, 2026-09-30)
 - [x] **4.4c** P2-15 — thread page `height: 100dvh` with `100vh` fallback. Files:
   `messages/[id]/page.tsx`. Verify: Web + screenshot at 360 px. Done as `.thread-page` in
   `styles/app.css` (inline styles hold one value). message-thread 7/7 incl. a new 360×640 check
   (main is 640 px, composer inside the screen); production project 21 + 1 skip; screenshot.
-  Real-device toolbar behaviour not checked (no device). (2026-09-30)
+  Real-device toolbar behaviour not checked (no device). (cba9dc8, 2026-09-30)
 - [x] **4.4d** P2-24 — owner dashboard card and account stat grids stack below 480 px. Files:
   `account/listings/page.tsx`, `account/page.tsx`, `account/security/page.tsx`. Verify: Web +
   360/768/1280 screenshots. Done as `.stat-grid` / `.owner-listing-card` in `styles/app.css`.
   New `account-pages` test counts computed columns at 360 and 768 px; account-pages +
   owner-listings 11/11; full suite 74 passed + 1 skip + 1 load flake (`listing-host` profile
-  navigation, 4/4 alone); screenshots at three widths, no horizontal overflow. (2026-09-30)
+  navigation, 4/4 alone); screenshots at three widths, no horizontal overflow. (43447aa, 2026-09-30)
 
 ## Phase 5 — Error handling and edge cases
 
@@ -381,30 +381,30 @@ number when the task lands (3.1 and 5.3 both add one).
   `components/ds/Textarea.tsx`. Verify: Web typecheck/build. Both ds fields already had `error`
   (red border, `aria-invalid`, message row); added `ErrorNotice`'s labelled list, a
   `fieldErrors()` helper and `FIELD_LABELS`/`fieldLabel()` in `lib/labels.ts`. Typecheck; full
-  suite dev + production 75 passed + 1 skip. (2026-09-30)
+  suite dev + production 75 passed + 1 skip. (9637fdf, 2026-09-30)
 - [x] **5.1b** P1-4 — forms render `fields` next to inputs (wizard, profile, report dialog). Files:
   `publish/page.tsx`, `account/profile/page.tsx`, report dialog, `e2e/mock-api.mjs`. Verify: Web +
   spec forcing a 400 with `fields`. Stubbed with `page.route` (client-side fetches), so the mock
   API is unchanged. New `field-errors.spec.ts` 3/3; full suite 77 passed + 1 skip + the recurring
-  `listing-host` load flake (fixed separately, 5.1e). (2026-09-30)
+  `listing-host` load flake (fixed separately, 5.1e). (d1ed7ca, 2026-09-30)
 - [x] **5.1c** P1-4 — `maxLength` equal to the DTO limit on every web text input (title 120,
   description 2000, rules, room descriptions, bio, composer 4000). Files: forms above. Verify: Web
   + spec (2,001 chars capped). Wizard title 120, quartier 80, description 2000, room 500, other
   rules 2000 (`ds/Input` gains `maxLength`); sign-up first/last name 30/29 (display name "Prénom
   Nom" ≤ 60) and city 60; profile-recovery 60. Profile (60/600), report (2000) and composer
   (4000, 4.4b) already matched. Admin reject reason stays 500 (API allows 1000). `field-errors`
-  5/5; full suite 80 passed + 1 skip. (2026-09-30)
+  5/5; full suite 80 passed + 1 skip. (75aadd9, 2026-09-30)
 - [x] **5.1d** P1-4 — mobile `TextField` accepts `maxLength` and shows field errors from the API.
   Files: mobile `TextField`, forms. Verify: Mobile `npm test`. `TextField` gains `error` (danger
   border, text below, read as the field's hint) and now applies the caller's `style` (the
   profile's taller bio box was dropped). New `lib/fields.ts` (`MAX_LENGTH`, `fieldErrors`) used by
   profile, publish, sign-up, profile-recovery and the composer; profile and publish show the
   API's field messages. Jest 83/83 (new `fields.test.ts`), typecheck clean. Not checked on a
-  device. (2026-09-30)
+  device. (4b995aa, 2026-09-30)
 - [x] **5.1e** (test, added 2026-09-30) — `listing-host`'s "Voir le profil" navigation timed out
   under full-suite load twice: the App Router changes the URL only after `next dev` compiles
   `/profile/[id]`. That one assertion now waits 15 s. Files: `listing-host.spec.ts`. Verify: full
-  suite 80 passed + 1 skip. (2026-09-30)
+  suite 80 passed + 1 skip. (b73844c, 2026-09-30)
 - [x] **5.2** P1-14 — text inputs update the URL debounced (400 ms); in-flight requests aborted on
   param change; effect keyed on `searchParams` only. Files: `listings/SearchResults.tsx`,
   `public-search.spec.ts`. Verify: Web + spec — 8 characters in Quartier → at most 1 `/listings`
@@ -413,7 +413,7 @@ number when the task lands (3.1 and 5.3 both add one).
   URLs the page wrote itself so a late write cannot eat typed characters. `public-search` 4/4 (new:
   "Hay Riad" → 1 request, field keeps every character; radius mode sends lat/lng/radiusM, no city).
   Full suite 81 passed + 1 skip + 1 production a11y flake (5.2b); production rerun 21 + 1 skip.
-  (2026-09-30)
+  (cedc9f3, 2026-09-30)
 - [x] **5.2b** (test, added 2026-09-30) — `production/accessibility.spec.ts` `/listings/listing-1`
   failed once under full-suite load with `page-has-heading-one`, although the spec waits for an
   `<h1>` first; passes on rerun. Find what replaces the heading after it attaches (streamed
@@ -422,7 +422,7 @@ number when the task lands (3.1 and 5.3 both add one).
   *attached*, but streamed content arrives in `<div hidden id="S:0">` before it is swapped in;
   now it waits for a visible one. The signup journey scanned right after the URL changed, before
   `/account` rendered; it now waits for the page's `<h1>`. Both specs ×3 on both projects:
-  30/30. (2026-09-30)
+  30/30. (86818f5, 2026-09-30)
 - [ ] **5.3a** P1-15 **DECISION (wording/version)** — migration adding `users.terms_accepted_at`
   and `users.terms_version`; optional `CreateUserRequest.acceptedTermsVersion` stored on create.
   Files: new migration, `user/*`, new user test class. Verify: API.
@@ -437,44 +437,44 @@ number when the task lands (3.1 and 5.3 both add one).
   participant → 409. Files: `messaging/ConversationService.java`, `MessagingApiTest`. Verify: API
   `-Dtest=MessagingApiTest`. New error code `RECIPIENT_UNAVAILABLE` ("Ce compte n'existe
   plus"); an unpublished listing answers 404 like a missing one; an existing thread is still
-  returned and readable. MessagingApiTest 20/20 (2 new); full API suite 347/347. (2026-09-30)
+  returned and readable. MessagingApiTest 20/20 (2 new); full API suite 347/347. (70c0c91, 2026-09-30)
 - [x] **5.4b** P2-5 — web thread shows "Ce compte n'existe plus" and disables the composer on that
   409. Files: `messages/[id]/page.tsx`, `message-thread.spec.ts`. Verify: Web + spec. `RECIPIENT_UNAVAILABLE` added to `lib/errors.ts`;
   message-thread 8/8 (new: stubbed 409 → notice, composer and Envoyer disabled, history intact,
-  unsent bubble removed). (2026-09-30)
+  unsent bubble removed). (c7fc193, 2026-09-30)
 - [x] **5.4c** P2-11 — sign-in maps `ACCOUNT_BANNED`/`UNAUTHENTICATED` to specific copy; global
   suspended banner. Files: `sign-in/page.tsx`, layout/nav. Verify: Web + `session-recovery` spec. Sign-in (141015f): the API's sentence
   and a Firebase sign-out. Banner: `/users/me` now returns `status` (API, `UserStatusApiTest`);
   new `AccountStatusBanner` in the root layout, skipped on sign-in/up/recovery (it raced sign-in).
   session-recovery 9/9, account-pages 6/6 (+ axe on the banner), both ×2 with account-journeys
-  38/38; UserStatusApiTest, UserApiTest, AdminApiTest, SecurityHeadersApiTest 40/40. (2026-09-30)
+  38/38; UserStatusApiTest, UserApiTest, AdminApiTest, SecurityHeadersApiTest 40/40. (eed4703, 2026-09-30)
 - [x] **5.4d** P2-11 — allow `DELETE /users/me` while suspended. Files:
   `common/auth/FirebaseAuthFilter.java`, user test class. Verify: API. `UserStatusApiTest` 2/2 (a suspended
   account's PATCH is 403 ACCOUNT_SUSPENDED, its DELETE 204 and soft-deletes); with UserApiTest,
-  AdminApiTest, SecurityHeadersApiTest 40/40. (2026-09-30)
+  AdminApiTest, SecurityHeadersApiTest 40/40. (f46e659, 2026-09-30)
 - [x] **5.4e** P2-17 — rent minimum 100 MAD server-side; client previews the parsed value. Files:
   `CreateListingRequest`/update DTO, `publish/page.tsx`, `ListingApiTest`. Verify: API + Web. New `parseMad` (`lib/format.ts`):
   "3.200"/"3,200"/"3 200" → 3200, "3200,50" → 3200.5, else unreadable (blocked with a message);
   rent helper previews "Loyer enregistré : 3 200 MAD/mois"; deposit parsed the same way.
   ListingApiTest 59/59 (new: 99.99 and 3.20 refused, 100 accepted); field-errors +
-  account-journeys + keyboard-publish 11/11. (2026-09-30)
+  account-journeys + keyboard-publish 11/11. (6849811, 2026-09-30)
 - [x] **5.4f** P2-18 — `/publish` gated up front with a sign-in CTA carrying `next`; `next` on all
   "Se connecter" links. Files: `publish/page.tsx`, `account/*`, `messages`, `favorites`. Verify:
   Web + spec. New `lib/signInHref.ts`; used by
   account hub/listings/profile, favorites, messages, thread, search/listing/profile contact and
   favourite redirects, report dialog, admin layout. New `sign-in-return.spec.ts` 3/3; the production
   "publish shell hydrates" test now expects the gate. Full suite 89 passed + 1 skip + that test
-  (fixed; production rerun 21 + 1 skip). (2026-09-30)
+  (fixed; production rerun 21 + 1 skip). (3473cfb, 2026-09-30)
 - [x] **5.4g** P2-19 — `/account` without a profile links to `/profile-recovery`; recovery uses
   `Button`. Files: `account/page.tsx`, `profile-recovery/page.tsx`. Verify: Web. The sign-in link now shows only
   when signed out; the recovery button reads "Créer mon profil". account-pages (new: 404
   PROFILE_NOT_FOUND → "Créer mon profil" → recovery, axe) + account-journeys + session-recovery
-  20/20. (2026-09-30)
+  20/20. (9c26c08, 2026-09-30)
 - [x] **5.4h** P2-20 — hide the sign-up form once `verificationPending`; map `weak-password` and
   `too-many-requests`. Files: `sign-up/page.tsx`. Verify: Web + spec. Also `invalid-email`. e2e seam gains
   `authError` and `accountUnverified`. New `sign-up.spec.ts` 4/4; with account-journeys and
   session-recovery 17/17 (one earlier run lost a worker to a Chromium crash, 0xC0000409; clean on
-  rerun). (2026-09-30)
+  rerun). (ee2f646, 2026-09-30)
 
 ## Phase 6 — Testing
 
@@ -489,7 +489,7 @@ number when the task lands (3.1 and 5.3 both add one).
   block); P1-9 `UserProfileClearingApiTest`; P1-13 `AdminApiTest` (reinstate); P0-2 wizard
   payload in `keyboard-publish`/`account-journeys`. Still open with their blocked tasks: P0-1
   (2.1), P0-2 search over NULL fields (2.2d), P0-4 mobile publish body (2.4); the web↔API
-  journey is 6.2. No test was missing, so no new test commit. (2026-09-30)
+  journey is 6.2. No test was missing, so no new test commit. (c56080f, 2026-09-30)
 - [ ] **6.2a** Full-stack smoke harness: web against the real API (local stack or Testcontainers)
   with the Firebase Auth emulator (free, no project calls). Files: new e2e config/script. Verify:
   harness boots and a trivial request passes.
@@ -541,3 +541,4 @@ Post-launch backlog (not scheduled in §17): P2-1, P2-16, P2-21, P2-25, P2-27, P
 | Date | Tasks done | Commits | Test results | Notes |
 |---|---|---|---|---|
 | 2026-09-29 | STEP 0 (audit + tracker); Phase 1 complete (1.1a–1.5); Phase 2: 2.2a, 2.2b, 2.2c, 2.3a, 2.3b, 2.5, 2.6a–2.6d; Phase 3 complete (3.1a–3.5); Phase 4: 4.1a, 4.1b, 4.1d | `8504507`…`5a2fd7f` (36) + this log = 37/40 | API full suite 317/317 (Phase 1), 320/320 (Phase 2 checkpoint), 325/325 (Phase 3). Playwright dev + production 57 passed + 1 intentional skip (Phase 2 checkpoint), 64 + 1 (Phase 3). Mobile jest 75 → 80/80, typecheck clean. | **Blocked on owner:** 2.1a/2.1b (P0-1 throttle window), 2.2d (P0-2 NULL date rule), 2.4 (P0-4 mobile publishing), 5.3a–d (P1-15 consent), and new 2.6e (P1-13 moderation contact address). Gate 2.7 stays open until those land; its checkpoint was green (API 320, web 57+1, mobile 78). 3.3c's header city select broke two specs' `getByLabel('Ville')`, repaired in `99907c7`. `bootstrap-check.sh` now waits for the PostGIS image's real start (it failed every time locally). Not done: 360 px screenshots (chrome-devtools MCP did not connect; layouts use wrapping flex and axe passed), on-device mobile checks, Mailpit. Next: 4.1c. |
+| 2026-09-30 | Phase 4 complete except 4.3c (blocked with 2.1): 4.1c, 4.1e (new), 4.2a–c, 4.3a, 4.3b, 4.4a–d. Phase 5 complete except 5.3a–d (blocked): 5.1a–d, 5.1e (new, test), 5.2, 5.2b (new, test), 5.4a–h. Phase 6: 6.1; 6.2a in progress | `1a47b50`…`1a63cb2` (29/40); this log is the first commit of 2026-10-01 | API full suite 347/347 (after 5.4a; P2-11 user/admin/security classes 40/40 after). Web full suite (dev + production) after each shared-UI change: 75–89 passed + 1 intentional skip; every red run explained and fixed or tracked (listing-host compile wait 5.1e; axe on hidden streamed `<h1>` 5.2b; banner racing sign-in, fixed in 5.4c; publish-shell test updated in 5.4f). Mobile jest 83/83 + typecheck. Mailpit: all 10 notification templates delivered with intact UTF-8. | **Blocked on owner (unchanged):** 2.1a/2.1b + new 4.3c (P0-1), 2.2d (P0-2), 2.4 (P0-4), 2.6e (P1-13), 5.3a–d (P1-15). **6.2a in progress:** API emulator mode committed (`1a63cb2`); web `connectAuthEmulator` switch and the harness (`e2e/full-stack/`, `npm run e2e:full-stack`) are written but not yet run end to end, so uncommitted. Environment this session: TMP pointed at C:\Windows\TEMP (JUnit @TempDir errors; run Maven with the user temp dir), Docker Desktop stopped twice. Not done: real-device checks (dvh toolbar, mobile TextField). |
