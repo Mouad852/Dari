@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   },
   description:
     'Trouvez une colocation à Rabat, Casablanca, Marrakech ou Tanger. '
-    + 'Annonces vérifiées, loyers annoncés charges comprises.',
+    + 'Chaque annonce est vérifiée par la modération avant sa publication.',
 };
 
 metadata.icons = {

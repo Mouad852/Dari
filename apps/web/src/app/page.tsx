@@ -25,7 +25,7 @@ export const revalidate = 900;
 export const metadata: Metadata = {
   title: 'Dari — colocation à Rabat, Casablanca, Marrakech et Tanger',
   description:
-    'Trouvez une chambre ou un studio en colocation au Maroc. Loyers annoncés charges comprises, annonces vérifiées avant publication.',
+    'Trouvez une chambre ou un studio en colocation au Maroc. Chaque annonce est vérifiée avant sa publication.',
   alternates: { canonical: SITE },
   openGraph: {
     title: 'Dari — colocation au Maroc',
@@ -71,8 +71,8 @@ async function getHomeData() {
 
 const STEPS = [
   ['search', 'Cherchez', 'Filtrez par quartier, budget et style de vie.'],
-  ['shield-check', 'Vérifiez', 'Annonces et profils contrôlés avant publication.'],
-  ['message-circle', 'Discutez', 'Échangez avec le propriétaire et les colocataires.'],
+  ['shield-check', 'Vérifiez', 'Chaque annonce est vérifiée par la modération avant publication.'],
+  ['message-circle', 'Discutez', 'Échangez avec le propriétaire depuis votre messagerie Dari.'],
   ['key-round', 'Emménagez', 'Organisez la visite et l’emménagement directement avec le propriétaire.'],
 ] as const;
 
@@ -276,7 +276,7 @@ export default async function HomePage() {
                 maxWidth: 520,
               }}
             >
-              Trouvez une colocation à Rabat, Casablanca, Marrakech ou Tanger — avec des profils vérifiés et des loyers annoncés charges comprises.
+              Trouvez une colocation à Rabat, Casablanca, Marrakech ou Tanger — des annonces vérifiées avant publication et des propriétaires joignables directement sur Dari.
             </p>
             <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
               <Link
@@ -504,7 +504,7 @@ export default async function HomePage() {
               Vous avez une chambre libre ?
             </h2>
             <p style={{ margin: 0, font: 'var(--type-body-lg)', color: 'var(--text-on-brand)', maxWidth: 520 }}>
-              Publiez gratuitement, choisissez vos colocataires, encaissez le loyer en ligne.
+              Publiez gratuitement, échangez avec les candidats sur Dari et choisissez vos colocataires.
             </p>
           </div>
           <Link

@@ -93,7 +93,7 @@ export async function generateMetadata({
 
   // The root layout's title template appends " | Dari"; adding it here doubles it.
   const title = `Colocation à ${cityName} — chambres et studios`;
-  const description = `Trouvez une chambre ou un studio en colocation à ${cityName}. Loyers annoncés charges comprises, profils vérifiés avant le premier contact.`;
+  const description = `Trouvez une chambre ou un studio en colocation à ${cityName}. Chaque annonce est vérifiée avant sa publication.`;
 
   return {
     title,
@@ -134,8 +134,8 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
               Colocation à {cityName}
             </h1>
             <p style={{ margin: 0, color: 'var(--text-muted)', font: 'var(--type-body-lg)', maxWidth: 600 }}>
-              Trouvez une chambre, un studio ou une colocation à {cityName}, avec des loyers annoncés
-              charges comprises et des profils vérifiés avant le premier contact.
+              Trouvez une chambre, un studio ou une colocation à {cityName}. Chaque annonce est vérifiée
+              par la modération avant sa publication.
             </p>
             <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center', flexWrap: 'wrap' }}>
               <a

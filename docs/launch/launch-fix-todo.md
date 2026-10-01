@@ -529,8 +529,11 @@ number when the task lands (3.1 and 5.3 both add one).
   `user/UserController.java`, tests. Verify: API. Now an ordinary 404 (new
   `UserRemovedRoutesApiTest`); `NotImplementedYetException`/`NOT_IMPLEMENTED` stay, unused, as
   part of the error contract. With UserApiTest and ArchitectureTest 25/25. (2026-10-01)
-- [ ] **7.3** P2-22 — marketing copy matches behaviour (charges, "profils contrôlés",
-  colocataires). Files: `app/layout.tsx`, `app/page.tsx`. Verify: Web.
+- [x] **7.3** P2-22 — marketing copy matches behaviour (charges, "profils contrôlés",
+  colocataires). Files: `app/layout.tsx`, `app/page.tsx`. Verify: Web. Also the city landing pages
+  (`flatshare/[city]`), the home's "encaissez le loyer en ligne" (no payments) and the search
+  header's "Mises à jour aujourd'hui · loyers charges comprises". New `marketing-claims.spec.ts`
+  3/3 (page text and meta description); production project 21 + 1 skip. (2026-10-01)
 - [ ] **7.4** P2-26 — delete dead `ListingSearchService`/`ListingSearchRepository` methods and move
   `ListingSearchOptimizationTest` onto `searchByLocationSorted`. Verify: API full suite.
 - [ ] **7.5** P2-23 — "Administration" link for `me.role === 'ADMIN'`. Files: `SiteNav.tsx`,
