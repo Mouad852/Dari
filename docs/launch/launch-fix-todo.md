@@ -505,10 +505,14 @@ number when the task lands (3.1 and 5.3 both add one).
   in search, contacts and messages; the message is read back from the API. `next.config.mjs`: with
   the emulator variable (dev only) the CSP allows `next dev`'s eval and the emulator origin.
   `npm run e2e:full-stack` from cold: 3/3, teardown clean. `--serve` keeps the stack up. (2026-10-01)
-- [ ] **6.2c** (added 2026-10-01, found in 6.2b) — a plain `npm run dev` gets the strict CSP
+- [x] **6.2c** (added 2026-10-01, found in 6.2b) — a plain `npm run dev` gets the strict CSP
   (no `'unsafe-eval'`), which blocked hydration in the harness until it was exempted. Confirm
   whether local `npm run dev` hydrates; if not, allow eval for every non-production `next dev`
-  (owner's choice: the comment says only the e2e server gets it). Files: `next.config.mjs`.
+  (owner's choice: the comment says only the e2e server gets it). Files: `next.config.mjs`. Confirmed: a plain `npm run dev` did not hydrate
+  (CSP blocked eval; buttons dead). Every non-production server now allows eval; the production CSP
+  is unchanged and asserted (`production-build.spec.ts`: script-src 'self' 'unsafe-inline', no
+  unsafe-eval). Plain dev checked: sign-in hydrates, no page errors. Full suite dev + production
+  95 passed + 1 skip. (2026-10-01)
 - [ ] **6.3** Full run: `./mvnw test`; `npm run typecheck && npm run build && npx playwright test`
   (dev + production); mobile `npm test`.
 

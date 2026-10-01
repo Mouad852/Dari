@@ -83,13 +83,14 @@ function contentSecurityPolicy() {
   const authEmulator = process.env.NODE_ENV !== 'production'
     ? process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST
     : undefined;
-  // `next dev` needs eval for its tooling; only the e2e and full-stack dev servers get it.
-  const developmentE2e = (process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true' || Boolean(authEmulator))
-    && process.env.NODE_ENV !== 'production';
+  // `next dev` needs eval for its tooling: without it nothing hydrates. Every
+  // dev server gets it (it used to be the e2e one only, which left a plain
+  // `npm run dev` with dead buttons); a production build never does.
+  const devServer = process.env.NODE_ENV !== 'production';
 
   return [
     "default-src 'self'",
-    developmentE2e ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'",
+    devServer ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self' 'unsafe-inline'",
     // next/font emits inline <style>; fonts are self-hosted, so no font host.
     "style-src 'self' 'unsafe-inline'",
     "style-src-attr 'unsafe-inline'",
