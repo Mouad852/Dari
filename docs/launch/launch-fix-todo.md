@@ -513,8 +513,11 @@ number when the task lands (3.1 and 5.3 both add one).
   is unchanged and asserted (`production-build.spec.ts`: script-src 'self' 'unsafe-inline', no
   unsafe-eval). Plain dev checked: sign-in hydrates, no page errors. Full suite dev + production
   95 passed + 1 skip. (2026-10-01)
-- [ ] **6.3** Full run: `./mvnw test`; `npm run typecheck && npm run build && npx playwright test`
-  (dev + production); mobile `npm test`.
+- [x] **6.3** Full run: `./mvnw test`; `npm run typecheck && npm run build && npx playwright test`
+  (dev + production); mobile `npm test`. 2026-10-01 at 6de0a4e: API 351/351; web typecheck +
+  Playwright dev + production 95 passed + 1 intentional skip (the production project builds the
+  app); mobile jest 83/83 + typecheck; full-stack harness 3/3. Phase 6 done; the blocked tests stay
+  with their tasks (see 6.1). (2026-10-01)
 
 ## Phase 7 — Final cleanup
 
