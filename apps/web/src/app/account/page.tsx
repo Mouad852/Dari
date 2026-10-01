@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell, ChevronRight, Lock, LogOut, PencilLine, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
+import { Bell, ChevronRight, Gavel, Lock, LogOut, PencilLine, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { apiFetch, ApiError, type CursorPage } from '@/lib/api';
@@ -26,6 +26,13 @@ const SECTIONS = [
   { label: 'Notifications', detail: 'E-mails sur vos annonces et votre compte', icon: Bell, href: '/account/notifications' },
   { label: 'Sécurité', detail: 'Mot de passe et vérification de compte', icon: Lock, href: '/account/security' },
 ] as const;
+
+/**
+ * Only for moderators (audit P2-23): the console had no way in but typing
+ * /admin. Here rather than in the site nav, which would need /users/me on
+ * every page to know the role; the hub already has it.
+ */
+const ADMIN_SECTION = { label: 'Administration', detail: 'Annonces à valider, signalements et comptes', icon: Gavel, href: '/admin' } as const;
 
 /**
  * What "complete" means here, replacing a hardcoded "85%" that was never
@@ -312,7 +319,7 @@ export default function AccountPage() {
           */}
           <h2 style={{ margin: '0 0 6px', font: 'var(--type-h3)' }}>Paramètres</h2>
 
-          {SECTIONS.map(({ label, detail, icon: Icon, href }) => (
+          {[...SECTIONS, ...(profile.role === 'ADMIN' ? [ADMIN_SECTION] : [])].map(({ label, detail, icon: Icon, href }) => (
             <Link
               key={label}
               href={href}

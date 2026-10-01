@@ -99,3 +99,17 @@ test('a signed-in account without a profile is sent to create it, not to sign in
   await expect(page.getByRole('button', { name: 'Créer mon profil' })).toBeVisible();
   await expectAccessible(page);
 });
+
+test('the account hub leads moderators to the admin console, and only them', async ({ authenticatedPage: page }) => {
+  await page.goto('/account');
+  await expect(page.getByRole('link', { name: /Administration/ })).toHaveAttribute('href', '/admin');
+
+  await page.route('**/api/v1/users/me', async (route) => {
+    if (route.request().method() !== 'GET') return route.continue();
+    const response = await route.fetch();
+    await route.fulfill({ response, json: { ...(await response.json()), role: 'USER' } });
+  });
+  await page.goto('/account');
+  await expect(page.getByRole('link', { name: /Profil public/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Administration/ })).toHaveCount(0);
+});

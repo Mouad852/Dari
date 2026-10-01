@@ -540,8 +540,10 @@ number when the task lands (3.1 and 5.3 both add one).
   `parseEnumList`, `encodeCursor`; the test pages with the service's own `recommended` cursor.
   Full API suite 352/352 (a first run hit the IDE-builder `NoClassDefFound` trap; clean rerun).
   (2026-10-01)
-- [ ] **7.5** P2-23 — "Administration" link for `me.role === 'ADMIN'`. Files: `SiteNav.tsx`,
-  `account/page.tsx`. Verify: Web.
+- [x] **7.5** P2-23 — "Administration" link for `me.role === 'ADMIN'`. Files: `SiteNav.tsx`,
+  `account/page.tsx`. Verify: Web. In the account hub's "Paramètres" only: the nav does not
+  know the role and would need `/users/me` on every page. account-pages 8/8 (new: shown for ADMIN,
+  absent for USER). (2026-10-01)
 - [ ] **7.6a** P2-9 — batch amenities/rules/rooms by `listingId IN` in `listMine` and the admin
   queue. Verify: API full suite.
 - [ ] **7.6b** P2-9 — `countByStatus` for the admin dashboard; page the queues. Verify: API
