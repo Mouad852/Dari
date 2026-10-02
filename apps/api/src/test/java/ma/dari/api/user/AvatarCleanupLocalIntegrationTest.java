@@ -61,7 +61,7 @@ class AvatarCleanupLocalIntegrationTest extends AbstractJobIntegrationTest {
         given().basePath("").when().get(firstUrl).then().statusCode(404);
         given().basePath("").when().get(secondUrl).then().statusCode(200);
 
-        mediaCleanup.processDue();
+        runMediaCleanup();
         assertThat(cleanupStatus(firstKey)).isEqualTo("DELETED");
         assertThat(file(firstKey)).doesNotExist();
         assertThat(file(secondKey)).exists();
@@ -72,7 +72,7 @@ class AvatarCleanupLocalIntegrationTest extends AbstractJobIntegrationTest {
         assertThat(users.findById(user.getId()).orElseThrow().getAvatarStorageKey()).isNull();
         given().basePath("").when().get(secondUrl).then().statusCode(404);
 
-        mediaCleanup.processDue();
+        runMediaCleanup();
         assertThat(cleanupStatus(secondKey)).isEqualTo("DELETED");
         assertThat(file(secondKey)).doesNotExist();
     }

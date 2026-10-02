@@ -71,7 +71,7 @@ class AvatarCleanupS3IntegrationTest extends AbstractJobIntegrationTest {
         String secondKey = keyOf(uploadAvatar());
         assertThat(cleanupStatus(firstKey)).isEqualTo("PENDING");
 
-        mediaCleanup.processDue();
+        runMediaCleanup();
         assertThat(cleanupStatus(firstKey)).isEqualTo("DELETED");
         assertThat(MINIO.exists(firstKey)).as("the replaced avatar is gone from the bucket").isFalse();
         assertThat(MINIO.exists(secondKey)).isTrue();
@@ -80,7 +80,7 @@ class AvatarCleanupS3IntegrationTest extends AbstractJobIntegrationTest {
                 .then().statusCode(204);
         assertThat(cleanupStatus(secondKey)).isEqualTo("PENDING");
 
-        mediaCleanup.processDue();
+        runMediaCleanup();
         assertThat(cleanupStatus(secondKey)).isEqualTo("DELETED");
         assertThat(MINIO.exists(secondKey)).as("a deleted account's avatar is gone from the bucket").isFalse();
     }

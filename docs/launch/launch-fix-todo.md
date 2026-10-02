@@ -604,7 +604,7 @@ number when the task lands (3.1 and 5.3 both add one).
   migration, `FlywayMigrationSmokeTest`. Verify: API full suite. Done: V33 drops both; condition
   met because no release has been deployed yet (AWS deploy is still an owner step). The smoke test
   asserts only the `*_activity` inbox indexes remain. Full API suite 366/366. (2026-10-02)
-- [ ] **7.15** (found 2026-10-02) test flake — `AvatarCleanupLocalIntegrationTest:76`: the second
+- [x] **7.15** (found 2026-10-02) test flake — `AvatarCleanupLocalIntegrationTest:76`: the second
   `mediaCleanup.processDue()` left the account-deletion row PENDING once in a full run, right after
   a Docker Desktop restart; passes alone and in other full runs. Enqueue and `findDue` share the JVM
   clock, so suspect the ShedLock lock from the first call or a wall-clock step. Files: the test,
@@ -613,6 +613,13 @@ number when the task lands (3.1 and 5.3 both add one).
   silent newer thread above the one that just got a reply. Both stamps are the DB's `now()`, so
   only a backward step of the Docker VM clock explains it; the test could also assert on the
   stored `last_activity_at` order instead of assuming a strictly increasing clock.
+  Done: cause of the first is ShedLock `usingDbTime()` — the previous run's release stamps
+  `lock_until = now()` on the DB clock, so after a backward step a direct `processDue()` finds the
+  lock still held and silently skips. `AbstractJobIntegrationTest.runMediaCleanup()` releases the
+  lock row first (the `ListingExpiryIntegrationTest.runJob` pattern) and replaces every sequential
+  direct call; the single-flight test releases it before its concurrent runs. The inbox test pins
+  well-separated starting `last_activity_at` values. Production is unaffected beyond a skipped
+  minute. `AvatarCleanupLocalIntegrationTest` x10: 10/10; full API suite 367/367. (2026-10-02)
 
 Post-launch backlog (not scheduled in §17): P2-1, P2-16, P2-21, P2-25, P2-27, P2-28 — see audit §7.
 

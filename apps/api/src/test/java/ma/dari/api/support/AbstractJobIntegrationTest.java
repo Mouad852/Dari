@@ -52,7 +52,7 @@ public abstract class AbstractJobIntegrationTest extends AbstractIntegrationTest
     void drainDueMediaCleanup() {
         long due = dueCleanups();
         while (due > 0) {
-            mediaCleanupService.processDue();
+            runMediaCleanup();
             long remaining = dueCleanups();
             if (remaining >= due) {
                 throw new IllegalStateException("Media cleanup test isolation made no progress: "
@@ -60,6 +60,23 @@ public abstract class AbstractJobIntegrationTest extends AbstractIntegrationTest
             }
             due = remaining;
         }
+    }
+
+    /**
+     * Runs the media cleanup worker now, as the scheduler would. The ShedLock
+     * row is released first: ShedLock stamps lock_until on the database clock,
+     * and when Docker's VM clock steps back (it resyncs after a restart) the
+     * previous run's release still looks held, so a direct call would silently
+     * do nothing (tracker 7.15). Same approach as ListingExpiryIntegrationTest.
+     */
+    protected void runMediaCleanup() {
+        releaseMediaCleanupLock();
+        mediaCleanupService.processDue();
+    }
+
+    /** For a test that drives concurrent runs itself and needs the first to get the lock. */
+    protected void releaseMediaCleanupLock() {
+        jobJdbc.update("UPDATE shedlock SET lock_until = TIMESTAMP '2000-01-01 00:00:00' WHERE name = 'mediaCleanup'");
     }
 
     private long dueCleanups() {

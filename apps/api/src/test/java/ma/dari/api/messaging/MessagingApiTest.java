@@ -250,6 +250,11 @@ class MessagingApiTest extends AbstractIntegrationTest {
         stubToken(amal.getFirebaseUid(), amal.getEmail(), true);
         String withBadr = openConversationWith(badr);
         String withChama = openConversationWith(chama);
+        // Well-separated starting times, so the order below never depends on
+        // the database clock moving forward between two quick requests; the
+        // Docker VM clock can step back after a resync (tracker 7.15).
+        jdbc.update("UPDATE conversations SET last_activity_at = now() - interval '2 minutes' WHERE id = ?::uuid", withBadr);
+        jdbc.update("UPDATE conversations SET last_activity_at = now() - interval '1 minute' WHERE id = ?::uuid", withChama);
         given().header("Authorization", "Bearer test-token")
                 .when().get("/conversations")
                 .then().statusCode(200)

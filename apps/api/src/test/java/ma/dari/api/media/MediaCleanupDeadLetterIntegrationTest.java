@@ -68,12 +68,12 @@ class MediaCleanupDeadLetterIntegrationTest extends AbstractJobIntegrationTest {
 
         mediaCleanup.enqueue(key);
         for (int attempt = 1; attempt < maxAttempts; attempt++) {
-            mediaCleanup.processDue();
+            runMediaCleanup();
             assertThat(status(key)).isEqualTo("PENDING");
             assertThat(attempts(key)).isEqualTo(attempt);
             makeDue(key);
         }
-        mediaCleanup.processDue();
+        runMediaCleanup();
 
         assertThat(maxAttempts).isEqualTo(10);
         assertThat(status(key)).isEqualTo("DEAD");
@@ -84,7 +84,7 @@ class MediaCleanupDeadLetterIntegrationTest extends AbstractJobIntegrationTest {
 
         // DEAD is terminal: due or not, the worker never touches it again.
         makeDue(key);
-        mediaCleanup.processDue();
+        runMediaCleanup();
         assertThat(status(key)).isEqualTo("DEAD");
         assertThat(attempts(key)).isEqualTo(maxAttempts);
         verify(imageStore, times(maxAttempts)).delete(key);
@@ -171,6 +171,7 @@ class MediaCleanupDeadLetterIntegrationTest extends AbstractJobIntegrationTest {
             return invocation.callRealMethod();
         }).when(imageStore).delete(key);
 
+        releaseMediaCleanupLock();
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
             Future<?> first = pool.submit(() -> mediaCleanup.processDue());
@@ -216,7 +217,7 @@ class MediaCleanupDeadLetterIntegrationTest extends AbstractJobIntegrationTest {
         jdbc.execute("CREATE TRIGGER test_poison_media_cleanup BEFORE UPDATE ON media_cleanup "
                 + "FOR EACH ROW EXECUTE FUNCTION test_poison_media_cleanup()");
         try {
-            mediaCleanup.processDue();
+            runMediaCleanup();
         } finally {
             jdbc.execute("DROP TRIGGER test_poison_media_cleanup ON media_cleanup");
             jdbc.execute("DROP FUNCTION test_poison_media_cleanup()");
@@ -229,7 +230,7 @@ class MediaCleanupDeadLetterIntegrationTest extends AbstractJobIntegrationTest {
 
         // Its object is already gone, and deleting an absent object succeeds,
         // so the next run settles it.
-        mediaCleanup.processDue();
+        runMediaCleanup();
         assertThat(status(poisoned)).isEqualTo("DELETED");
     }
 
