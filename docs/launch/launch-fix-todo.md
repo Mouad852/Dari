@@ -599,9 +599,11 @@ number when the task lands (3.1 and 5.3 both add one).
   test now also checks a cross-origin GET carries `Access-Control-Expose-Headers` with both (the
   web already reads `X-Correlation-Id` in `api.ts`). Full API suite 366/366 on rerun (first run:
   one Docker-clock flake, logged under 7.15). (2026-10-02)
-- [ ] **7.14** (from 3.1b) contract step — drop V10's `idx_conversations_participant_a/b`
+- [x] **7.14** (from 3.1b) contract step — drop V10's `idx_conversations_participant_a/b`
   (`created_at` ordering) once no deployed release orders the inbox by `created_at`. Files: new
-  migration, `FlywayMigrationSmokeTest`. Verify: API full suite.
+  migration, `FlywayMigrationSmokeTest`. Verify: API full suite. Done: V33 drops both; condition
+  met because no release has been deployed yet (AWS deploy is still an owner step). The smoke test
+  asserts only the `*_activity` inbox indexes remain. Full API suite 366/366. (2026-10-02)
 - [ ] **7.15** (found 2026-10-02) test flake — `AvatarCleanupLocalIntegrationTest:76`: the second
   `mediaCleanup.processDue()` left the account-deletion row PENDING once in a full run, right after
   a Docker Desktop restart; passes alone and in other full runs. Enqueue and `findDue` share the JVM

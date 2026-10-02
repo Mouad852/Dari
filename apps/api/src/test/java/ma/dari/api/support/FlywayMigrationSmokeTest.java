@@ -51,13 +51,21 @@ class FlywayMigrationSmokeTest {
                 POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
              var migrations = connection.createStatement().executeQuery(
                      "SELECT COUNT(*), MAX(version::integer) FROM flyway_schema_history WHERE success = true");
-             var postgis = connection.createStatement().executeQuery("SELECT postgis_full_version()")) {
+             var postgis = connection.createStatement().executeQuery("SELECT postgis_full_version()");
+             var inboxIndexes = connection.createStatement().executeQuery(
+                     "SELECT string_agg(indexname, ',' ORDER BY indexname) FROM pg_indexes"
+                             + " WHERE tablename = 'conversations' AND indexname LIKE 'idx_conversations_participant_%'")) {
             assertThat(migrations.next()).isTrue();
             assertThat(migrations.getLong(1)).isEqualTo(result.migrationsExecuted);
-            assertThat(migrations.getInt(2)).isEqualTo(32);
+            assertThat(migrations.getInt(2)).isEqualTo(33);
 
             assertThat(postgis.next()).isTrue();
             assertThat(postgis.getString(1)).contains("POSTGIS");
+
+            // V33: only the last-activity inbox indexes remain (tracker 7.14).
+            assertThat(inboxIndexes.next()).isTrue();
+            assertThat(inboxIndexes.getString(1))
+                    .isEqualTo("idx_conversations_participant_a_activity,idx_conversations_participant_b_activity");
         }
     }
 }
