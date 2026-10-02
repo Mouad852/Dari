@@ -24,7 +24,8 @@ class SecurityHeadersApiTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("CORS allows only the configured web origin and requested API headers")
+    @DisplayName("CORS allows only the configured web origin and requested API headers, and exposes the"
+            + " correlation id and Retry-After to it")
     void corsAllowsConfiguredOriginOnly() {
         given()
                 .header("Origin", "http://localhost:3000")
@@ -35,6 +36,14 @@ class SecurityHeadersApiTest extends AbstractIntegrationTest {
                 .statusCode(200)
                 .header("Access-Control-Allow-Origin", equalTo("http://localhost:3000"))
                 .header("Access-Control-Allow-Headers", equalTo("Authorization, Content-Type"));
+
+        given()
+                .header("Origin", "http://localhost:3000")
+                .when().get("/listings")
+                .then()
+                .statusCode(200)
+                .header("X-Correlation-Id", not(nullValue()))
+                .header("Access-Control-Expose-Headers", equalTo("X-Correlation-Id, Retry-After"));
 
         given()
                 .header("Origin", "https://attacker.example")

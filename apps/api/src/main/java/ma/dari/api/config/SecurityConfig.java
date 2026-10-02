@@ -133,6 +133,10 @@ public class SecurityConfig {
         config.setAllowedOrigins(origins);              // explicit list, never "*"
         config.setAllowedMethods(List.of("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        // A cross-origin script only sees CORS-safelisted response headers
+        // unless they are exposed (audit P2-12): the web error report read
+        // X-Correlation-Id as undefined, and a 429's Retry-After was invisible.
+        config.setExposedHeaders(List.of("X-Correlation-Id", "Retry-After"));
         config.setMaxAge(3600L);
 
         var source = new UrlBasedCorsConfigurationSource();

@@ -594,8 +594,11 @@ number when the task lands (3.1 and 5.3 both add one).
   again next request. AbstractIntegrationTest routes the 2-arg mock to each test's 1-arg stub. New
   FirebaseAuthFilterRevocationTest 5/5 (caught a `Set.of().contains(null)` NPE on the outage path).
   Full API suite 366/366. (2026-10-02)
-- [ ] **7.13** P2-12 — CORS exposes `X-Correlation-Id` and `Retry-After`. Files:
-  `SecurityConfig.java`, `SecurityHeadersApiTest`. Verify: API.
+- [x] **7.13** P2-12 — CORS exposes `X-Correlation-Id` and `Retry-After`. Files:
+  `SecurityConfig.java`, `SecurityHeadersApiTest`. Verify: API. Done: `setExposedHeaders`; the CORS
+  test now also checks a cross-origin GET carries `Access-Control-Expose-Headers` with both (the
+  web already reads `X-Correlation-Id` in `api.ts`). Full API suite 366/366 on rerun (first run:
+  one Docker-clock flake, logged under 7.15). (2026-10-02)
 - [ ] **7.14** (from 3.1b) contract step — drop V10's `idx_conversations_participant_a/b`
   (`created_at` ordering) once no deployed release orders the inbox by `created_at`. Files: new
   migration, `FlywayMigrationSmokeTest`. Verify: API full suite.
@@ -604,6 +607,10 @@ number when the task lands (3.1 and 5.3 both add one).
   a Docker Desktop restart; passes alone and in other full runs. Enqueue and `findDue` share the JVM
   clock, so suspect the ShedLock lock from the first call or a wall-clock step. Files: the test,
   `MediaCleanupService`. Verify: API `-Dtest=AvatarCleanupLocalIntegrationTest` x10 + full suite.
+  Second flake, same session: `MessagingApiTest.inboxIsOrderedByLastActivity` once listed the
+  silent newer thread above the one that just got a reply. Both stamps are the DB's `now()`, so
+  only a backward step of the Docker VM clock explains it; the test could also assert on the
+  stored `last_activity_at` order instead of assuming a strictly increasing clock.
 
 Post-launch backlog (not scheduled in §17): P2-1, P2-16, P2-21, P2-25, P2-27, P2-28 — see audit §7.
 
