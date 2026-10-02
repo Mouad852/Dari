@@ -14,6 +14,7 @@ import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingRoomRepository;
 import ma.dari.api.listing.ListingStatus;
 import ma.dari.api.listing.ListingCovers;
+import ma.dari.api.listing.OwnerListingsRemoval;
 import ma.dari.api.listing.dto.HouseRulesResponse;
 import ma.dari.api.listing.dto.ListingResponse;
 import ma.dari.api.listing.dto.ListingRoomResponse;
@@ -52,6 +53,7 @@ public class AdminService {
     private final UserRepository users;
     private final BannedIdentityRepository bannedIdentities;
     private final ListingExpiry expiry;
+    private final OwnerListingsRemoval ownerListingsRemoval;
 
     public AdminService(ListingRepository listings,
                        ListingAmenityRepository listingAmenities,
@@ -65,7 +67,8 @@ public class AdminService {
                        NotificationService notifications,
                        UserRepository users,
                        BannedIdentityRepository bannedIdentities,
-                       ListingExpiry expiry) {
+                       ListingExpiry expiry,
+                       OwnerListingsRemoval ownerListingsRemoval) {
         this.listings = listings;
         this.listingAmenities = listingAmenities;
         this.houseRules = houseRules;
@@ -79,6 +82,7 @@ public class AdminService {
         this.users = users;
         this.bannedIdentities = bannedIdentities;
         this.expiry = expiry;
+        this.ownerListingsRemoval = ownerListingsRemoval;
     }
 
     /**
@@ -479,11 +483,9 @@ public class AdminService {
                 ? "Votre compte a été banni de Dari"
                 : reason);
 
-        listings.findByOwnerId(userId).forEach(listing -> {
-            listing.setStatus(ListingStatus.SUSPENDED);
-            listing.setDeletedAt(Instant.now());
-            listings.save(listing);
-        });
+        // Photos too (audit P2-6): soft-deleting the listings alone left their
+        // images publicly served.
+        ownerListingsRemoval.removeAll(userId, Instant.now());
 
         if (user.getEmail() != null && !user.getEmail().isBlank()) {
             BannedIdentity bannedIdentity = BannedIdentity.of(user);

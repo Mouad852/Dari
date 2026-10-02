@@ -8,6 +8,7 @@ import ma.dari.api.listing.ListingPhoto;
 import ma.dari.api.listing.ListingPhotoRepository;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
+import ma.dari.api.media.MediaCleanupRepository;
 import ma.dari.api.notification.NotificationOutbox;
 import ma.dari.api.notification.NotificationOutboxRepository;
 import ma.dari.api.support.AbstractIntegrationTest;
@@ -70,6 +71,9 @@ class AdminApiTest extends AbstractIntegrationTest {
 
     @Autowired
     ListingPhotoRepository listingPhotos;
+
+    @Autowired
+    MediaCleanupRepository mediaCleanups;
 
     private void stubToken(String uid, String email) throws Exception {
         FirebaseToken token = Mockito.mock(FirebaseToken.class);
@@ -613,6 +617,31 @@ class AdminApiTest extends AbstractIntegrationTest {
         // A banned owner's listings must not stay in public search.
         assertThat(listings.findById(owned.getId()).orElseThrow().getStatus())
                 .isNotEqualTo(ListingStatus.PUBLISHED);
+    }
+
+    @Test
+    @DisplayName("a ban revokes the owner's listing photos, so they stop being served")
+    void banRevokesListingPhotos() throws Exception {
+        User target = users.saveAndFlush(new User(
+                "uid-ban-photos-" + System.nanoTime(), "ban-photos-" + System.nanoTime() + "@example.ma",
+                true, "Ban Photos"));
+        Listing owned = listingFor(target, ListingStatus.PUBLISHED);
+        ListingPhoto photo = listingPhotos.saveAndFlush(new ListingPhoto(
+                owned, "listings/" + owned.getId() + "/ban.jpg", "image/jpeg", 320, 240, 0, true));
+
+        admin("ban-photos");
+
+        given().header("Authorization", "Bearer admin-token")
+                .contentType("application/json")
+                .body("{\"reason\":\"Conduite frauduleuse\"}")
+                .when().post("/admin/users/{id}/ban", target.getId())
+                .then().statusCode(200);
+
+        assertThat(listingPhotos.findById(photo.getId()).orElseThrow().getDeletedAt()).isNotNull();
+        assertThat(mediaCleanups.existsByStorageKey(photo.getStorageKey()))
+                .as("queued for deletion, which also makes the media interceptor refuse it")
+                .isTrue();
+        assertThat(listings.findById(owned.getId()).orElseThrow().getDeletedAt()).isNotNull();
     }
 
     @Test

@@ -11,7 +11,7 @@ import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
 import ma.dari.api.media.ImageStore;
 import ma.dari.api.media.MediaCleanupService;
-import ma.dari.api.listing.ListingPhotoRepository;
+import ma.dari.api.listing.OwnerListingsRemoval;
 import ma.dari.api.moderation.BannedIdentityRepository;
 import ma.dari.api.notification.NotificationDeliveryService;
 import ma.dari.api.user.dto.CreateUserRequest;
@@ -35,7 +35,7 @@ public class UserService {
     private final ListingRepository listings;
     private final ImageStore imageStore;
     private final MediaCleanupService mediaCleanup;
-    private final ListingPhotoRepository listingPhotos;
+    private final OwnerListingsRemoval ownerListingsRemoval;
     private final FirebaseAuth firebaseAuth;
 
     public UserService(UserRepository users,
@@ -44,7 +44,7 @@ public class UserService {
                        ListingRepository listings,
                        ImageStore imageStore,
                        MediaCleanupService mediaCleanup,
-                       ListingPhotoRepository listingPhotos,
+                       OwnerListingsRemoval ownerListingsRemoval,
                        FirebaseAuth firebaseAuth) {
         this.users = users;
         this.firebaseAuthFilter = firebaseAuthFilter;
@@ -52,7 +52,7 @@ public class UserService {
         this.listings = listings;
         this.imageStore = imageStore;
         this.mediaCleanup = mediaCleanup;
-        this.listingPhotos = listingPhotos;
+        this.ownerListingsRemoval = ownerListingsRemoval;
         this.firebaseAuth = firebaseAuth;
     }
 
@@ -112,19 +112,7 @@ public class UserService {
     public void deleteAccount(User user) {
         Instant now = Instant.now();
 
-        listings.findByOwnerId(user.getId()).forEach(listing -> {
-            if (listing.getDeletedAt() == null) {
-                listingPhotos.findByListingIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAsc(listing.getId())
-                        .forEach(photo -> {
-                            photo.setDeletedAt(now);
-                            mediaCleanup.enqueue(photo.getStorageKey());
-                            listingPhotos.save(photo);
-                        });
-                listing.setStatus(ListingStatus.SUSPENDED);
-                listing.setDeletedAt(now);
-                listings.save(listing);
-            }
-        });
+        ownerListingsRemoval.removeAll(user.getId(), now);
 
         String avatarKey = user.getAvatarStorageKey();
         if (avatarKey != null) {

@@ -574,8 +574,12 @@ number when the task lands (3.1 and 5.3 both add one).
   see the previous upload. New `concurrentPhotoUploadsTakeTurns` (6 simultaneous first uploads →
   all 201, one cover, sort 0–5) fails without the lock (5 × cover-index 409). ListingApiTest
   60/60. (2026-10-02)
-- [ ] **7.10** P2-6 — ban revokes the banned user's listing photos (reuse the deletion loop).
-  Files: `AdminService.banUser`, `AdminApiTest`. Verify: API.
+- [x] **7.10** P2-6 — ban revokes the banned user's listing photos (reuse the deletion loop).
+  Files: `AdminService.banUser`, `AdminApiTest`. Verify: API. Done: the loop moved from
+  `UserService.deleteAccount` into `listing/OwnerListingsRemoval`, which both deletion and ban call
+  (listings SUSPENDED + soft-deleted, photos soft-deleted + queued in `media_cleanup`, so the
+  media interceptor refuses them). New AdminApiTest `banRevokesListingPhotos`. Full API suite
+  360/360. (2026-10-02)
 - [ ] **7.11** P2-7 — refuse suspend/ban when the target is self or an ADMIN (409). Files:
   `AdminService`, `AdminApiTest`. Verify: API.
 - [ ] **7.12** P2-10 — token revocation check (`verifyIdToken(token, true)` or short cache); confirm
