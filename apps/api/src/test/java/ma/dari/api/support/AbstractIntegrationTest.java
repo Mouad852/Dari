@@ -64,6 +64,17 @@ public abstract class AbstractIntegrationTest {
     }
 
     /**
+     * Tests stub {@code verifyIdToken(token)}; the auth filter's revocation
+     * check calls {@code verifyIdToken(token, true)}, which answers the same.
+     */
+    @BeforeEach
+    void revocationCheckFollowsTheTokenStub() throws Exception {
+        org.mockito.Mockito.when(firebaseAuth.verifyIdToken(
+                        org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq(true)))
+                .thenAnswer(call -> firebaseAuth.verifyIdToken(call.<String>getArgument(0)));
+    }
+
+    /**
      * Reads JSON numbers as {@link java.math.BigDecimal} instead of float.
      *
      * <p>RestAssured's default parses a JSON number into a float, which holds

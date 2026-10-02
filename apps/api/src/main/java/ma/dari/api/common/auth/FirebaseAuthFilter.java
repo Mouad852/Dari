@@ -1,6 +1,7 @@
 package ma.dari.api.common.auth;
 
 import tools.jackson.databind.ObjectMapper;
+import com.google.firebase.auth.AuthErrorCode;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.FirebaseToken;
@@ -13,6 +14,8 @@ import ma.dari.api.common.error.ErrorResponse;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
 import ma.dari.api.user.UserStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -24,8 +27,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Verifies the Firebase ID token and attaches the principal.
@@ -46,7 +55,24 @@ import java.util.Optional;
 @Component
 public class FirebaseAuthFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(FirebaseAuthFilter.class);
+
     private static final String BEARER = "Bearer ";
+
+    /**
+     * How long one revocation check holds for a uid (audit P2-10). Without it a
+     * disabled Firebase account, or one whose sessions were revoked, kept
+     * working until its ID token expired, up to an hour. Checking on every
+     * request would cost a Firebase round trip each time; once per uid per
+     * interval bounds the window at one lookup per active user. The lookup is
+     * free on the Spark plan and only counts against the Admin API quota.
+     */
+    static final Duration REVOCATION_CHECK_INTERVAL = Duration.ofMinutes(5);
+    private static final int MAX_TRACKED_UIDS = 10_000;
+    private static final Set<AuthErrorCode> REVOKED = EnumSet.of(
+            AuthErrorCode.REVOKED_ID_TOKEN, AuthErrorCode.USER_DISABLED, AuthErrorCode.USER_NOT_FOUND);
+
+    private final Map<String, Instant> revocationCheckedAt = new ConcurrentHashMap<>();
 
     private final FirebaseAuth firebaseAuth;
     private final UserRepository users;
@@ -71,7 +97,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
 
         FirebaseToken token;
         try {
-            token = firebaseAuth.verifyIdToken(header.substring(BEARER.length()));
+            token = verify(header.substring(BEARER.length()));
         } catch (FirebaseAuthException e) {
             writeError(response, 401, ErrorCode.INVALID_TOKEN, "Session expirée");
             return;
@@ -122,6 +148,41 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
                 new UsernamePasswordAuthenticationToken(principal, null, authorities));
 
         chain.doFilter(request, response);
+    }
+
+    /**
+     * Verifies the token's signature and expiry locally, then, at most once per
+     * {@link #REVOCATION_CHECK_INTERVAL} per uid, asks Firebase whether it was
+     * revoked or the account disabled. If Firebase cannot answer, the request
+     * goes through on the local check and the next one asks again: an outage
+     * must not sign everyone out.
+     */
+    private FirebaseToken verify(String idToken) throws FirebaseAuthException {
+        FirebaseToken token = firebaseAuth.verifyIdToken(idToken);
+        Instant now = Instant.now();
+        Instant checkedAt = revocationCheckedAt.get(token.getUid());
+        if (checkedAt != null && checkedAt.isAfter(now.minus(REVOCATION_CHECK_INTERVAL))) {
+            return token;
+        }
+        try {
+            firebaseAuth.verifyIdToken(idToken, true);
+        } catch (FirebaseAuthException e) {
+            if (REVOKED.contains(e.getAuthErrorCode())) {
+                revocationCheckedAt.remove(token.getUid());
+                throw e;
+            }
+            log.warn("Token revocation check unavailable ({}); accepting the locally verified token",
+                    e.getErrorCode());
+            return token;
+        }
+        if (revocationCheckedAt.size() >= MAX_TRACKED_UIDS) {
+            revocationCheckedAt.values().removeIf(at -> !at.isAfter(now.minus(REVOCATION_CHECK_INTERVAL)));
+            if (revocationCheckedAt.size() >= MAX_TRACKED_UIDS) {
+                revocationCheckedAt.clear();
+            }
+        }
+        revocationCheckedAt.put(token.getUid(), now);
+        return token;
     }
 
     /** Filter failures bypass @RestControllerAdvice, so the envelope is kept by hand. */

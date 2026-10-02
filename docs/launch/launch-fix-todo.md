@@ -585,8 +585,15 @@ number when the task lands (3.1 and 5.3 both add one).
   `banUser` → 409 `ILLEGAL_TRANSITION` with a self / admin message; demoting an admin stays the
   owner's call. New AdminApiTest `adminsAreNotSuspendableOrBannable` (both actions × self and
   another admin; both stay ACTIVE, no banned identity). Full API suite 361/361. (2026-10-02)
-- [ ] **7.12** P2-10 — token revocation check (`verifyIdToken(token, true)` or short cache); confirm
-  no billing impact first. Files: `FirebaseAuthFilter.java`. Verify: API full suite.
+- [x] **7.12** P2-10 — token revocation check (`verifyIdToken(token, true)` or short cache); confirm
+  no billing impact first. Files: `FirebaseAuthFilter.java`. Verify: API full suite. Billing: none —
+  the check is an Admin GetAccountInfo lookup, no-cost on Spark ("Other Authentication services")
+  and only quota-bound (1000 req/s, 10M/day per project). Done: short cache — local verify on every
+  request, `verifyIdToken(token, true)` at most once per uid per 5 min; revoked / disabled /
+  deleted → 401 `INVALID_TOKEN`; Firebase unreachable → accept the locally verified token and ask
+  again next request. AbstractIntegrationTest routes the 2-arg mock to each test's 1-arg stub. New
+  FirebaseAuthFilterRevocationTest 5/5 (caught a `Set.of().contains(null)` NPE on the outage path).
+  Full API suite 366/366. (2026-10-02)
 - [ ] **7.13** P2-12 — CORS exposes `X-Correlation-Id` and `Retry-After`. Files:
   `SecurityConfig.java`, `SecurityHeadersApiTest`. Verify: API.
 - [ ] **7.14** (from 3.1b) contract step — drop V10's `idx_conversations_participant_a/b`
