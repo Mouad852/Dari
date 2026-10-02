@@ -18,8 +18,15 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -1136,6 +1143,54 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .body("[1].sortOrder", equalTo(1))
                 .body("[1].isCover", equalTo(false))
                 .body("[0].url", org.hamcrest.Matchers.startsWith("/uploads/listings/" + listingId));
+    }
+
+    @Test
+    @DisplayName("simultaneous first uploads all succeed, with one cover and distinct sort orders")
+    void concurrentPhotoUploadsTakeTurns() throws Exception {
+        String uid = "uid-photo-race-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        users.save(new User(uid, email, true, "Photo Race"));
+
+        String listingId = given().header("Authorization", "Bearer fake-token")
+                .contentType("application/json")
+                .body("{\"title\":\"Studio course\",\"city\":\"Rabat\",\"neighborhood\":\"Agdal\",\"latitude\":33.9716,\"longitude\":-6.8498,\"priceRent\":2500.00}")
+                .when().post("/listings")
+                .then().statusCode(201)
+                .extract().path("id");
+
+        int uploads = 6;
+        List<byte[]> images = new ArrayList<>();
+        for (int i = 0; i < uploads; i++) {
+            images.add(generateJpeg(320, 240));
+        }
+        ExecutorService pool = Executors.newFixedThreadPool(uploads);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<Integer>> statuses = new ArrayList<>();
+            for (byte[] image : images) {
+                statuses.add(pool.submit(() -> {
+                    start.await();
+                    return given().header("Authorization", "Bearer fake-token")
+                            .multiPart("file", "race.jpg", image, "image/jpeg")
+                            .when().post("/listings/{id}/photos", listingId)
+                            .then().extract().statusCode();
+                }));
+            }
+            start.countDown();
+            for (Future<Integer> status : statuses) {
+                assertThat(status.get(60, TimeUnit.SECONDS)).isEqualTo(201);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        List<ListingPhoto> photos = listingPhotos.findByListingIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAsc(
+                UUID.fromString(listingId));
+        assertThat(photos).hasSize(uploads);
+        assertThat(photos).filteredOn(ListingPhoto::isCover).hasSize(1);
+        assertThat(photos).extracting(ListingPhoto::getSortOrder).containsExactly(0, 1, 2, 3, 4, 5);
     }
 
     @Test

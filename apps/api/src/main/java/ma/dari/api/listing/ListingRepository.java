@@ -80,6 +80,15 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
 
     Optional<Listing> findByIdAndOwnerIdAndDeletedAtIsNull(UUID id, UUID ownerId);
 
+    /**
+     * The owner's listing, row-locked until the transaction ends (audit P2-4):
+     * concurrent photo uploads to one listing take turns, so the 20-photo cap,
+     * the cover choice and the next sort order each see the previous upload.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select l from Listing l where l.id = :id and l.owner.id = :ownerId and l.deletedAt is null")
+    Optional<Listing> findOwnedForUpdate(@Param("id") UUID id, @Param("ownerId") UUID ownerId);
+
     Optional<Listing> findFirstByOwnerIdAndStatusAndDeletedAtIsNullOrderByUpdatedAtDesc(
             UUID ownerId, ListingStatus status);
 

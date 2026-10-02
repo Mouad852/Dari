@@ -568,8 +568,12 @@ number when the task lands (3.1 and 5.3 both add one).
   Done: `FavoriteRepository.insertIfAbsent` (native, JVM clock for `created_at`); the check +
   catch is gone. New `racingAddsAllSucceed` (8 simultaneous adds → all succeed, one row) fails on
   the old code with `favorites_pkey` duplicate key. FavoriteApiTest 9/9. (2026-10-02)
-- [ ] **7.9** P2-4 — lock the listing row in `addPhoto`. Files: `ListingService`, repository.
-  Verify: API `-Dtest=ListingApiTest`.
+- [x] **7.9** P2-4 — lock the listing row in `addPhoto`. Files: `ListingService`, repository.
+  Verify: API `-Dtest=ListingApiTest`. Done: `ListingRepository.findOwnedForUpdate`
+  (`PESSIMISTIC_WRITE`); uploads to one listing now take turns, so the cap, cover and sort order
+  see the previous upload. New `concurrentPhotoUploadsTakeTurns` (6 simultaneous first uploads →
+  all 201, one cover, sort 0–5) fails without the lock (5 × cover-index 409). ListingApiTest
+  60/60. (2026-10-02)
 - [ ] **7.10** P2-6 — ban revokes the banned user's listing photos (reuse the deletion loop).
   Files: `AdminService.banUser`, `AdminApiTest`. Verify: API.
 - [ ] **7.11** P2-7 — refuse suspend/ban when the target is self or an ADMIN (409). Files:

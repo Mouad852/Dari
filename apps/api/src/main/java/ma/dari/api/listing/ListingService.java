@@ -356,7 +356,7 @@ public class ListingService {
 
     @Transactional
     public ListingPhoto addPhoto(User owner, UUID listingId, MultipartFile file) {
-        Listing listing = listings.findByIdAndOwnerIdAndDeletedAtIsNull(listingId, owner.getId())
+        Listing listing = listings.findOwnedForUpdate(listingId, owner.getId())
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
 
         List<ListingPhoto> existingPhotos = listingPhotos.findByListingIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAsc(listingId);
