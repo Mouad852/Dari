@@ -560,8 +560,9 @@ number when the task lands (3.1 and 5.3 both add one).
   New OptimisticLockingIntegrationTest (stale listing/user save refused, newer write survives) +
   handler unit test; ListingApiTest now reassigns merged copies instead of re-saving a stale one.
   Full API suite green. (2026-10-02)
-- [ ] **7.7b** P2-2 — `@Transactional` on `ListingSearchService` lifecycle methods. Verify: API
-  full suite.
+- [x] **7.7b** P2-2 — `@Transactional` on `ListingSearchService` lifecycle methods. Verify: API
+  full suite. Done: `submit`, `renew`, `markRoomFound`, `reopen` now read, check and write in one
+  transaction, so the `@Version` check covers the whole transition. Full API suite green. (2026-10-02)
 - [ ] **7.8** P2-3 — favorites add via `insert … on conflict do nothing`. Files:
   `FavoriteService`, repository, `FavoriteApiTest`. Verify: API `-Dtest=FavoriteApiTest`.
 - [ ] **7.9** P2-4 — lock the listing row in `addPhoto`. Files: `ListingService`, repository.
@@ -577,6 +578,11 @@ number when the task lands (3.1 and 5.3 both add one).
 - [ ] **7.14** (from 3.1b) contract step — drop V10's `idx_conversations_participant_a/b`
   (`created_at` ordering) once no deployed release orders the inbox by `created_at`. Files: new
   migration, `FlywayMigrationSmokeTest`. Verify: API full suite.
+- [ ] **7.15** (found 2026-10-02) test flake — `AvatarCleanupLocalIntegrationTest:76`: the second
+  `mediaCleanup.processDue()` left the account-deletion row PENDING once in a full run, right after
+  a Docker Desktop restart; passes alone and in other full runs. Enqueue and `findDue` share the JVM
+  clock, so suspect the ShedLock lock from the first call or a wall-clock step. Files: the test,
+  `MediaCleanupService`. Verify: API `-Dtest=AvatarCleanupLocalIntegrationTest` x10 + full suite.
 
 Post-launch backlog (not scheduled in §17): P2-1, P2-16, P2-21, P2-25, P2-27, P2-28 — see audit §7.
 

@@ -432,6 +432,7 @@ public class ListingSearchService {
         return ListingHostResponse.from(owner, avatarKey == null ? null : imageStore.publicUrl(avatarKey));
     }
 
+    @Transactional
     public ListingResponse submit(UUID listingId, User owner) {
         Listing listing = requireOwnedListing(listingId, owner);
         if (listing.getStatus() != ListingStatus.DRAFT && listing.getStatus() != ListingStatus.REJECTED) {
@@ -469,6 +470,7 @@ public class ListingSearchService {
         return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null, null);
     }
 
+    @Transactional
     public ListingResponse renew(UUID listingId, User owner) {
         Listing listing = requireOwnedListing(listingId, owner);
         if (listing.getStatus() != ListingStatus.EXPIRED) {
@@ -482,6 +484,7 @@ public class ListingSearchService {
         return ListingResponse.from(saved, new HashSet<>(listingAmenities.findAmenityCodesByListingId(saved.getId())), null, null, null);
     }
 
+    @Transactional
     public ListingResponse markRoomFound(UUID listingId, User owner) {
         Listing listing = requireOwnedListing(listingId, owner);
         if (listing.getStatus() == ListingStatus.PUBLISHED && listing.getAvailabilityState() == AvailabilityState.AVAILABLE) {
@@ -492,6 +495,7 @@ public class ListingSearchService {
         throw illegalTransition("AVAILABLE -> ROOM_FOUND");
     }
 
+    @Transactional
     public ListingResponse reopen(UUID listingId, User owner) {
         Listing listing = requireOwnedListing(listingId, owner);
         if (listing.getStatus() == ListingStatus.PUBLISHED && listing.getAvailabilityState() == AvailabilityState.ROOM_FOUND) {
