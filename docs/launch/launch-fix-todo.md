@@ -497,14 +497,14 @@ number when the task lands (3.1 and 5.3 both add one).
   emulator mode (1a63cb2), `next dev` on 3120 with `connectAuthEmulator`; runs
   `e2e/full-stack.config.ts`, tears everything down. Specs live in `e2e/full-stack/` so the normal
   suite never needs the stack. `smoke.spec.ts` 2/2 (emulator account → profile created and read
-  back, forged token 401; web renders /listings from the API). (2026-10-01)
+  back, forged token 401; web renders /listings from the API). (24fa989, 2026-10-01)
 - [x] **6.2b** Full-stack smoke journey: sign up → publish → approve → search → message. Files:
   new `apps/web/e2e/tests/full-stack.spec.ts`. Verify: spec green. Lives at `e2e/full-stack/journey.spec.ts` (outside
   the mock suite's testDir). Owner signs up in the UI (emulator holds the confirmation), publishes
   with a real photo; an admin (promoted in the DB) approves via the API; a seeker signs in, finds it
   in search, contacts and messages; the message is read back from the API. `next.config.mjs`: with
   the emulator variable (dev only) the CSP allows `next dev`'s eval and the emulator origin.
-  `npm run e2e:full-stack` from cold: 3/3, teardown clean. `--serve` keeps the stack up. (2026-10-01)
+  `npm run e2e:full-stack` from cold: 3/3, teardown clean. `--serve` keeps the stack up. (c87a5e7, 2026-10-01)
 - [x] **6.2c** (added 2026-10-01, found in 6.2b) — a plain `npm run dev` gets the strict CSP
   (no `'unsafe-eval'`), which blocked hydration in the harness until it was exempted. Confirm
   whether local `npm run dev` hydrates; if not, allow eval for every non-production `next dev`
@@ -512,79 +512,79 @@ number when the task lands (3.1 and 5.3 both add one).
   (CSP blocked eval; buttons dead). Every non-production server now allows eval; the production CSP
   is unchanged and asserted (`production-build.spec.ts`: script-src 'self' 'unsafe-inline', no
   unsafe-eval). Plain dev checked: sign-in hydrates, no page errors. Full suite dev + production
-  95 passed + 1 skip. (2026-10-01)
+  95 passed + 1 skip. (6de0a4e, 2026-10-01)
 - [x] **6.3** Full run: `./mvnw test`; `npm run typecheck && npm run build && npx playwright test`
   (dev + production); mobile `npm test`. 2026-10-01 at 6de0a4e: API 351/351; web typecheck +
   Playwright dev + production 95 passed + 1 intentional skip (the production project builds the
   app); mobile jest 83/83 + typecheck; full-stack harness 3/3. Phase 6 done; the blocked tests stay
-  with their tasks (see 6.1). (2026-10-01)
+  with their tasks (see 6.1). (d391b82, 2026-10-01)
 
 ## Phase 7 — Final cleanup
 
 - [x] **7.1** P2-8 — WARN action in the admin report queue UI. Files: `admin/reports/page.tsx`.
   Verify: Web + spec. "Avertir le propriétaire" (listing) / "Avertir" (account), its
   own dialog and reason field (sent as the email's "Motif"). confirmation-dialogs 4/4 (new: POST
-  {action: WARN, reason}, axe). (2026-10-01)
+  {action: WARN, reason}, axe). (fcd5177, 2026-10-01)
 - [x] **7.2** P2-8 — remove the 501 `POST /users/me/phone-verification` stub. Files:
   `user/UserController.java`, tests. Verify: API. Now an ordinary 404 (new
   `UserRemovedRoutesApiTest`); `NotImplementedYetException`/`NOT_IMPLEMENTED` stay, unused, as
-  part of the error contract. With UserApiTest and ArchitectureTest 25/25. (2026-10-01)
+  part of the error contract. With UserApiTest and ArchitectureTest 25/25. (7a5cb76, 2026-10-01)
 - [x] **7.3** P2-22 — marketing copy matches behaviour (charges, "profils contrôlés",
   colocataires). Files: `app/layout.tsx`, `app/page.tsx`. Verify: Web. Also the city landing pages
   (`flatshare/[city]`), the home's "encaissez le loyer en ligne" (no payments) and the search
   header's "Mises à jour aujourd'hui · loyers charges comprises". New `marketing-claims.spec.ts`
-  3/3 (page text and meta description); production project 21 + 1 skip. (2026-10-01)
+  3/3 (page text and meta description); production project 21 + 1 skip. (d97b96d, 2026-10-01)
 - [x] **7.4** P2-26 — delete dead `ListingSearchService`/`ListingSearchRepository` methods and move
   `ListingSearchOptimizationTest` onto `searchByLocationSorted`. Verify: API full suite. Removed
   `searchByLocationPaginated`, `searchByLocationWithCursor`, `getPublicOrOwnerListing`,
   `parseEnumList`, `encodeCursor`; the test pages with the service's own `recommended` cursor.
   Full API suite 352/352 (a first run hit the IDE-builder `NoClassDefFound` trap; clean rerun).
-  (2026-10-01)
+  (3d70827, 2026-10-01)
 - [x] **7.5** P2-23 — "Administration" link for `me.role === 'ADMIN'`. Files: `SiteNav.tsx`,
   `account/page.tsx`. Verify: Web. In the account hub's "Paramètres" only: the nav does not
   know the role and would need `/users/me` on every page. account-pages 8/8 (new: shown for ADMIN,
-  absent for USER). (2026-10-01)
+  absent for USER). (256a98d, 2026-10-01)
 - [x] **7.6a** P2-9 — batch amenities/rules/rooms by `listingId IN` in `listMine` and the admin
   queue. Verify: API full suite. New `ListingExtras` (three `IN` queries per
   page); new `ListingExtrasApiTest` (each listing keeps its own extras, empty where none). Full API
-  suite 353/353. (2026-10-01)
+  suite 353/353. (d1e7b4b, 2026-10-01)
 - [x] **7.6b** P2-9 — `countByStatus` for the admin dashboard; page the queues. Verify: API
   `-Dtest=AdminApiTest`. Dashboard counts in the database
   (`AdminService.dashboard`). Queues bounded rather than cursor-paged, so the admin pages' array
   contract is unchanged: listings oldest-first, reports in priority order, at most 100 each
   (`QUEUE_LIMIT`); the dashboard shows the full counts. AdminApiTest 21/21 (new: 101 pending →
-  queue 100, sorted, dashboard counts all) + ReportApiTest 9/9. (2026-10-01)
+  queue 100, sorted, dashboard counts all) + ReportApiTest 9/9. (36b137a, 2026-10-01)
 - [x] **7.7a** P2-2 — `@Version` on `Listing` and `User` (migration) + 409 handler. Verify: API
   full suite. Done: V32 adds `version` to both tables and appends it to the `published_listings`
   view; `ObjectOptimisticLockingFailureException` → 409 `CONFLICT` "modifiées entre-temps".
   New OptimisticLockingIntegrationTest (stale listing/user save refused, newer write survives) +
   handler unit test; ListingApiTest now reassigns merged copies instead of re-saving a stale one.
-  Full API suite green. (2026-10-02)
+  Full API suite green. (108683e, 2026-10-02)
 - [x] **7.7b** P2-2 — `@Transactional` on `ListingSearchService` lifecycle methods. Verify: API
   full suite. Done: `submit`, `renew`, `markRoomFound`, `reopen` now read, check and write in one
-  transaction, so the `@Version` check covers the whole transition. Full API suite green. (2026-10-02)
+  transaction, so the `@Version` check covers the whole transition. Full API suite green. (4c2c5d5, 2026-10-02)
 - [x] **7.8** P2-3 — favorites add via `insert … on conflict do nothing`. Files:
   `FavoriteService`, repository, `FavoriteApiTest`. Verify: API `-Dtest=FavoriteApiTest`.
   Done: `FavoriteRepository.insertIfAbsent` (native, JVM clock for `created_at`); the check +
   catch is gone. New `racingAddsAllSucceed` (8 simultaneous adds → all succeed, one row) fails on
-  the old code with `favorites_pkey` duplicate key. FavoriteApiTest 9/9. (2026-10-02)
+  the old code with `favorites_pkey` duplicate key. FavoriteApiTest 9/9. (bfea680, 2026-10-02)
 - [x] **7.9** P2-4 — lock the listing row in `addPhoto`. Files: `ListingService`, repository.
   Verify: API `-Dtest=ListingApiTest`. Done: `ListingRepository.findOwnedForUpdate`
   (`PESSIMISTIC_WRITE`); uploads to one listing now take turns, so the cap, cover and sort order
   see the previous upload. New `concurrentPhotoUploadsTakeTurns` (6 simultaneous first uploads →
   all 201, one cover, sort 0–5) fails without the lock (5 × cover-index 409). ListingApiTest
-  60/60. (2026-10-02)
+  60/60. (d05ee5f, 2026-10-02)
 - [x] **7.10** P2-6 — ban revokes the banned user's listing photos (reuse the deletion loop).
   Files: `AdminService.banUser`, `AdminApiTest`. Verify: API. Done: the loop moved from
   `UserService.deleteAccount` into `listing/OwnerListingsRemoval`, which both deletion and ban call
   (listings SUSPENDED + soft-deleted, photos soft-deleted + queued in `media_cleanup`, so the
   media interceptor refuses them). New AdminApiTest `banRevokesListingPhotos`. Full API suite
-  360/360. (2026-10-02)
+  360/360. (3d0bfb7, 2026-10-02)
 - [x] **7.11** P2-7 — refuse suspend/ban when the target is self or an ADMIN (409). Files:
   `AdminService`, `AdminApiTest`. Verify: API. Done: `refuseProtectedTarget` in `suspendUser` and
   `banUser` → 409 `ILLEGAL_TRANSITION` with a self / admin message; demoting an admin stays the
   owner's call. New AdminApiTest `adminsAreNotSuspendableOrBannable` (both actions × self and
-  another admin; both stay ACTIVE, no banned identity). Full API suite 361/361. (2026-10-02)
+  another admin; both stay ACTIVE, no banned identity). Full API suite 361/361. (41d652b, 2026-10-02)
 - [x] **7.12** P2-10 — token revocation check (`verifyIdToken(token, true)` or short cache); confirm
   no billing impact first. Files: `FirebaseAuthFilter.java`. Verify: API full suite. Billing: none —
   the check is an Admin GetAccountInfo lookup, no-cost on Spark ("Other Authentication services")
@@ -593,17 +593,17 @@ number when the task lands (3.1 and 5.3 both add one).
   deleted → 401 `INVALID_TOKEN`; Firebase unreachable → accept the locally verified token and ask
   again next request. AbstractIntegrationTest routes the 2-arg mock to each test's 1-arg stub. New
   FirebaseAuthFilterRevocationTest 5/5 (caught a `Set.of().contains(null)` NPE on the outage path).
-  Full API suite 366/366. (2026-10-02)
+  Full API suite 366/366. (02fb132, 2026-10-02)
 - [x] **7.13** P2-12 — CORS exposes `X-Correlation-Id` and `Retry-After`. Files:
   `SecurityConfig.java`, `SecurityHeadersApiTest`. Verify: API. Done: `setExposedHeaders`; the CORS
   test now also checks a cross-origin GET carries `Access-Control-Expose-Headers` with both (the
   web already reads `X-Correlation-Id` in `api.ts`). Full API suite 366/366 on rerun (first run:
-  one Docker-clock flake, logged under 7.15). (2026-10-02)
+  one Docker-clock flake, logged under 7.15). (6e33b13, 2026-10-02)
 - [x] **7.14** (from 3.1b) contract step — drop V10's `idx_conversations_participant_a/b`
   (`created_at` ordering) once no deployed release orders the inbox by `created_at`. Files: new
   migration, `FlywayMigrationSmokeTest`. Verify: API full suite. Done: V33 drops both; condition
   met because no release has been deployed yet (AWS deploy is still an owner step). The smoke test
-  asserts only the `*_activity` inbox indexes remain. Full API suite 366/366. (2026-10-02)
+  asserts only the `*_activity` inbox indexes remain. Full API suite 366/366. (089298d, 2026-10-02)
 - [x] **7.15** (found 2026-10-02) test flake — `AvatarCleanupLocalIntegrationTest:76`: the second
   `mediaCleanup.processDue()` left the account-deletion row PENDING once in a full run, right after
   a Docker Desktop restart; passes alone and in other full runs. Enqueue and `findDue` share the JVM
@@ -619,7 +619,7 @@ number when the task lands (3.1 and 5.3 both add one).
   lock row first (the `ListingExpiryIntegrationTest.runJob` pattern) and replaces every sequential
   direct call; the single-flight test releases it before its concurrent runs. The inbox test pins
   well-separated starting `last_activity_at` values. Production is unaffected beyond a skipped
-  minute. `AvatarCleanupLocalIntegrationTest` x10: 10/10; full API suite 367/367. (2026-10-02)
+  minute. `AvatarCleanupLocalIntegrationTest` x10: 10/10; full API suite 367/367. (b3f906a, 2026-10-02)
 
 - [x] **7.16** (found 2026-10-02 in the 7.15 full run) choosing an older photo as the cover
   answered 409. Updates flush in primary-key order (`order_updates: true`) and photo ids are
@@ -627,7 +627,7 @@ number when the task lands (3.1 and 5.3 both add one).
   and tripped `idx_listing_photos_active_cover`; same when unsetting a cover hands it to an older
   photo. `ListingService.updatePhoto` flushes the unset first in both branches. New ListingApiTest
   `anOlderPhotoCanBecomeTheCover` (409 before the fix); ListingApiTest 61/61; full API suite
-  367/367. (2026-10-02)
+  367/367. (9c8e325, 2026-10-02)
 
 Post-launch backlog (not scheduled in §17): P2-1, P2-16, P2-21, P2-25, P2-27, P2-28 — see audit §7.
 
@@ -637,3 +637,5 @@ Post-launch backlog (not scheduled in §17): P2-1, P2-16, P2-21, P2-25, P2-27, P
 |---|---|---|---|---|
 | 2026-09-29 | STEP 0 (audit + tracker); Phase 1 complete (1.1a–1.5); Phase 2: 2.2a, 2.2b, 2.2c, 2.3a, 2.3b, 2.5, 2.6a–2.6d; Phase 3 complete (3.1a–3.5); Phase 4: 4.1a, 4.1b, 4.1d | `8504507`…`5a2fd7f` (36) + this log = 37/40 | API full suite 317/317 (Phase 1), 320/320 (Phase 2 checkpoint), 325/325 (Phase 3). Playwright dev + production 57 passed + 1 intentional skip (Phase 2 checkpoint), 64 + 1 (Phase 3). Mobile jest 75 → 80/80, typecheck clean. | **Blocked on owner:** 2.1a/2.1b (P0-1 throttle window), 2.2d (P0-2 NULL date rule), 2.4 (P0-4 mobile publishing), 5.3a–d (P1-15 consent), and new 2.6e (P1-13 moderation contact address). Gate 2.7 stays open until those land; its checkpoint was green (API 320, web 57+1, mobile 78). 3.3c's header city select broke two specs' `getByLabel('Ville')`, repaired in `99907c7`. `bootstrap-check.sh` now waits for the PostGIS image's real start (it failed every time locally). Not done: 360 px screenshots (chrome-devtools MCP did not connect; layouts use wrapping flex and axe passed), on-device mobile checks, Mailpit. Next: 4.1c. |
 | 2026-09-30 | Phase 4 complete except 4.3c (blocked with 2.1): 4.1c, 4.1e (new), 4.2a–c, 4.3a, 4.3b, 4.4a–d. Phase 5 complete except 5.3a–d (blocked): 5.1a–d, 5.1e (new, test), 5.2, 5.2b (new, test), 5.4a–h. Phase 6: 6.1; 6.2a in progress | `1a47b50`…`1a63cb2` (29/40); this log is the first commit of 2026-10-01 | API full suite 347/347 (after 5.4a; P2-11 user/admin/security classes 40/40 after). Web full suite (dev + production) after each shared-UI change: 75–89 passed + 1 intentional skip; every red run explained and fixed or tracked (listing-host compile wait 5.1e; axe on hidden streamed `<h1>` 5.2b; banner racing sign-in, fixed in 5.4c; publish-shell test updated in 5.4f). Mobile jest 83/83 + typecheck. Mailpit: all 10 notification templates delivered with intact UTF-8. | **Blocked on owner (unchanged):** 2.1a/2.1b + new 4.3c (P0-1), 2.2d (P0-2), 2.4 (P0-4), 2.6e (P1-13), 5.3a–d (P1-15). **6.2a in progress:** API emulator mode committed (`1a63cb2`); web `connectAuthEmulator` switch and the harness (`e2e/full-stack/`, `npm run e2e:full-stack`) are written but not yet run end to end, so uncommitted. Environment this session: TMP pointed at C:\Windows\TEMP (JUnit @TempDir errors; run Maven with the user temp dir), Docker Desktop stopped twice. Not done: real-device checks (dvh toolbar, mobile TextField). |
+| 2026-10-01 | Phase 6 complete: 6.2a, 6.2b, 6.2c (new), 6.3. Phase 7: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6a, 7.6b; 7.7a written, verified the next day | `73522b5` (the 2026-09-30 log)…`36b137a` (12/40); this session ran out of context before its log, so this row was written on 2026-10-02 | 6.3 full run: API 351/351, web dev + production 95 passed + 1 intentional skip, mobile jest 83/83 + typecheck, full-stack 3/3. Then API full suite 352/352 (7.4), 353/353 (7.6a); confirmation-dialogs 4/4, marketing-claims 3/3 + production 21 + 1 skip, account-pages 8/8, AdminApiTest 21/21 + ReportApiTest 9/9. | **Blocked on owner (unchanged):** 2.1a/2.1b + 4.3c (P0-1), 2.2d (P0-2), 2.4 (P0-4), 2.6e (P1-13), 5.3a–d (P1-15). 6.2c: the full-stack work found that a plain `npm run dev` never hydrated (the CSP blocked eval in dev); fixed. Red runs explained: the IDE builder's NoClassDefFound (clean rerun), a missing import in AdminApiTest. |
+| 2026-10-02 | Phase 7 complete: 7.7a, 7.7b, 7.8, 7.9, 7.10, 7.11, 7.12, 7.13, 7.14, 7.15 (new, test flakes), 7.16 (new, cover bug found by the 7.15 run) | `108683e`…`9c8e325` (11) + this log = 12/40 | API full suite after each API task: 357 → 360 → 361 → 366 → 367/367. Targeted: FavoriteApiTest 9/9, ListingApiTest 60/60 → 61/61, AdminApiTest 23/23, FirebaseAuthFilterRevocationTest 5/5, SecurityHeadersApiTest 2/2, MessagingApiTest 20/20 + FlywayMigrationSmokeTest; AvatarCleanupLocalIntegrationTest x10 10/10. Race tests (7.8, 7.9) and the cover test (7.16) were each shown to fail on the old code. Full-stack harness 3/3 against the Auth emulator after 7.12. Web and mobile not rerun: no web or mobile code changed today. | **Blocked on owner (unchanged):** 2.1a/2.1b + 4.3c (P0-1), 2.2d (P0-2), 2.4 (P0-4), 2.6e (P1-13), 5.3a–d (P1-15); gate 2.7 waits on them. 7.12 billing checked first: no-cost on Spark, quota-bound only. 7.14's condition was taken as met because nothing is deployed yet. Red runs explained: Docker Desktop stopped twice (Testcontainers could not start), the IDE builder's ClassNotFound (clean rerun), one shell `./mvnw` not found (rerun), and the two Docker-clock flakes fixed in 7.15. Next: nothing unblocked; every open item needs an owner decision. |
