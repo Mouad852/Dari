@@ -9,7 +9,6 @@ import ma.dari.api.listing.dto.ListingPhotoResponse;
 import ma.dari.api.user.User;
 import ma.dari.api.media.ImageStore;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -95,9 +94,8 @@ public class FavoriteService {
     }
 
     /**
-     * Idempotent: a repeated tap is a no-op, whether caught by the check below
-     * or — under a race between two rapid taps — by the composite primary key
-     * rejecting the second insert.
+     * Idempotent: a repeated tap is a no-op. The insert skips an existing row,
+     * so two rapid taps racing each other both succeed (audit P2-3).
      */
     @Transactional
     public void add(User user, UUID listingId) {
@@ -108,15 +106,7 @@ public class FavoriteService {
                         listingId, ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE)
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Annonce introuvable"));
 
-        if (favorites.findByUserIdAndListingId(user.getId(), listingId).isPresent()) {
-            return;
-        }
-
-        try {
-            favorites.save(new Favorite(user, listing));
-        } catch (DataIntegrityViolationException alreadyFavorited) {
-            // Lost the race to a concurrent identical request; the row exists, which is the goal.
-        }
+        favorites.insertIfAbsent(user.getId(), listing.getId(), Instant.now());
     }
 
     /** Idempotent: un-favoriting something that was never favorited is a no-op. */

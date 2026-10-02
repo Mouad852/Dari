@@ -11,6 +11,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -147,6 +154,36 @@ class FavoriteApiTest extends AbstractIntegrationTest {
                 .when().get("/favorites")
                 .then().statusCode(200)
                 .body("items.size()", equalTo(1));
+    }
+
+    @Test
+    @DisplayName("a burst of identical favorite taps all succeed and save one row")
+    void racingAddsAllSucceed() throws Exception {
+        User owner = users.save(new User("uid-owner-fav-race", "owner.fav.race@example.ma", true, "Owner"));
+        User seeker = users.save(new User("uid-seeker-fav-race", "seeker.fav.race@example.ma", true, "Seeker"));
+        Listing listing = publishedListing(owner, "Chambre course");
+
+        int taps = 8;
+        ExecutorService pool = Executors.newFixedThreadPool(taps);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<?>> results = new ArrayList<>();
+            for (int i = 0; i < taps; i++) {
+                results.add(pool.submit(() -> {
+                    start.await();
+                    favoriteService.add(seeker, listing.getId());
+                    return null;
+                }));
+            }
+            start.countDown();
+            for (Future<?> result : results) {
+                result.get(30, TimeUnit.SECONDS);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertThat(favorites.findListingIdsByUserId(seeker.getId())).containsExactly(listing.getId());
     }
 
     @Test
