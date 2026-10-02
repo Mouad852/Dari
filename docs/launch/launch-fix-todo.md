@@ -621,6 +621,14 @@ number when the task lands (3.1 and 5.3 both add one).
   well-separated starting `last_activity_at` values. Production is unaffected beyond a skipped
   minute. `AvatarCleanupLocalIntegrationTest` x10: 10/10; full API suite 367/367. (2026-10-02)
 
+- [x] **7.16** (found 2026-10-02 in the 7.15 full run) choosing an older photo as the cover
+  answered 409. Updates flush in primary-key order (`order_updates: true`) and photo ids are
+  UUIDv7, so the older photo's `is_cover = true` was written before the current cover was unset
+  and tripped `idx_listing_photos_active_cover`; same when unsetting a cover hands it to an older
+  photo. `ListingService.updatePhoto` flushes the unset first in both branches. New ListingApiTest
+  `anOlderPhotoCanBecomeTheCover` (409 before the fix); ListingApiTest 61/61; full API suite
+  367/367. (2026-10-02)
+
 Post-launch backlog (not scheduled in §17): P2-1, P2-16, P2-21, P2-25, P2-27, P2-28 — see audit §7.
 
 ## Session log

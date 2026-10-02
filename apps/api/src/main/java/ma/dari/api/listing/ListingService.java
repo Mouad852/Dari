@@ -406,6 +406,10 @@ public class ListingService {
                         .stream()
                         .filter(p -> !p.getId().equals(photoId))
                         .forEach(p -> p.setCover(false));
+                // Updates flush in primary-key order (order_updates), so an older
+                // photo becoming the cover would be written before the current
+                // cover is unset and trip the one-cover index. Unset first.
+                listingPhotos.flush();
                 photo.setCover(true);
             } else if (photo.isCover()) {
                 List<ListingPhoto> others = listingPhotos.findByListingIdAndDeletedAtIsNullOrderBySortOrderAscCreatedAtAsc(listingId)
@@ -416,6 +420,8 @@ public class ListingService {
                     throw new ApiException(400, ErrorCode.VALIDATION_FAILED, "Une annonce doit conserver une photo de couverture");
                 }
                 photo.setCover(false);
+                // Same ordering hazard as above when the replacement is older.
+                listingPhotos.flush();
                 ListingPhoto replacement = others.stream()
                         .sorted(Comparator.comparingInt(ListingPhoto::getSortOrder).thenComparing(ListingPhoto::getCreatedAt))
                         .findFirst()

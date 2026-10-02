@@ -1420,6 +1420,46 @@ class ListingApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("an older photo can take the cover back, by choosing it or by unsetting the newer cover")
+    void anOlderPhotoCanBecomeTheCover() throws Exception {
+        String uid = "uid-cover-older-" + System.nanoTime();
+        String email = uid + "@example.ma";
+        stubToken(uid, email, true);
+        User owner = users.saveAndFlush(new User(uid, email, true, "Cover Older"));
+        Listing draft = listings.saveAndFlush(new Listing(
+                owner, "Studio couverture", "Rabat", "Agdal", 33.9716, -6.8498,
+                new BigDecimal("2500.00"), ListingStatus.DRAFT, AvailabilityState.AVAILABLE));
+
+        // Ids are time-ordered: a few milliseconds apart, the older photo has
+        // the lower id, which is the order Hibernate flushes updates in.
+        ListingPhoto older = listingPhotos.saveAndFlush(
+                new ListingPhoto(draft, uid + "-older.jpg", "image/jpeg", 320, 240, 0, false));
+        Thread.sleep(5);
+        ListingPhoto newer = listingPhotos.saveAndFlush(
+                new ListingPhoto(draft, uid + "-newer.jpg", "image/jpeg", 320, 240, 1, true));
+        assertThat(older.getId().compareTo(newer.getId())).isNegative();
+
+        given().header("Authorization", "Bearer cover-older-token")
+                .queryParam("isCover", true)
+                .when().patch("/listings/{id}/photos/{photoId}", draft.getId(), older.getId())
+                .then().statusCode(200)
+                .body("isCover", equalTo(true));
+        assertThat(listingPhotos.findById(newer.getId()).orElseThrow().isCover()).isFalse();
+
+        given().header("Authorization", "Bearer cover-older-token")
+                .queryParam("isCover", true)
+                .when().patch("/listings/{id}/photos/{photoId}", draft.getId(), newer.getId())
+                .then().statusCode(200);
+        // Unsetting the newer cover hands it to the first photo, the older one.
+        given().header("Authorization", "Bearer cover-older-token")
+                .queryParam("isCover", false)
+                .when().patch("/listings/{id}/photos/{photoId}", draft.getId(), newer.getId())
+                .then().statusCode(200)
+                .body("isCover", equalTo(false));
+        assertThat(listingPhotos.findById(older.getId()).orElseThrow().isCover()).isTrue();
+    }
+
+    @Test
     @DisplayName("a published or pending listing keeps at least one photo")
     void liveListingCannotLoseItsLastPhoto() throws Exception {
         String uid = "uid-last-photo-" + System.nanoTime();
