@@ -21,6 +21,7 @@ import ma.dari.api.listing.dto.ListingRoomResponse;
 import ma.dari.api.notification.NotificationService;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
+import ma.dari.api.user.UserRole;
 import ma.dari.api.user.UserStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.PageRequest;
@@ -434,6 +435,7 @@ public class AdminService {
     public void suspendUser(User admin, UUID userId) {
         User user = users.findById(userId)
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Utilisateur introuvable"));
+        refuseProtectedTarget(admin, user);
 
         if (user.getStatus() == UserStatus.BANNED) {
             throw new ApiException(409, ErrorCode.ILLEGAL_TRANSITION, "L'utilisateur est déjà banni");
@@ -448,6 +450,22 @@ public class AdminService {
         users.save(user);
         notifications.userSuspended(user, "Votre compte a été suspendu par la modération");
         adminActions.save(AdminAction.of(admin, "SUSPEND_USER", ReportTarget.USER, userId, null));
+    }
+
+    /**
+     * A moderator cannot lock out their own account or another admin's (audit
+     * P2-7): one mistaken or hostile click would otherwise remove the people
+     * able to undo it. Demoting an admin first is the owner's call.
+     */
+    private static void refuseProtectedTarget(User admin, User target) {
+        if (target.getId().equals(admin.getId())) {
+            throw new ApiException(409, ErrorCode.ILLEGAL_TRANSITION,
+                    "Vous ne pouvez pas suspendre ni bannir votre propre compte");
+        }
+        if (target.getRole() == UserRole.ADMIN) {
+            throw new ApiException(409, ErrorCode.ILLEGAL_TRANSITION,
+                    "Un compte administrateur ne peut pas être suspendu ni banni");
+        }
     }
 
     @Transactional
@@ -472,6 +490,7 @@ public class AdminService {
     public void banUser(User admin, UUID userId, String reason) {
         User user = users.findById(userId)
                 .orElseThrow(() -> new ApiException(404, ErrorCode.NOT_FOUND, "Utilisateur introuvable"));
+        refuseProtectedTarget(admin, user);
 
         if (user.getStatus() == UserStatus.BANNED) {
             return;

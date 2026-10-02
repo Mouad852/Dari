@@ -75,6 +75,9 @@ class AdminApiTest extends AbstractIntegrationTest {
     @Autowired
     MediaCleanupRepository mediaCleanups;
 
+    @Autowired
+    BannedIdentityRepository bannedIdentities;
+
     private void stubToken(String uid, String email) throws Exception {
         FirebaseToken token = Mockito.mock(FirebaseToken.class);
         Mockito.when(token.getUid()).thenReturn(uid);
@@ -642,6 +645,39 @@ class AdminApiTest extends AbstractIntegrationTest {
                 .as("queued for deletion, which also makes the media interceptor refuse it")
                 .isTrue();
         assertThat(listings.findById(owned.getId()).orElseThrow().getDeletedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("an admin cannot suspend or ban themselves or another admin")
+    void adminsAreNotSuspendableOrBannable() throws Exception {
+        User otherAdmin = new User("uid-other-admin-" + System.nanoTime(),
+                "other-admin-" + System.nanoTime() + "@example.ma", true, "Other Admin");
+        otherAdmin.setRole(UserRole.ADMIN);
+        otherAdmin = users.saveAndFlush(otherAdmin);
+        User self = admin("protected");
+
+        for (String action : List.of("suspend", "ban")) {
+            given().header("Authorization", "Bearer admin-token")
+                    .contentType("application/json")
+                    .body("{}")
+                    .when().post("/admin/users/{id}/" + action, self.getId())
+                    .then().statusCode(409)
+                    .body("code", equalTo("ILLEGAL_TRANSITION"))
+                    .body("message", equalTo("Vous ne pouvez pas suspendre ni bannir votre propre compte"));
+
+            given().header("Authorization", "Bearer admin-token")
+                    .contentType("application/json")
+                    .body("{}")
+                    .when().post("/admin/users/{id}/" + action, otherAdmin.getId())
+                    .then().statusCode(409)
+                    .body("code", equalTo("ILLEGAL_TRANSITION"))
+                    .body("message", equalTo("Un compte administrateur ne peut pas être suspendu ni banni"));
+        }
+
+        assertThat(users.findById(self.getId()).orElseThrow().getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(users.findById(otherAdmin.getId()).orElseThrow().getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(bannedIdentities.existsByEmailLower(otherAdmin.getEmail().toLowerCase(java.util.Locale.ROOT)))
+                .isFalse();
     }
 
     @Test

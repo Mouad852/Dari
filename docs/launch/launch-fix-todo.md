@@ -580,8 +580,11 @@ number when the task lands (3.1 and 5.3 both add one).
   (listings SUSPENDED + soft-deleted, photos soft-deleted + queued in `media_cleanup`, so the
   media interceptor refuses them). New AdminApiTest `banRevokesListingPhotos`. Full API suite
   360/360. (2026-10-02)
-- [ ] **7.11** P2-7 — refuse suspend/ban when the target is self or an ADMIN (409). Files:
-  `AdminService`, `AdminApiTest`. Verify: API.
+- [x] **7.11** P2-7 — refuse suspend/ban when the target is self or an ADMIN (409). Files:
+  `AdminService`, `AdminApiTest`. Verify: API. Done: `refuseProtectedTarget` in `suspendUser` and
+  `banUser` → 409 `ILLEGAL_TRANSITION` with a self / admin message; demoting an admin stays the
+  owner's call. New AdminApiTest `adminsAreNotSuspendableOrBannable` (both actions × self and
+  another admin; both stay ACTIVE, no banned identity). Full API suite 361/361. (2026-10-02)
 - [ ] **7.12** P2-10 — token revocation check (`verifyIdToken(token, true)` or short cache); confirm
   no billing impact first. Files: `FirebaseAuthFilter.java`. Verify: API full suite.
 - [ ] **7.13** P2-12 — CORS exposes `X-Correlation-Id` and `Retry-After`. Files:
