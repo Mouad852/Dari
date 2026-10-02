@@ -27,6 +27,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -153,6 +154,17 @@ public class GlobalExceptionHandler {
      * rather than the ordinary 404 it is — the same class of misreporting the
      * {@code AccessDeniedException} handler above exists to prevent for denials.
      */
+    /**
+     * Someone else changed the listing or account between this request's read
+     * and its write (audit P2-2): a conflict to reload and retry, not a server
+     * fault, and nothing to report.
+     */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    ResponseEntity<ErrorResponse> handleConcurrentUpdate(ObjectOptimisticLockingFailureException e) {
+        return ResponseEntity.status(409).body(ErrorResponse.of(ErrorCode.CONFLICT,
+                "Ces informations ont été modifiées entre-temps. Rechargez la page, puis réessayez."));
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     ResponseEntity<ErrorResponse> handleMissingResource(NoResourceFoundException e) {
         return ResponseEntity.status(404).body(ErrorResponse.of(ErrorCode.NOT_FOUND, "Ressource introuvable"));

@@ -554,8 +554,12 @@ number when the task lands (3.1 and 5.3 both add one).
   contract is unchanged: listings oldest-first, reports in priority order, at most 100 each
   (`QUEUE_LIMIT`); the dashboard shows the full counts. AdminApiTest 21/21 (new: 101 pending →
   queue 100, sorted, dashboard counts all) + ReportApiTest 9/9. (2026-10-01)
-- [ ] **7.7a** P2-2 — `@Version` on `Listing` and `User` (migration) + 409 handler. Verify: API
-  full suite.
+- [x] **7.7a** P2-2 — `@Version` on `Listing` and `User` (migration) + 409 handler. Verify: API
+  full suite. Done: V32 adds `version` to both tables and appends it to the `published_listings`
+  view; `ObjectOptimisticLockingFailureException` → 409 `CONFLICT` "modifiées entre-temps".
+  New OptimisticLockingIntegrationTest (stale listing/user save refused, newer write survives) +
+  handler unit test; ListingApiTest now reassigns merged copies instead of re-saving a stale one.
+  Full API suite green. (2026-10-02)
 - [ ] **7.7b** P2-2 — `@Transactional` on `ListingSearchService` lifecycle methods. Verify: API
   full suite.
 - [ ] **7.8** P2-3 — favorites add via `insert … on conflict do nothing`. Files:

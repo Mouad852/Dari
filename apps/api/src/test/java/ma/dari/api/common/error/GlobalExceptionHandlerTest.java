@@ -31,6 +31,18 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void aConcurrentUpdateIsAConflictToRetry() {
+        var handler = new GlobalExceptionHandler(new SimpleMeterRegistry());
+
+        var conflict = handler.handleConcurrentUpdate(new org.springframework.orm.ObjectOptimisticLockingFailureException(
+                ma.dari.api.listing.Listing.class, java.util.UUID.randomUUID()));
+
+        assertThat(conflict.getStatusCode().value()).isEqualTo(409);
+        assertThat(conflict.getBody().code()).isEqualTo("CONFLICT");
+        assertThat(conflict.getBody().message()).contains("modifiées entre-temps");
+    }
+
+    @Test
     void protocolMistakesAreClientErrorsInTheStandardEnvelope() {
         var handler = new GlobalExceptionHandler(new SimpleMeterRegistry());
 

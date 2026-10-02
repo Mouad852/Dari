@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import ma.dari.api.common.jpa.Ids;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -93,6 +94,14 @@ public class User {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
+
+    /**
+     * Optimistic lock (audit P2-2): an update built on a stale read fails with a
+     * 409 instead of overwriting the write that happened in between.
+     */
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     protected User() {
         // JPA

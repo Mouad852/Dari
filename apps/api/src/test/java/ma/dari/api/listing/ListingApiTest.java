@@ -1046,14 +1046,14 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .body("message", equalTo("Aménagement de la chambre requis"));
 
         listing.setRoomFurnishing(RoomFurnishing.PARTIALLY_FURNISHED);
-        listings.saveAndFlush(listing);
+        listing = listings.saveAndFlush(listing);
         given().header("Authorization", "Bearer submit-filters-token")
                 .when().post("/listings/{id}/submit", listing.getId())
                 .then().statusCode(400)
                 .body("message", equalTo("Date de disponibilité requise"));
 
         listing.setAvailableFrom(java.time.LocalDate.now());
-        listings.saveAndFlush(listing);
+        listing = listings.saveAndFlush(listing);
         given().header("Authorization", "Bearer submit-filters-token")
                 .when().post("/listings/{id}/submit", listing.getId())
                 .then().statusCode(200)

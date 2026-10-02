@@ -9,6 +9,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import ma.dari.api.common.jpa.Ids;
 import ma.dari.api.user.User;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -138,6 +139,14 @@ public class Listing {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt = Instant.now();
+
+    /**
+     * Optimistic lock (audit P2-2): an update built on a stale read fails with a
+     * 409 instead of overwriting the write that happened in between.
+     */
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     @Column(name = "expiry_warned_at")
     private Instant expiryWarnedAt;
