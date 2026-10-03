@@ -57,7 +57,7 @@ class FlywayMigrationSmokeTest {
                              + " WHERE tablename = 'conversations' AND indexname LIKE 'idx_conversations_participant_%'")) {
             assertThat(migrations.next()).isTrue();
             assertThat(migrations.getLong(1)).isEqualTo(result.migrationsExecuted);
-            assertThat(migrations.getInt(2)).isEqualTo(33);
+            assertThat(migrations.getInt(2)).isEqualTo(34);
 
             assertThat(postgis.next()).isTrue();
             assertThat(postgis.getString(1)).contains("POSTGIS");

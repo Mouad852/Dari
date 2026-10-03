@@ -5,8 +5,15 @@ import ma.dari.api.user.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.UUID;
+
 @Service
 public class OutboxNotificationService implements NotificationService {
+
+    /** Owner decision P0-1: one new-message email per conversation per window while unread. */
+    static final Duration NEW_MESSAGE_WINDOW = Duration.ofMinutes(30);
 
     private final NotificationOutboxRepository outbox;
     private final NotificationTemplates templates;
@@ -80,6 +87,19 @@ public class OutboxNotificationService implements NotificationService {
     @Transactional
     public void reportAcknowledged(User reporter) {
         enqueue("REPORT_ACKNOWLEDGED", reporter, templates.reportAcknowledged(reporter));
+    }
+
+    @Override
+    @Transactional
+    public void newMessage(User recipient, User sender, UUID conversationId, String listingTitle, boolean firstUnread) {
+        // Same clock as created_at (the JVM's), so the window never mixes two clocks.
+        if (!firstUnread && outbox.existsByEventTypeAndRecipientIdAndAggregateIdAndCreatedAtAfter(
+                "NEW_MESSAGE", recipient.getId(), conversationId, Instant.now().minus(NEW_MESSAGE_WINDOW))) {
+            return;
+        }
+        NotificationTemplates.Email email = templates.newMessage(recipient, sender, conversationId, listingTitle);
+        outbox.save(new NotificationOutbox("NEW_MESSAGE", recipient.getId(), conversationId,
+                email.subject(), email.body()));
     }
 
     private void enqueue(String eventType, Listing listing, NotificationTemplates.Email email) {

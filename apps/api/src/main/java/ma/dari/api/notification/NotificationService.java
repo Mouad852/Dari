@@ -2,6 +2,8 @@ package ma.dari.api.notification;
 
 import ma.dari.api.user.User;
 
+import java.util.UUID;
+
 /**
  * Outbound notifications.
  *
@@ -43,4 +45,18 @@ public interface NotificationService {
      * Email is the easiest place to leak that by trying to be helpful.
      */
     void reportAcknowledged(User reporter);
+
+    /**
+     * Tells the recipient a message is waiting (owner decision P0-1). Never the
+     * message text: the email names the sender and the listing and links to the
+     * thread, where the recipient reads it signed in.
+     *
+     * <p>At most one email per recipient and conversation every 30 minutes
+     * while they have not read it. {@code firstUnread} means they had read
+     * everything else in the conversation, so this message starts a new unread
+     * run and is emailed whatever the window.
+     *
+     * @param listingTitle the conversation's listing, or null for a direct one
+     */
+    void newMessage(User recipient, User sender, UUID conversationId, String listingTitle, boolean firstUnread);
 }

@@ -113,6 +113,25 @@ class NotificationTemplatesTest {
     }
 
     @Test
+    void aNewMessageEmailNamesTheSenderAndLinksToTheThreadWithoutTheText() {
+        UUID conversationId = UUID.fromString("0f8e6c1a-9a4b-4f55-8d2e-2b7c6a1d9e02");
+        User recipient = owner("Salma", "Salma B.");
+
+        NotificationTemplates.Email aboutListing = templates.newMessage(recipient, owner("Youssef", "Youssef K."),
+                conversationId, "Chambre\nlumineuse");
+        assertThat(aboutListing.subject()).isEqualTo("Nouveau message de Youssef à propos de « Chambre lumineuse »");
+        assertThat(aboutListing.body())
+                .startsWith("Bonjour Salma,\n\n")
+                .contains("Youssef vous a envoyé un message à propos de « Chambre lumineuse ».")
+                .contains("https://dari.ma/messages/" + conversationId)
+                .contains("jamais envoyé par e-mail");
+
+        NotificationTemplates.Email direct = templates.newMessage(recipient, owner(null, "Nadia"), conversationId, null);
+        assertThat(direct.subject()).isEqualTo("Nouveau message de Nadia");
+        assertThat(direct.body()).contains("Nadia vous a envoyé un message.");
+    }
+
+    @Test
     void linksDefaultToTheFirstWebOrigin() {
         assertThat(NotificationTemplates.siteUrl(new MockEnvironment()
                 .withProperty("dari.web-origins", "https://dari.ma, https://www.dari.ma"))).isEqualTo("https://dari.ma");

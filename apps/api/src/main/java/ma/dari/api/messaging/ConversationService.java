@@ -12,6 +12,7 @@ import ma.dari.api.messaging.dto.ConversationResponse;
 import ma.dari.api.messaging.dto.CreateConversationRequest;
 import ma.dari.api.messaging.dto.CreateMessageRequest;
 import ma.dari.api.messaging.dto.MessageResponse;
+import ma.dari.api.notification.NotificationService;
 import ma.dari.api.user.User;
 import ma.dari.api.user.UserRepository;
 import ma.dari.api.user.UserStatus;
@@ -34,15 +35,18 @@ public class ConversationService {
     private final MessageRepository messages;
     private final UserRepository users;
     private final ListingRepository listings;
+    private final NotificationService notifications;
 
     public ConversationService(ConversationRepository conversations,
                               MessageRepository messages,
                               UserRepository users,
-                              ListingRepository listings) {
+                              ListingRepository listings,
+                              NotificationService notifications) {
         this.conversations = conversations;
         this.messages = messages;
         this.users = users;
         this.listings = listings;
+        this.notifications = notifications;
     }
 
     @Transactional(readOnly = true)
@@ -247,10 +251,17 @@ public class ConversationService {
     }
 
     private Message sendMessageInternal(Conversation conversation, User currentUser, String body) {
+        User recipient = conversation.otherParticipant(currentUser);
+        // Counted before this message is saved: zero means the recipient had
+        // read everything, so this one starts a new unread run.
+        boolean firstUnread = messages.countUnreadForUser(conversation.getId(), recipient.getId()) == 0;
         Message message = new Message(conversation, currentUser, body);
         Message saved = messages.save(message);
         // Same transaction as the message, so the inbox order never disagrees with it.
         conversations.touchActivity(conversation.getId());
+        // Also the same transaction: the email is queued only if the message is kept.
+        notifications.newMessage(recipient, currentUser, conversation.getId(),
+                conversation.getListing() == null ? null : conversation.getListing().getTitle(), firstUnread);
         return saved;
     }
 

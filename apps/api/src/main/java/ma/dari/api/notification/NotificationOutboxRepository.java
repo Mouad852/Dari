@@ -26,6 +26,10 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
 		    """)
 	    List<NotificationOutbox> findClaimable(Instant now, Instant staleBefore, Pageable pageable);
 
+	    /** Whether this kind of email went to this recipient about this conversation or listing since then. */
+	    boolean existsByEventTypeAndRecipientIdAndAggregateIdAndCreatedAtAfter(
+		    String eventType, UUID recipientId, UUID aggregateId, Instant since);
+
 	    /** Backs the notification-outbox-depth gauge, one series per status. */
 	    long countByStatus(NotificationOutboxStatus status);
 }

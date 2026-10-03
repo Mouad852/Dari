@@ -5,6 +5,8 @@ import ma.dari.api.user.User;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 /**
  * Subject and plain-text body for each notification email (audit P1-10).
  *
@@ -143,9 +145,41 @@ public class NotificationTemplates {
                 null);
     }
 
+    /**
+     * Who wrote and about which listing, and a link to the thread. Never the
+     * message itself: an email is forwarded, previewed on lock screens and
+     * kept by mail providers, and a message is often an address or a phone
+     * number (tracker 4.3c).
+     */
+    Email newMessage(User recipient, User sender, UUID conversationId, String listingTitle) {
+        String from = name(sender);
+        String about = listingTitle == null || oneLine(listingTitle).isEmpty()
+                ? ""
+                : " à propos de « " + oneLine(listingTitle) + " »";
+        return email(recipient,
+                "Nouveau message de " + from + about,
+                from + " vous a envoyé un message" + about + ".",
+                null,
+                "Pour le lire et répondre : " + siteUrl + "/messages/" + conversationId + "\n\n"
+                        + "Pour protéger vos échanges, le contenu des messages n’est jamais envoyé par e-mail. "
+                        + "Tant que vous n’avez pas lu cette conversation, nous vous écrivons au plus une fois "
+                        + "toutes les 30 minutes à son sujet.");
+    }
+
     /** Owner-typed, and it goes into the Subject header: one line, whatever an API client sent. */
     private static String title(Listing listing) {
-        return listing.getTitle() == null ? "" : listing.getTitle().replaceAll("\\s+", " ").trim();
+        return listing.getTitle() == null ? "" : oneLine(listing.getTitle());
+    }
+
+    private static String oneLine(String text) {
+        return text.replaceAll("\\s+", " ").trim();
+    }
+
+    /** First name, else the display name; also user-typed, so one line as well. */
+    private static String name(User user) {
+        String name = user.getFirstName();
+        if (name == null || name.isBlank()) name = user.getDisplayName();
+        return name == null || name.isBlank() ? "Un membre de Dari" : oneLine(name);
     }
 
     private String manageListings() {

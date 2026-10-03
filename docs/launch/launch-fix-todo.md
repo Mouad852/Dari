@@ -134,7 +134,7 @@ next to the decision.
 
 ## Phase 2 — Broken/incomplete functionality (P0 first)
 
-- [ ] **2.1a** P0-1 **DECISION (throttle window)** — `NotificationService.newMessage(recipient,
+- [x] **2.1a** P0-1 **DECISION (throttle window)** — `NotificationService.newMessage(recipient,
   conversation)`; enqueue from `ConversationService.sendMessageInternal` for the other participant,
   skipped when an unsent or recently sent `NEW_MESSAGE` row exists for (recipient, conversation)
   inside the window; add the type to `NotificationDeliveryService.EVENT_TYPES`. Payload: sender
@@ -143,6 +143,13 @@ next to the decision.
   `NotificationDeliveryService.java`, outbox repository query, `messaging/ConversationService.java`,
   new `MessageNotificationTest`. Verify: API — A→B gives one row for B; second message inside the
   window gives none; after B reads, the next message enqueues again.
+  Done (with 4.3c): `ConversationService.sendMessageInternal` counts the recipient's unread
+  messages before saving; none → this message starts a new unread run and is emailed; otherwise
+  only if no `NEW_MESSAGE` row for (recipient, conversation) is younger than 30 min (JVM clock on
+  both sides). Same transaction as the message. V34 indexes the outbox lookup. MessageNotificationTest
+  3/3 (first message, no text in the email; unread inside the window → none, read → again, reply →
+  the other side; still unread after 31 min → again), MessagingApiTest 20/20, NotificationTemplatesTest
+  9/9, NotificationDeliveryServiceTest 3/3, FlywayMigrationSmokeTest 1/1. (2026-10-03)
 - [ ] **2.1b** P0-1 — email subject/body for `NEW_MESSAGE` in `SmtpNotificationSender` (subject
   names the sender/listing, body links to the thread, no message text). Files:
   `SmtpNotificationSender.java`, `NotificationDeliveryServiceTest`, and
@@ -354,8 +361,12 @@ number when the task lands (3.1 and 5.3 both add one).
   SmtpNotificationSenderTest 2, NotificationDeliveryServiceTest 3, ReportApiTest 9,
   ListingExpiryIntegrationTest 8, AdminApiTest 20; all 10 events sent through
   `SmtpNotificationSender` to a local Mailpit: subjects and UTF-8 bodies intact. (93fa117, 2026-09-30)
-- [ ] **4.3c** P1-10 / P0-1 (from 4.3b) — new-message email template (sender's first name, listing
+- [x] **4.3c** P1-10 / P0-1 (from 4.3b) — new-message email template (sender's first name, listing
   title, link to the thread). Lands with 2.1b; blocked on the P0-1 throttle decision. Files: `NotificationTemplates`, `NotificationTemplatesTest`.
+  Done with 2.1a: subject "Nouveau message de {prénom} à propos de « {titre} »" (no listing → just
+  the name); body links to `/messages/{id}`, says message text is never emailed and states the
+  30-minute rule. Names and titles are folded to one line. New NotificationTemplatesTest case.
+  (2026-10-03)
 - [x] **4.4a** P2-13 — `whiteSpace: 'pre-line'` on description, rules and bio. Files:
   `ListingDetailContent.tsx`, `profile/[id]/page.tsx`. Verify: Web + screenshot. New
   `listing-host` test reads `innerText` (a newline survives only if rendered); mock data now

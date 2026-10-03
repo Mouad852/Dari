@@ -18,7 +18,7 @@ public class NotificationDeliveryService {
     private static final Set<String> EVENT_TYPES = Set.of(
             "LISTING_APPROVED", "LISTING_REJECTED", "LISTING_SUSPENDED",
             "LISTING_REINSTATED", "LISTING_EXPIRING_SOON", "LISTING_EXPIRED",
-            "USER_WARNED", "USER_SUSPENDED", "USER_BANNED", "REPORT_ACKNOWLEDGED");
+            "USER_WARNED", "USER_SUSPENDED", "USER_BANNED", "REPORT_ACKNOWLEDGED", "NEW_MESSAGE");
 
     private final NotificationOutboxClaimService claims;
     private final NotificationOutboxRepository outbox;
