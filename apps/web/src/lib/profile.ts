@@ -10,6 +10,8 @@ export type PendingProfile = {
   displayName: string;
   firstName: string;
   city: string;
+  /** The terms version shown next to the button (owner decision P1-15). */
+  acceptedTermsVersion: string;
 };
 
 const STORAGE_KEY = 'dari.pending-profile.v1';
@@ -22,8 +24,11 @@ export function loadPendingProfile(): PendingProfile | null {
   if (typeof window === 'undefined') return null;
   try {
     const value = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? 'null') as Partial<PendingProfile> | null;
-    if (!value || typeof value.displayName !== 'string' || typeof value.firstName !== 'string' || typeof value.city !== 'string') return null;
-    return { displayName: value.displayName, firstName: value.firstName, city: value.city };
+    // A profile saved before consent was recorded has no version: treat it as
+    // absent, so sign-in sends the person to /profile-recovery to accept.
+    if (!value || typeof value.displayName !== 'string' || typeof value.firstName !== 'string' || typeof value.city !== 'string'
+      || typeof value.acceptedTermsVersion !== 'string' || !value.acceptedTermsVersion.trim()) return null;
+    return { displayName: value.displayName, firstName: value.firstName, city: value.city, acceptedTermsVersion: value.acceptedTermsVersion };
   } catch {
     return null;
   }
@@ -64,6 +69,7 @@ export async function ensureProfile(profile?: PendingProfile) {
       displayName: pending.displayName.trim(),
       firstName: pending.firstName.trim(),
       city: pending.city.trim() || null,
+      acceptedTermsVersion: pending.acceptedTermsVersion,
     },
   });
   clearPendingProfile();

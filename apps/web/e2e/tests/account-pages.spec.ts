@@ -98,7 +98,18 @@ test('a signed-in account without a profile is sent to create it, not to sign in
   await main.getByRole('link', { name: 'Créer mon profil' }).click();
   await expect(page).toHaveURL(/\/profile-recovery$/, { timeout: 15_000 });
   await expect(page.getByRole('button', { name: 'Créer mon profil' })).toBeVisible();
+  // Profile creation here also records consent (owner decision P1-15).
+  await expect(page.getByText(/En créant votre profil, vous acceptez les/)).toBeVisible();
   await expectAccessible(page);
+
+  let profileBody: Record<string, unknown> | null = null;
+  await page.route('**/api/v1/users', async (route) => {
+    if (route.request().method() === 'POST') profileBody = route.request().postDataJSON() as Record<string, unknown>;
+    await route.continue();
+  });
+  await page.getByLabel('Nom d’affichage').fill('Nadia T.');
+  await page.getByRole('button', { name: 'Créer mon profil' }).click();
+  await expect.poll(() => profileBody).toMatchObject({ displayName: 'Nadia T.', acceptedTermsVersion: 'e2e' });
 });
 
 test('the account hub leads moderators to the admin console, and only them', async ({ authenticatedPage: page }) => {

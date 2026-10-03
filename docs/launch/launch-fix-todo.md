@@ -470,9 +470,18 @@ number when the task lands (3.1 and 5.3 both add one).
   Done: V35 adds both columns (nullable); `CreateUserRequest.acceptedTermsVersion` (max 64) is trimmed
   and stored with `Instant.now()` on create. New `UserTermsAcceptanceApiTest` 2/2; UserApiTest 16/16,
   UserProfileClearingApiTest 3/3, FlywayMigrationSmokeTest 1/1. (2026-10-03)
-- [ ] **5.3b** P1-15 **DECISION** — web sign-up consent sentence with links; sends the version.
+- [x] **5.3b** P1-15 **DECISION** — web sign-up consent sentence with links; sends the version.
   Files: `apps/web/src/app/sign-up/page.tsx`, profile-creation call. Verify: Web + spec (links
   shown).
+  Done: shared `TermsConsent` ("…, vous acceptez les Conditions d’utilisation et la Politique de
+  confidentialité de Dari", links in a new tab, announced) above "Créer mon compte" and on
+  /profile-recovery. Both pages became thin server pages passing `legalRelease.version`
+  (`DARI_LEGAL_VERSION`) to their client form (`SignUpForm`, `ProfileRecoveryForm`), so the version
+  needs no `NEXT_PUBLIC_` copy. The pending profile carries `acceptedTermsVersion`; one saved
+  without it counts as absent, so sign-in routes that person to recovery to accept. Specs:
+  account-journeys 4/4 (sentence, both links, POST carries "e2e"), account-pages (recovery shows
+  the sentence and sends the version) + sign-up, field-errors, session-recovery, sign-in-return:
+  34/34 on dev; typecheck clean. (2026-10-03)
 - [ ] **5.3c** P1-15 **DECISION** — mobile sign-up/profile-recovery consent and version. Files:
   `apps/mobile/app/sign-up.tsx`, `profile-recovery.tsx`. Verify: Mobile `npm test`.
 - [ ] **5.3d** P1-15 **DECISION** — API makes the accepted version required (400 without it).

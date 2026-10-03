@@ -1,13 +1,18 @@
 import { expect, expectAccessible, test } from './fixtures';
 
 test('signup provisions the profile through the API-owned boundary', async ({ authenticatedPage: page }) => {
-  let profileCreated = false;
+  let profileBody: Record<string, unknown> | null = null;
   await page.route('**/api/v1/users', async (route) => {
-    if (route.request().method() === 'POST') profileCreated = true;
+    if (route.request().method() === 'POST') profileBody = route.request().postDataJSON() as Record<string, unknown>;
     await route.continue();
   });
 
   await page.goto('/sign-up');
+  // Consent next to the button, with both texts (owner decision P1-15).
+  const consent = page.getByText(/En créant un compte, vous acceptez les/);
+  await expect(consent).toBeVisible();
+  await expect(consent.getByRole('link', { name: /Conditions d’utilisation/ })).toHaveAttribute('href', '/legal/terms');
+  await expect(consent.getByRole('link', { name: /Politique de confidentialité/ })).toHaveAttribute('href', '/legal/privacy');
   await page.getByLabel('Prénom').fill('Nadia');
   await page.getByRole('textbox', { name: 'Nom', exact: true }).fill('Test');
   await page.getByLabel('Ville (facultatif)').fill('Rabat');
@@ -15,7 +20,8 @@ test('signup provisions the profile through the API-owned boundary', async ({ au
   await page.getByLabel('Mot de passe').fill('motdepasse');
   await page.getByRole('button', { name: /créer mon compte/i }).click();
   await expect(page).toHaveURL(/\/account$/);
-  expect(profileCreated).toBeTruthy();
+  // The legal pages' version (DARI_LEGAL_VERSION, "e2e" in this config) is what was accepted.
+  expect(profileBody).toMatchObject({ displayName: 'Nadia Test', acceptedTermsVersion: 'e2e' });
   // The URL changes before /account has rendered past its loading state; axe
   // scanned in between and reported no <h1> under full-suite load (5.2b).
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
