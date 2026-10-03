@@ -464,9 +464,12 @@ number when the task lands (3.1 and 5.3 both add one).
   now it waits for a visible one. The signup journey scanned right after the URL changed, before
   `/account` rendered; it now waits for the page's `<h1>`. Both specs ×3 on both projects:
   30/30. (86818f5, 2026-09-30)
-- [ ] **5.3a** P1-15 **DECISION (wording/version)** — migration adding `users.terms_accepted_at`
+- [x] **5.3a** P1-15 **DECISION (wording/version)** — migration adding `users.terms_accepted_at`
   and `users.terms_version`; optional `CreateUserRequest.acceptedTermsVersion` stored on create.
   Files: new migration, `user/*`, new user test class. Verify: API.
+  Done: V35 adds both columns (nullable); `CreateUserRequest.acceptedTermsVersion` (max 64) is trimmed
+  and stored with `Instant.now()` on create. New `UserTermsAcceptanceApiTest` 2/2; UserApiTest 16/16,
+  UserProfileClearingApiTest 3/3, FlywayMigrationSmokeTest 1/1. (2026-10-03)
 - [ ] **5.3b** P1-15 **DECISION** — web sign-up consent sentence with links; sends the version.
   Files: `apps/web/src/app/sign-up/page.tsx`, profile-creation call. Verify: Web + spec (links
   shown).

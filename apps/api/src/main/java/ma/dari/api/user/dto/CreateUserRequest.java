@@ -20,5 +20,13 @@ public record CreateUserRequest(
         String firstName,
 
         @Size(max = 60)
-        String city) {
+        String city,
+
+        /*
+         * The terms and privacy version shown next to "Créer mon compte"
+         * (owner decision P1-15): the legal pages' DARI_LEGAL_VERSION. Kept
+         * with the account as the record of what was accepted.
+         */
+        @Size(max = 64, message = "Version des conditions invalide")
+        String acceptedTermsVersion) {
 }

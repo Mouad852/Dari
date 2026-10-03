@@ -205,6 +205,9 @@ public class UserService {
                 request.displayName());
         user.setFirstName(request.firstName());
         user.setCity(request.city());
+        if (request.acceptedTermsVersion() != null && !request.acceptedTermsVersion().isBlank()) {
+            user.acceptTerms(request.acceptedTermsVersion().trim(), Instant.now());
+        }
         return users.save(user);
     }
 

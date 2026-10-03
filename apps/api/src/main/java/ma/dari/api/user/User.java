@@ -72,6 +72,13 @@ public class User {
     @Column(columnDefinition = "text")
     private String bio;
 
+    /** The terms version accepted at sign-up (owner decision P1-15); null before V35. */
+    @Column(name = "terms_version", columnDefinition = "text")
+    private String termsVersion;
+
+    @Column(name = "terms_accepted_at")
+    private Instant termsAcceptedAt;
+
     /**
      * Legacy: the rendered URL releases before V26 stored. This release never
      * reads it and never writes it except to clear it when an account is
@@ -170,6 +177,15 @@ public class User {
     public String getBio() { return bio; }
 
     public void setBio(String bio) { this.bio = bio; }
+
+    public String getTermsVersion() { return termsVersion; }
+
+    public Instant getTermsAcceptedAt() { return termsAcceptedAt; }
+
+    public void acceptTerms(String version, Instant at) {
+        this.termsVersion = version;
+        this.termsAcceptedAt = at;
+    }
 
     /** @deprecated legacy column; render {@link #getAvatarStorageKey()} instead. */
     @Deprecated
