@@ -8,9 +8,10 @@ test('the notifications page lists only emails the product sends', async ({ auth
   const main = page.getByRole('main');
   await expect(main.getByText('Mises à jour de vos annonces')).toBeVisible();
   await expect(main.getByText(/signalement est bien reçu/)).toBeVisible();
-  // No email is sent for new messages yet, and a reporter never learns the outcome.
-  await expect(main.getByText('Nouveaux messages', { exact: true })).toHaveCount(0);
-  await expect(main.getByText(/ne sont pas encore envoyés par e-mail/)).toBeVisible();
+  // New messages are emailed (tracker 2.1b), without their text; a reporter never learns the outcome.
+  await expect(main.getByText('Nouveaux messages', { exact: true })).toBeVisible();
+  await expect(main.getByText(/jamais le contenu du message/)).toBeVisible();
+  await expect(main.getByText(/ne sont pas encore envoyés par e-mail/)).toHaveCount(0);
   await expect(main.getByText(/est traité/)).toHaveCount(0);
 });
 
@@ -21,7 +22,7 @@ test('a profile with photo, bio, city and verified email is complete without a p
   await expect(page.getByText('Profil complet')).toHaveCount(0);
   await expect(page.getByText('Téléphone')).toHaveCount(0);
   // The hub describes the notifications the product sends, not replies or visits it does not.
-  await expect(page.getByRole('link', { name: /Notifications/ })).toContainText('E-mails sur vos annonces et votre compte');
+  await expect(page.getByRole('link', { name: /Notifications/ })).toContainText('E-mails sur vos messages, annonces et compte');
   await expect(page.getByText(/visites/)).toHaveCount(0);
 });
 

@@ -150,12 +150,18 @@ next to the decision.
   3/3 (first message, no text in the email; unread inside the window → none, read → again, reply →
   the other side; still unread after 31 min → again), MessagingApiTest 20/20, NotificationTemplatesTest
   9/9, NotificationDeliveryServiceTest 3/3, FlywayMigrationSmokeTest 1/1. (2026-10-03)
-- [ ] **2.1b** P0-1 — email subject/body for `NEW_MESSAGE` in `SmtpNotificationSender` (subject
+- [x] **2.1b** P0-1 — email subject/body for `NEW_MESSAGE` in `SmtpNotificationSender` (subject
   names the sender/listing, body links to the thread, no message text). Files:
   `SmtpNotificationSender.java`, `NotificationDeliveryServiceTest`, and
   `apps/web/src/app/account/notifications/page.tsx` (add "Nouveaux messages", drop the "pas encore
   envoyés" line, update `account-pages.spec.ts`). Verify: API
   `-Dtest=NotificationDeliveryServiceTest`; manual Mailpit check of one email.
+  Done: the subject and body come from the 4.3c template at enqueue time, so the sender needed no
+  change. NotificationDeliveryServiceTest 4/4 (new: a NEW_MESSAGE email is delivered) +
+  SmtpNotificationSenderTest 2/2. Web: "Nouveaux messages" listed with the no-content and 30-minute
+  rule, the "pas encore envoyés" line gone, the hub reads "E-mails sur vos messages, annonces et
+  compte"; typecheck clean, account-pages 8/8. Mailpit: one email through `SmtpNotificationSender`,
+  subject and UTF-8 body intact, link to the thread, no message text. (2026-10-03)
 - [x] **2.2a** P0-2 — wizard "Chambre" step collects `roomFurnishing` (select) and `availableFrom`
   (date, min today); both added to `missingForSubmit`, `draftPayload()`, `loadDraft` and the
   Validation summary; an unchanged loaded date is not re-sent (the API refuses past dates).

@@ -55,6 +55,23 @@ class NotificationDeliveryServiceTest {
     }
 
     @Test
+    void deliversANewMessageEmail() {
+        UUID recipientId = UUID.randomUUID();
+        NotificationOutbox event = new NotificationOutbox("NEW_MESSAGE", recipientId, UUID.randomUUID(),
+                "Nouveau message de Amal", "Bonjour Badr,\n\nAmal vous a envoyé un message.");
+        event.markSending(NOW);
+        User user = mock(User.class);
+        when(user.getEmail()).thenReturn("badr@example.com");
+        when(claims.claim(50, NOW, NOW.minusSeconds(900))).thenReturn(List.of(event));
+        when(users.findById(recipientId)).thenReturn(Optional.of(user));
+
+        service.deliverPending();
+
+        verify(sender).send(event, "badr@example.com");
+        assertThat(event.getStatus()).isEqualTo(NotificationOutboxStatus.SENT);
+    }
+
+    @Test
     void retriesTransientTransportFailure() {
         UUID recipientId = UUID.randomUUID();
         NotificationOutbox event = event("LISTING_EXPIRED", recipientId, "Votre annonce a expiré et doit être renouvelée");

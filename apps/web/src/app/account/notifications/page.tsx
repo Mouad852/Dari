@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Bell, Mail, ShieldCheck, Smartphone } from 'lucide-react';
+import { Bell, Mail, MessageSquare, ShieldCheck, Smartphone } from 'lucide-react';
 
 import { apiFetch, ApiError } from '@/lib/api';
 import { getIdToken } from '@/lib/firebase';
@@ -25,11 +25,18 @@ import type { Me } from '@/types/api';
  * named as "coming soon" rather than faked.
  *
  * The list mirrors NotificationDeliveryService.EVENT_TYPES and nothing else
- * (launch audit P1-12). It claimed emails for new messages, which no code
- * sends yet (P0-1), and said a report "est traité" when the reporter is only
- * told it was received, by design (§6). Add a kind here only with its event.
+ * (launch audit P1-12). It once claimed new-message emails before any code
+ * sent them; NEW_MESSAGE exists since tracker 2.1a, with the 30-minute rule
+ * stated here as the email states it. A report is only acknowledged, never
+ * "traité", by design (§6). Add a kind here only with its event.
  */
 const NOTIFICATION_KINDS = [
+  {
+    icon: MessageSquare,
+    title: 'Nouveaux messages',
+    description:
+      'Quelqu’un vous écrit. L’e-mail indique qui et pour quelle annonce, jamais le contenu du message, et au plus une fois toutes les 30 minutes par conversation tant que vous ne l’avez pas lue.',
+  },
   {
     icon: Mail,
     title: 'Mises à jour de vos annonces',
@@ -110,9 +117,6 @@ export default function AccountNotificationsPage() {
           <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
             Vous recevez un e-mail à {email ?? 'votre adresse'} pour chacun de ces événements. Il n’existe pas
             encore de réglage pour les activer ou les désactiver individuellement.
-          </p>
-          <p style={{ margin: 0, font: 'var(--type-body-sm)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-            Les nouveaux messages ne sont pas encore envoyés par e-mail : ils apparaissent dans Messages.
           </p>
 
           {NOTIFICATION_KINDS.map(({ icon: Icon, title, description }) => (
