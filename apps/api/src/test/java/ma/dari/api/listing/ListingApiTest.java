@@ -272,9 +272,50 @@ class ListingApiTest extends AbstractIntegrationTest {
                 .extract()
                 .jsonPath();
 
+        // An undated listing is available now (owner decision P0-2), so the date filter keeps it;
+        // here it still drops out because it lacks the amenities.
         assertThat(response.getList("items.title"))
                 .contains("Annonce avec wifi et parking")
                 .doesNotContain("Annonce avec wifi seulement", "Annonce sans date");
+    }
+
+    @Test
+    @DisplayName("a listing without a move-in date counts as available now in list, count and map")
+    void undatedListingIsAvailableNowEverywhere() throws Exception {
+        String uid = "uid-undated-" + System.nanoTime();
+        User owner = users.saveAndFlush(new User(uid, uid + "@example.ma", true, "Undated Owner"));
+        String city = "VilleDate" + System.nanoTime();
+
+        // Coordinates no other test uses, so the radius search sees only these three.
+        Listing undated = new Listing(owner, "Sans date", city, "Centre", 31.5123, -9.7712,
+                new BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE);
+        listings.saveAndFlush(undated);
+        Listing early = new Listing(owner, "Libre en septembre", city, "Centre", 31.5124, -9.7713,
+                new BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE);
+        early.setAvailableFrom(java.time.LocalDate.of(2026, 9, 1));
+        listings.saveAndFlush(early);
+        Listing late = new Listing(owner, "Libre en décembre", city, "Centre", 31.5125, -9.7714,
+                new BigDecimal("2500.00"), ListingStatus.PUBLISHED, AvailabilityState.AVAILABLE);
+        late.setAvailableFrom(java.time.LocalDate.of(2026, 12, 1));
+        listings.saveAndFlush(late);
+
+        assertThat(given().queryParam("city", city).queryParam("availableFrom", "2026-10-15")
+                .when().get("/listings").then().statusCode(200).extract().jsonPath().getList("items.title"))
+                .containsExactlyInAnyOrder("Sans date", "Libre en septembre");
+        // Radius mode takes no city and sorts by distance.
+        assertThat(given().queryParam("availableFrom", "2026-10-15").queryParam("sort", "closest")
+                .queryParam("lat", 31.5123).queryParam("lng", -9.7712).queryParam("radiusM", 500)
+                .when().get("/listings").then().statusCode(200).extract().jsonPath().getList("items.title"))
+                .as("the radius search applies the same rule")
+                .containsExactlyInAnyOrder("Sans date", "Libre en septembre");
+        given().queryParam("city", city).queryParam("availableFrom", "2026-10-15")
+                .when().get("/listings/count")
+                .then().statusCode(200)
+                .body("count", equalTo(2));
+        given().queryParam("city", city).queryParam("availableFrom", "2026-10-15")
+                .when().get("/listings/map")
+                .then().statusCode(200)
+                .body("size()", equalTo(2));
     }
 
     private void listingSaveAndFlush(Listing listing) {

@@ -181,11 +181,17 @@ next to the decision.
   accepted). Files: `listing/ListingSearchService.java`, `ListingApiTest`. Verify: API
   `-Dtest=ListingApiTest` (57/57); full suite at the Phase 2 gate. Mobile publish (already unable
   to submit, P0-4) now also needs these fields if option (b) is chosen. (9f6db1e, 2026-09-29)
-- [ ] **2.2d** P0-2 **DECISION (NULL date rule)** — one date-filter rule across
+- [x] **2.2d** P0-2 **DECISION (NULL date rule)** — one date-filter rule across
   `searchByLocationSorted`, `searchByRadiusPaginated`, `searchByRadiusWithCursor`, the count query
   and `mapPinsByLocationAndRadius`. Files: `listing/ListingSearchRepository.java`,
   `ListingApiTest`. Verify: API — a listing with NULL `available_from` behaves per the chosen rule
   in list, count and map.
+  Done: the three list/count queries take `available_from IS NULL` as a match, like the map. Found
+  on the way: the map query's `:availableBy` was the one uncast nullable parameter, so every map
+  search with a move-in date answered 500 ("could not determine data type") on web and mobile;
+  now cast like the others. New `undatedListingIsAvailableNowEverywhere` (city list, radius list,
+  count, map: undated + earlier kept, later dropped). ListingApiTest 62/62,
+  ListingSearchIndexUsageTest 4/4, ListingSearchOptimizationTest 5/5. (2026-10-03)
 - [x] **2.3a** P0-3 — "Renouveler" action on `/account/listings` for `status === 'EXPIRED'`
   (`POST /listings/{id}/renew`, card moves to PENDING_REVIEW). Files:
   `apps/web/src/app/account/listings/page.tsx`, new `owner-listings.spec.ts` (stubs the status

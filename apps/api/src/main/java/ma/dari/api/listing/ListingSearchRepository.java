@@ -72,7 +72,7 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
               AND (CAST(:propertyTypes AS property_type[]) IS NULL OR l.property_type = ANY(CAST(:propertyTypes AS property_type[])))
               AND (CAST(:roomTypes AS room_type[]) IS NULL OR l.room_type = ANY(CAST(:roomTypes AS room_type[])))
               AND (CAST(:furnishings AS room_furnishing[]) IS NULL OR l.room_furnishing = ANY(CAST(:furnishings AS room_furnishing[])))
-              AND (CAST(:availableBy AS date) IS NULL OR l.available_from <= :availableBy)
+              AND (CAST(:availableBy AS date) IS NULL OR l.available_from IS NULL OR l.available_from <= :availableBy)
               AND (CAST(:amenityCodes AS text[]) IS NULL OR (
                   SELECT COUNT(DISTINCT la.amenity_code) FROM listing_amenities la
                   WHERE la.listing_id = l.id
@@ -134,7 +134,7 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
               AND (CAST(:propertyTypes AS property_type[]) IS NULL OR l.property_type = ANY(CAST(:propertyTypes AS property_type[])))
               AND (CAST(:roomTypes AS room_type[]) IS NULL OR l.room_type = ANY(CAST(:roomTypes AS room_type[])))
               AND (CAST(:furnishings AS room_furnishing[]) IS NULL OR l.room_furnishing = ANY(CAST(:furnishings AS room_furnishing[])))
-              AND (CAST(:availableBy AS date) IS NULL OR l.available_from <= :availableBy)
+              AND (CAST(:availableBy AS date) IS NULL OR l.available_from IS NULL OR l.available_from <= :availableBy)
               AND (CAST(:amenityCodes AS text[]) IS NULL OR (
                   SELECT COUNT(DISTINCT la.amenity_code) FROM listing_amenities la
                   WHERE la.listing_id = l.id
@@ -186,7 +186,7 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
               AND (CAST(:propertyTypes AS property_type[]) IS NULL OR l.property_type = ANY(CAST(:propertyTypes AS property_type[])))
               AND (CAST(:roomTypes AS room_type[]) IS NULL OR l.room_type = ANY(CAST(:roomTypes AS room_type[])))
               AND (CAST(:furnishings AS room_furnishing[]) IS NULL OR l.room_furnishing = ANY(CAST(:furnishings AS room_furnishing[])))
-              AND (CAST(:availableBy AS date) IS NULL OR l.available_from <= :availableBy)
+              AND (CAST(:availableBy AS date) IS NULL OR l.available_from IS NULL OR l.available_from <= :availableBy)
               AND (CAST(:amenityCodes AS text[]) IS NULL OR (
                   SELECT COUNT(DISTINCT la.amenity_code) FROM listing_amenities la
                   WHERE la.listing_id = l.id
@@ -257,7 +257,7 @@ public interface ListingSearchRepository extends JpaRepository<Listing, UUID> {
               AND (CAST(:propertyTypes AS property_type[]) IS NULL OR l.property_type = ANY(CAST(:propertyTypes AS property_type[])))
               AND (CAST(:roomTypes AS room_type[]) IS NULL OR l.room_type = ANY(CAST(:roomTypes AS room_type[])))
               AND (CAST(:furnishings AS room_furnishing[]) IS NULL OR l.room_furnishing = ANY(CAST(:furnishings AS room_furnishing[])))
-              AND (:availableBy IS NULL OR l.available_from IS NULL OR l.available_from <= :availableBy)
+              AND (CAST(:availableBy AS date) IS NULL OR l.available_from IS NULL OR l.available_from <= :availableBy)
               AND (CAST(:amenityCodes AS text[]) IS NULL OR (
                   SELECT COUNT(DISTINCT la.amenity_code) FROM listing_amenities la
                   WHERE la.listing_id = l.id
