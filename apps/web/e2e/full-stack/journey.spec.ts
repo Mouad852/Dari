@@ -85,6 +85,11 @@ test('sign up, publish, approve, find in search and message the owner', async ({
   await confirmEmail(OWNER.email);
   await signUp.getByRole('button', { name: 'J’ai confirmé mon e-mail' }).click();
   await expect(page).toHaveURL(/\/account$/, { timeout: 30_000 });
+  // The consent shown at sign-up is stored with the account (P1-15): the web's DARI_LEGAL_VERSION.
+  const consent = spawnSync('docker', ['exec', DB_CONTAINER, 'psql', '-U', 'dari', '-d', 'dari', '-tA', '-c',
+    `SELECT terms_version || ':' || (terms_accepted_at IS NOT NULL) FROM users WHERE email = '${OWNER.email}'`],
+  { encoding: 'utf8' });
+  expect(consent.stdout.trim(), consent.stderr).toBe('full-stack:true');
 
   // 2. The owner publishes a listing through the wizard.
   await open(page, '/publish');
@@ -136,11 +141,21 @@ test('sign up, publish, approve, find in search and message the owner', async ({
   await seeker.getByRole('button', { name: 'Contacter' }).click();
   await expect(seeker).toHaveURL(/\/messages\/[0-9a-f-]+$/, { timeout: 30_000 });
   await seeker.getByLabel('Écrire un message').fill('Bonjour, la chambre est-elle disponible ?');
+  // The bubble is optimistic: it shows before the API answers, so wait for the API itself.
+  const sent = seeker.waitForResponse((response) => response.request().method() === 'POST'
+    && /\/conversations\/[0-9a-f-]+\/messages$/.test(new URL(response.url()).pathname));
   await seeker.getByRole('button', { name: 'Envoyer' }).click();
+  expect((await sent).status()).toBe(201);
   const thread = seeker.getByRole('log', { name: 'Messages de la conversation' });
   await expect(thread.getByText('Bonjour, la chambre est-elle disponible ?')).toBeVisible();
 
   const conversationId = seeker.url().split('/').pop()!;
   const stored = await api<{ items: { body: string }[] }>('GET', `/conversations/${conversationId}/messages`, seekerToken);
   expect(stored.body.items.map((message) => message.body)).toContain('Bonjour, la chambre est-elle disponible ?');
+
+  // The owner is told by email (tracker 2.1a): one queued email, which never carries the text.
+  const queued = spawnSync('docker', ['exec', DB_CONTAINER, 'psql', '-U', 'dari', '-d', 'dari', '-tA', '-c',
+    `SELECT count(*) || ':' || bool_or(payload LIKE '%disponible%') FROM notification_outbox
+     WHERE event_type = 'NEW_MESSAGE' AND aggregate_id = '${conversationId}'`], { encoding: 'utf8' });
+  expect(queued.stdout.trim(), queued.stderr).toBe('1:false');
 });

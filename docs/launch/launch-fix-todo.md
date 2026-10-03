@@ -249,8 +249,14 @@ next to the decision.
   data-rights line. A suspended listing's notice ends with "Contacter la modération" →
   `/contact#moderation`. owner-listings 6/6 (the suspended test follows the link, checks the
   heading and the mailto, axe on both pages); typecheck clean. (2026-10-03)
-- [ ] **2.7** Phase 2 gate — API full suite, web typecheck/build/full Playwright (dev +
+- [x] **2.7** Phase 2 gate — API full suite, web typecheck/build/full Playwright (dev +
   production), mobile jest all green.
+  Done after the owner's decisions landed (2.1a/b, 2.2d, 2.4, 2.6e): API full suite 375/375; web
+  typecheck + full Playwright dev + production (the production project builds first) 100 passed +
+  1 intentional skip; mobile jest 86/86 + typecheck. Full-stack harness 3/3. Its journey had
+  raced the optimistic message bubble (it read the thread back before the POST answered); it now
+  waits for the 201, and also checks on the real database that the owner's NEW_MESSAGE email is
+  queued without the text and that sign-up stored terms version "full-stack". (2026-10-03)
 
 ## Phase 3 — Frontend/backend integration fixes
 
@@ -493,6 +499,12 @@ number when the task lands (3.1 and 5.3 both add one).
   too long), typecheck clean. (2026-10-03)
 - [ ] **5.3d** P1-15 **DECISION** — API makes the accepted version required (400 without it).
   Files: `CreateUserRequest`, user test class. Verify: API full suite.
+  **Blocked (2026-10-03) on the owner's uncommitted `UserApiTest.java`**: seven of its `POST /users`
+  bodies (lines 70, 89, 96, 117, 132, 185, 387) send no version and would turn 400, and sessions
+  never touch that file. Once it is committed or discarded: `@NotBlank` on
+  `acceptedTermsVersion`; add the version to those bodies and to UserEmailVerificationMessageTest,
+  UserProfileClearingApiTest, UserStatusApiTest and SsrSharedSecretRateLimitIntegrationTest;
+  a 400 case in UserTermsAcceptanceApiTest. Both clients already send it (5.3b, 5.3c).
 - [x] **5.4a** P2-5 — new conversations require a PUBLISHED listing; sends to a deleted or banned
   participant → 409. Files: `messaging/ConversationService.java`, `MessagingApiTest`. Verify: API
   `-Dtest=MessagingApiTest`. New error code `RECIPIENT_UNAVAILABLE` ("Ce compte n'existe
