@@ -27,7 +27,7 @@ far has no Android SDK, no emulator, no Xcode and no EAS login.
 
 ## Not verified
 
-- Any build on EAS, any install, and any behaviour on a real phone: the map, camera, photo library, keyboard handling, the splash screen, the error boundary, the deletion dialog, deep links from a cold start, the 5 s thread poll in the foreground and its pause in the background.
+- Any build on EAS, any install, and any behaviour on a real phone: the map, photo library, keyboard handling, the splash screen, the error boundary, the deletion dialog, deep links from a cold start, the 5 s thread poll in the foreground and its pause in the background.
 - Sign-in against a real Firebase project from a native build.
 - Sentry delivery from a device, including native crashes. Native crash events are sent by the native SDK and do **not** pass through the JavaScript scrubber (see the declarations below).
 - Expo Go: the Sentry SDK falls back to JavaScript-only capture when its native module is missing, so the app should still start there. This comes from reading the SDK source, not from a run.
@@ -71,7 +71,7 @@ Record the device, OS version and build number for each run.
 - [ ] Open a listing; favourite and unfavourite
 - [ ] Start a conversation; send; receive a reply while the thread is open (within about 5 s); receive one while the app is in the background, then return
 - [ ] Load older messages in a long thread; the view stays put
-- [ ] Publish a listing with camera and library photos; set the cover; delete a photo; submit for moderation
+- [ ] Profil → "Publier sur le site web" opens `/publish` in the browser (publishing is web-only at launch, owner decision P0-4)
 - [ ] Report a listing
 - [ ] Privacy and terms links open the web pages
 - [ ] Delete the account: the dialog needs `SUPPRIMER` on both platforms, then the app is signed out
@@ -94,7 +94,7 @@ From prebuild (production configuration) plus the autolinked libraries' manifest
 | Permission | Source | Why |
 | --- | --- | --- |
 | `INTERNET` | app, expo-file-system | the API, Firebase, map tiles |
-| `CAMERA` | expo-image-picker | listing photos taken in the app |
+| `CAMERA` | *removed* (`cameraPermission: false` on expo-image-picker, which blocks it) | publishing, the only camera use, is web-only at launch (P0-4); the avatar comes from the library |
 | `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE` (max SDK 32) | expo-image-picker, expo-file-system | photo library on Android 12 and older |
 | `ACCESS_NETWORK_STATE`, `ACCESS_WIFI_STATE` | @react-native-community/netinfo | offline detection |
 | `VIBRATE`, `SYSTEM_ALERT_WINDOW` | *removed* (`android.blockedPermissions` in `app.json`, which prebuild writes as `tools:node="remove"`) | Expo's app template adds both. Nothing uses them: no autolinked module's Android sources touch the vibrator, and the exported JS bundle's only `vibrate` is React Native's unused `Vibration` module. `SYSTEM_ALERT_WINDOW` serves React Native's dev tooling, and the template's debug-only manifest still declares it, so only release builds lose it. Checked on the prebuild output; the Gradle-merged manifest was not built here |
@@ -104,7 +104,7 @@ Removed in Phase 6 with `expo-notifications`: `RECEIVE_BOOT_COMPLETED`, `POST_NO
 
 ### iOS
 
-Info.plist usage strings: `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription` (French). No microphone string (the image picker's English default is gone), no `NSUserNotificationUsageDescription` (not a real iOS key), no entitlements (the `aps-environment` push entitlement came from `expo-notifications`). No tracking, so no App Tracking Transparency prompt.
+Info.plist usage strings: `NSPhotoLibraryUsageDescription` (French, for the avatar). No camera string (publishing is web-only, P0-4), no microphone string (the image picker's English default is gone), no `NSUserNotificationUsageDescription` (not a real iOS key), no entitlements (the `aps-environment` push entitlement came from `expo-notifications`). No tracking, so no App Tracking Transparency prompt.
 
 ### What the app collects
 
@@ -112,9 +112,8 @@ Info.plist usage strings: `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescri
 | --- | --- | --- | --- |
 | Email address | account (Firebase Authentication) | yes | |
 | Name, first name, city, bio | profile | yes | typed by the user |
-| Photos | listing photos, avatar | yes | the API re-encodes every upload, which strips EXIF, GPS included (per its code; §M still asks for a live check) |
+| Photos | avatar | yes | the API re-encodes every upload, which strips EXIF, GPS included (per its code; §M still asks for a live check) |
 | Messages | messaging between users | yes | on account deletion they stay readable by the other participant, shown as "Utilisateur supprimé" |
-| Listing content | publishing | yes | includes the coordinates the owner types for the property; public pages show fuzzed coordinates only |
 | User ID | authentication | yes | Firebase uid |
 | Crash logs, diagnostics | only with `EXPO_PUBLIC_SENTRY_DSN` set | no | JavaScript events: exception type, stack frames, release, OS name and version. Native crash events come from the native SDK unscrubbed; per the pinned SDK sources they carry device and app details and, as `user.id`, a random installation id the SDK generates (no IP, `sendDefaultPii: false`). The full list is `docs/legal/legal-prep.md` §9; `src/lib/__tests__/reporting.test.ts` pins the options |
 | Device location | not collected | — | no location permission |

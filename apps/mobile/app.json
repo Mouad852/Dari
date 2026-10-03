@@ -12,8 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "ma.dari.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "Dari utilise votre caméra pour ajouter des photos à vos annonces.",
-        "NSPhotoLibraryUsageDescription": "Dari utilise votre photothèque pour ajouter des photos à vos annonces."
+        "NSPhotoLibraryUsageDescription": "Dari utilise votre photothèque pour ajouter votre photo de profil."
       }
     },
     "android": {
@@ -39,6 +38,7 @@
       [
         "expo-image-picker",
         {
+          "cameraPermission": false,
           "microphonePermission": false
         }
       ],

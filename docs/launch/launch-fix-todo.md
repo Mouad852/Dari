@@ -203,9 +203,17 @@ next to the decision.
   enregistrées"). Files: `publish/page.tsx`, `owner-listings.spec.ts`. Verify: Web typecheck +
   `owner-listings keyboard-publish account-journeys` specs — edit EXPIRED → renew call, past date
   not re-sent; edit SUSPENDED → publish disabled, no success message. (b4ca744, 2026-09-29)
-- [ ] **2.4** P0-4 **DECISION** — (a) hide "Publier une annonce" in `apps/mobile/app/(tabs)/profile.tsx`
+- [x] **2.4** P0-4 **DECISION** — (a) hide "Publier une annonce" in `apps/mobile/app/(tabs)/profile.tsx`
   and link to the web wizard, or (b) parity rewrite (split into sub-tasks once chosen). Verify:
   Mobile `npm test` (+ for (b) a jest test on the request body and a device check).
+  Done (a): Profil shows "La publication et la gestion des annonces se font sur le site web de
+  Dari." and "Publier sur le site web", opening `${EXPO_PUBLIC_SITE_URL}/publish` (hidden when unset,
+  as the legal links are). `app/publish.tsx` deleted: expo-router would still have opened it from
+  `dari:///publish`. With it went the only camera use, so `cameraPermission: false` blocks Android's
+  CAMERA and drops the iOS camera string; the library string now names the avatar.
+  `mobile-release.md` permissions, data-safety and device checklist updated. New app-config test.
+  Mobile jest 84/84 + typecheck clean. Device check of the link stays with the device matrix.
+  (2026-10-03)
 - [x] **2.5** P0-5 — `mediaUrl(value)` in `apps/mobile/src/lib/api.ts` (absolute http(s) unchanged,
   else prefix `apiOrigin`); replace the concatenations in `src/components/ListingCard.tsx`,
   `app/listing/[id].tsx`, `app/publish.tsx`, `app/(tabs)/profile.tsx`; fix comments in

@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button, TextButton } from '@/components/Button';
 import { DeleteAccountModal } from '@/components/DeleteAccountModal';
@@ -10,8 +10,10 @@ import { TextField } from '@/components/TextField';
 import { TopBar } from '@/components/TopBar';
 import { apiFetch, ApiError, apiUpload, errorMessage, mediaUrl, reportUnexpected } from '@/lib/api';
 import { fieldErrors, MAX_LENGTH } from '@/lib/fields';
+import { SITE_URL } from '@/lib/config';
 import { getIdToken, onAuthChange, signOut } from '@/lib/firebase';
 import { profileUpdateBody } from '@/lib/profile';
+import { reportError } from '@/lib/reporting';
 import type { Me } from '@/types/api';
 import { color, layout, radius, type } from '@/theme/tokens';
 
@@ -86,6 +88,15 @@ export default function ProfileScreen() {
     finally { setDeleting(false); }
   }
 
+  /**
+   * Publishing lives on the web wizard (owner decision P0-4): the in-app form
+   * could never submit a listing the API accepts, so it is gone rather than
+   * half-working.
+   */
+  function openWebPublish() {
+    Linking.openURL(`${SITE_URL}/publish`).catch((cause: unknown) => reportError(cause, { kind: 'web-publish-link' }));
+  }
+
   function openDelete() {
     setDeleteError(null);
     setDeleteOpen(true);
@@ -102,7 +113,10 @@ export default function ProfileScreen() {
     <TextField label="Ville" value={city} onChangeText={setCity} maxLength={MAX_LENGTH.profileCity} error={fieldIssues.city} />
     <TextField label="Bio" value={bio} onChangeText={setBio} multiline numberOfLines={4} style={styles.bioInput} maxLength={MAX_LENGTH.bio} error={fieldIssues.bio} />
     <Button onPress={() => void save()} loading={saving}>{saving ? 'Enregistrement…' : 'Enregistrer'}</Button>
-    <Button variant="secondary" onPress={() => router.push('/publish' as never)}>Publier une annonce</Button>
+    {SITE_URL && <View style={styles.webPublish}>
+      <Text style={[type.bodySm, styles.webPublishNote]}>La publication et la gestion des annonces se font sur le site web de Dari.</Text>
+      <Button variant="secondary" onPress={openWebPublish}>Publier sur le site web</Button>
+    </View>}
     <Button variant="secondary" onPress={() => void signOut()}>Se déconnecter</Button>
     <TextButton onPress={openDelete}>Supprimer définitivement mon compte</TextButton>
     <LegalLinks />
@@ -111,4 +125,4 @@ export default function ProfileScreen() {
   </View>;
 }
 
-const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: color.bgPage }, content: { padding: layout.gutterMobile, gap: 16, alignItems: 'stretch' }, center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: layout.gutterMobile }, centerText: { textAlign: 'center' }, error: { color: color.danger }, avatarWrap: { alignSelf: 'center', width: 88, height: 88, borderRadius: radius.avatar, backgroundColor: color.brandSubtle, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, avatar: { width: '100%', height: '100%' }, avatarInitial: { fontFamily: type.h1.fontFamily, fontSize: 32, color: color.brand }, bioInput: { height: 110, textAlignVertical: 'top', paddingTop: 12 } });
+const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: color.bgPage }, content: { padding: layout.gutterMobile, gap: 16, alignItems: 'stretch' }, center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: layout.gutterMobile }, centerText: { textAlign: 'center' }, error: { color: color.danger }, avatarWrap: { alignSelf: 'center', width: 88, height: 88, borderRadius: radius.avatar, backgroundColor: color.brandSubtle, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, avatar: { width: '100%', height: '100%' }, avatarInitial: { fontFamily: type.h1.fontFamily, fontSize: 32, color: color.brand }, bioInput: { height: 110, textAlignVertical: 'top', paddingTop: 12 }, webPublish: { gap: 8 }, webPublishNote: { color: color.textMuted, textAlign: 'center' } });

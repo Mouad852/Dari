@@ -71,3 +71,17 @@ describe('production build gate', () => {
     expect(withReleaseConfig(BASE, {})).toEqual(BASE);
   });
 });
+
+describe('declared permissions', () => {
+  // Publishing moved to the web (owner decision P0-4) and only the avatar picks a
+  // photo, from the library: a camera permission would be declared for nothing.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { expo } = require('../app.json') as { expo: ExpoConfig };
+
+  it('asks for no camera, on either platform', () => {
+    const picker = expo.plugins?.find((plugin) => Array.isArray(plugin) && plugin[0] === 'expo-image-picker');
+    expect(picker).toEqual(['expo-image-picker', { cameraPermission: false, microphonePermission: false }]);
+    expect(expo.ios?.infoPlist).not.toHaveProperty('NSCameraUsageDescription');
+    expect(expo.ios?.infoPlist?.NSPhotoLibraryUsageDescription).toMatch(/photo de profil/);
+  });
+});
