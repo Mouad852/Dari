@@ -18,11 +18,17 @@ export type ProfileFields = { displayName: string; firstName: string; city: stri
 export const PROFILE_FIELDS_REQUIRED = 'Le nom d’affichage doit contenir entre 2 et 60 caractères.';
 export const EMAIL_UNVERIFIED = 'Vérifiez votre adresse e-mail avant de créer votre profil';
 
-/** The `POST /users` body, or null when the display name is outside 2–60 characters. */
-export function profileBody(fields: ProfileFields): { displayName: string; firstName: string; city: string | null } | null {
+type ProfileBody = { displayName: string; firstName: string; city: string | null; acceptedTermsVersion: string };
+
+/**
+ * The `POST /users` body, or null when the display name is outside 2–60
+ * characters. `acceptedTermsVersion` is the terms version shown next to the
+ * button (owner decision P1-15).
+ */
+export function profileBody(fields: ProfileFields, acceptedTermsVersion: string): ProfileBody | null {
   const displayName = fields.displayName.trim();
   if (displayName.length < 2 || displayName.length > 60) return null;
-  return { displayName, firstName: fields.firstName.trim(), city: fields.city.trim() || null };
+  return { displayName, firstName: fields.firstName.trim(), city: fields.city.trim() || null, acceptedTermsVersion };
 }
 
 /**
@@ -61,8 +67,8 @@ export function sendVerificationEmail(user: User): Promise<void> {
  * browser), then creates the profile with a fresh token, which is what
  * carries the new `email_verified` claim to the API.
  */
-export async function completeProfile(user: User, fields: ProfileFields): Promise<void> {
-  const body = profileBody(fields);
+export async function completeProfile(user: User, fields: ProfileFields, acceptedTermsVersion: string): Promise<void> {
+  const body = profileBody(fields, acceptedTermsVersion);
   if (!body) throw new Error(PROFILE_FIELDS_REQUIRED);
   await reload(user);
   if (!user.emailVerified) throw new ApiError(403, 'IDENTITY_EMAIL_UNVERIFIED', EMAIL_UNVERIFIED);

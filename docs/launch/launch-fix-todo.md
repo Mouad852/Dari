@@ -482,8 +482,15 @@ number when the task lands (3.1 and 5.3 both add one).
   account-journeys 4/4 (sentence, both links, POST carries "e2e"), account-pages (recovery shows
   the sentence and sends the version) + sign-up, field-errors, session-recovery, sign-in-return:
   34/34 on dev; typecheck clean. (2026-10-03)
-- [ ] **5.3c** P1-15 **DECISION** — mobile sign-up/profile-recovery consent and version. Files:
+- [x] **5.3c** P1-15 **DECISION** — mobile sign-up/profile-recovery consent and version. Files:
   `apps/mobile/app/sign-up.tsx`, `profile-recovery.tsx`. Verify: Mobile `npm test`.
+  Done: `TermsConsent` (the sentence, then LegalLinks' own buttons: Android's screen reader cannot
+  focus a link nested in Text) above "Créer mon compte" (replacing the bottom LegalLinks) and
+  "Créer mon profil". The profile is created only in recovery, which sends
+  `acceptedTermsVersion` = `EXPO_PUBLIC_LEGAL_VERSION` ("dev" outside production). A production
+  build now requires it (at most 64 characters); `.env.example` and `mobile-release.md`'s EAS table
+  list it. Mobile jest 86/86 (profile body carries the version; the gate refuses it missing or
+  too long), typecheck clean. (2026-10-03)
 - [ ] **5.3d** P1-15 **DECISION** — API makes the accepted version required (400 without it).
   Files: `CreateUserRequest`, user test class. Verify: API full suite.
 - [x] **5.4a** P2-5 — new conversations require a PUBLISHED listing; sends to a deleted or banned

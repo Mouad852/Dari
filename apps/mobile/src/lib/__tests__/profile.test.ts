@@ -18,18 +18,18 @@ afterEach(() => jest.clearAllMocks());
 
 describe('profileBody', () => {
   it('trims the fields and sends no empty city', () => {
-    expect(profileBody(fields)).toEqual({ displayName: 'Amina B.', firstName: 'Amina', city: null });
+    expect(profileBody(fields, '2026-10')).toEqual({ displayName: 'Amina B.', firstName: 'Amina', city: null, acceptedTermsVersion: '2026-10' });
   });
 
   it('refuses an empty display name', () => {
-    expect(profileBody({ ...fields, displayName: '   ' })).toBeNull();
+    expect(profileBody({ ...fields, displayName: '   ' }, '2026-10')).toBeNull();
   });
 
   it('requires a display name between 2 and 60 characters', () => {
-    expect(profileBody({ ...fields, displayName: 'A' })).toBeNull();
-    expect(profileBody({ ...fields, displayName: 'A'.repeat(61) })).toBeNull();
-    expect(profileBody({ ...fields, displayName: 'AB' })?.displayName).toBe('AB');
-    expect(profileBody({ ...fields, displayName: 'A'.repeat(60) })?.displayName).toHaveLength(60);
+    expect(profileBody({ ...fields, displayName: 'A' }, '2026-10')).toBeNull();
+    expect(profileBody({ ...fields, displayName: 'A'.repeat(61) }, '2026-10')).toBeNull();
+    expect(profileBody({ ...fields, displayName: 'AB' }, '2026-10')?.displayName).toBe('AB');
+    expect(profileBody({ ...fields, displayName: 'A'.repeat(60) }, '2026-10')?.displayName).toHaveLength(60);
   });
 });
 
@@ -77,26 +77,26 @@ describe('completeProfile', () => {
     (reload as jest.Mock).mockImplementation(async () => { (user as { emailVerified: boolean }).emailVerified = true; });
     (getIdToken as jest.Mock).mockResolvedValue('fresh-token');
 
-    await completeProfile(user, fields);
+    await completeProfile(user, fields, '2026-10');
 
     expect(reload).toHaveBeenCalledWith(user);
     expect(getIdToken).toHaveBeenCalledWith(true);
     expect(apiFetch).toHaveBeenCalledWith('/users', {
       method: 'POST',
       token: 'fresh-token',
-      body: { displayName: 'Amina B.', firstName: 'Amina', city: null },
+      body: { displayName: 'Amina B.', firstName: 'Amina', city: null, acceptedTermsVersion: '2026-10' },
     });
   });
 
   it('stops before the API while the email is still unverified', async () => {
     const user = { emailVerified: false } as User;
-    await expect(completeProfile(user, fields)).rejects.toMatchObject({ code: 'IDENTITY_EMAIL_UNVERIFIED' });
-    await expect(completeProfile(user, fields)).rejects.toBeInstanceOf(ApiError);
+    await expect(completeProfile(user, fields, '2026-10')).rejects.toMatchObject({ code: 'IDENTITY_EMAIL_UNVERIFIED' });
+    await expect(completeProfile(user, fields, '2026-10')).rejects.toBeInstanceOf(ApiError);
     expect(apiFetch).not.toHaveBeenCalled();
   });
 
   it('asks for a display name without touching Firebase or the API', async () => {
-    await expect(completeProfile({ emailVerified: true } as User, { ...fields, displayName: '' })).rejects.toThrow(PROFILE_FIELDS_REQUIRED);
+    await expect(completeProfile({ emailVerified: true } as User, { ...fields, displayName: '' }, '2026-10')).rejects.toThrow(PROFILE_FIELDS_REQUIRED);
     expect(reload).not.toHaveBeenCalled();
     expect(apiFetch).not.toHaveBeenCalled();
   });

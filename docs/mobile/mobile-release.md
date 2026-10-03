@@ -48,6 +48,7 @@ Values never go into a committed file. Everything account-bound is done by the o
    | `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN` | plaintext | |
    | `EXPO_PUBLIC_FIREBASE_PROJECT_ID` | plaintext | |
    | `EXPO_PUBLIC_SITE_URL` | plaintext | `https://` origin of the web app (legal links) |
+   | `EXPO_PUBLIC_LEGAL_VERSION` | plaintext | the web's `DARI_LEGAL_VERSION`, recorded as the terms version accepted at sign-up (P1-15); change both together |
    | `EXPO_PUBLIC_RELEASE_VERSION` | plaintext | release tag in error reports; change it per release |
    | `GOOGLE_MAPS_ANDROID_API_KEY` | **sensitive**, not secret | `eas build` evaluates `app.config.ts` on your machine, where secret variables are not readable, so a secret key would fail the gate. The key ends up inside the APK anyway; its protection is the restriction in step 3. |
    | `EXPO_PUBLIC_SENTRY_DSN` | plaintext | optional; without it reporting stays off |

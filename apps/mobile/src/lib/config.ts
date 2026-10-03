@@ -23,6 +23,14 @@ export const API_BASE_URL: string | null =
  */
 export const SITE_URL: string | null = process.env.EXPO_PUBLIC_SITE_URL?.trim().replace(/\/+$/, '') || null;
 
+/**
+ * The version of the terms and privacy notice the web serves, its
+ * DARI_LEGAL_VERSION (owner decision P1-15): sent as the version accepted
+ * when the profile is created. Required for a production build
+ * (app.config.ts); development and preview builds record "dev".
+ */
+export const LEGAL_VERSION: string = process.env.EXPO_PUBLIC_LEGAL_VERSION?.trim() || 'dev';
+
 export function configErrors(): string[] {
   const required: Record<string, string | null | undefined> = {
     EXPO_PUBLIC_API_BASE_URL: API_BASE_URL,

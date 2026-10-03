@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button, TextButton } from '@/components/Button';
-import { LegalLinks } from '@/components/LegalLinks';
 import { Icon } from '@/components/Icon';
+import { TermsConsent } from '@/components/TermsConsent';
 import { TextField } from '@/components/TextField';
 import { getFirebaseAuth } from '@/lib/firebase';
 import { MAX_LENGTH } from '@/lib/fields';
@@ -98,6 +98,8 @@ export default function SignUpScreen() {
             </Text>
           )}
 
+          <TermsConsent lead="En créant un compte" />
+
           <Button onPress={handleSubmit} loading={submitting} iconRight="arrow-right">
             {submitting ? 'Création…' : 'Créer mon compte'}
           </Button>
@@ -106,8 +108,6 @@ export default function SignUpScreen() {
             <Text style={[type.bodySm, { color: color.textMuted }]}>Vous avez déjà un compte ? </Text>
             <TextButton onPress={() => router.push('/sign-in')}>Se connecter</TextButton>
           </View>
-
-          <LegalLinks />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

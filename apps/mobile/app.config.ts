@@ -45,6 +45,11 @@ export function releaseConfigErrors(env: Env): string[] {
 
   if (!value('EXPO_PUBLIC_RELEASE_VERSION')) errors.push('EXPO_PUBLIC_RELEASE_VERSION is missing');
 
+  // Recorded as the terms version a person accepts at sign-up: the web's DARI_LEGAL_VERSION.
+  const legal = value('EXPO_PUBLIC_LEGAL_VERSION');
+  if (!legal) errors.push('EXPO_PUBLIC_LEGAL_VERSION is missing');
+  else if (legal.length > 64) errors.push('EXPO_PUBLIC_LEGAL_VERSION must be at most 64 characters');
+
   // Optional: without it error reporting stays off.
   const dsn = value('EXPO_PUBLIC_SENTRY_DSN');
   if (dsn && !HTTPS_URL.test(dsn.replace(/^https:\/\/[^@/\s]+@/, 'https://'))) {

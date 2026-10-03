@@ -13,6 +13,7 @@ const COMPLETE = {
   EXPO_PUBLIC_FIREBASE_PROJECT_ID: 'fake-project',
   EXPO_PUBLIC_SITE_URL: 'https://www.example.invalid',
   EXPO_PUBLIC_RELEASE_VERSION: '1.0.0-test',
+  EXPO_PUBLIC_LEGAL_VERSION: '2026-10',
   GOOGLE_MAPS_ANDROID_API_KEY: 'fake-maps-key-value',
 };
 
@@ -65,6 +66,11 @@ describe('production build gate', () => {
     expect(releaseConfigErrors({ ...COMPLETE, EXPO_PUBLIC_SENTRY_DSN: 'https://fakepublickey@errors.example.invalid/42' })).toEqual([]);
     expect(releaseConfigErrors({ ...COMPLETE, EXPO_PUBLIC_SENTRY_DSN: 'http://fakepublickey@errors.example.invalid/42' }))
       .toEqual(['EXPO_PUBLIC_SENTRY_DSN must be an https:// DSN']);
+  });
+
+  it('refuses a terms version longer than the API stores', () => {
+    expect(releaseConfigErrors({ ...COMPLETE, EXPO_PUBLIC_LEGAL_VERSION: 'v'.repeat(65) }))
+      .toEqual(['EXPO_PUBLIC_LEGAL_VERSION must be at most 64 characters']);
   });
 
   it('lets a development build through with nothing set', () => {

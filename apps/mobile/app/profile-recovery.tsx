@@ -5,9 +5,11 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } fr
 
 import { Button, TextButton } from '@/components/Button';
 import { Icon } from '@/components/Icon';
+import { TermsConsent } from '@/components/TermsConsent';
 import { TextField } from '@/components/TextField';
 import { ApiError, errorMessage } from '@/lib/api';
 import { onAuthChange, signOut } from '@/lib/firebase';
+import { LEGAL_VERSION } from '@/lib/config';
 import { MAX_LENGTH } from '@/lib/fields';
 import { completeProfile, hasProfile, PROFILE_FIELDS_REQUIRED, sendVerificationEmail } from '@/lib/profile';
 import { color, font, layout, radius, ramp, type } from '@/theme/tokens';
@@ -71,7 +73,7 @@ export default function ProfileRecoveryScreen() {
     setError(null);
     setStatus(null);
     try {
-      await completeProfile(user, { displayName, firstName, city });
+      await completeProfile(user, { displayName, firstName, city }, LEGAL_VERSION);
       router.replace('/');
     } catch (cause) {
       setPendingVerification(!user.emailVerified);
@@ -120,6 +122,8 @@ export default function ProfileRecoveryScreen() {
           {error && (
             <Text style={[type.bodySm, styles.error]} accessibilityLiveRegion="assertive">{error}</Text>
           )}
+
+          <TermsConsent lead="En créant votre profil" />
 
           <Button onPress={create} loading={busy} disabled={!user} iconRight="arrow-right">
             {busy ? 'Vérification…' : 'Créer mon profil'}
