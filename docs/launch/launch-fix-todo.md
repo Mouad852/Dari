@@ -240,10 +240,15 @@ next to the decision.
   `apps/web/src/app/account/listings/page.tsx`, `owner-listings.spec.ts`. Verify: Web typecheck +
   `owner-listings` spec, axe clean. The "Contacter la modération" link is split out as 2.6e.
   (89ba966, 2026-09-29)
-- [ ] **2.6e** P1-13 **OWNER INPUT (moderation contact)** — "Contacter la modération" link on a
+- [x] **2.6e** P1-13 **OWNER INPUT (moderation contact)** — "Contacter la modération" link on a
   suspended listing. No public contact address exists in the app (`DARI_LEGAL_CONTACT` is
   server-only free text, rendered nowhere). Needs the address that handles appeals, then a
   `NEXT_PUBLIC_*` value or a server-rendered contact page. Files: `account/listings/page.tsx`.
+  Done: new server-rendered `/contact` page showing `DARI_LEGAL_CONTACT` (a `mailto:` link when it is
+  an address; wraps at 360 px), with a "#moderation" section (what to include in an appeal) and a
+  data-rights line. A suspended listing's notice ends with "Contacter la modération" →
+  `/contact#moderation`. owner-listings 6/6 (the suspended test follows the link, checks the
+  heading and the mailto, axe on both pages); typecheck clean. (2026-10-03)
 - [ ] **2.7** Phase 2 gate — API full suite, web typecheck/build/full Playwright (dev +
   production), mobile jest all green.
 

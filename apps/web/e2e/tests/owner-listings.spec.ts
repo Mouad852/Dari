@@ -123,6 +123,13 @@ test('a suspended listing tells its owner why and offers no action that cannot w
     await expect(page.getByRole('button', { name: action })).toHaveCount(0);
   }
   await expectAccessible(page);
+
+  // The way to appeal (tracker 2.6e): the operator's contact, on its own page.
+  await page.getByRole('link', { name: 'Contacter la modération' }).first().click();
+  await expect(page).toHaveURL(/\/contact#moderation$/);
+  await expect(page.getByRole('heading', { name: 'Une annonce suspendue ou un compte limité' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'e2e@example.invalid' })).toHaveAttribute('href', 'mailto:e2e@example.invalid');
+  await expectAccessible(page);
 });
 
 test('an expired listing can be renewed from the dashboard', async ({ authenticatedPage: page }) => {

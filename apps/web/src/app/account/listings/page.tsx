@@ -443,6 +443,10 @@ export default function MyListingsPage() {
                               Suspendue par la modération
                               {listing.rejectionReason ? ` : ${listing.rejectionReason}` : ' après plusieurs signalements'}.
                               {' '}Elle n’est plus visible, et seule la modération peut la rétablir.
+                              {' '}
+                              <Link href="/contact#moderation" style={{ color: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
+                                Contacter la modération
+                              </Link>
                             </span>
                           </div>
                         ) : null}
