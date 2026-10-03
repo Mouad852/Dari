@@ -54,26 +54,31 @@ Rules:
 Tasks marked **DECISION** stay unchecked until the owner answers here. Record the answer and date
 next to the decision.
 
-- [ ] **P0-4 mobile publishing** — (a) hide "Publier une annonce" on mobile at launch and link to
+- [x] **P0-4 mobile publishing** — (a) hide "Publier une annonce" on mobile at launch and link to
   the web wizard **[recommended]**, or (b) full parity (city picker, type pickers, map pin,
   validation, date picker, "Mes annonces" screen). Blocks 2.4.
-  Answer: _pending_
-- [ ] **P0-2 date filter** — a NULL `available_from` counts as "available now" (the rule the map
+  Answer: (a), the recommendation (owner, 2026-10-03).
+- [x] **P0-2 date filter** — a NULL `available_from` counts as "available now" (the rule the map
   query already uses) **[recommended]**, or backfill `available_from = created_at::date` and keep
   the strict rule. Blocks 2.2d.
-  Answer: _pending_
-- [ ] **P0-1 new-message email throttle window** — at most one email per (recipient,
+  Answer: NULL counts as "available now", the recommendation (owner, 2026-10-03).
+- [x] **P0-1 new-message email throttle window** — at most one email per (recipient,
   conversation) per 30 minutes while unread **[recommended]**. Blocks 2.1a/2.1b.
-  Answer: _pending_
-- [ ] **P1-15 consent** — a sentence with links ("En créant un compte, vous acceptez les
+  Answer: 30 minutes while unread, the recommendation (owner, 2026-10-03).
+- [x] **P1-15 consent** — a sentence with links ("En créant un compte, vous acceptez les
   Conditions d'utilisation et la Politique de confidentialité") plus a stored `terms_version`
   **[recommended]**, or a required checkbox. Exact wording and the version string come from the
   owner. Blocks 5.3a–5.3d.
-  Answer: _pending_
-- [ ] **P1-13 moderation contact** (added 2026-09-29) — the address owners write to about a
+  Answer: the sentence with links, the recommendation (owner, 2026-10-03). The version is the
+  legal pages' own `DARI_LEGAL_VERSION` (already required for a production web build), so the
+  owner keeps one value; mobile gets it as `EXPO_PUBLIC_LEGAL_VERSION` (required for a
+  production build). Wording as above.
+- [x] **P1-13 moderation contact** (added 2026-09-29) — the address owners write to about a
   suspension (for example a `moderation@` mailbox), shown as "Contacter la modération" on a
   suspended listing. Blocks 2.6e.
-  Answer: _pending_
+  Answer: the recommendation (owner, 2026-10-03), using the support contact the owner already
+  supplies as `DARI_LEGAL_CONTACT` (required for a production build), shown on a new `/contact`
+  page. A dedicated `moderation@` mailbox later is only a change of that value.
 
 ## Phase 1 — Security and data-integrity blockers
 
