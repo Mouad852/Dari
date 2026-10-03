@@ -149,7 +149,7 @@ next to the decision.
   both sides). Same transaction as the message. V34 indexes the outbox lookup. MessageNotificationTest
   3/3 (first message, no text in the email; unread inside the window → none, read → again, reply →
   the other side; still unread after 31 min → again), MessagingApiTest 20/20, NotificationTemplatesTest
-  9/9, NotificationDeliveryServiceTest 3/3, FlywayMigrationSmokeTest 1/1. (2026-10-03)
+  9/9, NotificationDeliveryServiceTest 3/3, FlywayMigrationSmokeTest 1/1. (b56530b, 2026-10-03)
 - [x] **2.1b** P0-1 — email subject/body for `NEW_MESSAGE` in `SmtpNotificationSender` (subject
   names the sender/listing, body links to the thread, no message text). Files:
   `SmtpNotificationSender.java`, `NotificationDeliveryServiceTest`, and
@@ -161,7 +161,7 @@ next to the decision.
   SmtpNotificationSenderTest 2/2. Web: "Nouveaux messages" listed with the no-content and 30-minute
   rule, the "pas encore envoyés" line gone, the hub reads "E-mails sur vos messages, annonces et
   compte"; typecheck clean, account-pages 8/8. Mailpit: one email through `SmtpNotificationSender`,
-  subject and UTF-8 body intact, link to the thread, no message text. (2026-10-03)
+  subject and UTF-8 body intact, link to the thread, no message text. (663b159, 2026-10-03)
 - [x] **2.2a** P0-2 — wizard "Chambre" step collects `roomFurnishing` (select) and `availableFrom`
   (date, min today); both added to `missingForSubmit`, `draftPayload()`, `loadDraft` and the
   Validation summary; an unchanged loaded date is not re-sent (the API refuses past dates).
@@ -191,7 +191,7 @@ next to the decision.
   search with a move-in date answered 500 ("could not determine data type") on web and mobile;
   now cast like the others. New `undatedListingIsAvailableNowEverywhere` (city list, radius list,
   count, map: undated + earlier kept, later dropped). ListingApiTest 62/62,
-  ListingSearchIndexUsageTest 4/4, ListingSearchOptimizationTest 5/5. (2026-10-03)
+  ListingSearchIndexUsageTest 4/4, ListingSearchOptimizationTest 5/5. (833bf89, 2026-10-03)
 - [x] **2.3a** P0-3 — "Renouveler" action on `/account/listings` for `status === 'EXPIRED'`
   (`POST /listings/{id}/renew`, card moves to PENDING_REVIEW). Files:
   `apps/web/src/app/account/listings/page.tsx`, new `owner-listings.spec.ts` (stubs the status
@@ -213,7 +213,7 @@ next to the decision.
   CAMERA and drops the iOS camera string; the library string now names the avatar.
   `mobile-release.md` permissions, data-safety and device checklist updated. New app-config test.
   Mobile jest 84/84 + typecheck clean. Device check of the link stays with the device matrix.
-  (2026-10-03)
+  (015581a, 2026-10-03)
 - [x] **2.5** P0-5 — `mediaUrl(value)` in `apps/mobile/src/lib/api.ts` (absolute http(s) unchanged,
   else prefix `apiOrigin`); replace the concatenations in `src/components/ListingCard.tsx`,
   `app/listing/[id].tsx`, `app/publish.tsx`, `app/(tabs)/profile.tsx`; fix comments in
@@ -248,7 +248,7 @@ next to the decision.
   an address; wraps at 360 px), with a "#moderation" section (what to include in an appeal) and a
   data-rights line. A suspended listing's notice ends with "Contacter la modération" →
   `/contact#moderation`. owner-listings 6/6 (the suspended test follows the link, checks the
-  heading and the mailto, axe on both pages); typecheck clean. (2026-10-03)
+  heading and the mailto, axe on both pages); typecheck clean. (c5009fc, 2026-10-03)
 - [x] **2.7** Phase 2 gate — API full suite, web typecheck/build/full Playwright (dev +
   production), mobile jest all green.
   Done after the owner's decisions landed (2.1a/b, 2.2d, 2.4, 2.6e): API full suite 375/375; web
@@ -256,7 +256,7 @@ next to the decision.
   1 intentional skip; mobile jest 86/86 + typecheck. Full-stack harness 3/3. Its journey had
   raced the optimistic message bubble (it read the thread back before the POST answered); it now
   waits for the 201, and also checks on the real database that the owner's NEW_MESSAGE email is
-  queued without the text and that sign-up stored terms version "full-stack". (2026-10-03)
+  queued without the text and that sign-up stored terms version "full-stack". (279db1b, 2026-10-03)
 
 ## Phase 3 — Frontend/backend integration fixes
 
@@ -397,7 +397,7 @@ number when the task lands (3.1 and 5.3 both add one).
   Done with 2.1a: subject "Nouveau message de {prénom} à propos de « {titre} »" (no listing → just
   the name); body links to `/messages/{id}`, says message text is never emailed and states the
   30-minute rule. Names and titles are folded to one line. New NotificationTemplatesTest case.
-  (2026-10-03)
+  (b56530b, 2026-10-03)
 - [x] **4.4a** P2-13 — `whiteSpace: 'pre-line'` on description, rules and bio. Files:
   `ListingDetailContent.tsx`, `profile/[id]/page.tsx`. Verify: Web + screenshot. New
   `listing-host` test reads `innerText` (a newline survives only if rendered); mock data now
@@ -475,7 +475,7 @@ number when the task lands (3.1 and 5.3 both add one).
   Files: new migration, `user/*`, new user test class. Verify: API.
   Done: V35 adds both columns (nullable); `CreateUserRequest.acceptedTermsVersion` (max 64) is trimmed
   and stored with `Instant.now()` on create. New `UserTermsAcceptanceApiTest` 2/2; UserApiTest 16/16,
-  UserProfileClearingApiTest 3/3, FlywayMigrationSmokeTest 1/1. (2026-10-03)
+  UserProfileClearingApiTest 3/3, FlywayMigrationSmokeTest 1/1. (8006548, 2026-10-03)
 - [x] **5.3b** P1-15 **DECISION** — web sign-up consent sentence with links; sends the version.
   Files: `apps/web/src/app/sign-up/page.tsx`, profile-creation call. Verify: Web + spec (links
   shown).
@@ -487,7 +487,7 @@ number when the task lands (3.1 and 5.3 both add one).
   without it counts as absent, so sign-in routes that person to recovery to accept. Specs:
   account-journeys 4/4 (sentence, both links, POST carries "e2e"), account-pages (recovery shows
   the sentence and sends the version) + sign-up, field-errors, session-recovery, sign-in-return:
-  34/34 on dev; typecheck clean. (2026-10-03)
+  34/34 on dev; typecheck clean. (f45873b, 2026-10-03)
 - [x] **5.3c** P1-15 **DECISION** — mobile sign-up/profile-recovery consent and version. Files:
   `apps/mobile/app/sign-up.tsx`, `profile-recovery.tsx`. Verify: Mobile `npm test`.
   Done: `TermsConsent` (the sentence, then LegalLinks' own buttons: Android's screen reader cannot
@@ -496,7 +496,7 @@ number when the task lands (3.1 and 5.3 both add one).
   `acceptedTermsVersion` = `EXPO_PUBLIC_LEGAL_VERSION` ("dev" outside production). A production
   build now requires it (at most 64 characters); `.env.example` and `mobile-release.md`'s EAS table
   list it. Mobile jest 86/86 (profile body carries the version; the gate refuses it missing or
-  too long), typecheck clean. (2026-10-03)
+  too long), typecheck clean. (66eb670, 2026-10-03)
 - [ ] **5.3d** P1-15 **DECISION** — API makes the accepted version required (400 without it).
   Files: `CreateUserRequest`, user test class. Verify: API full suite.
   **Blocked (2026-10-03) on the owner's uncommitted `UserApiTest.java`**: seven of its `POST /users`
@@ -711,3 +711,4 @@ Post-launch backlog (not scheduled in §17): P2-1, P2-16, P2-21, P2-25, P2-27, P
 | 2026-09-30 | Phase 4 complete except 4.3c (blocked with 2.1): 4.1c, 4.1e (new), 4.2a–c, 4.3a, 4.3b, 4.4a–d. Phase 5 complete except 5.3a–d (blocked): 5.1a–d, 5.1e (new, test), 5.2, 5.2b (new, test), 5.4a–h. Phase 6: 6.1; 6.2a in progress | `1a47b50`…`1a63cb2` (29/40); this log is the first commit of 2026-10-01 | API full suite 347/347 (after 5.4a; P2-11 user/admin/security classes 40/40 after). Web full suite (dev + production) after each shared-UI change: 75–89 passed + 1 intentional skip; every red run explained and fixed or tracked (listing-host compile wait 5.1e; axe on hidden streamed `<h1>` 5.2b; banner racing sign-in, fixed in 5.4c; publish-shell test updated in 5.4f). Mobile jest 83/83 + typecheck. Mailpit: all 10 notification templates delivered with intact UTF-8. | **Blocked on owner (unchanged):** 2.1a/2.1b + new 4.3c (P0-1), 2.2d (P0-2), 2.4 (P0-4), 2.6e (P1-13), 5.3a–d (P1-15). **6.2a in progress:** API emulator mode committed (`1a63cb2`); web `connectAuthEmulator` switch and the harness (`e2e/full-stack/`, `npm run e2e:full-stack`) are written but not yet run end to end, so uncommitted. Environment this session: TMP pointed at C:\Windows\TEMP (JUnit @TempDir errors; run Maven with the user temp dir), Docker Desktop stopped twice. Not done: real-device checks (dvh toolbar, mobile TextField). |
 | 2026-10-01 | Phase 6 complete: 6.2a, 6.2b, 6.2c (new), 6.3. Phase 7: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6a, 7.6b; 7.7a written, verified the next day | `73522b5` (the 2026-09-30 log)…`36b137a` (12/40); this session ran out of context before its log, so this row was written on 2026-10-02 | 6.3 full run: API 351/351, web dev + production 95 passed + 1 intentional skip, mobile jest 83/83 + typecheck, full-stack 3/3. Then API full suite 352/352 (7.4), 353/353 (7.6a); confirmation-dialogs 4/4, marketing-claims 3/3 + production 21 + 1 skip, account-pages 8/8, AdminApiTest 21/21 + ReportApiTest 9/9. | **Blocked on owner (unchanged):** 2.1a/2.1b + 4.3c (P0-1), 2.2d (P0-2), 2.4 (P0-4), 2.6e (P1-13), 5.3a–d (P1-15). 6.2c: the full-stack work found that a plain `npm run dev` never hydrated (the CSP blocked eval in dev); fixed. Red runs explained: the IDE builder's NoClassDefFound (clean rerun), a missing import in AdminApiTest. |
 | 2026-10-02 | Phase 7 complete: 7.7a, 7.7b, 7.8, 7.9, 7.10, 7.11, 7.12, 7.13, 7.14, 7.15 (new, test flakes), 7.16 (new, cover bug found by the 7.15 run) | `108683e`…`9c8e325` (11) + this log = 12/40 | API full suite after each API task: 357 → 360 → 361 → 366 → 367/367. Targeted: FavoriteApiTest 9/9, ListingApiTest 60/60 → 61/61, AdminApiTest 23/23, FirebaseAuthFilterRevocationTest 5/5, SecurityHeadersApiTest 2/2, MessagingApiTest 20/20 + FlywayMigrationSmokeTest; AvatarCleanupLocalIntegrationTest x10 10/10. Race tests (7.8, 7.9) and the cover test (7.16) were each shown to fail on the old code. Full-stack harness 3/3 against the Auth emulator after 7.12. Web and mobile not rerun: no web or mobile code changed today. | **Blocked on owner (unchanged):** 2.1a/2.1b + 4.3c (P0-1), 2.2d (P0-2), 2.4 (P0-4), 2.6e (P1-13), 5.3a–d (P1-15); gate 2.7 waits on them. 7.12 billing checked first: no-cost on Spark, quota-bound only. 7.14's condition was taken as met because nothing is deployed yet. Red runs explained: Docker Desktop stopped twice (Testcontainers could not start), the IDE builder's ClassNotFound (clean rerun), one shell `./mvnw` not found (rerun), and the two Docker-clock flakes fixed in 7.15. Next: nothing unblocked; every open item needs an owner decision. |
+| 2026-10-03 | Owner decisions recorded (all five recommendations). Phase 2 complete: 2.1a + 4.3c, 2.1b, 2.2d, 2.4, 2.6e, gate 2.7. Phase 5: 5.3a, 5.3b, 5.3c | `49a072e`…`279db1b` (10) + this log = 11/40 | API full suite 375/375. Web full Playwright dev + production 100 passed + 1 intentional skip, typecheck clean. Mobile jest 84 → 86/86 + typecheck. Full-stack harness 3/3, now also checking on the real database the queued new-message email (no text) and the stored terms version. Mailpit: one NEW_MESSAGE email, UTF-8 intact. | **Blocked:** 5.3d (API requires the version) waits on the owner's uncommitted `UserApiTest.java`; see its entry. Found and fixed on the way: every map search with a move-in date answered 500 (uncast parameter, 2.2d); the mobile app kept a camera permission and an unreachable-but-routable publish screen (2.4). Owner config added: `EXPO_PUBLIC_LEGAL_VERSION` (EAS, = the web's `DARI_LEGAL_VERSION`). Red runs explained: Docker Desktop stopped once; a heredoc mangled `\n` in a Java test (rewritten with Edit); the full-stack journey's optimistic-bubble race (fixed in 2.7). |
