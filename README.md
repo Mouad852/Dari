@@ -1,15 +1,55 @@
-# Dari
+# Dari — a Moroccan colocation marketplace
 
-Dari is a Moroccan colocation marketplace. It provides public listing discovery,
-account and publishing flows, messaging, moderation, and an in-progress mobile
-client.
+Dari is a full-stack product for discovering shared accommodation in Morocco.
+It combines a Spring Boot API, a Next.js web experience, spatial search with
+PostGIS, and a separate Expo mobile client.
 
-## Stack
+> **Current status:** the API and web marketplace are implemented. The mobile
+> client is in progress; device validation and store-release work remain.
 
-- Spring Boot 3 on Java 21, PostgreSQL 16, and PostGIS
-- Next.js App Router for the web product
-- Expo and React Native for the mobile client
-- Terraform for AWS infrastructure
+<p align="center">
+  <img src="design-system/prototypes/listing-creation/screenshots/02-m3.png" alt="Dari listing creation prototype" width="72%">
+</p>
+
+*A checked-in product prototype; it is not presented as a production screenshot.*
+
+## Why it matters
+
+- **Product workflow:** public discovery, accounts, listing publication,
+  messaging, and moderation are represented in the product architecture.
+- **Location-aware backend:** PostgreSQL 16 and PostGIS support the marketplace
+  domain, while Flyway owns schema evolution.
+- **Deliberate boundaries:** Firebase provides identity; the API owns product
+  authorization and data access. Exact listing coordinates are treated as
+  private application data.
+- **Multiple clients, one domain:** Next.js is the primary web product and the
+  Expo/React Native client is developed separately against the same platform.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Visitor[Visitor] --> Web[Next.js web application]
+  Member[Mobile client — in progress] --> API[Spring Boot API]
+  Web --> API
+  API --> Identity[Firebase identity]
+  API --> DB[(PostgreSQL + PostGIS)]
+  API --> Storage[MinIO locally]
+  Infra[Terraform] -. provisions cloud infrastructure .-> API
+```
+
+The [architecture document](ARCHITECTURE.md) distinguishes implemented paths,
+scaffolding, and the constraints the current design is not intended to solve.
+
+## Technology choices
+
+| Area | Technologies |
+| --- | --- |
+| API | Java 21, Spring Boot 3, Flyway |
+| Data and search | PostgreSQL 16, PostGIS |
+| Web | Next.js App Router |
+| Mobile | Expo, React Native — in progress |
+| Local services and infrastructure | Docker Compose, MinIO, Terraform |
 
 ## Repository layout
 
@@ -76,8 +116,9 @@ cleanup are reported with its change set.
 - [Product design](docs/product/colocation-platform-design.md)
 - [Mobile release guide](docs/mobile/mobile-release.md)
 
-## Status
+## Scope and next steps
 
-The API and web marketplace are implemented; device validation and store release
-work remain for the standalone mobile client. See [TODO.md](TODO.md) for the
-current checklist.
+The checked-in API and web marketplace are the most complete surfaces. The
+standalone mobile client still needs device validation and store-release work.
+See [TODO.md](TODO.md) for the current checklist; do not infer a public
+deployment or a completed mobile release from this repository.
