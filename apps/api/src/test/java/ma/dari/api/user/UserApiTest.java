@@ -6,6 +6,8 @@ import ma.dari.api.listing.Listing;
 import ma.dari.api.listing.ListingRepository;
 import ma.dari.api.listing.ListingStatus;
 import ma.dari.api.media.ImageStore;
+import ma.dari.api.media.MediaCleanupRepository;
+import ma.dari.api.media.MediaCleanupStatus;
 import ma.dari.api.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,6 +33,9 @@ class UserApiTest extends AbstractIntegrationTest {
 
     @Autowired
     ListingRepository listings;
+
+    @Autowired
+    MediaCleanupRepository mediaCleanups;
 
     private void stubToken(String uid, String email, boolean emailVerified) throws Exception {
         FirebaseToken token = Mockito.mock(FirebaseToken.class);
@@ -347,8 +352,13 @@ class UserApiTest extends AbstractIntegrationTest {
         assertThat(deleted.getCity()).isNull();
         assertThat(deleted.getBio()).isNull();
         assertThat(deleted.getAvatarUrl()).isNull();
+        assertThat(mediaCleanups.existsByStorageKeyAndStatus(storageKey, MediaCleanupStatus.PENDING))
+                .as("a durable cleanup job retains retry responsibility after access is revoked")
+                .isTrue();
 
-        // The file itself, not just the row's pointer to it, must be gone.
+        // The physical delete is asynchronous and retryable, but a deleted
+        // person's old avatar must become unreachable as soon as deletion
+        // commits rather than waiting for the cleanup scheduler.
         given().basePath("").when().get("/uploads/" + storageKey)
                 .then().statusCode(404);
     }
